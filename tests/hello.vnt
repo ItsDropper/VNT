@@ -1,7 +1,8 @@
-x = 11
-
-if x > 5 {
-    print("yes")
-} else {
-    print("no")
+fun test() {
+    temporary = 123
+    print(temporary)
 }
+
+test()
+
+print(temporary)

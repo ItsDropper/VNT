@@ -34,14 +34,87 @@ Value value_boolean(int boolean) {
     return value;
 }
 
+Value value_array(void) {
+    Value value;
+
+    value.type = VALUE_ARRAY;
+    value.array.items = NULL;
+    value.array.count = 0;
+    value.array.capacity = 0;
+
+    return value;
+}
+
+int value_array_append(
+    Value *array,
+    Value item
+) {
+    if (
+        array == NULL ||
+        array->type != VALUE_ARRAY
+    ) {
+        return 0;
+    }
+
+    if (array->array.count >= array->array.capacity) {
+        int new_capacity =
+            array->array.capacity == 0
+                ? 4
+                : array->array.capacity * 2;
+
+        Value *new_items = realloc(
+            array->array.items,
+            sizeof(Value) * new_capacity
+        );
+
+        if (new_items == NULL) {
+            return 0;
+        }
+
+        array->array.items = new_items;
+        array->array.capacity = new_capacity;
+    }
+
+    array->array.items[
+        array->array.count
+    ] = item;
+
+    array->array.count++;
+
+    return 1;
+}
+
 void value_free(Value *value) {
     if (value == NULL) {
         return;
     }
 
-    if (value->type == VALUE_STRING) {
-        free(value->string);
-        value->string = NULL;
+    switch (value->type) {
+        case VALUE_STRING:
+            free(value->string);
+            value->string = NULL;
+            break;
+
+        case VALUE_ARRAY:
+            for (
+                int i = 0;
+                i < value->array.count;
+                i++
+            ) {
+                value_free(
+                    &value->array.items[i]
+                );
+            }
+
+            free(value->array.items);
+
+            value->array.items = NULL;
+            value->array.count = 0;
+            value->array.capacity = 0;
+            break;
+
+        default:
+            break;
     }
 
     value->type = VALUE_INVALID;

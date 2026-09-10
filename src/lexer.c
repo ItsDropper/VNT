@@ -7,7 +7,6 @@ static char peek(Lexer *lexer) {
     return lexer->source[lexer->current];
 }
 
-
 static char advance(Lexer *lexer) {
     return lexer->source[lexer->current++];
 }
@@ -117,10 +116,18 @@ Token lexer_next(Lexer *lexer) {
 
     switch (c) {
         case '(':
-            return make_token(lexer, TOKEN_LEFT_PAREN, start);
+            return make_token(
+                lexer,
+                TOKEN_LEFT_PAREN,
+                start
+            );
 
         case ')':
-            return make_token(lexer, TOKEN_RIGHT_PAREN, start);
+            return make_token(
+                lexer,
+                TOKEN_RIGHT_PAREN,
+                start
+            );
 
         case '{':
             return make_token(
@@ -136,9 +143,31 @@ Token lexer_next(Lexer *lexer) {
                 start
             );
 
+        case '[':
+            return make_token(
+                lexer,
+                TOKEN_LEFT_BRACKET,
+                start
+            );
+
+        case ']':
+            return make_token(
+                lexer,
+                TOKEN_RIGHT_BRACKET,
+                start
+            );
+
+        case ',':
+            return make_token(
+                lexer,
+                TOKEN_COMMA,
+                start
+            );
+
         case '=':
             if (peek(lexer) == '=') {
                 advance(lexer);
+
                 return make_token(
                     lexer,
                     TOKEN_EQUAL_EQUAL,
@@ -146,11 +175,16 @@ Token lexer_next(Lexer *lexer) {
                 );
             }
 
-            return make_token(lexer, TOKEN_EQUALS, start);
+            return make_token(
+                lexer,
+                TOKEN_EQUALS,
+                start
+            );
 
         case '!':
             if (peek(lexer) == '=') {
                 advance(lexer);
+
                 return make_token(
                     lexer,
                     TOKEN_BANG_EQUAL,
@@ -158,11 +192,16 @@ Token lexer_next(Lexer *lexer) {
                 );
             }
 
-            return make_token(lexer, TOKEN_UNKNOWN, start);
+            return make_token(
+                lexer,
+                TOKEN_UNKNOWN,
+                start
+            );
 
         case '>':
             if (peek(lexer) == '=') {
                 advance(lexer);
+
                 return make_token(
                     lexer,
                     TOKEN_GREATER_EQUAL,
@@ -170,11 +209,16 @@ Token lexer_next(Lexer *lexer) {
                 );
             }
 
-            return make_token(lexer, TOKEN_GREATER, start);
+            return make_token(
+                lexer,
+                TOKEN_GREATER,
+                start
+            );
 
         case '<':
             if (peek(lexer) == '=') {
                 advance(lexer);
+
                 return make_token(
                     lexer,
                     TOKEN_LESS_EQUAL,
@@ -182,21 +226,45 @@ Token lexer_next(Lexer *lexer) {
                 );
             }
 
-            return make_token(lexer, TOKEN_LESS, start);
+            return make_token(
+                lexer,
+                TOKEN_LESS,
+                start
+            );
 
         case '+':
-            return make_token(lexer, TOKEN_PLUS, start);
+            return make_token(
+                lexer,
+                TOKEN_PLUS,
+                start
+            );
 
         case '-':
-            return make_token(lexer, TOKEN_MINUS, start);
+            return make_token(
+                lexer,
+                TOKEN_MINUS,
+                start
+            );
 
         case '*':
-            return make_token(lexer, TOKEN_STAR, start);
+            return make_token(
+                lexer,
+                TOKEN_STAR,
+                start
+            );
 
         case '/':
-            return make_token(lexer, TOKEN_SLASH, start);
+            return make_token(
+                lexer,
+                TOKEN_SLASH,
+                start
+            );
 
         default:
-            return make_token(lexer, TOKEN_UNKNOWN, start);
+            return make_token(
+                lexer,
+                TOKEN_UNKNOWN,
+                start
+            );
     }
 }

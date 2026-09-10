@@ -1,4 +1,3 @@
-
 #include "ast.h"
 
 #include <stdlib.h>
@@ -66,6 +65,98 @@ AstNode *ast_create_if(
     return node;
 }
 
+AstNode *ast_create_while(
+    AstNode *condition,
+    AstNode *body
+) {
+    AstNode *node = malloc(sizeof(AstNode));
+
+    if (node == NULL) {
+        return NULL;
+    }
+
+    node->type = AST_WHILE_STATEMENT;
+
+    node->while_statement.condition = condition;
+    node->while_statement.body = body;
+
+    node->next = NULL;
+
+    return node;
+}
+
+AstNode *ast_create_function_declaration(
+    const char *name,
+    char **parameters,
+    int parameter_count,
+    AstNode *body
+) {
+    AstNode *node = malloc(sizeof(AstNode));
+
+    if (node == NULL) {
+        return NULL;
+    }
+
+    node->type = AST_FUNCTION_DECLARATION;
+
+    node->function_declaration.name = copy_string(name);
+    node->function_declaration.parameters = parameters;
+    node->function_declaration.parameter_count = parameter_count;
+    node->function_declaration.body = body;
+
+    node->next = NULL;
+
+    if (node->function_declaration.name == NULL) {
+        free(node);
+        return NULL;
+    }
+
+    return node;
+}
+
+AstNode *ast_create_function_call(
+    const char *name,
+    AstNode *arguments,
+    int argument_count
+) {
+    AstNode *node = malloc(sizeof(AstNode));
+
+    if (node == NULL) {
+        return NULL;
+    }
+
+    node->type = AST_FUNCTION_CALL;
+
+    node->function_call.name = copy_string(name);
+    node->function_call.arguments = arguments;
+    node->function_call.argument_count = argument_count;
+
+    node->next = NULL;
+
+    if (node->function_call.name == NULL) {
+        free(node);
+        return NULL;
+    }
+
+    return node;
+}
+
+AstNode *ast_create_return(
+    AstNode *expression
+) {
+    AstNode *node = malloc(sizeof(AstNode));
+
+    if (node == NULL) {
+        return NULL;
+    }
+
+    node->type = AST_RETURN_STATEMENT;
+    node->return_statement.expression = expression;
+    node->next = NULL;
+
+    return node;
+}
+
 AstNode *ast_create_string(const char *value) {
     AstNode *node = malloc(sizeof(AstNode));
 
@@ -94,6 +185,24 @@ AstNode *ast_create_integer(int value) {
 
     node->type = AST_INTEGER_LITERAL;
     node->integer_literal.value = value;
+    node->next = NULL;
+
+    return node;
+}
+
+AstNode *ast_create_array(
+    AstNode *elements,
+    int element_count
+) {
+    AstNode *node = malloc(sizeof(AstNode));
+
+    if (node == NULL) {
+        return NULL;
+    }
+
+    node->type = AST_ARRAY_LITERAL;
+    node->array_literal.elements = elements;
+    node->array_literal.element_count = element_count;
     node->next = NULL;
 
     return node;
@@ -137,6 +246,42 @@ AstNode *ast_create_variable(const char *name) {
         free(node);
         return NULL;
     }
+
+    return node;
+}
+
+AstNode *ast_create_index(
+    AstNode *array,
+    AstNode *index
+) {
+    AstNode *node = malloc(sizeof(AstNode));
+
+    if (node == NULL) {
+        return NULL;
+    }
+
+    node->type = AST_INDEX_EXPRESSION;
+    node->index_expression.array = array;
+    node->index_expression.index = index;
+    node->next = NULL;
+
+    return node;
+}
+
+AstNode *ast_create_assignment(
+    AstNode *target,
+    AstNode *value
+) {
+    AstNode *node = malloc(sizeof(AstNode));
+
+    if (node == NULL) {
+        return NULL;
+    }
+
+    node->type = AST_ASSIGNMENT;
+    node->assignment.target = target;
+    node->assignment.value = value;
+    node->next = NULL;
 
     return node;
 }
@@ -195,11 +340,51 @@ void ast_free(AstNode *node) {
                 ast_free(node->print_statement.expression);
                 break;
 
+            case AST_IF_STATEMENT:
+                ast_free(node->if_statement.condition);
+                ast_free(node->if_statement.then_branch);
+                ast_free(node->if_statement.else_branch);
+                break;
+
+            case AST_WHILE_STATEMENT:
+                ast_free(node->while_statement.condition);
+                ast_free(node->while_statement.body);
+                break;
+
+            case AST_FUNCTION_DECLARATION:
+                free(node->function_declaration.name);
+
+                for (
+                    int i = 0;
+                    i < node->function_declaration.parameter_count;
+                    i++
+                ) {
+                    free(node->function_declaration.parameters[i]);
+                }
+
+                free(node->function_declaration.parameters);
+
+                ast_free(node->function_declaration.body);
+                break;
+
+            case AST_FUNCTION_CALL:
+                free(node->function_call.name);
+                ast_free(node->function_call.arguments);
+                break;
+
+            case AST_RETURN_STATEMENT:
+                ast_free(node->return_statement.expression);
+                break;
+
             case AST_STRING_LITERAL:
                 free(node->string_literal.value);
                 break;
 
             case AST_INTEGER_LITERAL:
+                break;
+
+            case AST_ARRAY_LITERAL:
+                ast_free(node->array_literal.elements);
                 break;
 
             case AST_VARIABLE_DECLARATION:
@@ -211,15 +396,19 @@ void ast_free(AstNode *node) {
                 free(node->variable.name);
                 break;
 
+            case AST_INDEX_EXPRESSION:
+                ast_free(node->index_expression.array);
+                ast_free(node->index_expression.index);
+                break;
+
+            case AST_ASSIGNMENT:
+                ast_free(node->assignment.target);
+                ast_free(node->assignment.value);
+                break;
+
             case AST_BINARY_EXPRESSION:
                 ast_free(node->binary_expression.left);
                 ast_free(node->binary_expression.right);
-                break;
-
-            case AST_IF_STATEMENT:
-                ast_free(node->if_statement.condition);
-                ast_free(node->if_statement.then_branch);
-                ast_free(node->if_statement.else_branch);
                 break;
         }
 
@@ -227,4 +416,3 @@ void ast_free(AstNode *node) {
         node = next;
     }
 }
-

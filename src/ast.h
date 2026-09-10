@@ -1,4 +1,3 @@
-
 #ifndef VNT_AST_H
 #define VNT_AST_H
 
@@ -6,12 +5,19 @@ typedef enum {
     AST_PROGRAM,
     AST_PRINT_STATEMENT,
     AST_IF_STATEMENT,
+    AST_WHILE_STATEMENT,
+    AST_FUNCTION_DECLARATION,
+    AST_FUNCTION_CALL,
+    AST_RETURN_STATEMENT,
 
     AST_STRING_LITERAL,
     AST_INTEGER_LITERAL,
+    AST_ARRAY_LITERAL,
 
     AST_VARIABLE_DECLARATION,
     AST_VARIABLE,
+    AST_INDEX_EXPRESSION,
+    AST_ASSIGNMENT,
 
     AST_BINARY_EXPRESSION
 } AstNodeType;
@@ -49,12 +55,39 @@ typedef struct AstNode {
         } if_statement;
 
         struct {
+            struct AstNode *condition;
+            struct AstNode *body;
+        } while_statement;
+
+        struct {
+            char *name;
+            char **parameters;
+            int parameter_count;
+            struct AstNode *body;
+        } function_declaration;
+
+        struct {
+            char *name;
+            struct AstNode *arguments;
+            int argument_count;
+        } function_call;
+
+        struct {
+            struct AstNode *expression;
+        } return_statement;
+
+        struct {
             char *value;
         } string_literal;
 
         struct {
             int value;
         } integer_literal;
+
+        struct {
+            struct AstNode *elements;
+            int element_count;
+        } array_literal;
 
         struct {
             char *name;
@@ -64,6 +97,16 @@ typedef struct AstNode {
         struct {
             char *name;
         } variable;
+
+        struct {
+            struct AstNode *array;
+            struct AstNode *index;
+        } index_expression;
+
+        struct {
+            struct AstNode *target;
+            struct AstNode *value;
+        } assignment;
 
         struct {
             struct AstNode *left;
@@ -85,9 +128,36 @@ AstNode *ast_create_if(
     AstNode *else_branch
 );
 
+AstNode *ast_create_while(
+    AstNode *condition,
+    AstNode *body
+);
+
+AstNode *ast_create_function_declaration(
+    const char *name,
+    char **parameters,
+    int parameter_count,
+    AstNode *body
+);
+
+AstNode *ast_create_function_call(
+    const char *name,
+    AstNode *arguments,
+    int argument_count
+);
+
+AstNode *ast_create_return(
+    AstNode *expression
+);
+
 AstNode *ast_create_string(const char *value);
 
 AstNode *ast_create_integer(int value);
+
+AstNode *ast_create_array(
+    AstNode *elements,
+    int element_count
+);
 
 AstNode *ast_create_variable_declaration(
     const char *name,
@@ -95,6 +165,16 @@ AstNode *ast_create_variable_declaration(
 );
 
 AstNode *ast_create_variable(const char *name);
+
+AstNode *ast_create_index(
+    AstNode *array,
+    AstNode *index
+);
+
+AstNode *ast_create_assignment(
+    AstNode *target,
+    AstNode *value
+);
 
 AstNode *ast_create_binary(
     AstNode *left,
@@ -107,4 +187,3 @@ void ast_append(AstNode **list, AstNode *node);
 void ast_free(AstNode *node);
 
 #endif
-

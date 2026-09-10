@@ -18,7 +18,10 @@ AstNode *parse_block(Parser *parser) {
             return NULL;
         }
 
-        ast_append(&statements, statement);
+        ast_append(
+            &statements,
+            statement
+        );
     }
 
     if (!parser_consume(
@@ -57,7 +60,8 @@ static AstNode *parse_if(Parser *parser) {
 
     if (
         then_branch == NULL &&
-        !parser_check(parser, TOKEN_IDENTIFIER)
+        !parser_check(parser, TOKEN_RIGHT_BRACE) &&
+        !parser_check(parser, TOKEN_EOF)
     ) {
         ast_free(condition);
         return NULL;
@@ -71,40 +75,70 @@ static AstNode *parse_if(Parser *parser) {
         )) {
         parser_advance(parser);
 
-        if (!parser_consume(
-                parser,
-                TOKEN_LEFT_BRACE,
-                "expected '{' after else."
+        /*
+         * Support:
+         *
+         * else {
+         * }
+         *
+         * and:
+         *
+         * else if (...) {
+         * }
+         */
+        if (parser_is_token(
+                parser->current,
+                "if"
             )) {
-            ast_free(condition);
-            ast_free(then_branch);
-            return NULL;
-        }
+            else_branch =
+                parse_if(parser);
 
-        else_branch = parse_block(parser);
+            if (else_branch == NULL) {
+                ast_free(condition);
+                ast_free(then_branch);
+                return NULL;
+            }
+        } else {
+            if (!parser_consume(
+                    parser,
+                    TOKEN_LEFT_BRACE,
+                    "expected '{' or 'if' after else."
+                )) {
+                ast_free(condition);
+                ast_free(then_branch);
+                return NULL;
+            }
 
-        if (
-            else_branch == NULL &&
-            !parser_check(parser, TOKEN_EOF)
-        ) {
-            ast_free(condition);
-            ast_free(then_branch);
-            return NULL;
+            else_branch =
+                parse_block(parser);
+
+            if (
+                else_branch == NULL &&
+                !parser_check(parser, TOKEN_EOF)
+            ) {
+                ast_free(condition);
+                ast_free(then_branch);
+                return NULL;
+            }
         }
     }
 
-    AstNode *node = ast_create_if(
-        condition,
-        then_branch,
-        else_branch
-    );
+    AstNode *node =
+        ast_create_if(
+            condition,
+            then_branch,
+            else_branch
+        );
 
     if (node == NULL) {
         ast_free(condition);
         ast_free(then_branch);
         ast_free(else_branch);
 
-        printf("Parser error: out of memory.\n");
+        printf(
+            "Parser error: out of memory.\n"
+        );
+
         return NULL;
     }
 
@@ -135,8 +169,7 @@ static AstNode *parse_while(Parser *parser) {
 
     if (
         body == NULL &&
-        !parser_check(parser, TOKEN_EOF) &&
-        !parser_check(parser, TOKEN_IDENTIFIER)
+        !parser_check(parser, TOKEN_EOF)
     ) {
         ast_free(condition);
         return NULL;
@@ -152,7 +185,10 @@ static AstNode *parse_while(Parser *parser) {
         ast_free(condition);
         ast_free(body);
 
-        printf("Parser error: out of memory.\n");
+        printf(
+            "Parser error: out of memory.\n"
+        );
+
         return NULL;
     }
 
@@ -192,7 +228,10 @@ static AstNode *parse_print(Parser *parser) {
     if (node == NULL) {
         ast_free(expression);
 
-        printf("Parser error: out of memory.\n");
+        printf(
+            "Parser error: out of memory.\n"
+        );
+
         return NULL;
     }
 
@@ -219,7 +258,44 @@ AstNode *parse_return(Parser *parser) {
     if (node == NULL) {
         ast_free(expression);
 
-        printf("Parser error: out of memory.\n");
+        printf(
+            "Parser error: out of memory.\n"
+        );
+
+        return NULL;
+    }
+
+    return node;
+}
+
+static AstNode *parse_break(Parser *parser) {
+    parser_advance(parser);
+
+    AstNode *node =
+        ast_create_break();
+
+    if (node == NULL) {
+        printf(
+            "Parser error: out of memory.\n"
+        );
+
+        return NULL;
+    }
+
+    return node;
+}
+
+static AstNode *parse_continue(Parser *parser) {
+    parser_advance(parser);
+
+    AstNode *node =
+        ast_create_continue();
+
+    if (node == NULL) {
+        printf(
+            "Parser error: out of memory.\n"
+        );
+
         return NULL;
     }
 
@@ -239,6 +315,20 @@ AstNode *parse_statement(Parser *parser) {
             "return"
         )) {
         return parse_return(parser);
+    }
+
+    if (parser_is_token(
+            parser->current,
+            "break"
+        )) {
+        return parse_break(parser);
+    }
+
+    if (parser_is_token(
+            parser->current,
+            "continue"
+        )) {
+        return parse_continue(parser);
     }
 
     if (parser_is_token(
@@ -267,10 +357,15 @@ AstNode *parse_statement(Parser *parser) {
             TOKEN_IDENTIFIER
         )) {
         char *name =
-            parser_token_to_string(parser->current);
+            parser_token_to_string(
+                parser->current
+            );
 
         if (name == NULL) {
-            printf("Parser error: out of memory.\n");
+            printf(
+                "Parser error: out of memory.\n"
+            );
+
             return NULL;
         }
 
@@ -292,14 +387,27 @@ AstNode *parse_statement(Parser *parser) {
         free(name);
 
         if (target == NULL) {
-            printf("Parser error: out of memory.\n");
+            printf(
+                "Parser error: out of memory.\n"
+            );
+
             return NULL;
         }
 
-        while (parser_check(
-            parser,
-            TOKEN_LEFT_BRACKET
-        )) {
+        /*
+         * Parse any number of indexing operations.
+         *
+         * Example:
+         *
+         * numbers[0]
+         * matrix[1][2]
+         */
+        while (
+            parser_check(
+                parser,
+                TOKEN_LEFT_BRACKET
+            )
+        ) {
             parser_advance(parser);
 
             AstNode *index =
@@ -335,7 +443,10 @@ AstNode *parse_statement(Parser *parser) {
                 ast_free(target);
                 ast_free(index);
 
-                printf("Parser error: out of memory.\n");
+                printf(
+                    "Parser error: out of memory.\n"
+                );
+
                 return NULL;
             }
 
@@ -345,7 +456,7 @@ AstNode *parse_statement(Parser *parser) {
         if (!parser_consume(
                 parser,
                 TOKEN_EQUALS,
-                "expected '=' or '('."
+                "expected '='."
             )) {
             ast_free(target);
             return NULL;
@@ -360,8 +471,8 @@ AstNode *parse_statement(Parser *parser) {
         }
 
         /*
-         * A plain identifier assignment keeps the existing
-         * variable-declaration behavior.
+         * Plain identifier assignment uses the existing
+         * variable-declaration representation.
          */
         if (target->type == AST_VARIABLE) {
             AstNode *node =
@@ -385,6 +496,11 @@ AstNode *parse_statement(Parser *parser) {
             return node;
         }
 
+        /*
+         * Indexed assignment:
+         *
+         * numbers[1] = 42
+         */
         AstNode *node =
             ast_create_assignment(
                 target,

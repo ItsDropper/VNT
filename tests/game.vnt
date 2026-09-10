@@ -1,0 +1,195 @@
+
+# THE LAST SIGNAL
+# Interactive VNT adventure game.
+
+print("================================")
+print("         THE LAST SIGNAL")
+print("================================")
+print("")
+
+name = input("What is your name? ")
+
+health = 3
+has_key = false
+power_on = false
+vault_open = false
+escaped = false
+
+inventory = ["flashlight", "empty", "empty"]
+
+print("")
+print("Welcome, " + name + ".")
+print("")
+print("You wake up inside an abandoned research station.")
+print("The emergency lights are flashing.")
+print("Your radio suddenly turns on.")
+print("Do not open the vault.")
+print("")
+
+while escaped == false {
+    print("")
+    print("Where do you want to go?")
+    print("1 - laboratory")
+    print("2 - armory")
+    print("3 - lower level")
+    print("4 - inventory")
+    print("5 - quit")
+    print("")
+
+    choice = input("> ")
+
+    if choice == "1" {
+        print("")
+        print("--- LABORATORY ---")
+        print("Broken computers cover the walls.")
+        print("A blue keycard is sitting on a desk.")
+        print("")
+
+        if has_key == false {
+            take = input("Take the keycard? ")
+
+            if take == "yes" {
+                has_key = true
+                inventory[1] = "blue keycard"
+                print("You take the blue keycard.")
+            } else {
+                print("You leave it where it is.")
+            }
+        } else {
+            print("There is nothing useful left here.")
+        }
+
+    } else if choice == "2" {
+        print("")
+        print("--- ARMORY ---")
+        print("The room has been completely stripped.")
+        print("A large emergency generator is behind a locked panel.")
+        print("")
+
+        if has_key == true {
+            if power_on == false {
+                activate = input("Use the blue keycard on the panel? ")
+
+                if activate == "yes" {
+                    power_on = true
+                    print("The panel opens.")
+                    print("You activate the emergency generator.")
+                    print("The entire station comes alive.")
+                } else {
+                    print("You decide not to activate it.")
+                }
+            } else {
+                print("The generator is already running.")
+            }
+        } else {
+            print("You need a blue keycard.")
+        }
+
+    } else if choice == "3" {
+        print("")
+        print("--- LOWER LEVEL ---")
+
+        if power_on == false {
+            print("The elevator has no power.")
+            print("You cannot reach the lower level yet.")
+        } else {
+            print("The elevator takes you underground.")
+            print("")
+            print("A massive vault door stands in front of you.")
+            print("A keypad asks for a four-digit code.")
+            print("")
+
+            code = input("Enter the code: ")
+
+            if code == "4172" {
+                vault_open = true
+
+                print("")
+                print("ACCESS GRANTED.")
+                print("")
+
+                if vault_open == true {
+                    print("The vault opens.")
+                    print("Inside is a strange black device.")
+                    print("")
+                    print("The device displays:")
+                    print("SIGNAL SOURCE: THIS STATION")
+                    print("EXTERNAL CONNECTION: NONE")
+                    print("")
+                    print("Something is very wrong.")
+                    print("")
+
+                    action = input("Take the device or leave it? ")
+
+                    if action == "take" {
+                        inventory[2] = "black device"
+
+                        print("")
+                        print("You take the device.")
+                        print("Every alarm in the station activates.")
+                        print("")
+                        print("The radio speaks:")
+                        print("YOU FOUND IT.")
+                        print("NOW RUN.")
+                        print("")
+
+                        escaped = true
+                    } else {
+                        print("")
+                        print("You leave the device behind.")
+                    }
+                }
+            } else {
+                health = health - 1
+
+                print("")
+                print("WRONG CODE.")
+                print("An alarm sounds.")
+                print("Health: " + health)
+
+                if health <= 0 {
+                    print("")
+                    print("The vault locks permanently.")
+                    print("You are trapped underground.")
+                    print("")
+                    print("========== GAME OVER ==========")
+
+                    break
+                }
+            }
+        }
+
+    } else if choice == "4" {
+        print("")
+        print("--- INVENTORY ---")
+        print("Slot 1: " + inventory[0])
+        print("Slot 2: " + inventory[1])
+        print("Slot 3: " + inventory[2])
+
+    } else if choice == "5" {
+        print("")
+        print("You abandon the station.")
+        print("The radio keeps transmitting behind you.")
+        print("")
+        print("========== GAME OVER ==========")
+
+        break
+
+    } else {
+        print("")
+        print("Invalid choice.")
+    }
+
+    if escaped == true {
+        print("")
+        print("You escape into the night.")
+        print("")
+        print("================================")
+        print("           YOU WIN")
+        print("================================")
+    }
+}
+
+print("")
+print("Game finished.")
+

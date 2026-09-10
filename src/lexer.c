@@ -21,7 +21,10 @@ static void skip_whitespace(Lexer *lexer) {
         }
 
         if (c == '#') {
-            while (peek(lexer) != '\0' && peek(lexer) != '\n') {
+            while (
+                peek(lexer) != '\0' &&
+                peek(lexer) != '\n'
+            ) {
                 advance(lexer);
             }
 
@@ -47,7 +50,10 @@ static Token make_token(
     return token;
 }
 
-static Token identifier(Lexer *lexer, const char *start) {
+static Token identifier(
+    Lexer *lexer,
+    const char *start
+) {
     while (
         isalnum((unsigned char)peek(lexer)) ||
         peek(lexer) == '_'
@@ -55,29 +61,57 @@ static Token identifier(Lexer *lexer, const char *start) {
         advance(lexer);
     }
 
-    return make_token(lexer, TOKEN_IDENTIFIER, start);
+    return make_token(
+        lexer,
+        TOKEN_IDENTIFIER,
+        start
+    );
 }
 
-static Token number(Lexer *lexer, const char *start) {
-    while (isdigit((unsigned char)peek(lexer))) {
+static Token number(
+    Lexer *lexer,
+    const char *start
+) {
+    while (
+        isdigit((unsigned char)peek(lexer))
+    ) {
         advance(lexer);
     }
 
-    return make_token(lexer, TOKEN_INTEGER, start);
+    return make_token(
+        lexer,
+        TOKEN_INTEGER,
+        start
+    );
 }
 
-static Token string(Lexer *lexer, const char *start) {
-    while (peek(lexer) != '"' && peek(lexer) != '\0') {
+static Token string(
+    Lexer *lexer,
+    const char *start
+) {
+    while (
+        peek(lexer) != '"' &&
+        peek(lexer) != '\0'
+    ) {
         advance(lexer);
     }
 
     if (peek(lexer) == '\0') {
-        return make_token(lexer, TOKEN_UNKNOWN, start);
+        return make_token(
+            lexer,
+            TOKEN_UNKNOWN,
+            start
+        );
     }
 
     advance(lexer);
 
-    Token token = make_token(lexer, TOKEN_STRING, start);
+    Token token =
+        make_token(
+            lexer,
+            TOKEN_STRING,
+            start
+        );
 
     token.start++;
     token.length -= 2;
@@ -85,7 +119,10 @@ static Token string(Lexer *lexer, const char *start) {
     return token;
 }
 
-void lexer_init(Lexer *lexer, const char *source) {
+void lexer_init(
+    Lexer *lexer,
+    const char *source
+) {
     lexer->source = source;
     lexer->current = 0;
 }
@@ -99,19 +136,37 @@ Token lexer_next(Lexer *lexer) {
     char c = advance(lexer);
 
     if (c == '\0') {
-        return make_token(lexer, TOKEN_EOF, start);
+        return make_token(
+            lexer,
+            TOKEN_EOF,
+            start
+        );
     }
 
-    if (isalpha((unsigned char)c) || c == '_') {
-        return identifier(lexer, start);
+    if (
+        isalpha((unsigned char)c) ||
+        c == '_'
+    ) {
+        return identifier(
+            lexer,
+            start
+        );
     }
 
-    if (isdigit((unsigned char)c)) {
-        return number(lexer, start);
+    if (
+        isdigit((unsigned char)c)
+    ) {
+        return number(
+            lexer,
+            start
+        );
     }
 
     if (c == '"') {
-        return string(lexer, start);
+        return string(
+            lexer,
+            start
+        );
     }
 
     switch (c) {
@@ -194,7 +249,7 @@ Token lexer_next(Lexer *lexer) {
 
             return make_token(
                 lexer,
-                TOKEN_UNKNOWN,
+                TOKEN_BANG,
                 start
             );
 
@@ -257,6 +312,40 @@ Token lexer_next(Lexer *lexer) {
             return make_token(
                 lexer,
                 TOKEN_SLASH,
+                start
+            );
+
+        case '&':
+            if (peek(lexer) == '&') {
+                advance(lexer);
+
+                return make_token(
+                    lexer,
+                    TOKEN_AND_AND,
+                    start
+                );
+            }
+
+            return make_token(
+                lexer,
+                TOKEN_UNKNOWN,
+                start
+            );
+
+        case '|':
+            if (peek(lexer) == '|') {
+                advance(lexer);
+
+                return make_token(
+                    lexer,
+                    TOKEN_OR_OR,
+                    start
+                );
+            }
+
+            return make_token(
+                lexer,
+                TOKEN_UNKNOWN,
                 start
             );
 

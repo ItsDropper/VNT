@@ -1,187 +1,167 @@
-#include "parser.h"
+#include "../parser.h"
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-static AstNode *parse_primary(Parser *parser);
+static int token_is(
+    Parser *parser,
+    TokenType type
+) {
+    return parser->current.type == type;
+}
 
-static AstNode *parse_postfix(Parser *parser) {
-    AstNode *expression = parse_primary(parser);
+AstNode *parse_expression(Parser *parser);
 
-    if (expression == NULL) {
-        return NULL;
-    }
+static AstNode *parse_primary(Parser *parser) {
+    Token token =
+        parser->current;
 
-    while (parser_check(parser, TOKEN_LEFT_BRACKET)) {
-        parser_advance(parser);
+    if (
+        token.type ==
+        TOKEN_INTEGER
+    ) {
+        char buffer[64];
 
-        AstNode *index = parse_expression(parser);
-
-        if (index == NULL) {
-            ast_free(expression);
-
+        if (token.length >= (int)sizeof(buffer)) {
             printf(
-                "Parser error: expected array index.\n"
+                "Parser error: integer too long.\n"
             );
 
             return NULL;
         }
 
-        if (!parser_consume(
-                parser,
-                TOKEN_RIGHT_BRACKET,
-                "expected ']' after array index."
-            )) {
-            ast_free(expression);
-            ast_free(index);
-            return NULL;
-        }
-
-        AstNode *indexed = ast_create_index(
-            expression,
-            index
+        memcpy(
+            buffer,
+            token.start,
+            token.length
         );
 
-        if (indexed == NULL) {
-            ast_free(expression);
-            ast_free(index);
-
-            printf("Parser error: out of memory.\n");
-            return NULL;
-        }
-
-        expression = indexed;
-    }
-
-    return expression;
-}
-
-static AstNode *parse_primary(Parser *parser) {
-    if (parser_check(parser, TOKEN_INTEGER)) {
-        char *value =
-            parser_token_to_string(parser->current);
-
-        if (value == NULL) {
-            printf("Parser error: out of memory.\n");
-            return NULL;
-        }
-
-        int integer = atoi(value);
-        free(value);
+        buffer[token.length] = '\0';
 
         parser_advance(parser);
 
-        return ast_create_integer(integer);
+        return ast_create_integer(
+            atoi(buffer)
+        );
     }
 
-    if (parser_check(parser, TOKEN_STRING)) {
+    if (
+        token.type ==
+        TOKEN_STRING
+    ) {
         char *value =
-            parser_token_to_string(parser->current);
+            malloc(token.length + 1);
 
         if (value == NULL) {
-            printf("Parser error: out of memory.\n");
+            printf(
+                "Parser error: out of memory.\n"
+            );
+
             return NULL;
         }
 
+        memcpy(
+            value,
+            token.start,
+            token.length
+        );
+
+        value[token.length] = '\0';
+
         parser_advance(parser);
 
-        AstNode *node = ast_create_string(value);
+        AstNode *node =
+            ast_create_string(value);
+
         free(value);
 
         return node;
     }
 
-    if (parser_check(parser, TOKEN_LEFT_BRACKET)) {
+    if (
+        token.type ==
+        TOKEN_LEFT_BRACKET
+    ) {
         parser_advance(parser);
 
         AstNode *elements = NULL;
-        int element_count = 0;
+        int count = 0;
 
-        if (!parser_check(parser, TOKEN_RIGHT_BRACKET)) {
+        if (
+            !token_is(
+                parser,
+                TOKEN_RIGHT_BRACKET
+            )
+        ) {
             for (;;) {
                 AstNode *element =
                     parse_expression(parser);
 
                 if (element == NULL) {
                     ast_free(elements);
-
-                    printf(
-                        "Parser error: expected array element.\n"
-                    );
-
                     return NULL;
                 }
 
-                ast_append(&elements, element);
-                element_count++;
+                ast_append(
+                    &elements,
+                    element
+                );
 
-                if (parser_check(
+                count++;
+
+                if (
+                    token_is(
                         parser,
-                        TOKEN_RIGHT_BRACKET
-                    )) {
-                    break;
+                        TOKEN_COMMA
+                    )
+                ) {
+                    parser_advance(parser);
+
+                    if (
+                        token_is(
+                            parser,
+                            TOKEN_RIGHT_BRACKET
+                        )
+                    ) {
+                        break;
+                    }
+
+                    continue;
                 }
 
-                if (!parser_consume(
-                        parser,
-                        TOKEN_COMMA,
-                        "expected ',' between array elements."
-                    )) {
-                    ast_free(elements);
-                    return NULL;
-                }
+                break;
             }
         }
 
-        if (!parser_consume(
+        if (
+            !token_is(
                 parser,
-                TOKEN_RIGHT_BRACKET,
-                "expected ']' after array."
-            )) {
+                TOKEN_RIGHT_BRACKET
+            )
+        ) {
+            printf(
+                "Parser error: expected ']'.\n"
+            );
+
             ast_free(elements);
-            return NULL;
-        }
-
-        AstNode *array = ast_create_array(
-            elements,
-            element_count
-        );
-
-        if (array == NULL) {
-            ast_free(elements);
-
-            printf("Parser error: out of memory.\n");
-            return NULL;
-        }
-
-        return array;
-    }
-
-    if (parser_check(parser, TOKEN_IDENTIFIER)) {
-        char *name =
-            parser_token_to_string(parser->current);
-
-        if (name == NULL) {
-            printf("Parser error: out of memory.\n");
             return NULL;
         }
 
         parser_advance(parser);
 
-        if (parser_check(parser, TOKEN_LEFT_PAREN)) {
-            return parse_function_call(
-                parser,
-                name
-            );
-        }
-
-        AstNode *node = ast_create_variable(name);
-        free(name);
-
-        return node;
+        return ast_create_array(
+            elements,
+            count
+        );
     }
 
-    if (parser_check(parser, TOKEN_LEFT_PAREN)) {
+    if (
+        token_is(
+            parser,
+            TOKEN_LEFT_PAREN
+        )
+    ) {
         parser_advance(parser);
 
         AstNode *expression =
@@ -191,77 +171,323 @@ static AstNode *parse_primary(Parser *parser) {
             return NULL;
         }
 
-        if (!parser_consume(
+        if (
+            !token_is(
                 parser,
-                TOKEN_RIGHT_PAREN,
-                "expected ')'."
-            )) {
+                TOKEN_RIGHT_PAREN
+            )
+        ) {
+            printf(
+                "Parser error: expected ')'.\n"
+            );
+
             ast_free(expression);
             return NULL;
         }
 
+        parser_advance(parser);
+
         return expression;
     }
 
-    return NULL;
-}
-
-static AstNode *parse_multiplication(Parser *parser) {
-    AstNode *left = parse_postfix(parser);
-
-    if (left == NULL) {
-        printf(
-            "Parser error: expected an expression.\n"
-        );
-
-        return NULL;
-    }
-
-    while (
-        parser_check(parser, TOKEN_STAR) ||
-        parser_check(parser, TOKEN_SLASH)
+    if (
+        token.type ==
+        TOKEN_IDENTIFIER
     ) {
-        TokenType operator = parser->current.type;
-        parser_advance(parser);
+        char *name =
+            malloc(token.length + 1);
 
-        AstNode *right = parse_postfix(parser);
-
-        if (right == NULL) {
-            ast_free(left);
-
+        if (name == NULL) {
             printf(
-                "Parser error: expected expression after operator.\n"
+                "Parser error: out of memory.\n"
             );
 
             return NULL;
         }
 
-        BinaryOperator binary_operator =
-            operator == TOKEN_STAR
-                ? BINARY_MULTIPLY
-                : BINARY_DIVIDE;
-
-        AstNode *binary = ast_create_binary(
-            left,
-            right,
-            binary_operator
+        memcpy(
+            name,
+            token.start,
+            token.length
         );
 
-        if (binary == NULL) {
-            ast_free(left);
-            ast_free(right);
+        name[token.length] = '\0';
 
-            printf("Parser error: out of memory.\n");
+        parser_advance(parser);
+
+        if (
+            token_is(
+                parser,
+                TOKEN_LEFT_PAREN
+            )
+        ) {
+            parser_advance(parser);
+
+            AstNode *arguments = NULL;
+            int argument_count = 0;
+
+            if (
+                !token_is(
+                    parser,
+                    TOKEN_RIGHT_PAREN
+                )
+            ) {
+                for (;;) {
+                    AstNode *argument =
+                        parse_expression(parser);
+
+                    if (argument == NULL) {
+                        free(name);
+                        ast_free(arguments);
+                        return NULL;
+                    }
+
+                    ast_append(
+                        &arguments,
+                        argument
+                    );
+
+                    argument_count++;
+
+                    if (
+                        token_is(
+                            parser,
+                            TOKEN_COMMA
+                        )
+                    ) {
+                        parser_advance(parser);
+
+                        if (
+                            token_is(
+                                parser,
+                                TOKEN_RIGHT_PAREN
+                            )
+                        ) {
+                            printf(
+                                "Parser error: trailing comma in function call.\n"
+                            );
+
+                            free(name);
+                            ast_free(arguments);
+                            return NULL;
+                        }
+
+                        continue;
+                    }
+
+                    break;
+                }
+            }
+
+            if (
+                !token_is(
+                    parser,
+                    TOKEN_RIGHT_PAREN
+                )
+            ) {
+                printf(
+                    "Parser error: expected ')'.\n"
+                );
+
+                free(name);
+                ast_free(arguments);
+                return NULL;
+            }
+
+            parser_advance(parser);
+
+            AstNode *call =
+                ast_create_function_call(
+                    name,
+                    arguments,
+                    argument_count
+                );
+
+            free(name);
+
+            return call;
+        }
+
+        if (
+            strcmp(name, "true") == 0
+        ) {
+            free(name);
+
+            return ast_create_boolean(1);
+        }
+
+        if (
+            strcmp(name, "false") == 0
+        ) {
+            free(name);
+
+            return ast_create_boolean(0);
+        }
+
+        AstNode *variable =
+            ast_create_variable(name);
+
+        free(name);
+
+        return variable;
+    }
+
+    printf(
+        "Parser error: expected expression.\n"
+    );
+
+    return NULL;
+}
+
+static AstNode *parse_postfix(Parser *parser) {
+    AstNode *expression =
+        parse_primary(parser);
+
+    if (expression == NULL) {
+        return NULL;
+    }
+
+    while (
+        token_is(
+            parser,
+            TOKEN_LEFT_BRACKET
+        )
+    ) {
+        parser_advance(parser);
+
+        AstNode *index =
+            parse_expression(parser);
+
+        if (index == NULL) {
+            ast_free(expression);
             return NULL;
         }
 
-        left = binary;
+        if (
+            !token_is(
+                parser,
+                TOKEN_RIGHT_BRACKET
+            )
+        ) {
+            printf(
+                "Parser error: expected ']'.\n"
+            );
+
+            ast_free(expression);
+            ast_free(index);
+            return NULL;
+        }
+
+        parser_advance(parser);
+
+        AstNode *indexed =
+            ast_create_index(
+                expression,
+                index
+            );
+
+        if (indexed == NULL) {
+            ast_free(expression);
+            ast_free(index);
+            return NULL;
+        }
+
+        expression = indexed;
+    }
+
+    return expression;
+}
+
+static AstNode *parse_unary(Parser *parser) {
+    if (
+        token_is(
+            parser,
+            TOKEN_BANG
+        )
+    ) {
+        parser_advance(parser);
+
+        AstNode *operand =
+            parse_unary(parser);
+
+        if (operand == NULL) {
+            return NULL;
+        }
+
+        AstNode *node =
+            ast_create_unary(
+                operand,
+                UNARY_NOT
+            );
+
+        if (node == NULL) {
+            ast_free(operand);
+            return NULL;
+        }
+
+        return node;
+    }
+
+    return parse_postfix(parser);
+}
+
+static AstNode *parse_multiplication(
+    Parser *parser
+) {
+    AstNode *left =
+        parse_unary(parser);
+
+    if (left == NULL) {
+        return NULL;
+    }
+
+    while (
+        token_is(
+            parser,
+            TOKEN_STAR
+        ) ||
+        token_is(
+            parser,
+            TOKEN_SLASH
+        )
+    ) {
+        TokenType operator =
+            parser->current.type;
+
+        parser_advance(parser);
+
+        AstNode *right =
+            parse_unary(parser);
+
+        if (right == NULL) {
+            ast_free(left);
+            return NULL;
+        }
+
+        AstNode *node =
+            ast_create_binary(
+                left,
+                right,
+                operator == TOKEN_STAR
+                    ? BINARY_MULTIPLY
+                    : BINARY_DIVIDE
+            );
+
+        if (node == NULL) {
+            ast_free(left);
+            ast_free(right);
+            return NULL;
+        }
+
+        left = node;
     }
 
     return left;
 }
 
-static AstNode *parse_addition(Parser *parser) {
+static AstNode *parse_addition(
+    Parser *parser
+) {
     AstNode *left =
         parse_multiplication(parser);
 
@@ -270,10 +496,18 @@ static AstNode *parse_addition(Parser *parser) {
     }
 
     while (
-        parser_check(parser, TOKEN_PLUS) ||
-        parser_check(parser, TOKEN_MINUS)
+        token_is(
+            parser,
+            TOKEN_PLUS
+        ) ||
+        token_is(
+            parser,
+            TOKEN_MINUS
+        )
     ) {
-        TokenType operator = parser->current.type;
+        TokenType operator =
+            parser->current.type;
+
         parser_advance(parser);
 
         AstNode *right =
@@ -281,64 +515,56 @@ static AstNode *parse_addition(Parser *parser) {
 
         if (right == NULL) {
             ast_free(left);
+            return NULL;
+        }
 
-            printf(
-                "Parser error: expected expression after operator.\n"
+        AstNode *node =
+            ast_create_binary(
+                left,
+                right,
+                operator == TOKEN_PLUS
+                    ? BINARY_ADD
+                    : BINARY_SUBTRACT
             );
 
-            return NULL;
-        }
-
-        BinaryOperator binary_operator =
-            operator == TOKEN_PLUS
-                ? BINARY_ADD
-                : BINARY_SUBTRACT;
-
-        AstNode *binary = ast_create_binary(
-            left,
-            right,
-            binary_operator
-        );
-
-        if (binary == NULL) {
+        if (node == NULL) {
             ast_free(left);
             ast_free(right);
-
-            printf("Parser error: out of memory.\n");
             return NULL;
         }
 
-        left = binary;
+        left = node;
     }
 
     return left;
 }
 
-static AstNode *parse_comparison(Parser *parser) {
-    AstNode *left = parse_addition(parser);
+static AstNode *parse_comparison(
+    Parser *parser
+) {
+    AstNode *left =
+        parse_addition(parser);
 
     if (left == NULL) {
         return NULL;
     }
 
     while (
-        parser_check(parser, TOKEN_GREATER) ||
-        parser_check(parser, TOKEN_LESS) ||
-        parser_check(parser, TOKEN_GREATER_EQUAL) ||
-        parser_check(parser, TOKEN_LESS_EQUAL)
+        token_is(parser, TOKEN_GREATER) ||
+        token_is(parser, TOKEN_LESS) ||
+        token_is(parser, TOKEN_GREATER_EQUAL) ||
+        token_is(parser, TOKEN_LESS_EQUAL)
     ) {
-        TokenType operator = parser->current.type;
+        TokenType operator =
+            parser->current.type;
+
         parser_advance(parser);
 
-        AstNode *right = parse_addition(parser);
+        AstNode *right =
+            parse_addition(parser);
 
         if (right == NULL) {
             ast_free(left);
-
-            printf(
-                "Parser error: expected expression after operator.\n"
-            );
-
             return NULL;
         }
 
@@ -346,53 +572,53 @@ static AstNode *parse_comparison(Parser *parser) {
 
         switch (operator) {
             case TOKEN_GREATER:
-                binary_operator = BINARY_GREATER;
+                binary_operator =
+                    BINARY_GREATER;
                 break;
 
             case TOKEN_LESS:
-                binary_operator = BINARY_LESS;
+                binary_operator =
+                    BINARY_LESS;
                 break;
 
             case TOKEN_GREATER_EQUAL:
-                binary_operator = BINARY_GREATER_EQUAL;
+                binary_operator =
+                    BINARY_GREATER_EQUAL;
                 break;
 
             case TOKEN_LESS_EQUAL:
-                binary_operator = BINARY_LESS_EQUAL;
+                binary_operator =
+                    BINARY_LESS_EQUAL;
                 break;
 
             default:
                 ast_free(left);
                 ast_free(right);
-
-                printf(
-                    "Parser error: invalid comparison operator.\n"
-                );
-
                 return NULL;
         }
 
-        AstNode *binary = ast_create_binary(
-            left,
-            right,
-            binary_operator
-        );
+        AstNode *node =
+            ast_create_binary(
+                left,
+                right,
+                binary_operator
+            );
 
-        if (binary == NULL) {
+        if (node == NULL) {
             ast_free(left);
             ast_free(right);
-
-            printf("Parser error: out of memory.\n");
             return NULL;
         }
 
-        left = binary;
+        left = node;
     }
 
     return left;
 }
 
-static AstNode *parse_equality(Parser *parser) {
+static AstNode *parse_equality(
+    Parser *parser
+) {
     AstNode *left =
         parse_comparison(parser);
 
@@ -401,10 +627,18 @@ static AstNode *parse_equality(Parser *parser) {
     }
 
     while (
-        parser_check(parser, TOKEN_EQUAL_EQUAL) ||
-        parser_check(parser, TOKEN_BANG_EQUAL)
+        token_is(
+            parser,
+            TOKEN_EQUAL_EQUAL
+        ) ||
+        token_is(
+            parser,
+            TOKEN_BANG_EQUAL
+        )
     ) {
-        TokenType operator = parser->current.type;
+        TokenType operator =
+            parser->current.type;
+
         parser_advance(parser);
 
         AstNode *right =
@@ -412,39 +646,122 @@ static AstNode *parse_equality(Parser *parser) {
 
         if (right == NULL) {
             ast_free(left);
+            return NULL;
+        }
 
-            printf(
-                "Parser error: expected expression after operator.\n"
+        AstNode *node =
+            ast_create_binary(
+                left,
+                right,
+                operator == TOKEN_EQUAL_EQUAL
+                    ? BINARY_EQUAL
+                    : BINARY_NOT_EQUAL
             );
 
-            return NULL;
-        }
-
-        BinaryOperator binary_operator =
-            operator == TOKEN_EQUAL_EQUAL
-                ? BINARY_EQUAL
-                : BINARY_NOT_EQUAL;
-
-        AstNode *binary = ast_create_binary(
-            left,
-            right,
-            binary_operator
-        );
-
-        if (binary == NULL) {
+        if (node == NULL) {
             ast_free(left);
             ast_free(right);
-
-            printf("Parser error: out of memory.\n");
             return NULL;
         }
 
-        left = binary;
+        left = node;
     }
 
     return left;
 }
 
-AstNode *parse_expression(Parser *parser) {
-    return parse_equality(parser);
+static AstNode *parse_and(
+    Parser *parser
+) {
+    AstNode *left =
+        parse_equality(parser);
+
+    if (left == NULL) {
+        return NULL;
+    }
+
+    while (
+        token_is(
+            parser,
+            TOKEN_AND_AND
+        )
+    ) {
+        parser_advance(parser);
+
+        AstNode *right =
+            parse_equality(parser);
+
+        if (right == NULL) {
+            ast_free(left);
+            return NULL;
+        }
+
+        AstNode *node =
+            ast_create_binary(
+                left,
+                right,
+                BINARY_AND
+            );
+
+        if (node == NULL) {
+            ast_free(left);
+            ast_free(right);
+            return NULL;
+        }
+
+        left = node;
+    }
+
+    return left;
+}
+
+static AstNode *parse_or(
+    Parser *parser
+) {
+    AstNode *left =
+        parse_and(parser);
+
+    if (left == NULL) {
+        return NULL;
+    }
+
+    while (
+        token_is(
+            parser,
+            TOKEN_OR_OR
+        )
+    ) {
+        parser_advance(parser);
+
+        AstNode *right =
+            parse_and(parser);
+
+        if (right == NULL) {
+            ast_free(left);
+            return NULL;
+        }
+
+        AstNode *node =
+            ast_create_binary(
+                left,
+                right,
+                BINARY_OR
+            );
+
+        if (node == NULL) {
+            ast_free(left);
+            ast_free(right);
+            return NULL;
+        }
+
+        left = node;
+    }
+
+    return left;
+}
+
+AstNode *parse_expression(
+    Parser *parser
+) {
+    return parse_or(parser);
 }

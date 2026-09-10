@@ -9,9 +9,12 @@ typedef enum {
     AST_FUNCTION_DECLARATION,
     AST_FUNCTION_CALL,
     AST_RETURN_STATEMENT,
+    AST_BREAK_STATEMENT,
+    AST_CONTINUE_STATEMENT,
 
     AST_STRING_LITERAL,
     AST_INTEGER_LITERAL,
+    AST_BOOLEAN_LITERAL,
     AST_ARRAY_LITERAL,
 
     AST_VARIABLE_DECLARATION,
@@ -19,7 +22,8 @@ typedef enum {
     AST_INDEX_EXPRESSION,
     AST_ASSIGNMENT,
 
-    AST_BINARY_EXPRESSION
+    AST_BINARY_EXPRESSION,
+    AST_UNARY_EXPRESSION
 } AstNodeType;
 
 typedef enum {
@@ -33,8 +37,15 @@ typedef enum {
     BINARY_GREATER,
     BINARY_LESS,
     BINARY_GREATER_EQUAL,
-    BINARY_LESS_EQUAL
+    BINARY_LESS_EQUAL,
+
+    BINARY_AND,
+    BINARY_OR
 } BinaryOperator;
+
+typedef enum {
+    UNARY_NOT
+} UnaryOperator;
 
 typedef struct AstNode {
     AstNodeType type;
@@ -85,6 +96,10 @@ typedef struct AstNode {
         } integer_literal;
 
         struct {
+            int value;
+        } boolean_literal;
+
+        struct {
             struct AstNode *elements;
             int element_count;
         } array_literal;
@@ -113,6 +128,11 @@ typedef struct AstNode {
             struct AstNode *right;
             BinaryOperator operator;
         } binary_expression;
+
+        struct {
+            struct AstNode *operand;
+            UnaryOperator operator;
+        } unary_expression;
     };
 
     struct AstNode *next;
@@ -150,9 +170,15 @@ AstNode *ast_create_return(
     AstNode *expression
 );
 
+AstNode *ast_create_break(void);
+
+AstNode *ast_create_continue(void);
+
 AstNode *ast_create_string(const char *value);
 
 AstNode *ast_create_integer(int value);
+
+AstNode *ast_create_boolean(int value);
 
 AstNode *ast_create_array(
     AstNode *elements,
@@ -180,6 +206,11 @@ AstNode *ast_create_binary(
     AstNode *left,
     AstNode *right,
     BinaryOperator operator
+);
+
+AstNode *ast_create_unary(
+    AstNode *operand,
+    UnaryOperator operator
 );
 
 void ast_append(AstNode **list, AstNode *node);

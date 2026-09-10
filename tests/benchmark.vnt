@@ -1,0 +1,66 @@
+
+# VNT RAW EXECUTION BENCHMARK
+#
+# Change WORK to control runtime.
+#
+# Start around:
+#   100
+#
+# Increase until the benchmark takes roughly 10 seconds.
+# Then use the same multiplier for longer runs.
+
+fun inner_work(seed) {
+    a = seed
+    b = seed + 17
+    c = seed + 31
+    d = 7
+
+    i = 0
+
+    while i < 1000 {
+        a = a + b
+        b = b + c
+        c = c + d
+        d = d + 3
+
+        if a > 1000000 {
+            a = a - 999999
+        }
+
+        if b > 1000000 {
+            b = b - 999999
+        }
+
+        if c > 1000000 {
+            c = c - 999999
+        }
+
+        i = i + 1
+    }
+
+    return a + b + c + d
+}
+
+fun benchmark(work) {
+    total = 0
+    outer = 0
+
+    while outer < work {
+        total = total + inner_work(outer)
+        outer = outer + 1
+    }
+
+    return total
+}
+
+# ============================================
+# BENCHMARK
+# ============================================
+
+WORK = 43200
+
+result = benchmark(WORK)
+
+print("Benchmark complete.")
+print(result)
+

@@ -157,6 +157,32 @@ AstNode *ast_create_return(
     return node;
 }
 
+AstNode *ast_create_break(void) {
+    AstNode *node = malloc(sizeof(AstNode));
+
+    if (node == NULL) {
+        return NULL;
+    }
+
+    node->type = AST_BREAK_STATEMENT;
+    node->next = NULL;
+
+    return node;
+}
+
+AstNode *ast_create_continue(void) {
+    AstNode *node = malloc(sizeof(AstNode));
+
+    if (node == NULL) {
+        return NULL;
+    }
+
+    node->type = AST_CONTINUE_STATEMENT;
+    node->next = NULL;
+
+    return node;
+}
+
 AstNode *ast_create_string(const char *value) {
     AstNode *node = malloc(sizeof(AstNode));
 
@@ -185,6 +211,20 @@ AstNode *ast_create_integer(int value) {
 
     node->type = AST_INTEGER_LITERAL;
     node->integer_literal.value = value;
+    node->next = NULL;
+
+    return node;
+}
+
+AstNode *ast_create_boolean(int value) {
+    AstNode *node = malloc(sizeof(AstNode));
+
+    if (node == NULL) {
+        return NULL;
+    }
+
+    node->type = AST_BOOLEAN_LITERAL;
+    node->boolean_literal.value = value ? 1 : 0;
     node->next = NULL;
 
     return node;
@@ -308,6 +348,24 @@ AstNode *ast_create_binary(
     return node;
 }
 
+AstNode *ast_create_unary(
+    AstNode *operand,
+    UnaryOperator operator
+) {
+    AstNode *node = malloc(sizeof(AstNode));
+
+    if (node == NULL) {
+        return NULL;
+    }
+
+    node->type = AST_UNARY_EXPRESSION;
+    node->unary_expression.operand = operand;
+    node->unary_expression.operator = operator;
+    node->next = NULL;
+
+    return node;
+}
+
 void ast_append(AstNode **list, AstNode *node) {
     if (node == NULL) {
         return;
@@ -376,11 +434,18 @@ void ast_free(AstNode *node) {
                 ast_free(node->return_statement.expression);
                 break;
 
+            case AST_BREAK_STATEMENT:
+            case AST_CONTINUE_STATEMENT:
+                break;
+
             case AST_STRING_LITERAL:
                 free(node->string_literal.value);
                 break;
 
             case AST_INTEGER_LITERAL:
+                break;
+
+            case AST_BOOLEAN_LITERAL:
                 break;
 
             case AST_ARRAY_LITERAL:
@@ -409,6 +474,10 @@ void ast_free(AstNode *node) {
             case AST_BINARY_EXPRESSION:
                 ast_free(node->binary_expression.left);
                 ast_free(node->binary_expression.right);
+                break;
+
+            case AST_UNARY_EXPRESSION:
+                ast_free(node->unary_expression.operand);
                 break;
         }
 

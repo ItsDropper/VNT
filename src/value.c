@@ -84,6 +84,105 @@ int value_array_append(
     return 1;
 }
 
+Value value_copy(const Value *value) {
+    if (value == NULL) {
+        Value invalid = {0};
+        return invalid;
+    }
+
+    switch (value->type) {
+        case VALUE_STRING:
+            return value_string(value->string);
+
+        case VALUE_INTEGER:
+            return value_integer(value->integer);
+
+        case VALUE_BOOLEAN:
+            return value_boolean(value->boolean);
+
+        case VALUE_ARRAY: {
+            Value copy = value_array();
+
+            for (
+                int i = 0;
+                i < value->array.count;
+                i++
+            ) {
+                Value item =
+                    value_copy(&value->array.items[i]);
+
+                if (item.type == VALUE_INVALID) {
+                    value_free(&copy);
+
+                    Value invalid = {0};
+                    return invalid;
+                }
+
+                if (!value_array_append(&copy, item)) {
+                    value_free(&item);
+                    value_free(&copy);
+
+                    Value invalid = {0};
+                    return invalid;
+                }
+            }
+
+            return copy;
+        }
+
+        default: {
+            Value invalid = {0};
+            return invalid;
+        }
+    }
+}
+
+Value *value_array_get(
+    Value *array,
+    int index
+) {
+    if (
+        array == NULL ||
+        array->type != VALUE_ARRAY
+    ) {
+        return NULL;
+    }
+
+    if (
+        index < 0 ||
+        index >= array->array.count
+    ) {
+        return NULL;
+    }
+
+    return &array->array.items[index];
+}
+
+int value_array_set(
+    Value *array,
+    int index,
+    Value item
+) {
+    if (
+        array == NULL ||
+        array->type != VALUE_ARRAY
+    ) {
+        return 0;
+    }
+
+    if (
+        index < 0 ||
+        index >= array->array.count
+    ) {
+        return 0;
+    }
+
+    value_free(&array->array.items[index]);
+    array->array.items[index] = item;
+
+    return 1;
+}
+
 void value_free(Value *value) {
     if (value == NULL) {
         return;

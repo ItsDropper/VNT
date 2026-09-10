@@ -4,7 +4,7 @@
 ExecutionResult execution_continue(void) {
     ExecutionResult result;
 
-    result.returned = 0;
+    result.signal = EXECUTION_NORMAL;
     result.value.type = VALUE_INVALID;
 
     return result;
@@ -15,8 +15,26 @@ ExecutionResult execution_return(
 ) {
     ExecutionResult result;
 
-    result.returned = 1;
+    result.signal = EXECUTION_RETURN;
     result.value = value;
+
+    return result;
+}
+
+ExecutionResult execution_break_signal(void) {
+    ExecutionResult result;
+
+    result.signal = EXECUTION_BREAK;
+    result.value.type = VALUE_INVALID;
+
+    return result;
+}
+
+ExecutionResult execution_continue_signal(void) {
+    ExecutionResult result;
+
+    result.signal = EXECUTION_CONTINUE;
+    result.value.type = VALUE_INVALID;
 
     return result;
 }
@@ -27,6 +45,7 @@ void interpreter_execute(
 ) {
     execute_node(
         program,
-        environment
+        environment,
+        0
     );
 }

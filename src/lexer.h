@@ -20,6 +20,7 @@ typedef enum {
 
     TOKEN_EQUALS,
     TOKEN_EQUAL_EQUAL,
+    TOKEN_BANG,
     TOKEN_BANG_EQUAL,
 
     TOKEN_GREATER,
@@ -31,6 +32,9 @@ typedef enum {
     TOKEN_MINUS,
     TOKEN_STAR,
     TOKEN_SLASH,
+
+    TOKEN_AND_AND,
+    TOKEN_OR_OR,
 
     TOKEN_UNKNOWN
 } TokenType;
@@ -47,6 +51,7 @@ typedef struct {
 } Lexer;
 
 void lexer_init(Lexer *lexer, const char *source);
+
 Token lexer_next(Lexer *lexer);
 
 #endif

@@ -63,9 +63,10 @@ int environment_define(
     }
 
     if (environment->count >= environment->capacity) {
-        int new_capacity = environment->capacity == 0
-            ? 8
-            : environment->capacity * 2;
+        int new_capacity =
+            environment->capacity == 0
+                ? 8
+                : environment->capacity * 2;
 
         Variable *new_variables = realloc(
             environment->variables,
@@ -86,8 +87,11 @@ int environment_define(
         return 0;
     }
 
-    environment->variables[environment->count].name = variable_name;
-    environment->variables[environment->count].value = value;
+    environment->variables[environment->count].name =
+        variable_name;
+
+    environment->variables[environment->count].value =
+        value;
 
     environment->count++;
 
@@ -99,12 +103,35 @@ Value *environment_get(
     const char *name
 ) {
     for (int i = 0; i < environment->count; i++) {
-        if (strcmp(environment->variables[i].name, name) == 0) {
+        if (
+            strcmp(
+                environment->variables[i].name,
+                name
+            ) == 0
+        ) {
             return &environment->variables[i].value;
         }
     }
 
     return NULL;
+}
+
+int environment_assign(
+    Environment *environment,
+    const char *name,
+    Value value
+) {
+    Value *existing =
+        environment_get(environment, name);
+
+    if (existing == NULL) {
+        return 0;
+    }
+
+    value_free(existing);
+    *existing = value;
+
+    return 1;
 }
 
 int environment_define_function(
@@ -114,9 +141,20 @@ int environment_define_function(
     const char *name =
         declaration->function_declaration.name;
 
-    for (int i = 0; i < environment->function_count; i++) {
-        if (strcmp(environment->functions[i].name, name) == 0) {
-            environment->functions[i].declaration = declaration;
+    for (
+        int i = 0;
+        i < environment->function_count;
+        i++
+    ) {
+        if (
+            strcmp(
+                environment->functions[i].name,
+                name
+            ) == 0
+        ) {
+            environment->functions[i].declaration =
+                declaration;
+
             return 1;
         }
     }
@@ -166,7 +204,11 @@ AstNode *environment_get_function(
     Environment *environment,
     const char *name
 ) {
-    for (int i = 0; i < environment->function_count; i++) {
+    for (
+        int i = 0;
+        i < environment->function_count;
+        i++
+    ) {
         if (
             strcmp(
                 environment->functions[i].name,

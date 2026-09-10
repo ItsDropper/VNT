@@ -40,6 +40,19 @@ int value_array_append(
     Value item
 );
 
+Value value_copy(const Value *value);
+
+int value_array_set(
+    Value *array,
+    int index,
+    Value item
+);
+
+Value *value_array_get(
+    Value *array,
+    int index
+);
+
 void value_free(Value *value);
 
 #endif

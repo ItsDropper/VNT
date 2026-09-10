@@ -3,8 +3,15 @@
 
 #include "../interpreter.h"
 
+typedef enum {
+    EXECUTION_NORMAL,
+    EXECUTION_RETURN,
+    EXECUTION_BREAK,
+    EXECUTION_CONTINUE
+} ExecutionSignal;
+
 typedef struct {
-    int returned;
+    ExecutionSignal signal;
     Value value;
 } ExecutionResult;
 
@@ -13,6 +20,10 @@ ExecutionResult execution_continue(void);
 ExecutionResult execution_return(
     Value value
 );
+
+ExecutionResult execution_break_signal(void);
+
+ExecutionResult execution_continue_signal(void);
 
 Value copy_value(
     Value *value
@@ -34,7 +45,8 @@ void print_value(
 
 ExecutionResult execute_node(
     AstNode *node,
-    Environment *environment
+    Environment *environment,
+    int loop_depth
 );
 
 #endif

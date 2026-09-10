@@ -39,6 +39,12 @@ Value *environment_get(
     const char *name
 );
 
+int environment_assign(
+    Environment *environment,
+    const char *name,
+    Value value
+);
+
 int environment_define_function(
     Environment *environment,
     AstNode *declaration

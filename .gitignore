@@ -1,0 +1,5 @@
+vnt.exe
+*.o
+*.obj
+.vscode/
+.idea/

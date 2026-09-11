@@ -1,0 +1,308 @@
+# VNT ADVENTURE
+# A terminal RPG using the current VNT feature set.
+
+player_name = input("Enter your name: ")
+
+health = 100
+max_health = 100
+gold = 15
+potions = 2
+damage = 10
+room = 0
+turn = 0
+
+inventory = [
+    "rusty sword",
+    "small shield"
+]
+
+rooms = [
+    "Village",
+    "Forest",
+    "Cave",
+    "Ancient Ruins"
+]
+
+enemies = [
+    "Slime",
+    "Wolf",
+    "Skeleton",
+    "Guardian"
+]
+
+visited = [
+    false,
+    false,
+    false,
+    false
+]
+
+fun show_status() {
+    print("")
+    print("=== STATUS ===")
+    print("Name: " + player_name)
+    print("Health: " + health)
+    print("Gold: " + gold)
+    print("Potions: " + potions)
+    print("Damage: " + damage)
+    print("Room: " + rooms[room])
+    print("Inventory items: " + len(inventory))
+
+    return 0
+}
+
+fun heal() {
+    if potions <= 0 {
+        print("You have no potions.")
+        return 0
+    }
+
+    if health >= max_health {
+        print("You are already at full health.")
+        return 0
+    }
+
+    health += 25
+    potions -= 1
+
+    if health > max_health {
+        health = max_health
+    }
+
+    print("You used a potion.")
+    print("Health: " + health)
+
+    return 0
+}
+
+fun explore() {
+    turn += 1
+
+    print("")
+    print("You enter: " + rooms[room])
+
+    if visited[room] {
+        print("You have already explored this area.")
+        return 0
+    }
+
+    visited[room] = true
+
+    if room == 0 {
+        print("The village is peaceful.")
+
+        gold += 5
+
+        print("A villager gives you 5 gold.")
+
+        return 0
+    }
+
+    if room == 1 {
+        print("You encounter a " + enemies[1] + ".")
+
+        health -= 15
+        gold += 8
+
+        print("You defeat it and gain 8 gold.")
+
+        return 0
+    }
+
+    if room == 2 {
+        print("A " + enemies[2] + " attacks you.")
+
+        health -= 25
+
+        if health <= 0 {
+            print("You were defeated in the cave.")
+            return 0
+        }
+
+        gold += 20
+
+        print("You defeat the skeleton.")
+        print("You found 20 gold.")
+
+        return 0
+    }
+
+    if room == 3 {
+        print("The ancient guardian awakens.")
+
+        if damage < 20 || health < 50 {
+            print("You are not strong enough.")
+            return 0
+        }
+
+        health -= 40
+        gold += 100
+
+        print("You defeat the guardian.")
+        print("You found 100 gold.")
+
+        return 0
+    }
+
+    return 0
+}
+
+fun travel(next_room) {
+    if next_room < 0 || next_room >= len(rooms) {
+        print("That location does not exist.")
+        return 0
+    }
+
+    room = next_room
+
+    print("You traveled to: " + rooms[room])
+
+    return 0
+}
+
+fun shop() {
+    print("")
+    print("=== SHOP ===")
+    print("1. Potion - 10 gold")
+    print("2. Sword upgrade - 30 gold")
+    print("3. Leave")
+
+    choice = input("Choose: ")
+
+    if choice == "1" {
+        if gold < 10 {
+            print("Not enough gold.")
+            return 0
+        }
+
+        gold -= 10
+        potions += 1
+
+        print("Bought a potion.")
+
+        return 0
+    }
+
+    if choice == "2" {
+        if gold < 30 {
+            print("Not enough gold.")
+            return 0
+        }
+
+        gold -= 30
+        damage += 10
+
+        print("Your sword is stronger.")
+        print("Damage: " + damage)
+
+        return 0
+    }
+
+    print("You leave the shop.")
+
+    return 0
+}
+
+print("")
+print("==============================")
+print("       VNT ADVENTURE")
+print("==============================")
+print("")
+print("Welcome, " + player_name + ".")
+print("Your journey begins.")
+
+while health > 0 {
+    print("")
+    print("==============================")
+    print("Turn: " + turn)
+    print("Location: " + rooms[room])
+    print("Health: " + health)
+    print("Gold: " + gold)
+    print("==============================")
+
+    print("")
+    print("1. Explore")
+    print("2. Travel")
+    print("3. Heal")
+    print("4. Shop")
+    print("5. Status")
+    print("6. Quit")
+
+    choice = input("Choose: ")
+
+    if choice == "1" {
+        explore()
+        continue
+    }
+
+    if choice == "2" {
+        print("")
+        print("0. Village")
+        print("1. Forest")
+        print("2. Cave")
+        print("3. Ancient Ruins")
+
+        destination = input("Destination: ")
+
+        if destination == "0" {
+            travel(0)
+        } else if destination == "1" {
+            travel(1)
+        } else if destination == "2" {
+            travel(2)
+        } else if destination == "3" {
+            travel(3)
+        } else {
+            print("Invalid destination.")
+        }
+
+        continue
+    }
+
+    if choice == "3" {
+        heal()
+        continue
+    }
+
+    if choice == "4" {
+        shop()
+        continue
+    }
+
+    if choice == "5" {
+        show_status()
+
+        print("")
+        print("Inventory:")
+
+        for item in inventory {
+            print("- " + item)
+        }
+
+        continue
+    }
+
+    if choice == "6" {
+        print("You leave the adventure.")
+        break
+    }
+
+    print("Invalid choice.")
+}
+
+if health <= 0 {
+    print("")
+    print("==============================")
+    print("          GAME OVER")
+    print("==============================")
+} else {
+    print("")
+    print("==============================")
+    print("       ADVENTURE ENDED")
+    print("==============================")
+}
+
+print("")
+print("Final health: " + health)
+print("Final gold: " + gold)
+print("Turns survived: " + turn)

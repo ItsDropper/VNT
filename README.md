@@ -180,10 +180,10 @@ The language is being developed incrementally.
 * [x] Booleans
 * [x] `if` / `else`
 * [x] Arithmetic
-* [ ] `while` loops
-* [ ] Functions
-* [ ] `return`
-* [ ] Arrays / lists
+* [x] `while` loops
+* [x] Functions
+* [x] `return`
+* [x] Arrays / lists
 * [ ] Additional types and language features
 
 The roadmap is intentionally kept small. New features should build on the existing language architecture rather than turning VNT into an unnecessarily complicated language.

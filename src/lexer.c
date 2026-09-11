@@ -288,6 +288,16 @@ Token lexer_next(Lexer *lexer) {
             );
 
         case '+':
+            if (peek(lexer) == '=') {
+                advance(lexer);
+
+                return make_token(
+                    lexer,
+                    TOKEN_PLUS_EQUALS,
+                    start
+                );
+            }
+
             return make_token(
                 lexer,
                 TOKEN_PLUS,
@@ -295,6 +305,16 @@ Token lexer_next(Lexer *lexer) {
             );
 
         case '-':
+            if (peek(lexer) == '=') {
+                advance(lexer);
+
+                return make_token(
+                    lexer,
+                    TOKEN_MINUS_EQUALS,
+                    start
+                );
+            }
+
             return make_token(
                 lexer,
                 TOKEN_MINUS,
@@ -302,6 +322,16 @@ Token lexer_next(Lexer *lexer) {
             );
 
         case '*':
+            if (peek(lexer) == '=') {
+                advance(lexer);
+
+                return make_token(
+                    lexer,
+                    TOKEN_STAR_EQUALS,
+                    start
+                );
+            }
+
             return make_token(
                 lexer,
                 TOKEN_STAR,
@@ -309,6 +339,16 @@ Token lexer_next(Lexer *lexer) {
             );
 
         case '/':
+            if (peek(lexer) == '=') {
+                advance(lexer);
+
+                return make_token(
+                    lexer,
+                    TOKEN_SLASH_EQUALS,
+                    start
+                );
+            }
+
             return make_token(
                 lexer,
                 TOKEN_SLASH,
@@ -316,6 +356,16 @@ Token lexer_next(Lexer *lexer) {
             );
 
         case '%':
+            if (peek(lexer) == '=') {
+                advance(lexer);
+
+                return make_token(
+                    lexer,
+                    TOKEN_PERCENT_EQUALS,
+                    start
+                );
+            }
+
             return make_token(
                 lexer,
                 TOKEN_PERCENT,

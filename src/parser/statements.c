@@ -860,14 +860,30 @@ AstNode *parse_statement(Parser *parser) {
             target = indexed;
         }
 
-        if (!parser_consume(
-                parser,
-                TOKEN_EQUALS,
-                "expected '='."
-            )) {
+        /*
+         * Read the assignment operator.
+         */
+        TokenType assignment_operator =
+            parser->current.type;
+
+        if (
+            assignment_operator != TOKEN_EQUALS &&
+            assignment_operator != TOKEN_PLUS_EQUALS &&
+            assignment_operator != TOKEN_MINUS_EQUALS &&
+            assignment_operator != TOKEN_STAR_EQUALS &&
+            assignment_operator != TOKEN_SLASH_EQUALS &&
+            assignment_operator != TOKEN_PERCENT_EQUALS
+        ) {
             ast_free(target);
+
+            printf(
+                "Parser error: expected assignment operator.\n"
+            );
+
             return NULL;
         }
+
+        parser_advance(parser);
 
         AstNode *value =
             parse_expression(parser);
@@ -877,6 +893,133 @@ AstNode *parse_statement(Parser *parser) {
             return NULL;
         }
 
+        /*
+         * Compound assignment currently only supports
+         * plain variables.
+         *
+         * Indexed compound assignment can be added later.
+         */
+        if (
+            assignment_operator != TOKEN_EQUALS &&
+            target->type != AST_VARIABLE
+        ) {
+            ast_free(target);
+            ast_free(value);
+
+            printf(
+                "Parser error: compound assignment requires a variable target.\n"
+            );
+
+            return NULL;
+        }
+
+        /*
+         * Convert:
+         *
+         * x += 5
+         *
+         * into:
+         *
+         * x = x + 5
+         *
+         * using the existing AST.
+         */
+        if (
+            assignment_operator != TOKEN_EQUALS
+        ) {
+            BinaryOperator binary_operator;
+
+            switch (assignment_operator) {
+                case TOKEN_PLUS_EQUALS:
+                    binary_operator =
+                        BINARY_ADD;
+                    break;
+
+                case TOKEN_MINUS_EQUALS:
+                    binary_operator =
+                        BINARY_SUBTRACT;
+                    break;
+
+                case TOKEN_STAR_EQUALS:
+                    binary_operator =
+                        BINARY_MULTIPLY;
+                    break;
+
+                case TOKEN_SLASH_EQUALS:
+                    binary_operator =
+                        BINARY_DIVIDE;
+                    break;
+
+                case TOKEN_PERCENT_EQUALS:
+                    binary_operator =
+                        BINARY_MODULO;
+                    break;
+
+                default:
+                    ast_free(target);
+                    ast_free(value);
+                    return NULL;
+            }
+
+            AstNode *left =
+                ast_create_variable(
+                    target->variable.name
+                );
+
+            if (left == NULL) {
+                ast_free(target);
+                ast_free(value);
+
+                printf(
+                    "Parser error: out of memory.\n"
+                );
+
+                return NULL;
+            }
+
+            AstNode *compound_value =
+                ast_create_binary(
+                    left,
+                    value,
+                    binary_operator
+                );
+
+            if (compound_value == NULL) {
+                ast_free(left);
+                ast_free(target);
+                ast_free(value);
+
+                printf(
+                    "Parser error: out of memory.\n"
+                );
+
+                return NULL;
+            }
+
+            AstNode *node =
+                ast_create_variable_declaration(
+                    target->variable.name,
+                    compound_value
+                );
+
+            ast_free(target);
+
+            if (node == NULL) {
+                ast_free(compound_value);
+
+                printf(
+                    "Parser error: out of memory.\n"
+                );
+
+                return NULL;
+            }
+
+            return node;
+        }
+
+        /*
+         * Normal assignment.
+         */
         if (target->type == AST_VARIABLE) {
             AstNode *node =
                 ast_create_variable_declaration(

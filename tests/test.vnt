@@ -1,0 +1,9 @@
+print(17 % 5)
+print(10 % 2)
+print(23 % 7)
+
+x = 20
+print(x % 6)
+
+print(10 + 17 % 5)
+print(20 % 6 * 2)

@@ -442,14 +442,9 @@ static AstNode *parse_multiplication(
     }
 
     while (
-        token_is(
-            parser,
-            TOKEN_STAR
-        ) ||
-        token_is(
-            parser,
-            TOKEN_SLASH
-        )
+        token_is(parser, TOKEN_STAR) ||
+        token_is(parser, TOKEN_SLASH) ||
+        token_is(parser, TOKEN_PERCENT)
     ) {
         TokenType operator =
             parser->current.type;
@@ -464,13 +459,35 @@ static AstNode *parse_multiplication(
             return NULL;
         }
 
+        BinaryOperator binary_operator;
+
+        switch (operator) {
+            case TOKEN_STAR:
+                binary_operator =
+                    BINARY_MULTIPLY;
+                break;
+
+            case TOKEN_SLASH:
+                binary_operator =
+                    BINARY_DIVIDE;
+                break;
+
+            case TOKEN_PERCENT:
+                binary_operator =
+                    BINARY_MODULO;
+                break;
+
+            default:
+                ast_free(left);
+                ast_free(right);
+                return NULL;
+        }
+
         AstNode *node =
             ast_create_binary(
                 left,
                 right,
-                operator == TOKEN_STAR
-                    ? BINARY_MULTIPLY
-                    : BINARY_DIVIDE
+                binary_operator
             );
 
         if (node == NULL) {

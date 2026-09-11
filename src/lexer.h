@@ -32,6 +32,7 @@ typedef enum {
     TOKEN_MINUS,
     TOKEN_STAR,
     TOKEN_SLASH,
+    TOKEN_PERCENT,
 
     TOKEN_AND_AND,
     TOKEN_OR_OR,
@@ -50,8 +51,13 @@ typedef struct {
     int current;
 } Lexer;
 
-void lexer_init(Lexer *lexer, const char *source);
+void lexer_init(
+    Lexer *lexer,
+    const char *source
+);
 
-Token lexer_next(Lexer *lexer);
+Token lexer_next(
+    Lexer *lexer
+);
 
 #endif

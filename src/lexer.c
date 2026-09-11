@@ -315,6 +315,13 @@ Token lexer_next(Lexer *lexer) {
                 start
             );
 
+        case '%':
+            return make_token(
+                lexer,
+                TOKEN_PERCENT,
+                start
+            );
+
         case '&':
             if (peek(lexer) == '&') {
                 advance(lexer);

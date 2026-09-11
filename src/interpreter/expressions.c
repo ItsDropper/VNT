@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 Value copy_value(Value *value) {
     return value_copy(value);
@@ -680,6 +681,41 @@ Value evaluate_expression(
                     result =
                         left.integer /
                         right.integer;
+                    break;
+
+                case BINARY_MODULO:
+                    if (right.integer == 0) {
+                        printf(
+                            "Runtime error: modulo by zero.\n"
+                        );
+
+                        value_free(&left);
+                        value_free(&right);
+
+                        return invalid_value();
+                    }
+
+                    /*
+                    * INT_MIN % -1 is undefined in C because
+                    * the corresponding division overflows.
+                    */
+                    if (
+                        left.integer == INT_MIN &&
+                        right.integer == -1
+                    ) {
+                        printf(
+                            "Runtime error: modulo overflow.\n"
+                        );
+
+                        value_free(&left);
+                        value_free(&right);
+
+                        return invalid_value();
+                    }
+
+                    result =
+                        left.integer %
+                            right.integer;
                     break;
 
                 default:

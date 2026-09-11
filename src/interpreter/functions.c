@@ -1,4 +1,3 @@
-
 #include "interpreter_internal.h"
 
 #include <stdio.h>
@@ -14,8 +13,6 @@ static Value builtin_input(
     AstNode *call,
     Environment *environment
 ) {
-    (void)environment;
-
     if (call->function_call.argument_count != 1) {
         printf(
             "Runtime error: input() expects 1 argument.\n"
@@ -87,16 +84,293 @@ static Value builtin_input(
     return value_string(buffer);
 }
 
+static Value builtin_mod(
+    AstNode *call,
+    Environment *environment
+) {
+    if (
+        call->function_call.argument_count != 2
+    ) {
+        printf(
+            "Runtime error: modulo expects 2 arguments.\n"
+        );
+
+        return invalid_value();
+    }
+
+    AstNode *argument =
+        call->function_call.arguments;
+
+    Value left =
+        evaluate_expression(
+            argument,
+            environment
+        );
+
+    if (left.type == VALUE_INVALID) {
+        return left;
+    }
+
+    argument =
+        argument->next;
+
+    Value right =
+        evaluate_expression(
+            argument,
+            environment
+        );
+
+    if (right.type == VALUE_INVALID) {
+        value_free(&left);
+        return right;
+    }
+
+    if (
+        left.type != VALUE_INTEGER ||
+        right.type != VALUE_INTEGER
+    ) {
+        value_free(&left);
+        value_free(&right);
+
+        printf(
+            "Runtime error: modulo requires integers.\n"
+        );
+
+        return invalid_value();
+    }
+
+    if (right.integer == 0) {
+        value_free(&left);
+        value_free(&right);
+
+        printf(
+            "Runtime error: modulo by zero.\n"
+        );
+
+        return invalid_value();
+    }
+
+    int result =
+        left.integer % right.integer;
+
+    value_free(&left);
+    value_free(&right);
+
+    return value_integer(result);
+}
+
+static Value builtin_len(
+    AstNode *call,
+    Environment *environment
+) {
+    if (
+        call->function_call.argument_count != 1
+    ) {
+        printf(
+            "Runtime error: len() expects 1 argument.\n"
+        );
+
+        return invalid_value();
+    }
+
+    Value value =
+        evaluate_expression(
+            call->function_call.arguments,
+            environment
+        );
+
+    if (value.type == VALUE_INVALID) {
+        return value;
+    }
+
+    int length;
+
+    if (value.type == VALUE_STRING) {
+        length =
+            value.string != NULL
+                ? (int)strlen(value.string)
+                : 0;
+    } else if (value.type == VALUE_ARRAY) {
+        length =
+            value.array.count;
+    } else {
+        value_free(&value);
+
+        printf(
+            "Runtime error: len() requires a string or array.\n"
+        );
+
+        return invalid_value();
+    }
+
+    value_free(&value);
+
+    return value_integer(length);
+}
+
+static Value builtin_range(
+    AstNode *call,
+    Environment *environment
+) {
+    int count =
+        call->function_call.argument_count;
+
+    if (
+        count < 1 ||
+        count > 3
+    ) {
+        printf(
+            "Runtime error: range() expects 1, 2, or 3 arguments.\n"
+        );
+
+        return invalid_value();
+    }
+
+    Value values[3];
+
+    AstNode *argument =
+        call->function_call.arguments;
+
+    for (
+        int i = 0;
+        i < count;
+        i++
+    ) {
+        values[i] =
+            evaluate_expression(
+                argument,
+                environment
+            );
+
+        if (values[i].type == VALUE_INVALID) {
+            for (int j = 0; j < i; j++) {
+                value_free(&values[j]);
+            }
+
+            return invalid_value();
+        }
+
+        if (values[i].type != VALUE_INTEGER) {
+            for (int j = 0; j <= i; j++) {
+                value_free(&values[j]);
+            }
+
+            printf(
+                "Runtime error: range() requires integer arguments.\n"
+            );
+
+            return invalid_value();
+        }
+
+        argument =
+            argument->next;
+    }
+
+    int start;
+    int end;
+    int step;
+
+    if (count == 1) {
+        start = 0;
+        end = values[0].integer;
+        step = 1;
+    } else if (count == 2) {
+        start = values[0].integer;
+        end = values[1].integer;
+        step = 1;
+    } else {
+        start = values[0].integer;
+        end = values[1].integer;
+        step = values[2].integer;
+    }
+
+    for (int i = 0; i < count; i++) {
+        value_free(&values[i]);
+    }
+
+    if (step == 0) {
+        printf(
+            "Runtime error: range() step cannot be zero.\n"
+        );
+
+        return invalid_value();
+    }
+
+    Value result =
+        value_array();
+
+    /*
+     * Positive step:
+     *
+     * range(0, 5) -> [0, 1, 2, 3, 4]
+     */
+    if (step > 0) {
+        for (
+            int i = start;
+            i < end;
+            i += step
+        ) {
+            Value item =
+                value_integer(i);
+
+            if (
+                !value_array_append(
+                    &result,
+                    item
+                )
+            ) {
+                value_free(&item);
+                value_free(&result);
+
+                printf(
+                    "Runtime error: could not build range.\n"
+                );
+
+                return invalid_value();
+            }
+        }
+    } else {
+        /*
+         * Negative step:
+         *
+         * range(5, 0, -1)
+         * -> [5, 4, 3, 2, 1]
+         */
+        for (
+            int i = start;
+            i > end;
+            i += step
+        ) {
+            Value item =
+                value_integer(i);
+
+            if (
+                !value_array_append(
+                    &result,
+                    item
+                )
+            ) {
+                value_free(&item);
+                value_free(&result);
+
+                printf(
+                    "Runtime error: could not build range.\n"
+                );
+
+                return invalid_value();
+            }
+        }
+    }
+
+    return result;
+}
+
 Value execute_function_call(
     AstNode *call,
     Environment *environment
 ) {
     /*
      * Built-in functions.
-     *
-     * These are handled before user-defined
-     * functions because they do not have an
-     * AstNode function declaration.
      */
     if (
         strcmp(
@@ -105,6 +379,42 @@ Value execute_function_call(
         ) == 0
     ) {
         return builtin_input(
+            call,
+            environment
+        );
+    }
+
+    if (
+        strcmp(
+            call->function_call.name,
+            "mod"
+        ) == 0
+    ) {
+        return builtin_mod(
+            call,
+            environment
+        );
+    }
+
+    if (
+        strcmp(
+            call->function_call.name,
+            "len"
+        ) == 0
+    ) {
+        return builtin_len(
+            call,
+            environment
+        );
+    }
+
+    if (
+        strcmp(
+            call->function_call.name,
+            "range"
+        ) == 0
+    ) {
+        return builtin_range(
             call,
             environment
         );
@@ -148,9 +458,6 @@ Value execute_function_call(
         &local_environment
     );
 
-    /*
-     * Functions are visible inside other functions.
-     */
     for (
         int i = 0;
         i < environment->function_count;
@@ -282,4 +589,3 @@ Value execute_function_call(
 
     return invalid_value();
 }
-

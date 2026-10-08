@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-static AstNode *parse_for(Parser *parser) {
+AstNode *parse_for(Parser *parser) {
     /*
      * Syntax:
      *

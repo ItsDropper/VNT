@@ -453,6 +453,9 @@ Value execute_function_call(
         &local_environment
     );
 
+    local_environment.error_state =
+        environment->error_state;
+
     for (
         int i = 0;
         i < environment->function_count;

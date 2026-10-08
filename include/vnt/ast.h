@@ -14,12 +14,14 @@ typedef enum {
 
     AST_STRING_LITERAL,
     AST_INTEGER_LITERAL,
+    AST_FLOAT_LITERAL,
     AST_BOOLEAN_LITERAL,
     AST_ARRAY_LITERAL,
 
     AST_VARIABLE_DECLARATION,
     AST_VARIABLE,
     AST_INDEX_EXPRESSION,
+    AST_MEMBER_EXPRESSION,
     AST_ASSIGNMENT,
 
     AST_BINARY_EXPRESSION,
@@ -98,6 +100,10 @@ typedef struct AstNode {
         } integer_literal;
 
         struct {
+            double value;
+        } float_literal;
+
+        struct {
             int value;
         } boolean_literal;
 
@@ -119,6 +125,11 @@ typedef struct AstNode {
             struct AstNode *array;
             struct AstNode *index;
         } index_expression;
+
+        struct {
+            struct AstNode *object;
+            char *member;
+        } member_expression;
 
         struct {
             struct AstNode *target;
@@ -151,11 +162,13 @@ AstNode *ast_create_break(void);
 AstNode *ast_create_continue(void);
 AstNode *ast_create_string(const char *value);
 AstNode *ast_create_integer(int value);
+AstNode *ast_create_float(double value);
 AstNode *ast_create_boolean(int value);
 AstNode *ast_create_array(AstNode *elements, int element_count);
 AstNode *ast_create_variable_declaration(const char *name, AstNode *value);
 AstNode *ast_create_variable(const char *name);
 AstNode *ast_create_index(AstNode *array, AstNode *index);
+AstNode *ast_create_member(AstNode *object, const char *member);
 AstNode *ast_create_assignment(AstNode *target, AstNode *value);
 AstNode *ast_create_binary(AstNode *left, AstNode *right, BinaryOperator operator);
 AstNode *ast_create_unary(AstNode *operand, UnaryOperator operator);

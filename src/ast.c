@@ -216,6 +216,15 @@ AstNode *ast_create_integer(int value) {
     return node;
 }
 
+AstNode *ast_create_float(double value) {
+    AstNode *node = malloc(sizeof(AstNode));
+    if (node == NULL) return NULL;
+    node->type = AST_FLOAT_LITERAL;
+    node->float_literal.value = value;
+    node->next = NULL;
+    return node;
+}
+
 AstNode *ast_create_boolean(int value) {
     AstNode *node = malloc(sizeof(AstNode));
 
@@ -305,6 +314,20 @@ AstNode *ast_create_index(
     node->index_expression.index = index;
     node->next = NULL;
 
+    return node;
+}
+
+AstNode *ast_create_member(AstNode *object, const char *member) {
+    AstNode *node = malloc(sizeof(AstNode));
+    if (node == NULL) return NULL;
+    node->type = AST_MEMBER_EXPRESSION;
+    node->member_expression.object = object;
+    node->member_expression.member = copy_string(member);
+    node->next = NULL;
+    if (node->member_expression.member == NULL) {
+        free(node);
+        return NULL;
+    }
     return node;
 }
 
@@ -443,6 +466,7 @@ void ast_free(AstNode *node) {
                 break;
 
             case AST_INTEGER_LITERAL:
+            case AST_FLOAT_LITERAL:
                 break;
 
             case AST_BOOLEAN_LITERAL:
@@ -464,6 +488,11 @@ void ast_free(AstNode *node) {
             case AST_INDEX_EXPRESSION:
                 ast_free(node->index_expression.array);
                 ast_free(node->index_expression.index);
+                break;
+
+            case AST_MEMBER_EXPRESSION:
+                ast_free(node->member_expression.object);
+                free(node->member_expression.member);
                 break;
 
             case AST_ASSIGNMENT:

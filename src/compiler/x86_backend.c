@@ -353,6 +353,7 @@ static void emit_call(X86Gen *g,AstNode *n) {
             return;
         }
 
+        int ffi_argc = count - 2;
         int total = count + 1;
         AstNode *a = n->function_call.arguments;
         for (int j = 0; j < count; j++, a = a->next) {
@@ -360,7 +361,7 @@ static void emit_call(X86Gen *g,AstNode *n) {
             fputs("    pushq %rax\n", g->out);
             g->temp_depth++;
         }
-        fprintf(g->out, "    pushq $%d\n", count - 2);
+        fprintf(g->out, "    pushq $%d\n", ffi_argc);
         g->temp_depth++;
 
         static const char *ffi_regs[] = {"%rcx", "%rdx", "%r8", "%r9"};

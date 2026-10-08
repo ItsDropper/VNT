@@ -6,6 +6,43 @@
 
 static int for_counter = 0;
 
+static AstNode *clone_assignment_target(AstNode *node) {
+    if (node == NULL) {
+        return NULL;
+    }
+
+    if (node->type == AST_VARIABLE) {
+        return ast_create_variable(
+            node->variable.name
+        );
+    }
+
+    if (node->type == AST_INDEX_EXPRESSION) {
+        AstNode *array =
+            clone_assignment_target(
+                node->index_expression.array
+            );
+
+        AstNode *index =
+            clone_assignment_target(
+                node->index_expression.index
+            );
+
+        if (array == NULL || index == NULL) {
+            ast_free(array);
+            ast_free(index);
+            return NULL;
+        }
+
+        return ast_create_index(
+            array,
+            index
+        );
+    }
+
+    return NULL;
+}
+
 AstNode *parse_block(Parser *parser) {
     AstNode *statements = NULL;
 
@@ -927,35 +964,18 @@ AstNode *parse_statement(Parser *parser) {
         }
 
         /*
-         * Compound assignment currently only supports
-         * plain variables.
-         *
-         * Indexed compound assignment can be added later.
-         */
-        if (
-            assignment_operator != TOKEN_EQUALS &&
-            target->type != AST_VARIABLE
-        ) {
-            ast_free(target);
-            ast_free(value);
-
-            printf(
-                "Parser error: compound assignment requires a variable target.\n"
-            );
-
-            return NULL;
-        }
-
-        /*
-         * Convert:
+         * Convert compound assignment:
          *
          * x += 5
+         * numbers[0] += 5
          *
-         * into:
+         * into the existing assignment AST:
          *
          * x = x + 5
+         * numbers[0] = numbers[0] + 5
          *
-         * using the existing AST.
+         * Cloning the target is required because the original
+         * target remains owned by the assignment node.
          */
         if (
             assignment_operator != TOKEN_EQUALS
@@ -964,28 +984,23 @@ AstNode *parse_statement(Parser *parser) {
 
             switch (assignment_operator) {
                 case TOKEN_PLUS_EQUALS:
-                    binary_operator =
-                        BINARY_ADD;
+                    binary_operator = BINARY_ADD;
                     break;
 
                 case TOKEN_MINUS_EQUALS:
-                    binary_operator =
-                        BINARY_SUBTRACT;
+                    binary_operator = BINARY_SUBTRACT;
                     break;
 
                 case TOKEN_STAR_EQUALS:
-                    binary_operator =
-                        BINARY_MULTIPLY;
+                    binary_operator = BINARY_MULTIPLY;
                     break;
 
                 case TOKEN_SLASH_EQUALS:
-                    binary_operator =
-                        BINARY_DIVIDE;
+                    binary_operator = BINARY_DIVIDE;
                     break;
 
                 case TOKEN_PERCENT_EQUALS:
-                    binary_operator =
-                        BINARY_MODULO;
+                    binary_operator = BINARY_MODULO;
                     break;
 
                 default:
@@ -995,9 +1010,7 @@ AstNode *parse_statement(Parser *parser) {
             }
 
             AstNode *left =
-                ast_create_variable(
-                    target->variable.name
-                );
+                clone_assignment_target(target);
 
             if (left == NULL) {
                 ast_free(target);
@@ -1030,14 +1043,18 @@ AstNode *parse_statement(Parser *parser) {
             }
 
             AstNode *node =
-                ast_create_variable_declaration(
-                    target->variable.name,
-                    compound_value
-                );
-
-            ast_free(target);
+                target->type == AST_VARIABLE
+                    ? ast_create_variable_declaration(
+                        target->variable.name,
+                        compound_value
+                    )
+                    : ast_create_assignment(
+                        target,
+                        compound_value
+                    );
 
             if (node == NULL) {
+                ast_free(target);
                 ast_free(compound_value);
 
                 printf(
@@ -1045,6 +1062,10 @@ AstNode *parse_statement(Parser *parser) {
                 );
 
                 return NULL;
+            }
+
+            if (target->type == AST_VARIABLE) {
+                ast_free(target);
             }
 
             return node;

@@ -2,11 +2,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "lexer.h"
-#include "parser.h"
-#include "ast.h"
-#include "interpreter.h"
-#include "environment.h"
+#include <vnt/lexer.h>
+#include <vnt/parser.h>
+#include <vnt/ast.h>
+#include <vnt/interpreter.h>
+#include <vnt/environment.h>
 
 static char *read_file(const char *path) {
     FILE *file = fopen(path, "rb");

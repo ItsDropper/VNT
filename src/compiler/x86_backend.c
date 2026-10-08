@@ -201,6 +201,43 @@ static void emit_call(X86Gen *g,AstNode *n) {
         return;
     }
 
+    if(!strcmp(name,"object")) {
+        if(count!=0){fail(g,"object() expects no arguments.");return;}
+        call0(g,"vnt_object_new");
+        return;
+    }
+
+    if(!strcmp(name,"sqrt")||!strcmp(name,"sin")||!strcmp(name,"cos")||
+       !strcmp(name,"tan")||!strcmp(name,"abs")||!strcmp(name,"floor")||
+       !strcmp(name,"ceil")) {
+        if(count!=1){fail(g,"math function expects 1 argument.");return;}
+        emit_expr(g,n->function_call.arguments);
+        fputs("    movq %rax,%rcx
+",g->out);
+        const char *fn=!strcmp(name,"sqrt")?"vnt_sqrt":
+                      !strcmp(name,"sin")?"vnt_sin":
+                      !strcmp(name,"cos")?"vnt_cos":
+                      !strcmp(name,"tan")?"vnt_tan":
+                      !strcmp(name,"abs")?"vnt_abs":
+                      !strcmp(name,"floor")?"vnt_floor":"vnt_ceil";
+        call0(g,fn);
+        return;
+    }
+
+    if(!strcmp(name,"min")||!strcmp(name,"max")) {
+        if(count!=2){fail(g,"min()/max() expect 2 arguments.");return;}
+        AstNode *a=n->function_call.arguments;
+        emit_expr(g,a);
+        fputs("    pushq %rax
+",g->out);
+        emit_expr(g,a->next);
+        fputs("    movq %rax,%rdx
+    popq %rcx
+",g->out);
+        call0(g,!strcmp(name,"min")?"vnt_min":"vnt_max");
+        return;
+    }
+
     if(!strcmp(name,"mod")||!strcmp(name,"len")||!strcmp(name,"input")) {
         if(!strcmp(name,"mod") && count!=2){fail(g,"mod() expects 2 arguments.");return;}
         if(!strcmp(name,"len") && count!=1){fail(g,"len() expects 1 argument.");return;}
@@ -248,6 +285,13 @@ static void emit_expr(X86Gen *g,AstNode *n) {
             fprintf(g->out,"    movl $%d,%%ecx\n",n->integer_literal.value);
             call0(g,"vnt_int");
             break;
+        case AST_FLOAT_LITERAL: {
+            int l=float_label(g,n->float_literal.value);
+            fprintf(g->out,"    movsd .Lflt%d(%%rip),%%xmm0\n",l);
+            call0(g,"vnt_float");
+            break;
+        }
+
         case AST_BOOLEAN_LITERAL:
             fprintf(g->out,"    movl $%d,%%ecx\n",n->boolean_literal.value?1:0);
             call0(g,"vnt_bool");
@@ -426,6 +470,11 @@ static void emit_function(X86Gen *g,AstNode *fn){
 
 static void emit_float_table(X86Gen *g) {
     for (int i=0;i<g->float_count;i++)
+        fprintf(g->out,".Lflt%d:\n    .double %.17g\n",g->floats[i].label,g->floats[i].value);
+}
+
+static void emit_float_table(X86Gen *g) {
+    for(int i=0;i<g->float_count;i++)
         fprintf(g->out,".Lflt%d:\n    .double %.17g\n",g->floats[i].label,g->floats[i].value);
 }
 

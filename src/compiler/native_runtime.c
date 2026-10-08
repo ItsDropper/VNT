@@ -461,9 +461,17 @@ static intptr_t ffi_arg(VntValue *v) {
     return (intptr_t)v->integer;
 }
 
+static const char *ffi_string(VntValue *v, const char *what) {
+    if (!v || v->type != VNT_STRING) {
+        fprintf(stderr, "Runtime error: ffi_int() %s must be a string.\n", what);
+        exit(1);
+    }
+    return v->string;
+}
+
 VntValue *vnt_ffi_int(
-    const char *library,
-    const char *symbol,
+    VntValue *library,
+    VntValue *symbol,
     VntValue *a0,
     VntValue *a1,
     VntValue *a2,
@@ -472,32 +480,38 @@ VntValue *vnt_ffi_int(
     VntValue *a5,
     int argc
 ) {
+    const char *library_name = ffi_string(library, "library");
+    const char *symbol_name = ffi_string(symbol, "symbol");
 #ifdef _WIN32
-    HMODULE module = LoadLibraryA(library);
+    HMODULE module = LoadLibraryA(library_name);
     if (!module) {
-        fprintf(stderr, "Runtime error: ffi_int() could not load '%s'.\n", library);
+        fprintf(stderr, "Runtime error: ffi_int() could not load '%s'.\n", library_name);
         exit(1);
     }
-    FARPROC proc = GetProcAddress(module, symbol);
+    FARPROC proc = GetProcAddress(module, symbol_name);
     if (!proc) {
-        fprintf(stderr, "Runtime error: ffi_int() could not find '%s'.\n", symbol);
+        fprintf(stderr, "Runtime error: ffi_int() could not find '%s'.\n", symbol_name);
         exit(1);
     }
 #else
-    void *module = dlopen(library, RTLD_LAZY);
+    void *module = dlopen(library_name, RTLD_LAZY);
     if (!module) {
-        fprintf(stderr, "Runtime error: ffi_int() could not load '%s'.\n", library);
+        fprintf(stderr, "Runtime error: ffi_int() could not load '%s'.\n", library_name);
         exit(1);
     }
-    void *proc = dlsym(module, symbol);
+    void *proc = dlsym(module, symbol_name);
     if (!proc) {
-        fprintf(stderr, "Runtime error: ffi_int() could not find '%s'.\n", symbol);
+        fprintf(stderr, "Runtime error: ffi_int() could not find '%s'.\n", symbol_name);
         exit(1);
     }
 #endif
 
     intptr_t args[6] = {0};
     VntValue *values[6] = {a0, a1, a2, a3, a4, a5};
+    if (argc < 0 || argc > 6) {
+        fprintf(stderr, "Runtime error: ffi_int() supports 0-6 arguments.\n");
+        exit(1);
+    }
     for (int i = 0; i < argc; i++) args[i] = ffi_arg(values[i]);
 
     intptr_t result = 0;
@@ -509,10 +523,6 @@ VntValue *vnt_ffi_int(
         case 4: result = ((intptr_t (*)(intptr_t, intptr_t, intptr_t, intptr_t))proc)(args[0], args[1], args[2], args[3]); break;
         case 5: result = ((intptr_t (*)(intptr_t, intptr_t, intptr_t, intptr_t, intptr_t))proc)(args[0], args[1], args[2], args[3], args[4]); break;
         case 6: result = ((intptr_t (*)(intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t))proc)(args[0], args[1], args[2], args[3], args[4], args[5]); break;
-        default:
-            fprintf(stderr, "Runtime error: ffi_int() supports at most 6 arguments.\n");
-            exit(1);
     }
-
     return vnt_int((int)result);
 }

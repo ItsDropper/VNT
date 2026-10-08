@@ -72,17 +72,22 @@ static Token number(
     Lexer *lexer,
     const char *start
 ) {
-    while (
-        isdigit((unsigned char)peek(lexer))
-    ) {
+    while (isdigit((unsigned char)peek(lexer))) {
         advance(lexer);
     }
 
-    return make_token(
-        lexer,
-        TOKEN_INTEGER,
-        start
-    );
+    if (peek(lexer) == '.' &&
+        isdigit((unsigned char)lexer->source[lexer->current + 1])) {
+        advance(lexer);
+
+        while (isdigit((unsigned char)peek(lexer))) {
+            advance(lexer);
+        }
+
+        return make_token(lexer, TOKEN_FLOAT, start);
+    }
+
+    return make_token(lexer, TOKEN_INTEGER, start);
 }
 
 static Token string(
@@ -216,6 +221,13 @@ Token lexer_next(Lexer *lexer) {
             return make_token(
                 lexer,
                 TOKEN_COMMA,
+                start
+            );
+
+        case '.':
+            return make_token(
+                lexer,
+                TOKEN_DOT,
                 start
             );
 

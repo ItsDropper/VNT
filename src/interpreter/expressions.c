@@ -5,7 +5,7 @@
 #include <string.h>
 #include <limits.h>
 
-static Value invalid_value(void) {
+Value invalid_value(void) {
     Value invalid = {0};
     return invalid;
 }

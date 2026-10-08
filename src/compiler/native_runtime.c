@@ -526,3 +526,9 @@ VntValue *vnt_ffi_int(
     }
     return vnt_int((int)result);
 }
+
+
+void vnt_int_div_zero(void) {
+    fprintf(stderr, "Runtime error: division or modulo by zero.\n");
+    exit(1);
+}

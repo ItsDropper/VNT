@@ -306,6 +306,48 @@ static void emit_call(X86Gen *g,AstNode *n) {
         return;
     }
 
+    if (!strcmp(name, "ffi_int")) {
+        if (count < 2 || count > 8) {
+            fail(g, "ffi_int() expects a library, symbol, and 0-6 integer arguments.");
+            return;
+        }
+
+        int total = count + 1;
+        AstNode *a = n->function_call.arguments;
+        for (int j = 0; j < count; j++, a = a->next) {
+            emit_expr(g, a);
+            fputs("    pushq %rax\n", g->out);
+            g->temp_depth++;
+        }
+        fprintf(g->out, "    pushq $%d\n", count - 2);
+        g->temp_depth++;
+
+        static const char *ffi_regs[] = {"%rcx", "%rdx", "%r8", "%r9"};
+        for (int j = 0; j < total && j < 4; j++)
+            fprintf(g->out, "    movq %d(%%rsp),%s\n", (total - 1 - j) * 8, ffi_regs[j]);
+
+        int stack_count = total > 4 ? total - 4 : 0;
+        int call_area = 32 + stack_count * 8;
+        int pad = (call_area % 16) ? 8 : 0;
+        call_area += pad;
+        fprintf(g->out, "    subq $%d,%%rsp\n", call_area);
+
+        for (int j = 4; j < total; j++) {
+            int source = call_area + (total - 1 - j) * 8;
+            int dest = 32 + (j - 4) * 8;
+            fprintf(g->out, "    movq %d(%%rsp),%%r10\n", source);
+            fprintf(g->out, "    movq %%r10,%d(%%rsp)\n", dest);
+        }
+
+        fputs("    call vnt_ffi_int\n", g->out);
+        fprintf(g->out, "    addq $%d,%%rsp\n", call_area);
+        for (int j = 0; j < total; j++) {
+            fputs("    popq %r10\n", g->out);
+            g->temp_depth--;
+        }
+        return;
+    }
+
     int i = 0;
     for (AstNode *a = n->function_call.arguments; a; a = a->next, i++) {
         emit_expr(g, a);

@@ -354,6 +354,7 @@ ExecutionResult execute_node(
 
         case AST_BREAK_STATEMENT:
             if (loop_depth <= 0) {
+                environment->error_state->had_error = 1;
                 printf(
                     "Runtime error: 'break' outside loop.\n"
                 );
@@ -365,6 +366,7 @@ ExecutionResult execute_node(
 
         case AST_CONTINUE_STATEMENT:
             if (loop_depth <= 0) {
+                environment->error_state->had_error = 1;
                 printf(
                     "Runtime error: 'continue' outside loop.\n"
                 );
@@ -505,6 +507,7 @@ ExecutionResult execute_node(
                 ) {
                     value_free(&condition);
 
+                    environment->error_state->had_error = 1;
                     printf(
                         "Runtime error: while condition must be boolean.\n"
                     );

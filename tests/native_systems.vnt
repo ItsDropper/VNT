@@ -1,0 +1,38 @@
+# VNT native systems feature test
+# Structs, references, >4 arguments, integer fast path, and FFI.
+
+struct Vec2 {
+    x,
+    y
+}
+
+fun sum8(a, b, c, d, e, f, g, h) {
+    return a + b + c + d + e + f + g + h
+}
+
+x = 10
+p = &x
+
+print("Reference:")
+print(*p)
+*p = 42
+print(x)
+
+print("Struct:")
+point = Vec2()
+point.x = 12
+point.y = 30
+print(point.x)
+print(point.y)
+
+print("8 args:")
+print(sum8(1, 2, 3, 4, 5, 6, 7, 8))
+
+print("Integer fast path:")
+print(100 + 20 * 3 - 5)
+print((80 / 4) + (17 % 5))
+
+print("FFI:")
+print(ffi_int("kernel32.dll", "GetCurrentProcessId"))
+
+print("=== Systems features done ===")

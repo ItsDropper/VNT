@@ -40,6 +40,21 @@ static AstNode *parse_primary(Parser *parser) {
 
     if (
         token.type ==
+        TOKEN_FLOAT
+    ) {
+        char buffer[64];
+        if (token.length >= (int)sizeof(buffer)) {
+            printf("Parser error: float too long.\n");
+            return NULL;
+        }
+        memcpy(buffer, token.start, token.length);
+        buffer[token.length] = '\0';
+        parser_advance(parser);
+        return ast_create_float(strtod(buffer, NULL));
+    }
+
+    if (
+        token.type ==
         TOKEN_STRING
     ) {
         char *value =
@@ -339,12 +354,58 @@ AstNode *parse_postfix(Parser *parser) {
         return NULL;
     }
 
-    while (
-        token_is(
-            parser,
-            TOKEN_LEFT_BRACKET
-        )
-    ) {
+    for (;;) {
+        if (token_is(parser, TOKEN_LEFT_BRACKET)) {
+            parser_advance(parser);
+
+            AstNode *index = parse_expression(parser);
+            if (index == NULL) {
+                ast_free(expression);
+                return NULL;
+            }
+
+            if (!token_is(parser, TOKEN_RIGHT_BRACKET)) {
+                printf("Parser error: expected ']'.\n");
+                ast_free(expression);
+                ast_free(index);
+                return NULL;
+            }
+            parser_advance(parser);
+
+            AstNode *indexed = ast_create_index(expression, index);
+            if (indexed == NULL) {
+                ast_free(expression);
+                ast_free(index);
+                return NULL;
+            }
+            expression = indexed;
+            continue;
+        }
+
+        if (token_is(parser, TOKEN_DOT)) {
+            parser_advance(parser);
+            if (!token_is(parser, TOKEN_IDENTIFIER)) {
+                printf("Parser error: expected member name after '.'.\n");
+                ast_free(expression);
+                return NULL;
+            }
+            char *member = parser_token_to_string(parser->current);
+            parser_advance(parser);
+            AstNode *member_node = ast_create_member(expression, member);
+            free(member);
+            if (member_node == NULL) {
+                ast_free(expression);
+                return NULL;
+            }
+            expression = member_node;
+            continue;
+        }
+
+        break;
+    }
+    return expression;
+
+    /*
         parser_advance(parser);
 
         AstNode *index =
@@ -389,4 +450,5 @@ AstNode *parse_postfix(Parser *parser) {
 
     return expression;
 }
+*/ 
 

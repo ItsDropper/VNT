@@ -1,7 +1,7 @@
 #include "../internal/interpreter_internal.h"
 #include <stdio.h>
 
-static Value evaluate_index_expression(
+Value evaluate_index_expression(
     AstNode *expression,
     Environment *environment
 ) {

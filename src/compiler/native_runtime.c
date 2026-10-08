@@ -50,6 +50,8 @@ static VntValue *alloc_value(VntType type) {
     return v;
 }
 
+VntValue *vnt_string_get(VntValue *s, VntValue *index);
+
 static void require_number(VntValue *a, VntValue *b) {
     if (!a || !b ||
         (a->type != VNT_INT && a->type != VNT_FLOAT) ||

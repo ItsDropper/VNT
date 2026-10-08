@@ -3,6 +3,39 @@
 
 #include <stdio.h>
 
+AstNode *parse_block(Parser *parser) {
+    AstNode *statements = NULL;
+
+    while (
+        !parser_check(parser, TOKEN_RIGHT_BRACE) &&
+        !parser_check(parser, TOKEN_EOF)
+    ) {
+        AstNode *statement =
+            parse_statement(parser);
+
+        if (statement == NULL) {
+            ast_free(statements);
+            return NULL;
+        }
+
+        ast_append(
+            &statements,
+            statement
+        );
+    }
+
+    if (!parser_consume(
+            parser,
+            TOKEN_RIGHT_BRACE,
+            "expected '}'."
+        )) {
+        ast_free(statements);
+        return NULL;
+    }
+
+    return statements;
+}
+
 AstNode *parse_statement(Parser *parser) {
     if (parser_is_token(parser->current, "print")) return parse_print(parser);
     if (parser_is_token(parser->current, "return")) return parse_return(parser);

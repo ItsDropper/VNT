@@ -99,6 +99,8 @@ static void collect_vars(X86Gen *g, AstNode *n) {
             case AST_INDEX_EXPRESSION:
                 collect_vars(g,n->index_expression.array);
                 collect_vars(g,n->index_expression.index); break;
+            case AST_MEMBER_EXPRESSION:
+                collect_vars(g,n->member_expression.object); break;
             case AST_BINARY_EXPRESSION:
                 collect_vars(g,n->binary_expression.left);
                 collect_vars(g,n->binary_expression.right); break;
@@ -466,11 +468,6 @@ static void emit_function(X86Gen *g,AstNode *fn){
     for(int i=0;i<count;i++){fprintf(g->out,"    movq %s,",regs[i]);mem(g,var_offset(g,fn->function_declaration.parameters[i]));fputc('\n',g->out);}
     emit_stmt_list(g,fn->function_declaration.body);
     if(!g->error)fputs("    xorl %eax,%eax\n    leave\n    ret\n",g->out);
-}
-
-static void emit_float_table(X86Gen *g) {
-    for (int i=0;i<g->float_count;i++)
-        fprintf(g->out,".Lflt%d:\n    .double %.17g\n",g->floats[i].label,g->floats[i].value);
 }
 
 static void emit_float_table(X86Gen *g) {

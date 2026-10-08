@@ -5,11 +5,6 @@
 #include <string.h>
 #include <limits.h>
 
-Value invalid_value(void) {
-    Value invalid = {0};
-    return invalid;
-}
-
 Value evaluate_expression(
     AstNode *expression,
     Environment *environment

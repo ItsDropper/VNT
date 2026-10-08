@@ -418,10 +418,6 @@ if (parser_check(
 }
 
 
-    return NULL;
-}
-
-
 AstNode *parse_dereference_statement(Parser *parser) {
     parser_advance(parser);
 

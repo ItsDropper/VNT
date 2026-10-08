@@ -397,7 +397,7 @@ Token lexer_next(Lexer *lexer) {
 
             return make_token(
                 lexer,
-                TOKEN_UNKNOWN,
+                TOKEN_AMPERSAND,
                 start
             );
 

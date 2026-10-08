@@ -27,6 +27,17 @@ static AstNode *clone_expression(AstNode *node) {
                 node->string_literal.value
             );
 
+        case AST_FLOAT_LITERAL:
+            return ast_create_float(node->float_literal.value);
+
+        case AST_MEMBER_EXPRESSION: {
+            AstNode *object = clone_expression(node->member_expression.object);
+            if (object == NULL) return NULL;
+            AstNode *copy = ast_create_member(object, node->member_expression.member);
+            if (copy == NULL) ast_free(object);
+            return copy;
+        }
+
         case AST_INDEX_EXPRESSION: {
             AstNode *array =
                 clone_expression(

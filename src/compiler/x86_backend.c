@@ -274,6 +274,13 @@ static void emit_expr(X86Gen *g,AstNode *n) {
             fputs("    movq %rax,%rdx\n    popq %rcx\n",g->out);
             call0(g,"vnt_array_get");
             break;
+        case AST_MEMBER_EXPRESSION:
+            emit_expr(g,n->member_expression.object);
+            fputs("    pushq %rax\n",g->out);
+            fprintf(g->out,"    lea .Lstr%d(%%rip),%%rdx\n",string_label(g,n->member_expression.member));
+            fputs("    popq %rcx\n",g->out);
+            call0(g,"vnt_object_get");
+            break;
         case AST_UNARY_EXPRESSION:
             emit_expr(g,n->unary_expression.operand);
             call1(g,n->unary_expression.operator==UNARY_NEGATE?"vnt_neg":"vnt_not");
@@ -340,6 +347,16 @@ static void emit_assignment(X86Gen *g,AstNode *n){
         emit_expr(g,n->assignment.value);
         fputs("    movq %rax,%r8\n    popq %rdx\n    popq %rcx\n    movq %r8,%r8\n",g->out);
         fputs("    subq $32,%rsp\n    call vnt_array_set\n    addq $32,%rsp\n",g->out);
+        return;
+    }
+    if(t->type==AST_MEMBER_EXPRESSION){
+        emit_expr(g,t->member_expression.object);
+        fputs("    pushq %rax\n",g->out);
+        emit_expr(g,n->assignment.value);
+        fputs("    movq %rax,%r8\n",g->out);
+        fprintf(g->out,"    lea .Lstr%d(%%rip),%%rdx\n",string_label(g,t->member_expression.member));
+        fputs("    popq %rcx\n",g->out);
+        fputs("    subq $32,%rsp\n    call vnt_object_set\n    addq $32,%rsp\n",g->out);
         return;
     }
     fail(g,"invalid assignment target.");

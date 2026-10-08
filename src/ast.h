@@ -135,32 +135,101 @@ typedef struct AstNode {
             struct AstNode *operand;
             UnaryOperator operator;
         } unary_expression;
-    } union_data;
+    } ;
 
     struct AstNode *next;
 } AstNode;
 
 AstNode *ast_create_program(AstNode *statements);
-AstNode *ast_create_print(AstNode *expression);
-AstNode *ast_create_if(AstNode *condition, AstNode *then_branch, AstNode *else_branch);
-AstNode *ast_create_while(AstNode *condition, AstNode *body);
-AstNode *ast_create_function_declaration(const char *name, char **parameters, int parameter_count, AstNode *body);
-AstNode *ast_create_function_call(const char *name, AstNode *arguments, int argument_count);
-AstNode *ast_create_return(AstNode *expression);
-AstNode *ast_create_break(void);
-AstNode *ast_create_continue(void);
-AstNode *ast_create_string(const char *value);
-AstNode *ast_create_integer(int value);
-AstNode *ast_create_boolean(int value);
-AstNode *ast_create_array(AstNode *elements, int element_count);
-AstNode *ast_create_variable_declaration(const char *name, AstNode *value);
-AstNode *ast_create_variable(const char *name);
-AstNode *ast_create_index(AstNode *array, AstNode *index);
-AstNode *ast_create_assignment(AstNode *target, AstNode *value);
-AstNode *ast_create_binary(AstNode *left, AstNode *right, BinaryOperator operator);
-AstNode *ast_create_unary(AstNode *operand, UnaryOperator operator);
 
-void ast_append(AstNode **list, AstNode *node);
-void ast_free(AstNode *node);
+AstNode *ast_create_print(AstNode *expression);
+
+AstNode *ast_create_if(
+    AstNode *condition,
+    AstNode *then_branch,
+    AstNode *else_branch
+);
+
+AstNode *ast_create_while(
+    AstNode *condition,
+    AstNode *body
+);
+
+AstNode *ast_create_function_declaration(
+    const char *name,
+    char **parameters,
+    int parameter_count,
+    AstNode *body
+);
+
+AstNode *ast_create_function_call(
+    const char *name,
+    AstNode *arguments,
+    int argument_count
+);
+
+AstNode *ast_create_return(
+    AstNode *expression
+);
+
+AstNode *ast_create_break(void);
+
+AstNode *ast_create_continue(void);
+
+AstNode *ast_create_string(
+    const char *value
+);
+
+AstNode *ast_create_integer(
+    int value
+);
+
+AstNode *ast_create_boolean(
+    int value
+);
+
+AstNode *ast_create_array(
+    AstNode *elements,
+    int element_count
+);
+
+AstNode *ast_create_variable_declaration(
+    const char *name,
+    AstNode *value
+);
+
+AstNode *ast_create_variable(
+    const char *name
+);
+
+AstNode *ast_create_index(
+    AstNode *array,
+    AstNode *index
+);
+
+AstNode *ast_create_assignment(
+    AstNode *target,
+    AstNode *value
+);
+
+AstNode *ast_create_binary(
+    AstNode *left,
+    AstNode *right,
+    BinaryOperator operator
+);
+
+AstNode *ast_create_unary(
+    AstNode *operand,
+    UnaryOperator operator
+);
+
+void ast_append(
+    AstNode **list,
+    AstNode *node
+);
+
+void ast_free(
+    AstNode *node
+);
 
 #endif

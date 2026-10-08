@@ -17,6 +17,7 @@ $sources = @(
       "src/parser/loops.c",
       "src/parser/assignments.c",
     "src/ast.c",
+    "src/compiler/compiler.c",
     "src/interpreter.c",
     "src/interpreter/expressions.c",
       "src/interpreter/expression_helpers.c",

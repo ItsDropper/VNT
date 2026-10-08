@@ -2,7 +2,7 @@
 
 VNT is a small programming language written from scratch in C.
 
-The goal is to build a simple, understandable language with its own lexer, parser, AST, interpreter, runtime values, and environment — while keeping the implementation lightweight and maintainable.
+The goal is to build a simple, understandable native language with its own lexer, parser, AST, compiler, and runtime — while keeping the implementation lightweight and maintainable.
 
 > VNT is currently in active development.
 
@@ -13,7 +13,12 @@ Currently implemented:
 * Variables
 * Strings
 * Integers
+* Floating-point numbers
 * Booleans
+* Strings
+* Arrays
+* Objects / member access
+* Math functions (`sqrt`, `sin`, `cos`, `tan`, `abs`, `floor`, `ceil`, `min`, `max`)
 * Arithmetic expressions
 * Operator precedence
 * Comparisons
@@ -65,7 +70,7 @@ false
 
 ## How VNT Works
 
-VNT uses a traditional interpreter pipeline:
+VNT is compiled to native x86-64 code.
 
 ```text
 VNT source code
@@ -76,81 +81,16 @@ VNT source code
       ↓
      AST
       ↓
-  Interpreter
+ Native x86-64 backend
       ↓
-Environment / Values
+   Assembly
       ↓
-    Output
+ GCC + VNT runtime
+      ↓
+ Native executable
 ```
 
-### Lexer
-
-The lexer converts source code into tokens such as identifiers, integers, operators, parentheses, and braces.
-
-### Parser
-
-The parser takes those tokens and builds an Abstract Syntax Tree (AST).
-
-VNT uses operator precedence so expressions such as:
-
-```vnt
-x = 2 + 3 * 4
-```
-
-are interpreted correctly.
-
-### AST
-
-The AST represents the structure of the VNT program independently from the original source text.
-
-### Interpreter
-
-The interpreter walks the AST and executes the program.
-
-### Environment
-
-The environment stores variables and their current values.
-
-## Project Structure
-
-```text
-VNT/
-├── src/
-│   ├── main.c
-│   ├── lexer.c
-│   ├── lexer.h
-│   ├── parser.c
-│   ├── parser.h
-│   ├── ast.c
-│   ├── ast.h
-│   ├── interpreter.c
-│   ├── interpreter.h
-│   ├── environment.c
-│   ├── environment.h
-│   ├── value.c
-│   └── value.h
-│
-├── tests/
-│   └── hello.vnt
-│
-└── README.md
-```
-
-## Building
-
-VNT currently uses GCC.
-
-From the project directory:
-
-```powershell
-gcc src/main.c src/lexer.c src/parser.c src/ast.c src/interpreter.c src/environment.c src/value.c -o vnt.exe
-```
-
-Then run a VNT program:
-
-```powershell
-.\vnt.exe tests\hello.vnt
-```
+The compiler emits x86-64 assembly and links a small native runtime for dynamic values, arrays, strings, objects, and math operations. The old interpreter is no longer part of the build or execution path.
 
 ## Error Handling
 
@@ -172,21 +112,26 @@ x = 10 / 0
 
 ## Roadmap
 
-The language is being developed incrementally.
-
 * [x] Comments
 * [x] Integers
-* [x] Comparisons
+* [x] Floating-point numbers
+* [x] Strings
 * [x] Booleans
+* [x] Arrays
+* [x] Objects / member access
+* [x] Comparisons
 * [x] `if` / `else`
-* [x] Arithmetic
 * [x] `while` loops
 * [x] Functions
 * [x] `return`
-* [x] Arrays / lists
-* [ ] Additional types and language features
-
-The roadmap is intentionally kept small. New features should build on the existing language architecture rather than turning VNT into an unnecessarily complicated language.
+* [x] Native x86-64 compiler
+* [ ] C-like native integer fast path
+* [ ] Struct definitions
+* [ ] Modules / imports
+* [ ] Native library FFI
+* [ ] Graphics and windowing
+* [ ] Game-oriented standard library
+* [ ] Compiler optimizations
 
 ## Design Goals
 

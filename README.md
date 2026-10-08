@@ -18,6 +18,11 @@ Currently implemented:
 * Strings
 * Arrays
 * Objects / member access
+* Struct definitions and named struct instances
+* References and dereferencing (`&x`, `*p`)
+* Functions with up to 32 parameters
+* Native integer arithmetic fast path
+* Basic native FFI (`ffi_int`)
 * Math functions (`sqrt`, `sin`, `cos`, `tan`, `abs`, `floor`, `ceil`, `min`, `max`)
 * Arithmetic expressions
 * Operator precedence
@@ -125,10 +130,11 @@ x = 10 / 0
 * [x] Functions
 * [x] `return`
 * [x] Native x86-64 compiler
-* [ ] C-like native integer fast path
-* [ ] Struct definitions
+* [x] Native integer arithmetic fast path
+* [x] Struct definitions
+* [x] References / dereferencing
+* [x] Basic native library FFI
 * [ ] Modules / imports
-* [ ] Native library FFI
 * [ ] Graphics and windowing
 * [ ] Game-oriented standard library
 * [ ] Compiler optimizations

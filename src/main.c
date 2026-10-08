@@ -70,6 +70,6 @@ int main(int argc, char *argv[]) {
     ast_free(program);
     free(source);
 
-    return 0;
+    return environment.had_error ? 1 : 0;
 }
 

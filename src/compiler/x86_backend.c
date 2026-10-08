@@ -6,6 +6,7 @@
 #include <ctype.h>
 
 typedef struct { char *name; int offset; } Var;
+typedef struct { char *value; int label; } StringLit;
 
 typedef struct {
     FILE *out;
@@ -17,6 +18,8 @@ typedef struct {
     int loop_end[64];
     int error;
     int temp_depth;
+    StringLit *strings;
+    int string_count, string_capacity;
 } X86Gen;
 
 static void fail(X86Gen *g, const char *msg) {
@@ -123,6 +126,28 @@ static void call2_from_stack(X86Gen *g,const char *fn) {
     call0(g,fn);
 }
 
+static int string_label(X86Gen *g, const char *value) {
+    for (int i=0;i<g->string_count;i++)
+        if (!strcmp(g->strings[i].value,value)) return g->strings[i].label;
+    if (g->string_count==g->string_capacity) {
+        int cap=g->string_capacity?g->string_capacity*2:8;
+        StringLit *s=realloc(g->strings,sizeof(*s)*cap);
+        if(!s){fail(g,"out of memory.");return 0;}
+        g->strings=s;g->string_capacity=cap;
+    }
+    int label=new_label(g);
+    g->strings[g->string_count].value=strdup(value);
+    if(!g->strings[g->string_count].value){fail(g,"out of memory.");return 0;}
+    g->strings[g->string_count].label=label;
+    g->string_count++;
+    return label;
+}
+
+static void free_strings(X86Gen *g) {
+    for(int i=0;i<g->string_count;i++) free(g->strings[i].value);
+    free(g->strings);g->strings=NULL;g->string_count=g->string_capacity=0;
+}
+
 static void emit_expr(X86Gen *g,AstNode *n);
 
 static void emit_call(X86Gen *g,AstNode *n) {
@@ -192,13 +217,16 @@ static void emit_expr(X86Gen *g,AstNode *n) {
 
     switch(n->type) {
         case AST_INTEGER_LITERAL:
-            fprintf(g->out,"    movl $%d,%%eax\n    movq %%rax,%%rcx\n    call vnt_int\n",n->integer_literal.value);
+            fprintf(g->out,"    movl $%d,%%ecx\n",n->integer_literal.value);
+            call0(g,"vnt_int");
             break;
         case AST_BOOLEAN_LITERAL:
-            fprintf(g->out,"    movl $%d,%%eax\n    movq %%rax,%%rcx\n    call vnt_bool\n",n->boolean_literal.value?1:0);
+            fprintf(g->out,"    movl $%d,%%ecx\n",n->boolean_literal.value?1:0);
+            call0(g,"vnt_bool");
             break;
         case AST_STRING_LITERAL:
-            fprintf(g->out,"    lea .Lstr%d(%%rip),%%rcx\n",n->integer_literal.value);
+            fprintf(g->out,"    lea .Lstr%d(%%rip),%%rcx\n",string_label(g,n->string_literal.value));
+            call0(g,"vnt_string");
             break;
         case AST_VARIABLE:
             fprintf(g->out,"    movq "); mem(g,var_offset(g,n->variable.name)); fputs(",%rax\n",g->out);
@@ -351,24 +379,21 @@ static void emit_function(X86Gen *g,AstNode *fn){
     if(!g->error)fputs("    xorl %eax,%eax\n    leave\n    ret\n",g->out);
 }
 
-static int string_count;
-static void emit_string_table(X86Gen *g,AstNode *n){
-    for(;n;n=n->next){
-        if(n->type==AST_STRING_LITERAL){
-            fprintf(g->out,".Lstr%d:\n    .asciz ",string_count++);
-            fputc('"',g->out);
-            for(const unsigned char *p=(const unsigned char*)n->string_literal.value;*p;p++){
-                if(*p=='\\')fputs("\\\\",g->out);else if(*p=='"')fputs("\\"",g->out);
-                else if(*p=='\n')fputs("\\n",g->out);else if(*p=='\r')fputs("\\r",g->out);
-                else if(*p=='\t')fputs("\\t",g->out);else fputc(*p,g->out);
+static void emit_string_table(X86Gen *g) {
+    for(int i=0;i<g->string_count;i++) {
+        fprintf(g->out,".Lstr%d:\n    .asciz ",g->strings[i].label);
+        fputc('"',g->out);
+        for(const unsigned char *p=(const unsigned char*)g->strings[i].value;*p;p++) {
+            switch(*p) {
+                case '\\': fputs("\\\\",g->out); break;
+                case '"': fputs("\\"",g->out); break;
+                case '\n': fputs("\\n",g->out); break;
+                case '\r': fputs("\\r",g->out); break;
+                case '\t': fputs("\\t",g->out); break;
+                default: fputc(*p,g->out); break;
             }
-            fputs(""\n",g->out);
-        } else if(n->type==AST_IF_STATEMENT){emit_string_table(g,n->if_statement.condition);emit_string_table(g,n->if_statement.then_branch);emit_string_table(g,n->if_statement.else_branch);}
-        else if(n->type==AST_WHILE_STATEMENT){emit_string_table(g,n->while_statement.condition);emit_string_table(g,n->while_statement.body);}
-        else if(n->type==AST_FUNCTION_DECLARATION)emit_string_table(g,n->function_declaration.body);
-        else if(n->type==AST_VARIABLE_DECLARATION)emit_string_table(g,n->variable_declaration.value);
-        else if(n->type==AST_PRINT_STATEMENT)emit_string_table(g,n->print_statement.expression);
-        else if(n->type==AST_ASSIGNMENT)emit_string_table(g,n->assignment.value);
+        }
+        fputs(""\n",g->out);
     }
 }
 
@@ -387,9 +412,8 @@ int vnt_emit_x86_64(AstNode *program,const char *assembly_path){
         if(!g.error)fputs("    xorl %eax,%eax\n    leave\n    ret\n",g.out);
     }
     if(!g.error){
-        string_count=0;fputs("\n.section .rdata\n",g.out);
-        emit_string_table(&g,program->program.statements);
+        if(g.string_count){fputs("\n.section .rdata\n",g.out); emit_string_table(&g);}
     }
-    fclose(g.out);free_vars(&g);
+    fclose(g.out);free_vars(&g);free_strings(&g);
     if(g.error){remove(assembly_path);return 0;}return 1;
 }

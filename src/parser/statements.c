@@ -1042,8 +1042,11 @@ AstNode *parse_statement(Parser *parser) {
                 return NULL;
             }
 
+            int target_is_variable =
+                target->type == AST_VARIABLE;
+
             AstNode *node =
-                target->type == AST_VARIABLE
+                target_is_variable
                     ? ast_create_variable_declaration(
                         target->variable.name,
                         compound_value
@@ -1064,7 +1067,7 @@ AstNode *parse_statement(Parser *parser) {
                 return NULL;
             }
 
-            if (target->type == AST_VARIABLE) {
+            if (target_is_variable) {
                 ast_free(target);
             }
 

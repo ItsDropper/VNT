@@ -4,11 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-static Value invalid_value(void) {
-    Value invalid = {0};
-    return invalid;
-}
-
 static Value builtin_input(
     AstNode *call,
     Environment *environment

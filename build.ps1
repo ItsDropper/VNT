@@ -8,22 +8,22 @@ $sources = @(
     "src/lexer.c",
     "src/parser/parser.c",
     "src/parser/primary.c",
-      "src/parser/unary.c",
-      "src/parser/binary.c",
+    "src/parser/unary.c",
+    "src/parser/binary.c",
     "src/parser/functions.c",
     "src/parser/statements.c",
-      "src/parser/simple_statements.c",
-      "src/parser/control.c",
-      "src/parser/loops.c",
-      "src/parser/assignments.c",
+    "src/parser/simple_statements.c",
+    "src/parser/control.c",
+    "src/parser/loops.c",
+    "src/parser/assignments.c",
     "src/ast.c",
     "src/compiler/compiler.c",
-    "src/compiler/native_backend.c",
+    "src/compiler/x86_backend.c",
     "src/interpreter.c",
     "src/interpreter/expressions.c",
-      "src/interpreter/expression_helpers.c",
-      "src/interpreter/expression_logic.c",
-      "src/interpreter/expression_index.c",
+    "src/interpreter/expression_helpers.c",
+    "src/interpreter/expression_logic.c",
+    "src/interpreter/expression_index.c",
     "src/interpreter/functions.c",
     "src/interpreter/statements.c",
     "src/environment.c",
@@ -32,7 +32,7 @@ $sources = @(
 
 Write-Host "Building VNT..."
 
-& $cc "-Iinclude" @sources "-o" $out
+& $cc "-Iinclude" "-Isrc/compiler" @sources "-o" $out
 
 if ($LASTEXITCODE -ne 0) {
     throw "VNT build failed."

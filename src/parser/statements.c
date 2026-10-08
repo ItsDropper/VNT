@@ -6,41 +6,123 @@
 
 static int for_counter = 0;
 
-static AstNode *clone_assignment_target(AstNode *node) {
+static AstNode *clone_expression(AstNode *node) {
     if (node == NULL) {
         return NULL;
     }
 
-    if (node->type == AST_VARIABLE) {
-        return ast_create_variable(
-            node->variable.name
-        );
-    }
+    switch (node->type) {
+        case AST_VARIABLE:
+            return ast_create_variable(node->variable.name);
 
-    if (node->type == AST_INDEX_EXPRESSION) {
-        AstNode *array =
-            clone_assignment_target(
-                node->index_expression.array
+        case AST_INTEGER_LITERAL:
+            return ast_create_integer(
+                node->integer_literal.value
             );
 
-        AstNode *index =
-            clone_assignment_target(
-                node->index_expression.index
+        case AST_BOOLEAN_LITERAL:
+            return ast_create_boolean(
+                node->boolean_literal.value
             );
 
-        if (array == NULL || index == NULL) {
-            ast_free(array);
-            ast_free(index);
-            return NULL;
+        case AST_STRING_LITERAL:
+            return ast_create_string(
+                node->string_literal.value
+            );
+
+        case AST_INDEX_EXPRESSION: {
+            AstNode *array =
+                clone_expression(
+                    node->index_expression.array
+                );
+
+            AstNode *index =
+                clone_expression(
+                    node->index_expression.index
+                );
+
+            if (array == NULL || index == NULL) {
+                ast_free(array);
+                ast_free(index);
+                return NULL;
+            }
+
+            AstNode *copy =
+                ast_create_index(
+                    array,
+                    index
+                );
+
+            if (copy == NULL) {
+                ast_free(array);
+                ast_free(index);
+            }
+
+            return copy;
         }
 
-        return ast_create_index(
-            array,
-            index
-        );
-    }
+        case AST_BINARY_EXPRESSION: {
+            AstNode *left =
+                clone_expression(
+                    node->binary_expression.left
+                );
 
-    return NULL;
+            AstNode *right =
+                clone_expression(
+                    node->binary_expression.right
+                );
+
+            if (left == NULL || right == NULL) {
+                ast_free(left);
+                ast_free(right);
+                return NULL;
+            }
+
+            AstNode *copy =
+                ast_create_binary(
+                    left,
+                    right,
+                    node->binary_expression.operator
+                );
+
+            if (copy == NULL) {
+                ast_free(left);
+                ast_free(right);
+            }
+
+            return copy;
+        }
+
+        case AST_UNARY_EXPRESSION: {
+            AstNode *operand =
+                clone_expression(
+                    node->unary_expression.operand
+                );
+
+            if (operand == NULL) {
+                return NULL;
+            }
+
+            AstNode *copy =
+                ast_create_unary(
+                    operand,
+                    node->unary_expression.operator
+                );
+
+            if (copy == NULL) {
+                ast_free(operand);
+            }
+
+            return copy;
+        }
+
+        default:
+            return NULL;
+    }
+}
+
+static AstNode *clone_assignment_target(AstNode *node) {
+    return clone_expression(node);
 }
 
 AstNode *parse_block(Parser *parser) {

@@ -328,6 +328,10 @@ ExecutionResult execute_node(
                     environment
                 );
 
+            if (value.type == VALUE_INVALID) {
+                environment->error_state->had_error = 1;
+            }
+
             value_free(&value);
 
             return execution_continue();
@@ -341,6 +345,7 @@ ExecutionResult execute_node(
                 );
 
             if (value.type == VALUE_INVALID) {
+                environment->error_state->had_error = 1;
                 return execution_continue();
             }
 
@@ -377,6 +382,7 @@ ExecutionResult execute_node(
                 );
 
             if (value.type == VALUE_INVALID) {
+                environment->error_state->had_error = 1;
                 return execution_continue();
             }
 
@@ -405,6 +411,7 @@ ExecutionResult execute_node(
                 );
 
             if (value.type == VALUE_INVALID) {
+                environment->error_state->had_error = 1;
                 return execution_continue();
             }
 
@@ -427,6 +434,10 @@ ExecutionResult execute_node(
                     node->print_statement.expression,
                     environment
                 );
+
+            if (value.type == VALUE_INVALID) {
+                environment->error_state->had_error = 1;
+            }
 
             print_value(&value);
             value_free(&value);

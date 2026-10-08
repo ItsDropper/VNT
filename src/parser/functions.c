@@ -284,3 +284,95 @@ AstNode *parse_function_call(
 
     return node;
 }
+
+AstNode *parse_struct(Parser *parser) {
+    parser_advance(parser);
+
+    if (!parser_check(parser, TOKEN_IDENTIFIER)) {
+        printf("Parser error: expected struct name.\n");
+        return NULL;
+    }
+
+    char *name = parser_token_to_string(parser->current);
+    if (!name) {
+        printf("Parser error: out of memory.\n");
+        return NULL;
+    }
+    parser_advance(parser);
+
+    if (!parser_consume(parser, TOKEN_LEFT_BRACE, "expected '{' after struct name.")) {
+        free(name);
+        return NULL;
+    }
+
+    char **fields = NULL;
+    int field_count = 0;
+    int field_capacity = 0;
+
+    if (!parser_check(parser, TOKEN_RIGHT_BRACE)) {
+        for (;;) {
+            if (!parser_check(parser, TOKEN_IDENTIFIER)) {
+                printf("Parser error: expected struct field name.\n");
+                free(name);
+                for (int i = 0; i < field_count; i++) free(fields[i]);
+                free(fields);
+                return NULL;
+            }
+
+            char *field = parser_token_to_string(parser->current);
+            if (!field) {
+                free(name);
+                for (int i = 0; i < field_count; i++) free(fields[i]);
+                free(fields);
+                return NULL;
+            }
+            parser_advance(parser);
+
+            if (field_count == field_capacity) {
+                int cap = field_capacity ? field_capacity * 2 : 4;
+                char **new_fields = realloc(fields, sizeof(char *) * cap);
+                if (!new_fields) {
+                    free(field);
+                    free(name);
+                    for (int i = 0; i < field_count; i++) free(fields[i]);
+                    free(fields);
+                    printf("Parser error: out of memory.\n");
+                    return NULL;
+                }
+                fields = new_fields;
+                field_capacity = cap;
+            }
+
+            fields[field_count++] = field;
+
+            if (parser_check(parser, TOKEN_RIGHT_BRACE))
+                break;
+
+            if (!parser_consume(parser, TOKEN_COMMA, "expected ',' between struct fields.")) {
+                free(name);
+                for (int i = 0; i < field_count; i++) free(fields[i]);
+                free(fields);
+                return NULL;
+            }
+        }
+    }
+
+    if (!parser_consume(parser, TOKEN_RIGHT_BRACE, "expected '}' after struct definition.")) {
+        free(name);
+        for (int i = 0; i < field_count; i++) free(fields[i]);
+        free(fields);
+        return NULL;
+    }
+
+    AstNode *node = ast_create_struct_declaration(name, fields, field_count);
+    free(name);
+
+    if (!node) {
+        for (int i = 0; i < field_count; i++) free(fields[i]);
+        free(fields);
+        printf("Parser error: out of memory.\n");
+        return NULL;
+    }
+
+    return node;
+}

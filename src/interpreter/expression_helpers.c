@@ -13,8 +13,8 @@ Value invalid_value(void) {
 }
 
 int values_equal(
-    const Value *left,
-    const Value *right
+    Value *left,
+    Value *right
 ) {
     if (
         left == NULL ||
@@ -74,7 +74,7 @@ int values_equal(
     }
 }
 
-static void print_value_internal(
+void print_value_internal(
     const Value *value
 ) {
     if (value == NULL) {

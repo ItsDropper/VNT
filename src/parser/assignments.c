@@ -416,7 +416,7 @@ if (parser_check(
 
     return node;
 }
-
+}
 
 AstNode *parse_dereference_statement(Parser *parser) {
     parser_advance(parser);

@@ -420,3 +420,86 @@ if (parser_check(
 
     return NULL;
 }
+
+
+AstNode *parse_dereference_statement(Parser *parser) {
+    parser_advance(parser);
+
+    AstNode *operand = parse_expression(parser);
+    if (!operand) {
+        printf("Parser error: expected reference after '*'.\n");
+        return NULL;
+    }
+
+    AstNode *target = ast_create_unary(operand, UNARY_DEREFERENCE);
+    if (!target) {
+        ast_free(operand);
+        printf("Parser error: out of memory.\n");
+        return NULL;
+    }
+
+    TokenType op = parser->current.type;
+    if (op != TOKEN_EQUALS &&
+        op != TOKEN_PLUS_EQUALS &&
+        op != TOKEN_MINUS_EQUALS &&
+        op != TOKEN_STAR_EQUALS &&
+        op != TOKEN_SLASH_EQUALS &&
+        op != TOKEN_PERCENT_EQUALS) {
+        ast_free(target);
+        printf("Parser error: expected assignment operator after dereference.\n");
+        return NULL;
+    }
+
+    parser_advance(parser);
+
+    AstNode *value = parse_expression(parser);
+    if (!value) {
+        ast_free(target);
+        return NULL;
+    }
+
+    if (op != TOKEN_EQUALS) {
+        BinaryOperator bop;
+        switch (op) {
+            case TOKEN_PLUS_EQUALS: bop = BINARY_ADD; break;
+            case TOKEN_MINUS_EQUALS: bop = BINARY_SUBTRACT; break;
+            case TOKEN_STAR_EQUALS: bop = BINARY_MULTIPLY; break;
+            case TOKEN_SLASH_EQUALS: bop = BINARY_DIVIDE; break;
+            case TOKEN_PERCENT_EQUALS: bop = BINARY_MODULO; break;
+            default:
+                ast_free(target);
+                ast_free(value);
+                return NULL;
+        }
+
+        AstNode *left = clone_assignment_target(target);
+        if (!left) {
+            ast_free(target);
+            ast_free(value);
+            return NULL;
+        }
+
+        AstNode *compound = ast_create_binary(left, value, bop);
+        if (!compound) {
+            ast_free(left);
+            ast_free(target);
+            ast_free(value);
+            return NULL;
+        }
+
+        AstNode *node = ast_create_assignment(target, compound);
+        if (!node) {
+            ast_free(target);
+            ast_free(compound);
+            return NULL;
+        }
+        return node;
+    }
+
+    AstNode *node = ast_create_assignment(target, value);
+    if (!node) {
+        ast_free(target);
+        ast_free(value);
+    }
+    return node;
+}

@@ -11,5 +11,6 @@ typedef struct {
 int vnt_ir_lower(VntIrProgram *ir, AstNode *program);
 int vnt_ir_optimize(VntIrProgram *ir);
 int vnt_ir_validate(const VntIrProgram *ir);
+void vnt_ir_free(VntIrProgram *ir);
 
 #endif

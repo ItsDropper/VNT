@@ -353,9 +353,17 @@ static void emit_call(X86Gen *g,AstNode *n) {
             return;
         }
 
+        /*
+         * vnt_ffi_int has a fixed 9-parameter ABI:
+         *   library, symbol, a0..a5, argc
+         * The C runtime needs all nine positions populated even when
+         * fewer than six native arguments were requested.
+         */
         int ffi_argc = count - 2;
-        int total = count + 1;
+        int pushed = count + 1;
+        int total = 9;
         AstNode *a = n->function_call.arguments;
+
         for (int j = 0; j < count; j++, a = a->next) {
             emit_expr(g, a);
             fputs("    pushq %rax\n", g->out);
@@ -364,27 +372,65 @@ static void emit_call(X86Gen *g,AstNode *n) {
         fprintf(g->out, "    pushq $%d\n", ffi_argc);
         g->temp_depth++;
 
+        /*
+         * Before call_area is allocated, the temporary stack layout is:
+         *   [rsp+0]              argc
+         *   [rsp+8]              last source argument
+         *   ...
+         *   [rsp+8*count]        library
+         *
+         * Load the first four fixed ABI parameters. Missing a0/a1 are
+         * passed as NULL because the runtime ignores arguments >= argc.
+         */
         static const char *ffi_regs[] = {"%rcx", "%rdx", "%r8", "%r9"};
-        for (int j = 0; j < total && j < 4; j++)
-            fprintf(g->out, "    movq %d(%%rsp),%s\n", (total - 1 - j) * 8, ffi_regs[j]);
+        for (int j = 0; j < 4; j++) {
+            if (j >= 2 && (j - 2) >= ffi_argc) {
+                fprintf(g->out, "    xorl %s,%s\n",
+                        j == 2 ? "%r8d" : "%r9d",
+                        j == 2 ? "%r8d" : "%r9d");
+            } else {
+                int source;
+                if (j == 0)
+                    source = 8 * count;
+                else if (j == 1)
+                    source = 8 * (count - 1);
+                else
+                    source = 8 + (count - 1 - (j - 2)) * 8;
+                fprintf(g->out, "    movq %d(%%rsp),%s\n", source, ffi_regs[j]);
+            }
+        }
 
-        int stack_count = total > 4 ? total - 4 : 0;
+        int stack_count = 5; /* a2, a3, a4, a5, argc */
         int call_area = 32 + stack_count * 8;
         int alignment = (g->temp_depth * 8 + call_area) % 16;
         int pad = alignment ? 16 - alignment : 0;
         call_area += pad;
         fprintf(g->out, "    subq $%d,%%rsp\n", call_area);
 
+        /*
+         * Stack parameters are fixed positions 4..8 of vnt_ffi_int:
+         * a2, a3, a4, a5, argc. Populate absent native arguments with 0.
+         */
         for (int j = 4; j < total; j++) {
-            int source = call_area + (total - 1 - j) * 8;
+            int param = j - 2; /* native argument index for params 4..7 */
             int dest = 32 + (j - 4) * 8;
-            fprintf(g->out, "    movq %d(%%rsp),%%r10\n", source);
-            fprintf(g->out, "    movq %%r10,%d(%%rsp)\n", dest);
+
+            if (j == 8) {
+                int source = call_area; /* argc was at old rsp+0 */
+                fprintf(g->out, "    movq %d(%%rsp),%%r10\n", source);
+                fprintf(g->out, "    movq %%r10,%d(%%rsp)\n", dest);
+            } else if (param >= ffi_argc) {
+                fprintf(g->out, "    movq $0,%d(%%rsp)\n", dest);
+            } else {
+                int source = call_area + 8 + (count - 1 - param) * 8;
+                fprintf(g->out, "    movq %d(%%rsp),%%r10\n", source);
+                fprintf(g->out, "    movq %%r10,%d(%%rsp)\n", dest);
+            }
         }
 
         fputs("    call vnt_ffi_int\n", g->out);
         fprintf(g->out, "    addq $%d,%%rsp\n", call_area);
-        for (int j = 0; j < total; j++) {
+        for (int j = 0; j < pushed; j++) {
             fputs("    popq %r10\n", g->out);
             g->temp_depth--;
         }

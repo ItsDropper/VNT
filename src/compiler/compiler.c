@@ -85,6 +85,13 @@ static void collect_variables(
 ) {
     for (; node != NULL; node = node->next) {
         switch (node->type) {
+            case AST_PROGRAM:
+                collect_variables(
+                    compiler,
+                    node->program.statements
+                );
+                break;
+
             case AST_VARIABLE_DECLARATION:
                 variable_add(
                     compiler,
@@ -749,13 +756,15 @@ int compiler_compile(
         );
     }
 
+    fflush(compiler.out);
     fclose(compiler.out);
-    free_variables(&compiler);
 
     if (compiler.error) {
         remove(assembly_path);
+        free_variables(&compiler);
         return 0;
     }
 
+    free_variables(&compiler);
     return 1;
 }

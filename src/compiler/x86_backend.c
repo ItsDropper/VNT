@@ -81,6 +81,8 @@ static void collect_vars(X86Gen *g, AstNode *n) {
                 else if(n->assignment.target && n->assignment.target->type==AST_INDEX_EXPRESSION) {
                     collect_vars(g,n->assignment.target->index_expression.array);
                     collect_vars(g,n->assignment.target->index_expression.index);
+                } else if(n->assignment.target && n->assignment.target->type==AST_MEMBER_EXPRESSION) {
+                    collect_vars(g,n->assignment.target->member_expression.object);
                 }
                 collect_vars(g,n->assignment.value);
                 break;

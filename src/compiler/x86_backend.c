@@ -8,6 +8,7 @@
 typedef struct { char *name; int offset; } Var;
 typedef struct { char *value; int label; } StringLit;
 typedef struct { double value; int label; } FloatLit;
+typedef struct { char *name; } StructDef;
 
 typedef struct {
     FILE *out;
@@ -23,6 +24,8 @@ typedef struct {
     int string_count, string_capacity;
     FloatLit *floats;
     int float_count, float_capacity;
+    StructDef *structs;
+    int struct_count, struct_capacity;
 } X86Gen;
 
 static void fail(X86Gen *g, const char *msg) {
@@ -178,6 +181,40 @@ static void free_strings(X86Gen *g) {
     free(g->strings);g->strings=NULL;g->string_count=g->string_capacity=0;
 }
 
+static int struct_find(X86Gen *g, const char *name) {
+    for (int i = 0; i < g->struct_count; i++)
+        if (!strcmp(g->structs[i].name, name)) return i;
+    return -1;
+}
+
+static void collect_structs(X86Gen *g, AstNode *n) {
+    for (; n; n = n->next) {
+        if (n->type == AST_STRUCT_DECLARATION) {
+            if (struct_find(g, n->struct_declaration.name) >= 0) {
+                fail(g, "duplicate struct definition.");
+                return;
+            }
+            if (g->struct_count == g->struct_capacity) {
+                int cap = g->struct_capacity ? g->struct_capacity * 2 : 8;
+                StructDef *defs = realloc(g->structs, sizeof(*defs) * cap);
+                if (!defs) { fail(g, "out of memory."); return; }
+                g->structs = defs;
+                g->struct_capacity = cap;
+            }
+            g->structs[g->struct_count].name = strdup(n->struct_declaration.name);
+            if (!g->structs[g->struct_count].name) { fail(g, "out of memory."); return; }
+            g->struct_count++;
+        }
+    }
+}
+
+static void free_structs(X86Gen *g) {
+    for (int i = 0; i < g->struct_count; i++) free(g->structs[i].name);
+    free(g->structs);
+    g->structs = NULL;
+    g->struct_count = g->struct_capacity = 0;
+}
+
 static void emit_expr(X86Gen *g,AstNode *n);
 
 static void emit_call(X86Gen *g,AstNode *n) {
@@ -200,6 +237,16 @@ static void emit_call(X86Gen *g,AstNode *n) {
             fputs("    popq %r8\n    popq %rdx\n    popq %rcx\n    movl $3,%r9d\n",g->out); g->temp_depth-=3;
         }
         call0(g,"vnt_range");
+        return;
+    }
+
+    if (struct_find(g, name) >= 0) {
+        if (count != 0) {
+            fail(g, "struct constructors currently take no arguments.");
+            return;
+        }
+        fprintf(g->out, "    lea .Lstr%d(%%rip),%%rcx\n", string_label(g, name));
+        call0(g, "vnt_struct_new");
         return;
     }
 
@@ -254,25 +301,48 @@ static void emit_call(X86Gen *g,AstNode *n) {
         return;
     }
 
-    int i=0;
-    for(AstNode *a=n->function_call.arguments;a;a=a->next,i++){
-        emit_expr(g,a);
-        fputs("    pushq %rax\n",g->out);
+    if (count > 32) {
+        fail(g, "native functions currently support at most 32 arguments.");
+        return;
+    }
+
+    int i = 0;
+    for (AstNode *a = n->function_call.arguments; a; a = a->next, i++) {
+        emit_expr(g, a);
+        fputs("    pushq %rax\n", g->out);
         g->temp_depth++;
     }
 
-    static const char *regs[]={"%rcx","%rdx","%r8","%r9"};
-    for(i=count-1;i>=0;i--)
-        fprintf(g->out,"    movq %d(%%rsp), %s\n",(count-1-i)*8,regs[i]);
+    static const char *regs[] = {"%rcx", "%rdx", "%r8", "%r9"};
+    for (i = 0; i < count && i < 4; i++)
+        fprintf(g->out, "    movq %d(%%rsp), %s\n", (count - 1 - i) * 8, regs[i]);
 
-    int pad=(g->temp_depth&1)?8:0;
-    if(pad) fputs("    subq $8,%rsp\n",g->out);
-    fputs("    subq $32,%rsp\n    call vnt_fn_",g->out);
-    cname(g->out,"",name); fputc('\n',g->out);
-    fputs("    addq $32,%rsp\n",g->out);
-    if(pad) fputs("    addq $8,%rsp\n",g->out);
-    for(i=0;i<count;i++){fputs("    popq %r10\n",g->out);g->temp_depth--;}
-}
+    int stack_count = count > 4 ? count - 4 : 0;
+    int call_area = 32 + stack_count * 8;
+    int pad = (call_area % 16) ? 8 : 0;
+    call_area += pad;
+
+    if (call_area)
+        fprintf(g->out, "    subq $%d,%%rsp\n", call_area);
+
+    for (i = 4; i < count; i++) {
+        int source = call_area + (count - 1 - i) * 8;
+        int dest = 32 + (i - 4) * 8;
+        fprintf(g->out, "    movq %d(%%rsp),%%r10\n", source);
+        fprintf(g->out, "    movq %%r10,%d(%%rsp)\n", dest);
+    }
+
+    fputs("    call vnt_fn_", g->out);
+    cname(g->out, "", name);
+    fputc('\n', g->out);
+
+    if (call_area)
+        fprintf(g->out, "    addq $%d,%%rsp\n", call_area);
+
+    for (i = 0; i < count; i++) {
+        fputs("    popq %r10\n", g->out);
+        g->temp_depth--;
+    }
 
 static void emit_expr(X86Gen *g,AstNode *n) {
     if(g->error)return;
@@ -326,6 +396,23 @@ static void emit_expr(X86Gen *g,AstNode *n) {
             call0(g,"vnt_object_get");
             break;
         case AST_UNARY_EXPRESSION:
+            if (n->unary_expression.operator == UNARY_REFERENCE) {
+                AstNode *operand = n->unary_expression.operand;
+                if (operand->type != AST_VARIABLE) {
+                    fail(g, "references currently require a variable.");
+                    break;
+                }
+                fprintf(g->out, "    leaq ");
+                mem(g, var_offset(g, operand->variable.name));
+                fputs(",%rcx\n", g->out);
+                call0(g, "vnt_ref");
+                break;
+            }
+            if (n->unary_expression.operator == UNARY_DEREFERENCE) {
+                emit_expr(g, n->unary_expression.operand);
+                call1(g, "vnt_deref");
+                break;
+            }
             emit_expr(g,n->unary_expression.operand);
             call1(g,n->unary_expression.operator==UNARY_NEGATE?"vnt_neg":"vnt_not");
             break;
@@ -393,6 +480,14 @@ static void emit_assignment(X86Gen *g,AstNode *n){
         fputs("    subq $32,%rsp\n    call vnt_array_set\n    addq $32,%rsp\n",g->out);
         return;
     }
+    if(t->type==AST_UNARY_EXPRESSION && t->unary_expression.operator==UNARY_DEREFERENCE){
+        emit_expr(g, t->unary_expression.operand);
+        fputs("    pushq %rax\n", g->out);
+        emit_expr(g, n->assignment.value);
+        fputs("    movq %rax,%rdx\n    popq %rcx\n", g->out);
+        call0(g, "vnt_ref_set");
+        return;
+    }
     if(t->type==AST_MEMBER_EXPRESSION){
         emit_expr(g,t->member_expression.object);
         fputs("    pushq %rax\n",g->out);
@@ -453,7 +548,7 @@ static void emit_stmt_list(X86Gen *g,AstNode *n){for(;n&&!g->error;n=n->next)emi
 
 static void emit_function(X86Gen *g,AstNode *fn){
     int count=fn->function_declaration.parameter_count;
-    if(count>4){fail(g,"native functions currently support at most 4 parameters.");return;}
+    if(count>32){fail(g,"native functions currently support at most 32 parameters.");return;}
     free_vars(g);collect_vars(g,fn->function_declaration.body);
     for(int i=0;i<count;i++)var_add(g,fn->function_declaration.parameters[i]);
     assign_offsets(g);
@@ -461,7 +556,18 @@ static void emit_function(X86Gen *g,AstNode *fn){
     fputs("vnt_fn_",g->out);cname(g->out,"",fn->function_declaration.name);fputs(":\n    pushq %rbp\n    movq %rsp,%rbp\n",g->out);
     int frame=((g->var_count*8+15)/16)*16;if(frame)fprintf(g->out,"    subq $%d,%%rsp\n",frame);
     static const char *regs[]={"%rcx","%rdx","%r8","%r9"};
-    for(int i=0;i<count;i++){fprintf(g->out,"    movq %s,",regs[i]);mem(g,var_offset(g,fn->function_declaration.parameters[i]));fputc('\n',g->out);}
+    for(int i=0;i<count;i++){
+        if(i < 4){
+            fprintf(g->out,"    movq %s,",regs[i]);
+            mem(g,var_offset(g,fn->function_declaration.parameters[i]));
+            fputc('\n',g->out);
+        } else {
+            fprintf(g->out,"    movq %d(%%rbp),%%r10\n",48 + (i - 4) * 8);
+            fprintf(g->out,"    movq %%r10,");
+            mem(g,var_offset(g,fn->function_declaration.parameters[i]));
+            fputc('\n',g->out);
+        }
+    }
     emit_stmt_list(g,fn->function_declaration.body);
     if(!g->error)fputs("    xorl %eax,%eax\n    leave\n    ret\n",g->out);
 }
@@ -495,6 +601,7 @@ int vnt_emit_x86_64(AstNode *program,const char *assembly_path){
     X86Gen g={0};g.out=fopen(assembly_path,"wb");
     if(!g.out){fprintf(stderr,"Could not create assembly file: %s\n",assembly_path);return 0;}
     fputs(".text\n",g.out);
+    collect_structs(&g, program->program.statements);
     for(AstNode *n=program->program.statements;n;n=n->next)
         if(n->type==AST_FUNCTION_DECLARATION){emit_function(&g,n);if(g.error)break;fputc('\n',g.out);}
     if(!g.error){
@@ -511,6 +618,6 @@ int vnt_emit_x86_64(AstNode *program,const char *assembly_path){
             emit_string_table(&g);
         }
     }
-    fclose(g.out);free_vars(&g);free_strings(&g);free_floats(&g);
+    fclose(g.out);free_vars(&g);free_strings(&g);free_floats(&g);free_structs(&g);
     if(g.error){remove(assembly_path);return 0;}return 1;
 }

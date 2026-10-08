@@ -4,20 +4,11 @@
 #include <string.h>
 
 typedef enum {
-    TY_UNKNOWN,
-    TY_INT,
-    TY_FLOAT,
-    TY_BOOL,
-    TY_STRING,
-    TY_ARRAY,
-    TY_OBJECT,
-    TY_REFERENCE
+    TY_UNKNOWN, TY_INT, TY_FLOAT, TY_BOOL, TY_STRING,
+    TY_ARRAY, TY_OBJECT, TY_REFERENCE
 } TypeKind;
 
-typedef struct {
-    char *name;
-    TypeKind type;
-} Symbol;
+typedef struct { char *name; TypeKind type; } Symbol;
 
 typedef struct {
     Symbol *symbols;
@@ -27,8 +18,7 @@ typedef struct {
 } TypeChecker;
 
 static void error(TypeChecker *tc, const char *message) {
-    if (!tc->error)
-        fprintf(stderr, "Type error: %s\n", message);
+    if (!tc->error) fprintf(stderr, "Type error: %s\n", message);
     tc->error = 1;
 }
 
@@ -50,25 +40,17 @@ static void set_symbol(TypeChecker *tc, const char *name, TypeKind type) {
     if (tc->count == tc->capacity) {
         int cap = tc->capacity ? tc->capacity * 2 : 32;
         Symbol *symbols = realloc(tc->symbols, sizeof(*symbols) * cap);
-        if (!symbols) {
-            error(tc, "out of memory.");
-            return;
-        }
+        if (!symbols) { error(tc, "out of memory."); return; }
         tc->symbols = symbols;
         tc->capacity = cap;
     }
 
     tc->symbols[tc->count].name = strdup(name);
-    if (!tc->symbols[tc->count].name) {
-        error(tc, "out of memory.");
-        return;
-    }
+    if (!tc->symbols[tc->count].name) { error(tc, "out of memory."); return; }
     tc->symbols[tc->count++].type = type;
 }
 
-static int numeric(TypeKind t) {
-    return t == TY_INT || t == TY_FLOAT;
-}
+static int numeric(TypeKind t) { return t == TY_INT || t == TY_FLOAT; }
 
 static TypeKind expr_type(TypeChecker *tc, AstNode *n);
 
@@ -85,25 +67,20 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
         case AST_FLOAT_LITERAL: return TY_FLOAT;
         case AST_BOOLEAN_LITERAL: return TY_BOOL;
         case AST_STRING_LITERAL: return TY_STRING;
+
         case AST_ARRAY_LITERAL:
             for (AstNode *e = n->array_literal.elements; e; e = e->next)
                 (void)expr_type(tc, e);
             return TY_ARRAY;
 
-        case AST_VARIABLE: {
-            TypeKind t = find_symbol(tc, n->variable.name);
-            if (t == TY_UNKNOWN) {
-                char message[256];
-                snprintf(message, sizeof(message), "unknown variable '%s'.", n->variable.name);
-                error(tc, message);
-            }
-            return t;
-        }
+        case AST_VARIABLE:
+            return find_symbol(tc, n->variable.name);
 
         case AST_INDEX_EXPRESSION: {
             TypeKind container = expr_type(tc, n->index_expression.array);
             TypeKind index = expr_type(tc, n->index_expression.index);
-            if (index != TY_INT) error(tc, "array/string index must be an integer.");
+            if (index != TY_INT && index != TY_UNKNOWN)
+                error(tc, "array/string index must be an integer.");
             if (container != TY_ARRAY && container != TY_STRING && container != TY_UNKNOWN)
                 error(tc, "indexing requires an array or string.");
             return container == TY_STRING ? TY_STRING : TY_UNKNOWN;
@@ -126,10 +103,8 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 !strcmp(n->function_call.name, "floor") ||
                 !strcmp(n->function_call.name, "ceil"))
                 return TY_FLOAT;
-            if (!strcmp(n->function_call.name, "input"))
-                return TY_STRING;
-            if (!strcmp(n->function_call.name, "object"))
-                return TY_OBJECT;
+            if (!strcmp(n->function_call.name, "input")) return TY_STRING;
+            if (!strcmp(n->function_call.name, "object")) return TY_OBJECT;
             return TY_UNKNOWN;
 
         case AST_UNARY_EXPRESSION: {
@@ -142,10 +117,8 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 if (!numeric(t) && t != TY_UNKNOWN) error(tc, "unary '-' requires a number.");
                 return t;
             }
-            if (n->unary_expression.operator == UNARY_REFERENCE)
-                return TY_REFERENCE;
-            if (n->unary_expression.operator == UNARY_DEREFERENCE)
-                return TY_UNKNOWN;
+            if (n->unary_expression.operator == UNARY_REFERENCE) return TY_REFERENCE;
+            if (n->unary_expression.operator == UNARY_DEREFERENCE) return TY_UNKNOWN;
             return TY_UNKNOWN;
         }
 
@@ -230,9 +203,17 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                 (void)expr_type(tc, n);
                 break;
 
-            case AST_FUNCTION_DECLARATION:
+            case AST_FUNCTION_DECLARATION: {
+                int old_count = tc->count;
+                for (int i = 0; i < n->function_declaration.parameter_count; ++i)
+                    set_symbol(tc, n->function_declaration.parameters[i], TY_UNKNOWN);
                 check_statements(tc, n->function_declaration.body);
+                while (tc->count > old_count) {
+                    free(tc->symbols[tc->count - 1].name);
+                    tc->count--;
+                }
                 break;
+            }
 
             case AST_STRUCT_DECLARATION:
             case AST_BREAK_STATEMENT:
@@ -246,14 +227,12 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
 }
 
 int vnt_typecheck(AstNode *program) {
-    if (!program || program->type != AST_PROGRAM)
-        return 0;
+    if (!program || program->type != AST_PROGRAM) return 0;
 
     TypeChecker tc = {0};
     check_statements(&tc, program->program.statements);
 
-    for (int i = 0; i < tc.count; ++i)
-        free(tc.symbols[i].name);
+    for (int i = 0; i < tc.count; ++i) free(tc.symbols[i].name);
     free(tc.symbols);
 
     return !tc.error;

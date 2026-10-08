@@ -23,6 +23,7 @@ AstNode *parse_expression(Parser *parser);
 AstNode *parse_statement(Parser *parser);
 AstNode *parse_block(Parser *parser);
 AstNode *parse_function(Parser *parser);
+AstNode *parse_struct(Parser *parser);
 AstNode *parse_function_call(Parser *parser, char *name);
 AstNode *parse_return(Parser *parser);
 

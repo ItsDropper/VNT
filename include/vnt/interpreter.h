@@ -4,7 +4,7 @@
 #include <vnt/ast.h>
 #include <vnt/environment.h>
 
-void interpreter_execute(
+int interpreter_execute(
     AstNode *program,
     Environment *environment
 );

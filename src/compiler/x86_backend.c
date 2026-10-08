@@ -215,6 +215,54 @@ static void free_structs(X86Gen *g) {
     g->struct_count = g->struct_capacity = 0;
 }
 
+static int static_integer_expr(AstNode *n) {
+    if (!n) return 0;
+    if (n->type == AST_INTEGER_LITERAL) return 1;
+    if (n->type != AST_BINARY_EXPRESSION) return 0;
+    switch (n->binary_expression.operator) {
+        case BINARY_ADD:
+        case BINARY_SUBTRACT:
+        case BINARY_MULTIPLY:
+        case BINARY_DIVIDE:
+        case BINARY_MODULO:
+            return static_integer_expr(n->binary_expression.left) &&
+                   static_integer_expr(n->binary_expression.right);
+        default:
+            return 0;
+    }
+}
+
+static void emit_raw_integer(X86Gen *g, AstNode *n) {
+    if (n->type == AST_INTEGER_LITERAL) {
+        fprintf(g->out, "    movl $%d,%%eax\n", n->integer_literal.value);
+        return;
+    }
+
+    AstNode *left = n->binary_expression.left;
+    AstNode *right = n->binary_expression.right;
+    emit_raw_integer(g, left);
+    fputs("    pushq %rax\n", g->out);
+    emit_raw_integer(g, right);
+    fputs("    movl %eax,%r10d\n    popq %rax\n", g->out);
+
+    switch (n->binary_expression.operator) {
+        case BINARY_ADD: fputs("    addl %r10d,%eax\n", g->out); break;
+        case BINARY_SUBTRACT: fputs("    subl %r10d,%eax\n", g->out); break;
+        case BINARY_MULTIPLY: fputs("    imull %r10d,%eax\n", g->out); break;
+        case BINARY_DIVIDE:
+        case BINARY_MODULO:
+            fputs("    testl %r10d,%r10d\n", g->out);
+            fputs("    jz .Lvnt_int_div_zero\n", g->out);
+            fputs("    cltd\n    idivl %r10d\n", g->out);
+            if (n->binary_expression.operator == BINARY_MODULO)
+                fputs("    movl %edx,%eax\n", g->out);
+            break;
+        default:
+            fail(g, "invalid integer fast-path expression.");
+            break;
+    }
+}
+
 static void emit_expr(X86Gen *g,AstNode *n);
 
 static void emit_call(X86Gen *g,AstNode *n) {
@@ -462,6 +510,12 @@ static void emit_expr(X86Gen *g,AstNode *n) {
             emit_call(g,n); break;
         case AST_BINARY_EXPRESSION: {
             BinaryOperator op=n->binary_expression.operator;
+            if (static_integer_expr(n)) {
+                emit_raw_integer(g, n);
+                fputs("    movl %eax,%ecx\n", g->out);
+                call0(g, "vnt_int");
+                break;
+            }
             if(op==BINARY_AND||op==BINARY_OR){
                 int short_l=new_label(g),done=new_label(g);
                 emit_expr(g,n->binary_expression.left);

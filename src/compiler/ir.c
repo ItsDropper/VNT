@@ -1,4 +1,5 @@
 #include <vnt/ir.h>
+#include <stddef.h>
 
 static int int_value(AstNode *n, int *out) {
     if (!n || n->type != AST_INTEGER_LITERAL) return 0;

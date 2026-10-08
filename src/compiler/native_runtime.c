@@ -117,8 +117,10 @@ VntValue *vnt_array_push(VntValue *a, VntValue *item) {
 }
 
 VntValue *vnt_array_get(VntValue *a, VntValue *index) {
+    if (a && a->type == VNT_STRING)
+        return vnt_string_get(a, index);
     if (!a || a->type != VNT_ARRAY || !index || index->type != VNT_INT) {
-        fprintf(stderr, "Runtime error: array indexing requires an array and integer index.\n");
+        fprintf(stderr, "Runtime error: indexing requires an array/string and integer index.\n");
         exit(1);
     }
     int i = index->integer;

@@ -128,6 +128,16 @@ int vnt_ir_lower(VntIrProgram *ir, AstNode *program) {
     return 1;
 }
 
+int vnt_ir_validate(const VntIrProgram *ir) {
+    return ir && ir->program && ir->program->type == AST_PROGRAM;
+}
+
+void vnt_ir_free(VntIrProgram *ir) {
+    if (!ir) return;
+    ir->program = NULL;
+    ir->optimized_nodes = 0;
+}
+
 int vnt_ir_optimize(VntIrProgram *ir) {
     if (!ir || !ir->program) return 0;
 

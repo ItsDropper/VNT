@@ -166,55 +166,55 @@ if (parser_check(
         return NULL;
     }
 
-    while (
-        parser_check(
-            parser,
-            TOKEN_LEFT_BRACKET
-        )
-    ) {
-        parser_advance(parser);
+    for (;;) {
+        if (parser_check(parser, TOKEN_LEFT_BRACKET)) {
+            parser_advance(parser);
 
-        AstNode *index =
-            parse_expression(parser);
+            AstNode *index = parse_expression(parser);
+            if (index == NULL) {
+                ast_free(target);
+                printf("Parser error: expected array index.\n");
+                return NULL;
+            }
 
-        if (index == NULL) {
-            ast_free(target);
+            if (!parser_consume(parser, TOKEN_RIGHT_BRACKET, "expected ']' after array index.")) {
+                ast_free(target);
+                ast_free(index);
+                return NULL;
+            }
 
-            printf(
-                "Parser error: expected array index.\n"
-            );
-
-            return NULL;
+            AstNode *indexed = ast_create_index(target, index);
+            if (indexed == NULL) {
+                ast_free(target);
+                ast_free(index);
+                printf("Parser error: out of memory.\n");
+                return NULL;
+            }
+            target = indexed;
+            continue;
         }
 
-        if (!parser_consume(
-                parser,
-                TOKEN_RIGHT_BRACKET,
-                "expected ']' after array index."
-            )) {
-            ast_free(target);
-            ast_free(index);
-            return NULL;
+        if (parser_check(parser, TOKEN_DOT)) {
+            parser_advance(parser);
+            if (!parser_check(parser, TOKEN_IDENTIFIER)) {
+                ast_free(target);
+                printf("Parser error: expected member name after '.'.\n");
+                return NULL;
+            }
+            char *member = parser_token_to_string(parser->current);
+            parser_advance(parser);
+            AstNode *member_node = ast_create_member(target, member);
+            free(member);
+            if (member_node == NULL) {
+                ast_free(target);
+                printf("Parser error: out of memory.\n");
+                return NULL;
+            }
+            target = member_node;
+            continue;
         }
 
-        AstNode *indexed =
-            ast_create_index(
-                target,
-                index
-            );
-
-        if (indexed == NULL) {
-            ast_free(target);
-            ast_free(index);
-
-            printf(
-                "Parser error: out of memory.\n"
-            );
-
-            return NULL;
-        }
-
-        target = indexed;
+        break;
     }
 
     /*

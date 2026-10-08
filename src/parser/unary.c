@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static AstNode *parse_unary(Parser *parser) {
+AstNode *parse_unary(Parser *parser) {
     if (
         token_is(parser, TOKEN_BANG) ||
         token_is(parser, TOKEN_MINUS)

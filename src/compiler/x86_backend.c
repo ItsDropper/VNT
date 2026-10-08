@@ -269,8 +269,6 @@ static void emit_call(X86Gen *g,AstNode *n) {
     const char *name=n->function_call.name;
     int count=n->function_call.argument_count;
 
-    if(count>4){fail(g,"native functions currently support at most 4 arguments.");return;}
-
     if(!strcmp(name,"range")) {
         if(count<1||count>3){fail(g,"range() expects 1, 2, or 3 arguments.");return;}
         AstNode *a=n->function_call.arguments;
@@ -349,11 +347,6 @@ static void emit_call(X86Gen *g,AstNode *n) {
         return;
     }
 
-    if (count > 32) {
-        fail(g, "native functions currently support at most 32 arguments.");
-        return;
-    }
-
     if (!strcmp(name, "ffi_int")) {
         if (count < 2 || count > 8) {
             fail(g, "ffi_int() expects a library, symbol, and 0-6 integer arguments.");
@@ -394,6 +387,11 @@ static void emit_call(X86Gen *g,AstNode *n) {
             fputs("    popq %r10\n", g->out);
             g->temp_depth--;
         }
+        return;
+    }
+
+    if (count > 32) {
+        fail(g, "native functions currently support at most 32 arguments.");
         return;
     }
 
@@ -640,6 +638,7 @@ static void emit_stmt(X86Gen *g,AstNode *n){
             fputs("    leave\n    ret\n",g->out);break;
         case AST_FUNCTION_CALL:emit_expr(g,n);break;
         case AST_FUNCTION_DECLARATION:break;
+        case AST_STRUCT_DECLARATION:break;
         default:fail(g,"unsupported native statement.");break;
     }
 }

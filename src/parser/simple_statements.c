@@ -1,7 +1,7 @@
 #include <vnt/parser.h>
 #include <stdio.h>
 
-static AstNode *parse_print(Parser *parser) {
+AstNode *parse_print(Parser *parser) {
     parser_advance(parser);
 
     if (!parser_consume(
@@ -74,7 +74,7 @@ AstNode *parse_return(Parser *parser) {
     return node;
 }
 
-static AstNode *parse_break(Parser *parser) {
+AstNode *parse_break(Parser *parser) {
     parser_advance(parser);
 
     AstNode *node =
@@ -91,7 +91,7 @@ static AstNode *parse_break(Parser *parser) {
     return node;
 }
 
-static AstNode *parse_continue(Parser *parser) {
+AstNode *parse_continue(Parser *parser) {
     parser_advance(parser);
 
     AstNode *node =

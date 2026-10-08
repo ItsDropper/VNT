@@ -1,0 +1,98 @@
+# Ultimate native compiler feature test
+# This file intentionally stays inside the direct x86-64 backend's supported subset.
+
+# Variables and arithmetic
+a = 10
+b = 3
+
+print(a + b)
+print(a - b)
+print(a * b)
+print(a / b)
+print(a % b)
+
+# Compound assignment
+a += 5
+b *= 2
+print(a)
+print(b)
+
+# Comparisons and logical operators
+print(a > b)
+print(a < b)
+print(a >= 15)
+print(b <= 6)
+print(a == 15)
+print(a != b)
+print((a > 0) && (b > 0))
+print((a < 0) || (b > 0))
+print(!false)
+
+# If / else
+if a == 15 {
+    print(100)
+} else {
+    print(200)
+}
+
+# Functions, parameters and return
+fun add(x, y) {
+    return x + y
+}
+
+fun mix(w, x, y, z) {
+    return w + x * y - z
+}
+
+print(add(20, 22))
+print(mix(2, 3, 4, 5))
+
+# Function with a loop
+fun factorial(n) {
+    result = 1
+
+    while n > 1 {
+        result *= n
+        n -= 1
+    }
+
+    return result
+}
+
+print(factorial(5))
+
+# While + continue + break
+i = 0
+sum = 0
+
+while i < 10 {
+    i += 1
+
+    if i == 3 {
+        continue
+    }
+
+    sum += i
+
+    if i == 5 {
+        break
+    }
+}
+
+print(sum)
+
+# Nested control flow
+outer = 0
+inner_sum = 0
+
+while outer < 3 {
+    outer += 1
+    inner = 0
+
+    while inner < outer {
+        inner += 1
+        inner_sum += inner
+    }
+}
+
+print(inner_sum)

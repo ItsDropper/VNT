@@ -6,27 +6,7 @@
 #include <vnt/parser.h>
 #include <vnt/ast.h>
 #include <vnt/compiler.h>
-
-static char *read_file(const char *path) {
-    FILE *file = fopen(path, "rb");
-    if (!file) {
-        printf("Could not open file: %s\n", path);
-        return NULL;
-    }
-    fseek(file, 0, SEEK_END);
-    long size = ftell(file);
-    rewind(file);
-    char *buffer = malloc((size_t)size + 1);
-    if (!buffer) {
-        fclose(file);
-        printf("Could not allocate memory.\n");
-        return NULL;
-    }
-    size_t bytes = fread(buffer, 1, (size_t)size, file);
-    buffer[bytes] = '\0';
-    fclose(file);
-    return buffer;
-}
+#include <vnt/modules.h>
 
 static int compile_native(AstNode *program, const char *output_path) {
     size_t length = strlen(output_path);
@@ -79,7 +59,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    char *source = read_file(argv[2]);
+    char *source = vnt_load_project_source(argv[2]);
     if (!source)
         return 1;
 

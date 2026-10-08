@@ -331,7 +331,7 @@ static AstNode *parse_primary(Parser *parser) {
     return NULL;
 }
 
-static AstNode *parse_postfix(Parser *parser) {
+AstNode *parse_postfix(Parser *parser) {
     AstNode *expression =
         parse_primary(parser);
 

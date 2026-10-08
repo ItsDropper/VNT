@@ -1,4 +1,4 @@
-#include "parser.h"
+#include <vnt/parser.h>
 
 #include <stdio.h>
 #include <stdlib.h>

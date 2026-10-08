@@ -386,14 +386,15 @@ static void emit_string_table(X86Gen *g) {
         for(const unsigned char *p=(const unsigned char*)g->strings[i].value;*p;p++) {
             switch(*p) {
                 case '\\': fputs("\\\\",g->out); break;
-                case '"': fputs("\\"",g->out); break;
+                case '"': fputs("\\\"",g->out); break;
                 case '\n': fputs("\\n",g->out); break;
                 case '\r': fputs("\\r",g->out); break;
                 case '\t': fputs("\\t",g->out); break;
                 default: fputc(*p,g->out); break;
             }
         }
-        fputs("\\n",g->out);
+        fputc('"',g->out);
+        fputc('\n',g->out);
     }
 }
 

@@ -1,4 +1,4 @@
-#include "ast.h"
+#include <vnt/ast.h>
 
 #include <stdlib.h>
 #include <string.h>

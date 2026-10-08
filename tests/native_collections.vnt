@@ -1,0 +1,9 @@
+name = "Vanta"
+print(name)
+print(name + "OS")
+
+numbers = [10, 20, 30]
+print(numbers[0])
+numbers[1] = 99
+print(numbers[1])
+print(len(numbers))

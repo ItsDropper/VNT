@@ -7,10 +7,12 @@ typedef enum {
     TOKEN_IDENTIFIER,
     TOKEN_STRING,
     TOKEN_INTEGER,
+    TOKEN_FLOAT,
 
     TOKEN_LEFT_PAREN,
     TOKEN_RIGHT_PAREN,
     TOKEN_COMMA,
+    TOKEN_DOT,
 
     TOKEN_LEFT_BRACE,
     TOKEN_RIGHT_BRACE,
@@ -57,13 +59,7 @@ typedef struct {
     int current;
 } Lexer;
 
-void lexer_init(
-    Lexer *lexer,
-    const char *source
-);
-
-Token lexer_next(
-    Lexer *lexer
-);
+void lexer_init(Lexer *lexer, const char *source);
+Token lexer_next(Lexer *lexer);
 
 #endif

@@ -4,16 +4,21 @@
 #include <string.h>
 
 typedef enum {
-    TY_UNKNOWN, TY_INT, TY_FLOAT, TY_BOOL, TY_STRING,
+    TY_UNDECLARED, TY_UNKNOWN, TY_INT, TY_FLOAT, TY_BOOL, TY_STRING,
     TY_ARRAY, TY_OBJECT, TY_REFERENCE
 } TypeKind;
 
 typedef struct { char *name; TypeKind type; } Symbol;
+typedef struct { char *name; int arity; } FunctionDef;
+typedef struct { char *name; int field_count; } StructDef;
 
 typedef struct {
     Symbol *symbols;
-    int count;
-    int capacity;
+    int count, capacity;
+    FunctionDef *functions;
+    int function_count, function_capacity;
+    StructDef *structs;
+    int struct_count, struct_capacity;
     int error;
 } TypeChecker;
 
@@ -26,13 +31,20 @@ static TypeKind find_symbol(TypeChecker *tc, const char *name) {
     for (int i = tc->count - 1; i >= 0; --i)
         if (!strcmp(tc->symbols[i].name, name))
             return tc->symbols[i].type;
-    return TY_UNKNOWN;
+    return TY_UNDECLARED;
 }
 
 static void set_symbol(TypeChecker *tc, const char *name, TypeKind type) {
     for (int i = tc->count - 1; i >= 0; --i) {
         if (!strcmp(tc->symbols[i].name, name)) {
-            tc->symbols[i].type = type;
+            TypeKind old = tc->symbols[i].type;
+            if (old != TY_UNKNOWN && type != TY_UNKNOWN &&
+                old != type && !(old == TY_INT && type == TY_FLOAT) &&
+                !(old == TY_FLOAT && type == TY_INT)) {
+                error(tc, "variable type changed incompatibly.");
+                return;
+            }
+            if (old == TY_UNKNOWN) tc->symbols[i].type = type;
             return;
         }
     }
@@ -52,11 +64,51 @@ static void set_symbol(TypeChecker *tc, const char *name, TypeKind type) {
 
 static int numeric(TypeKind t) { return t == TY_INT || t == TY_FLOAT; }
 
+static FunctionDef *find_function(TypeChecker *tc, const char *name) {
+    for (int i = 0; i < tc->function_count; ++i)
+        if (!strcmp(tc->functions[i].name, name))
+            return &tc->functions[i];
+    return NULL;
+}
+
+static StructDef *find_struct(TypeChecker *tc, const char *name) {
+    for (int i = 0; i < tc->struct_count; ++i)
+        if (!strcmp(tc->structs[i].name, name))
+            return &tc->structs[i];
+    return NULL;
+}
+
+static int builtin_arity(const char *name, int argc) {
+    if (!strcmp(name, "range")) return argc >= 1 && argc <= 3;
+    if (!strcmp(name, "sqrt") || !strcmp(name, "sin") ||
+        !strcmp(name, "cos") || !strcmp(name, "tan") ||
+        !strcmp(name, "abs") || !strcmp(name, "floor") ||
+        !strcmp(name, "ceil") || !strcmp(name, "len") ||
+        !strcmp(name, "input")) return argc == 1;
+    if (!strcmp(name, "min") || !strcmp(name, "max") ||
+        !strcmp(name, "mod")) return argc == 2;
+    if (!strcmp(name, "object")) return argc == 0;
+    if (!strcmp(name, "ffi_int")) return argc >= 2 && argc <= 8;
+    return -1;
+}
+
 static TypeKind expr_type(TypeChecker *tc, AstNode *n);
 
 static void check_call(TypeChecker *tc, AstNode *n) {
+    int argc = n->function_call.argument_count;
     for (AstNode *a = n->function_call.arguments; a; a = a->next)
         (void)expr_type(tc, a);
+
+    int builtin = builtin_arity(n->function_call.name, argc);
+    if (builtin != -1) {
+        if (!builtin)
+            error(tc, "invalid argument count for builtin function.");
+        return;
+    }
+
+    FunctionDef *fn = find_function(tc, n->function_call.name);
+    if (fn && fn->arity != argc)
+        error(tc, "function called with the wrong number of arguments.");
 }
 
 static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
@@ -73,16 +125,24 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 (void)expr_type(tc, e);
             return TY_ARRAY;
 
-        case AST_VARIABLE:
-            return find_symbol(tc, n->variable.name);
+        case AST_VARIABLE: {
+            TypeKind t = find_symbol(tc, n->variable.name);
+            if (t == TY_UNDECLARED) {
+                char message[256];
+                snprintf(message, sizeof(message), "use of undeclared variable '%s'.", n->variable.name);
+                error(tc, message);
+            }
+            return t == TY_UNDECLARED ? TY_UNKNOWN : t;
+        }
 
         case AST_INDEX_EXPRESSION: {
             TypeKind container = expr_type(tc, n->index_expression.array);
             TypeKind index = expr_type(tc, n->index_expression.index);
             if (index != TY_INT && index != TY_UNKNOWN)
                 error(tc, "array/string index must be an integer.");
-            if (container != TY_ARRAY && container != TY_STRING && container != TY_UNKNOWN)
-                error(tc, "indexing requires an array or string.");
+            if (container != TY_ARRAY && container != TY_STRING &&
+                container != TY_UNKNOWN && container != TY_OBJECT)
+                error(tc, "indexing requires an array, string, or object.");
             return container == TY_STRING ? TY_STRING : TY_UNKNOWN;
         }
 
@@ -92,6 +152,9 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
 
         case AST_FUNCTION_CALL:
             check_call(tc, n);
+            if (find_struct(tc, n->function_call.name) &&
+                n->function_call.argument_count != 0)
+                error(tc, "struct constructors currently take no arguments.");
             if (!strcmp(n->function_call.name, "len") ||
                 !strcmp(n->function_call.name, "mod") ||
                 !strcmp(n->function_call.name, "ffi_int"))
@@ -100,11 +163,13 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 !strcmp(n->function_call.name, "sin") ||
                 !strcmp(n->function_call.name, "cos") ||
                 !strcmp(n->function_call.name, "tan") ||
+                !strcmp(n->function_call.name, "abs") ||
                 !strcmp(n->function_call.name, "floor") ||
                 !strcmp(n->function_call.name, "ceil"))
                 return TY_FLOAT;
             if (!strcmp(n->function_call.name, "input")) return TY_STRING;
             if (!strcmp(n->function_call.name, "object")) return TY_OBJECT;
+            if (find_struct(tc, n->function_call.name)) return TY_OBJECT;
             return TY_UNKNOWN;
 
         case AST_UNARY_EXPRESSION: {
@@ -118,7 +183,11 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 return t;
             }
             if (n->unary_expression.operator == UNARY_REFERENCE) return TY_REFERENCE;
-            if (n->unary_expression.operator == UNARY_DEREFERENCE) return TY_UNKNOWN;
+            if (n->unary_expression.operator == UNARY_DEREFERENCE) {
+                if (t != TY_REFERENCE && t != TY_UNKNOWN)
+                    error(tc, "dereference requires a reference.");
+                return TY_UNKNOWN;
+            }
             return TY_UNKNOWN;
         }
 
@@ -156,6 +225,46 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
     }
 }
 
+static void collect_declarations(TypeChecker *tc, AstNode *n) {
+    for (; n; n = n->next) {
+        if (n->type == AST_FUNCTION_DECLARATION) {
+            if (find_function(tc, n->function_declaration.name)) {
+                error(tc, "duplicate function definition.");
+                continue;
+            }
+            if (tc->function_count == tc->function_capacity) {
+                int cap = tc->function_capacity ? tc->function_capacity * 2 : 16;
+                FunctionDef *f = realloc(tc->functions, sizeof(*f) * cap);
+                if (!f) { error(tc, "out of memory."); return; }
+                tc->functions = f;
+                tc->function_capacity = cap;
+            }
+            tc->functions[tc->function_count].name = strdup(n->function_declaration.name);
+            tc->functions[tc->function_count].arity = n->function_declaration.parameter_count;
+            if (!tc->functions[tc->function_count].name) { error(tc, "out of memory."); return; }
+            tc->function_count++;
+        }
+
+        if (n->type == AST_STRUCT_DECLARATION) {
+            if (find_struct(tc, n->struct_declaration.name)) {
+                error(tc, "duplicate struct definition.");
+                continue;
+            }
+            if (tc->struct_count == tc->struct_capacity) {
+                int cap = tc->struct_capacity ? tc->struct_capacity * 2 : 8;
+                StructDef *s = realloc(tc->structs, sizeof(*s) * cap);
+                if (!s) { error(tc, "out of memory."); return; }
+                tc->structs = s;
+                tc->struct_capacity = cap;
+            }
+            tc->structs[tc->struct_count].name = strdup(n->struct_declaration.name);
+            tc->structs[tc->struct_count].field_count = n->struct_declaration.field_count;
+            if (!tc->structs[tc->struct_count].name) { error(tc, "out of memory."); return; }
+            tc->struct_count++;
+        }
+    }
+}
+
 static void check_statements(TypeChecker *tc, AstNode *n) {
     for (; n && !tc->error; n = n->next) {
         switch (n->type) {
@@ -167,8 +276,8 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
             case AST_ASSIGNMENT: {
                 TypeKind target = expr_type(tc, n->assignment.target);
                 TypeKind value = expr_type(tc, n->assignment.value);
-                if (target != TY_UNKNOWN && value != TY_UNKNOWN &&
-                    target != value &&
+                if (target != TY_UNKNOWN && target != TY_UNDECLARED &&
+                    value != TY_UNKNOWN && target != value &&
                     !(numeric(target) && numeric(value)))
                     error(tc, "assignment changes an incompatible type.");
                 break;
@@ -230,10 +339,15 @@ int vnt_typecheck(AstNode *program) {
     if (!program || program->type != AST_PROGRAM) return 0;
 
     TypeChecker tc = {0};
-    check_statements(&tc, program->program.statements);
+    collect_declarations(&tc, program->program.statements);
+    if (!tc.error) check_statements(&tc, program->program.statements);
 
     for (int i = 0; i < tc.count; ++i) free(tc.symbols[i].name);
+    for (int i = 0; i < tc.function_count; ++i) free(tc.functions[i].name);
+    for (int i = 0; i < tc.struct_count; ++i) free(tc.structs[i].name);
     free(tc.symbols);
+    free(tc.functions);
+    free(tc.structs);
 
     return !tc.error;
 }

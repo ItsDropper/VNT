@@ -1,0 +1,51 @@
+# VNT native type system test
+# Floats, math, strings, indexing, and objects.
+
+pi = 3.141592653589793
+radius = 2.5
+area = pi * radius * radius
+
+print("Area:")
+print(area)
+
+print("Math:")
+print(sqrt(9.0))
+print(sin(0.0))
+print(cos(0.0))
+print(abs(-12.5))
+print(floor(3.9))
+print(ceil(3.1))
+print(min(4.5, 2.0))
+print(max(4.5, 2.0))
+
+print("Strings:")
+name = "Vanta"
+print(name + "OS")
+print(len(name))
+print(name[0])
+print(name[4])
+print(name == "Vanta")
+print(name != "VNT")
+
+print("Objects:")
+player = object()
+player.x = 120.5
+player.y = 64.0
+player.health = 100
+
+print(player.x)
+print(player.y)
+print(player.health)
+
+player.x += 7.5
+player.health -= 10
+
+print(player.x)
+print(player.health)
+print(len(player))
+
+player.transform = object()
+player.transform.scale = 2.0
+print(player.transform.scale)
+
+print("=== Types done ===")

@@ -441,6 +441,38 @@ Value evaluate_expression(
                 return value_boolean(result);
             }
 
+            if (
+                expression->unary_expression.operator ==
+                UNARY_NEGATE
+            ) {
+                if (operand.type != VALUE_INTEGER) {
+                    value_free(&operand);
+
+                    printf(
+                        "Runtime error: unary '-' requires an integer.\n"
+                    );
+
+                    return invalid_value();
+                }
+
+                if (operand.integer == INT_MIN) {
+                    value_free(&operand);
+
+                    printf(
+                        "Runtime error: integer overflow in unary '-'.\n"
+                    );
+
+                    return invalid_value();
+                }
+
+                int result =
+                    -operand.integer;
+
+                value_free(&operand);
+
+                return value_integer(result);
+            }
+
             value_free(&operand);
 
             printf(

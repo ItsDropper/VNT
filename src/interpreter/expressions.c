@@ -1,4 +1,4 @@
-#include "interpreter_internal.h"
+#include "../internal/interpreter_internal.h"
 
 #include <stdio.h>
 #include <stdlib.h>

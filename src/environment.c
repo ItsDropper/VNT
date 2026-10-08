@@ -23,6 +23,9 @@ void environment_init(Environment *environment) {
     environment->functions = NULL;
     environment->function_count = 0;
     environment->function_capacity = 0;
+
+    environment->had_error = 0;
+    environment->error_state = environment;
 }
 
 void environment_free(Environment *environment) {

@@ -7,6 +7,7 @@
 
 typedef struct { char *name; int offset; } Var;
 typedef struct { char *value; int label; } StringLit;
+typedef struct { double value; int label; } FloatLit;
 
 typedef struct {
     FILE *out;
@@ -20,6 +21,8 @@ typedef struct {
     int temp_depth;
     StringLit *strings;
     int string_count, string_capacity;
+    FloatLit *floats;
+    int float_count, float_capacity;
 } X86Gen;
 
 static void fail(X86Gen *g, const char *msg) {
@@ -141,6 +144,29 @@ static int string_label(X86Gen *g, const char *value) {
     g->strings[g->string_count].label=label;
     g->string_count++;
     return label;
+}
+
+static int float_label(X86Gen *g, double value) {
+    for (int i=0;i<g->float_count;i++)
+        if (g->floats[i].value == value) return g->floats[i].label;
+    if (g->float_count == g->float_capacity) {
+        int cap = g->float_capacity ? g->float_capacity * 2 : 8;
+        FloatLit *f = realloc(g->floats, sizeof(*f) * cap);
+        if (!f) { fail(g, "out of memory."); return 0; }
+        g->floats = f;
+        g->float_capacity = cap;
+    }
+    int l = new_label(g);
+    g->floats[g->float_count].value = value;
+    g->floats[g->float_count].label = l;
+    g->float_count++;
+    return l;
+}
+
+static void free_floats(X86Gen *g) {
+    free(g->floats);
+    g->floats = NULL;
+    g->float_count = g->float_capacity = 0;
 }
 
 static void free_strings(X86Gen *g) {
@@ -379,6 +405,11 @@ static void emit_function(X86Gen *g,AstNode *fn){
     if(!g->error)fputs("    xorl %eax,%eax\n    leave\n    ret\n",g->out);
 }
 
+static void emit_float_table(X86Gen *g) {
+    for (int i=0;i<g->float_count;i++)
+        fprintf(g->out,".Lflt%d:\n    .double %.17g\n",g->floats[i].label,g->floats[i].value);
+}
+
 static void emit_string_table(X86Gen *g) {
     for(int i=0;i<g->string_count;i++) {
         fprintf(g->out,".Lstr%d:\n    .asciz ",g->strings[i].label);
@@ -413,8 +444,12 @@ int vnt_emit_x86_64(AstNode *program,const char *assembly_path){
         if(!g.error)fputs("    xorl %eax,%eax\n    leave\n    ret\n",g.out);
     }
     if(!g.error){
-        if(g.string_count){fputs("\n.section .rdata\n",g.out); emit_string_table(&g);}
+        if(g.string_count || g.float_count){
+            fputs("\n.section .rdata\n",g.out);
+            emit_float_table(&g);
+            emit_string_table(&g);
+        }
     }
-    fclose(g.out);free_vars(&g);free_strings(&g);
+    fclose(g.out);free_vars(&g);free_strings(&g);free_floats(&g);
     if(g.error){remove(assembly_path);return 0;}return 1;
 }

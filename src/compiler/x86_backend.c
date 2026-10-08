@@ -742,8 +742,12 @@ static void emit_string_table(X86Gen *g) {
     }
 }
 
-int vnt_emit_x86_64(AstNode *program,const char *assembly_path){
-    if(!program||program->type!=AST_PROGRAM){fprintf(stderr,"Native compiler error: invalid program AST.\n");return 0;}
+int vnt_emit_x86_64(const VntIrProgram *ir,const char *assembly_path){
+    if(!ir || !vnt_ir_validate(ir)){
+        fprintf(stderr,"Native compiler error: invalid IR program.\n");
+        return 0;
+    }
+    AstNode *program = ir->program;
     X86Gen g={0};g.out=fopen(assembly_path,"wb");
     if(!g.out){fprintf(stderr,"Could not create assembly file: %s\n",assembly_path);return 0;}
     fputs(".text\n",g.out);

@@ -7,6 +7,7 @@ typedef enum {
     AST_IF_STATEMENT,
     AST_WHILE_STATEMENT,
     AST_FUNCTION_DECLARATION,
+    AST_STRUCT_DECLARATION,
     AST_FUNCTION_CALL,
     AST_RETURN_STATEMENT,
     AST_BREAK_STATEMENT,
@@ -48,7 +49,9 @@ typedef enum {
 
 typedef enum {
     UNARY_NOT,
-    UNARY_NEGATE
+    UNARY_NEGATE,
+    UNARY_REFERENCE,
+    UNARY_DEREFERENCE
 } UnaryOperator;
 
 typedef struct AstNode {
@@ -80,6 +83,12 @@ typedef struct AstNode {
             int parameter_count;
             struct AstNode *body;
         } function_declaration;
+
+        struct {
+            char *name;
+            char **fields;
+            int field_count;
+        } struct_declaration;
 
         struct {
             char *name;
@@ -156,6 +165,7 @@ AstNode *ast_create_print(AstNode *expression);
 AstNode *ast_create_if(AstNode *condition, AstNode *then_branch, AstNode *else_branch);
 AstNode *ast_create_while(AstNode *condition, AstNode *body);
 AstNode *ast_create_function_declaration(const char *name, char **parameters, int parameter_count, AstNode *body);
+AstNode *ast_create_struct_declaration(const char *name, char **fields, int field_count);
 AstNode *ast_create_function_call(const char *name, AstNode *arguments, int argument_count);
 AstNode *ast_create_return(AstNode *expression);
 AstNode *ast_create_break(void);

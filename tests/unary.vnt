@@ -1,0 +1,17 @@
+# Unary operators
+
+print(-5)
+print(-(2 + 3))
+
+x = -10
+print(x)
+
+print(!true)
+print(!false)
+
+print(-x + 15)
+
+# Negative steps now work directly in range().
+for number in range(5, 0, -1) {
+    print(number)
+}

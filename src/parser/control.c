@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static AstNode *parse_if(Parser *parser) {
+AstNode *parse_if(Parser *parser) {
     parser_advance(parser);
 
     AstNode *condition =
@@ -101,7 +101,7 @@ static AstNode *parse_if(Parser *parser) {
     return node;
 }
 
-static AstNode *parse_while(Parser *parser) {
+AstNode *parse_while(Parser *parser) {
     parser_advance(parser);
 
     AstNode *condition =

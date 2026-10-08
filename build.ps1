@@ -5,6 +5,7 @@ $out = "vnt.exe"
 
 $sources = @(
     "src/main.c",
+    "src/modules.c",
     "src/lexer.c",
     "src/parser/parser.c",
     "src/parser/primary.c",

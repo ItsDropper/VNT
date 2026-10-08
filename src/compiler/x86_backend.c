@@ -247,7 +247,7 @@ static void emit_call(X86Gen *g, AstNode *node) {
         g->temp_depth++;
     }
 
-    static const char *regs[] = {"%rcx", "%rdx", "%r8", "%r9"};
+    static const char *regs[] = {"%ecx", "%edx", "%r8d", "%r9d"};
 
     for (i = count - 1; i >= 0; --i) {
         fprintf(g->out, "    movl %d(%%rsp), %s\n",

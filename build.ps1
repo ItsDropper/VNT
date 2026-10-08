@@ -21,7 +21,7 @@ $sources = @(
 
 Write-Host "Building VNT..."
 
-& $cc "-Isrc" @sources "-o" $out
+& $cc "-Isrc" "-Iinclude" @sources "-o" $out
 
 if ($LASTEXITCODE -ne 0) {
     throw "VNT build failed."

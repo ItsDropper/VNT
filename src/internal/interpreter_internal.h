@@ -21,6 +21,10 @@ ExecutionResult execution_break_signal(void);
 ExecutionResult execution_continue_signal(void);
 
 Value copy_value(Value *value);
+Value invalid_value(void);
+int values_equal(Value *left, Value *right);
+Value evaluate_logical_expression(AstNode *expression, Environment *environment);
+Value evaluate_index_expression(AstNode *expression, Environment *environment);
 Value evaluate_expression(AstNode *expression, Environment *environment);
 Value execute_function_call(AstNode *call, Environment *environment);
 void print_value(Value *value);

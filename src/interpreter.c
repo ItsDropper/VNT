@@ -1,5 +1,5 @@
-#include "interpreter.h"
-#include "interpreter/interpreter_internal.h"
+#include <vnt/interpreter.h>
+#include "internal/interpreter_internal.h"
 
 ExecutionResult execution_continue(void) {
     ExecutionResult result;

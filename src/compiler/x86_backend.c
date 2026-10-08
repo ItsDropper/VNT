@@ -234,6 +234,7 @@ static void emit_call(X86Gen *g, AstNode *node) {
         fputs("    popq %rax\n", g->out);
         fputs("    cltd\n", g->out);
         fputs("    idivl %ecx\n", g->out);
+        fputs("    movl %edx, %eax\n", g->out);
         return;
     }
 
@@ -243,6 +244,7 @@ static void emit_call(X86Gen *g, AstNode *node) {
          arg = arg->next, ++i) {
         emit_expr(g, arg);
         fputs("    pushq %rax\n", g->out);
+        g->temp_depth++;
     }
 
     static const char *regs[] = {"%rcx", "%rdx", "%r8", "%r9"};
@@ -252,7 +254,7 @@ static void emit_call(X86Gen *g, AstNode *node) {
                 (count - 1 - i) * 8, regs[i]);
     }
 
-    if (count & 1)
+    if (g->temp_depth & 1)
         fputs("    subq $8, %rsp\n", g->out);
     fputs("    subq $32, %rsp\n", g->out);
 
@@ -265,11 +267,13 @@ static void emit_call(X86Gen *g, AstNode *node) {
     fputc('\n', g->out);
 
     fputs("    addq $32, %rsp\n", g->out);
-    if (count & 1)
+    if (g->temp_depth & 1)
         fputs("    addq $8, %rsp\n", g->out);
 
-    for (i = 0; i < count; ++i)
+    for (i = 0; i < count; ++i) {
         fputs("    popq %r10\n", g->out);
+        g->temp_depth--;
+    }
 }
 
 static void emit_expr(X86Gen *g, AstNode *node) {

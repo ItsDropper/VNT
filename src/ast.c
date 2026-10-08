@@ -114,6 +114,21 @@ AstNode *ast_create_function_declaration(
     return node;
 }
 
+AstNode *ast_create_struct_declaration(const char *name, char **fields, int field_count) {
+    AstNode *node = malloc(sizeof(AstNode));
+    if (node == NULL) return NULL;
+    node->type = AST_STRUCT_DECLARATION;
+    node->struct_declaration.name = copy_string(name);
+    node->struct_declaration.fields = fields;
+    node->struct_declaration.field_count = field_count;
+    node->next = NULL;
+    if (node->struct_declaration.name == NULL) {
+        free(node);
+        return NULL;
+    }
+    return node;
+}
+
 AstNode *ast_create_function_call(
     const char *name,
     AstNode *arguments,
@@ -446,6 +461,13 @@ void ast_free(AstNode *node) {
                 free(node->function_declaration.parameters);
 
                 ast_free(node->function_declaration.body);
+                break;
+
+            case AST_STRUCT_DECLARATION:
+                free(node->struct_declaration.name);
+                for (int i = 0; i < node->struct_declaration.field_count; i++)
+                    free(node->struct_declaration.fields[i]);
+                free(node->struct_declaration.fields);
                 break;
 
             case AST_FUNCTION_CALL:

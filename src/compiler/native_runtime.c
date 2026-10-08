@@ -2,6 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <stdint.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <dlfcn.h>
+#endif
 
 typedef enum {
     VNT_NULL,
@@ -10,7 +16,8 @@ typedef enum {
     VNT_BOOL,
     VNT_STRING,
     VNT_ARRAY,
-    VNT_OBJECT
+    VNT_OBJECT,
+    VNT_REFERENCE
 } VntType;
 
 typedef struct VntValue VntValue;
@@ -36,7 +43,11 @@ struct VntValue {
             VntField *fields;
             int count;
             int capacity;
+            char *type_name;
         } object;
+        struct {
+            VntValue **slot;
+        } reference;
     };
 };
 
@@ -66,6 +77,33 @@ static double number_value(VntValue *v) {
 }
 
 VntValue *vnt_null(void) { return alloc_value(VNT_NULL); }
+
+VntValue *vnt_ref(VntValue **slot) {
+    if (!slot) {
+        fprintf(stderr, "Runtime error: cannot reference a null slot.\n");
+        exit(1);
+    }
+    VntValue *v = alloc_value(VNT_REFERENCE);
+    v->reference.slot = slot;
+    return v;
+}
+
+VntValue *vnt_deref(VntValue *ref) {
+    if (!ref || ref->type != VNT_REFERENCE || !ref->reference.slot) {
+        fprintf(stderr, "Runtime error: dereference requires a reference.\n");
+        exit(1);
+    }
+    return *ref->reference.slot;
+}
+
+VntValue *vnt_ref_set(VntValue *ref, VntValue *value) {
+    if (!ref || ref->type != VNT_REFERENCE || !ref->reference.slot) {
+        fprintf(stderr, "Runtime error: assignment requires a reference.\n");
+        exit(1);
+    }
+    *ref->reference.slot = value;
+    return value;
+}
 
 VntValue *vnt_int(int x) {
     VntValue *v = alloc_value(VNT_INT);
@@ -295,7 +333,10 @@ static void print_value(VntValue *v) {
             printf("]");
             break;
         case VNT_OBJECT: {
-            printf("{");
+            if (v->object.type_name && v->object.type_name[0])
+                printf("%s{", v->object.type_name);
+            else
+                printf("{");
             for (int i=0;i<v->object.count;i++) {
                 if (i) printf(", ");
                 printf("%s: ", v->object.fields[i].key);
@@ -304,6 +345,7 @@ static void print_value(VntValue *v) {
             printf("}");
             break;
         }
+        case VNT_REFERENCE: printf("<reference>"); break;
     }
 }
 
@@ -338,6 +380,16 @@ VntValue *vnt_input(VntValue *prompt) {
 
 VntValue *vnt_object_new(void) {
     return alloc_value(VNT_OBJECT);
+}
+
+VntValue *vnt_struct_new(const char *name) {
+    VntValue *v = alloc_value(VNT_OBJECT);
+    v->object.type_name = strdup(name ? name : "");
+    if (!v->object.type_name) {
+        fprintf(stderr, "Runtime error: out of memory.\n");
+        exit(1);
+    }
+    return v;
 }
 
 VntValue *vnt_object_get(VntValue *object, const char *key) {
@@ -398,4 +450,69 @@ VntValue *vnt_range(VntValue *a, VntValue *b, VntValue *c, int argc) {
     return r;
 bad:
     fprintf(stderr,"Runtime error: range() requires integer arguments.\n"); exit(1);
+}
+
+
+static intptr_t ffi_arg(VntValue *v) {
+    if (!v || v->type != VNT_INT) {
+        fprintf(stderr, "Runtime error: ffi_int() arguments must be integers.\n");
+        exit(1);
+    }
+    return (intptr_t)v->integer;
+}
+
+VntValue *vnt_ffi_int(
+    const char *library,
+    const char *symbol,
+    VntValue *a0,
+    VntValue *a1,
+    VntValue *a2,
+    VntValue *a3,
+    VntValue *a4,
+    VntValue *a5,
+    int argc
+) {
+#ifdef _WIN32
+    HMODULE module = LoadLibraryA(library);
+    if (!module) {
+        fprintf(stderr, "Runtime error: ffi_int() could not load '%s'.\n", library);
+        exit(1);
+    }
+    FARPROC proc = GetProcAddress(module, symbol);
+    if (!proc) {
+        fprintf(stderr, "Runtime error: ffi_int() could not find '%s'.\n", symbol);
+        exit(1);
+    }
+#else
+    void *module = dlopen(library, RTLD_LAZY);
+    if (!module) {
+        fprintf(stderr, "Runtime error: ffi_int() could not load '%s'.\n", library);
+        exit(1);
+    }
+    void *proc = dlsym(module, symbol);
+    if (!proc) {
+        fprintf(stderr, "Runtime error: ffi_int() could not find '%s'.\n", symbol);
+        exit(1);
+    }
+#endif
+
+    intptr_t args[6] = {0};
+    VntValue *values[6] = {a0, a1, a2, a3, a4, a5};
+    for (int i = 0; i < argc; i++) args[i] = ffi_arg(values[i]);
+
+    intptr_t result = 0;
+    switch (argc) {
+        case 0: result = ((intptr_t (*)(void))proc)(); break;
+        case 1: result = ((intptr_t (*)(intptr_t))proc)(args[0]); break;
+        case 2: result = ((intptr_t (*)(intptr_t, intptr_t))proc)(args[0], args[1]); break;
+        case 3: result = ((intptr_t (*)(intptr_t, intptr_t, intptr_t))proc)(args[0], args[1], args[2]); break;
+        case 4: result = ((intptr_t (*)(intptr_t, intptr_t, intptr_t, intptr_t))proc)(args[0], args[1], args[2], args[3]); break;
+        case 5: result = ((intptr_t (*)(intptr_t, intptr_t, intptr_t, intptr_t, intptr_t))proc)(args[0], args[1], args[2], args[3], args[4]); break;
+        case 6: result = ((intptr_t (*)(intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t))proc)(args[0], args[1], args[2], args[3], args[4], args[5]); break;
+        default:
+            fprintf(stderr, "Runtime error: ffi_int() supports at most 6 arguments.\n");
+            exit(1);
+    }
+
+    return vnt_int((int)result);
 }

@@ -393,7 +393,7 @@ static void emit_string_table(X86Gen *g) {
                 default: fputc(*p,g->out); break;
             }
         }
-        fputs(""\n",g->out);
+        fputs("\\n",g->out);
     }
 }
 

@@ -18,6 +18,7 @@ $sources = @(
     "src/parser/assignments.c",
     "src/ast.c",
     "src/compiler/compiler.c",
+    "src/compiler/typecheck.c",
     "src/compiler/x86_backend.c"
 )
 

@@ -46,6 +46,7 @@ AstNode *parse_statement(Parser *parser) {
     if (parser_is_token(parser->current, "for")) return parse_for(parser);
     if (parser_is_token(parser->current, "fun")) return parse_function(parser);
     if (parser_is_token(parser->current, "struct")) return parse_struct(parser);
+    if (parser_check(parser, TOKEN_STAR)) return parse_dereference_statement(parser);
     if (parser_check(parser, TOKEN_IDENTIFIER)) return parse_identifier_statement(parser);
 
     printf("Parser error: expected a statement.\n");

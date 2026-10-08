@@ -1,7 +1,8 @@
 #include <vnt/ir.h>
+#include <stdlib.h>
 
-static int fold(AstNode *n, int *changed) {
-    if (!n) return 0;
+static void fold(AstNode *n, int *changed) {
+    if (!n) return;
 
     switch (n->type) {
         case AST_BINARY_EXPRESSION: {
@@ -35,81 +36,64 @@ static int fold(AstNode *n, int *changed) {
                 }
 
                 if (valid) {
-                    AstNode *replacement = ast_create_integer(value);
-                    if (!replacement) return 0;
                     ast_free(left);
                     ast_free(right);
                     n->binary_expression.left = NULL;
                     n->binary_expression.right = NULL;
-                    n->type = replacement->type;
-                    n->integer_literal.value = replacement->integer_literal.value;
-                    free(replacement);
+                    n->type = AST_INTEGER_LITERAL;
+                    n->integer_literal.value = value;
                     *changed = 1;
                 }
             }
-            return 0;
+            return;
         }
 
         case AST_UNARY_EXPRESSION:
             fold(n->unary_expression.operand, changed);
-            return 0;
-
+            return;
         case AST_ARRAY_LITERAL:
-            for (AstNode *e = n->array_literal.elements; e; e = e->next)
-                fold(e, changed);
-            return 0;
-
+            for (AstNode *e = n->array_literal.elements; e; e = e->next) fold(e, changed);
+            return;
         case AST_INDEX_EXPRESSION:
             fold(n->index_expression.array, changed);
             fold(n->index_expression.index, changed);
-            return 0;
-
+            return;
         case AST_MEMBER_EXPRESSION:
             fold(n->member_expression.object, changed);
-            return 0;
-
+            return;
         case AST_ASSIGNMENT:
             fold(n->assignment.target, changed);
             fold(n->assignment.value, changed);
-            return 0;
-
+            return;
         case AST_VARIABLE_DECLARATION:
             fold(n->variable_declaration.value, changed);
-            return 0;
-
+            return;
         case AST_FUNCTION_CALL:
-            for (AstNode *a = n->function_call.arguments; a; a = a->next)
-                fold(a, changed);
-            return 0;
-
+            for (AstNode *a = n->function_call.arguments; a; a = a->next) fold(a, changed);
+            return;
         case AST_IF_STATEMENT:
             fold(n->if_statement.condition, changed);
             fold(n->if_statement.then_branch, changed);
             fold(n->if_statement.else_branch, changed);
-            return 0;
-
+            return;
         case AST_WHILE_STATEMENT:
             fold(n->while_statement.condition, changed);
             fold(n->while_statement.body, changed);
-            return 0;
-
+            return;
         case AST_FUNCTION_DECLARATION:
             fold(n->function_declaration.body, changed);
-            return 0;
-
+            return;
         case AST_RETURN_STATEMENT:
             fold(n->return_statement.expression, changed);
-            return 0;
-
+            return;
         default:
-            return 0;
+            return;
     }
 }
 
 int vnt_ir_lower(VntIrProgram *ir, AstNode *program) {
     if (!ir || !program || program->type != AST_PROGRAM)
         return 0;
-
     ir->program = program;
     ir->optimized_nodes = 0;
     return 1;

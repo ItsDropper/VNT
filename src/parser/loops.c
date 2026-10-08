@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+static int for_counter = 0;
 AstNode *parse_for(Parser *parser) {
     /*
      * Syntax:

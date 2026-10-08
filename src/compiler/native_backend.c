@@ -833,27 +833,14 @@ int vnt_emit_c_program(
 
     free_vars(&g);
 
-    for (
-        AstNode *node = program->program.statements;
-        node;
-        node = node->next
-    ) {
-        if (
-            node->type ==
-            AST_FUNCTION_DECLARATION
-        ) {
-            continue;
-        }
+    fputs("    ", g.out);
 
-        fputs("    ", g.out);
+    emit_stmt(
+        &g,
+        program->program.statements
+    );
 
-        emit_stmt(
-            &g,
-            node
-        );
-
-        fputc('\n', g.out);
-    }
+    fputc('\n', g.out);
 
     fputs(
         "    return 0;\n"

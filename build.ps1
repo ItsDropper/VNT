@@ -19,15 +19,6 @@ $sources = @(
     "src/ast.c",
     "src/compiler/compiler.c",
     "src/compiler/x86_backend.c",
-    "src/interpreter.c",
-    "src/interpreter/expressions.c",
-    "src/interpreter/expression_helpers.c",
-    "src/interpreter/expression_logic.c",
-    "src/interpreter/expression_index.c",
-    "src/interpreter/functions.c",
-    "src/interpreter/statements.c",
-    "src/environment.c",
-    "src/value.c"
 )
 
 Write-Host "Building VNT..."

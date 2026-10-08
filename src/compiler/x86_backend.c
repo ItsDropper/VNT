@@ -214,7 +214,7 @@ static void emit_call(X86Gen *g,AstNode *n) {
        !strcmp(name,"ceil")) {
         if(count!=1){fail(g,"math function expects 1 argument.");return;}
         emit_expr(g,n->function_call.arguments);
-        fputs("    movq %rax,%rcx\\n",g->out);
+        fputs("    movq %rax,%rcx\n",g->out);
         const char *fn=!strcmp(name,"sqrt")?"vnt_sqrt":
                       !strcmp(name,"sin")?"vnt_sin":
                       !strcmp(name,"cos")?"vnt_cos":
@@ -229,9 +229,9 @@ static void emit_call(X86Gen *g,AstNode *n) {
         if(count!=2){fail(g,"min()/max() expect 2 arguments.");return;}
         AstNode *a=n->function_call.arguments;
         emit_expr(g,a);
-        fputs("    pushq %rax\\n",g->out);
+        fputs("    pushq %rax\n",g->out);
         emit_expr(g,a->next);
-        fputs("    movq %rax,%rdx\\n    popq %rcx\\n",g->out);
+        fputs("    movq %rax,%rdx\n    popq %rcx\n",g->out);
         call0(g,!strcmp(name,"min")?"vnt_min":"vnt_max");
         return;
     }
@@ -479,7 +479,7 @@ static void emit_string_table(X86Gen *g) {
             switch(*p) {
                 case '\\': fputs("\\\\",g->out); break;
                 case '"': fputs("\\\"",g->out); break;
-                case '\n': fputs("\\n",g->out); break;
+                case '\n': fputs("\n",g->out); break;
                 case '\r': fputs("\\r",g->out); break;
                 case '\t': fputs("\\t",g->out); break;
                 default: fputc(*p,g->out); break;

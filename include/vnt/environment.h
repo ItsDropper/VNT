@@ -14,7 +14,9 @@ typedef struct {
     AstNode *declaration;
 } Function;
 
-typedef struct {
+typedef struct Environment Environment;
+
+struct Environment {
     Variable *variables;
     int count;
     int capacity;
@@ -22,7 +24,10 @@ typedef struct {
     Function *functions;
     int function_count;
     int function_capacity;
-} Environment;
+
+    int had_error;
+    Environment *error_state;
+};
 
 void environment_init(Environment *environment);
 void environment_free(Environment *environment);

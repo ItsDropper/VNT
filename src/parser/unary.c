@@ -8,7 +8,9 @@
 AstNode *parse_unary(Parser *parser) {
     if (
         token_is(parser, TOKEN_BANG) ||
-        token_is(parser, TOKEN_MINUS)
+        token_is(parser, TOKEN_MINUS) ||
+        token_is(parser, TOKEN_AMPERSAND) ||
+        token_is(parser, TOKEN_STAR)
     ) {
         TokenType operator = parser->current.type;
 
@@ -26,7 +28,11 @@ AstNode *parse_unary(Parser *parser) {
                 operand,
                 operator == TOKEN_BANG
                     ? UNARY_NOT
-                    : UNARY_NEGATE
+                    : operator == TOKEN_MINUS
+                        ? UNARY_NEGATE
+                        : operator == TOKEN_AMPERSAND
+                            ? UNARY_REFERENCE
+                            : UNARY_DEREFERENCE
             );
 
         if (node == NULL) {

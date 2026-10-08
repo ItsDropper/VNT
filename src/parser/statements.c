@@ -326,10 +326,15 @@ static AstNode *parse_for(Parser *parser) {
     }
 
     /*
-     * index = 0
+     * index = -1
+     *
+     * The generated loop increments the index before
+     * executing the user's body. This makes continue
+     * safe: the increment is not skipped by the continue
+     * signal.
      */
     AstNode *index_zero =
-        ast_create_integer(0);
+        ast_create_integer(-1);
 
     AstNode *index_declaration =
         ast_create_variable_declaration(
@@ -396,10 +401,38 @@ static AstNode *parse_for(Parser *parser) {
     }
 
     /*
-     * index < len(items)
+     * index + 1 < len(items)
+     *
+     * The index starts at -1 and is incremented before
+     * each user iteration.
      */
-    AstNode *condition_left =
+    AstNode *condition_index =
         ast_create_variable(index_name);
+
+    AstNode *condition_step =
+        ast_create_integer(1);
+
+    if (
+        condition_index == NULL ||
+        condition_step == NULL
+    ) {
+        free(loop_variable);
+        ast_free(items_declaration);
+        ast_free(index_declaration);
+        ast_free(length_call);
+        ast_free(condition_index);
+        ast_free(condition_step);
+        ast_free(body);
+
+        return NULL;
+    }
+
+    AstNode *condition_left =
+        ast_create_binary(
+            condition_index,
+            condition_step,
+            BINARY_ADD
+        );
 
     if (condition_left == NULL) {
         free(loop_variable);
@@ -555,19 +588,19 @@ static AstNode *parse_for(Parser *parser) {
     }
 
     /*
-     * Append generated statements to the original
-     * loop body.
+     * The index increment must happen before the user's
+     * body. If it were after the body, continue would skip
+     * it and the generated for-loop could run forever.
+     *
+     * Order:
+     *
+     *     index = index + 1
+     *     item = items[index]
+     *     user body
      */
-    ast_append(
-        &body,
-        increment
-    );
-
-    /*
-     * Put item assignment at the beginning of the body.
-     */
+    increment->next = item_declaration;
     item_declaration->next = body;
-    body = item_declaration;
+    body = increment;
 
     AstNode *while_node =
         ast_create_while(

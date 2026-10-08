@@ -1,7 +1,7 @@
 #include "../internal/interpreter_internal.h"
 #include <stdio.h>
 
-static Value evaluate_logical_expression(
+Value evaluate_logical_expression(
     AstNode *expression,
     Environment *environment
 ) {

@@ -400,11 +400,11 @@ static AstNode *parse_postfix(Parser *parser) {
 
 static AstNode *parse_unary(Parser *parser) {
     if (
-        token_is(
-            parser,
-            TOKEN_BANG
-        )
+        token_is(parser, TOKEN_BANG) ||
+        token_is(parser, TOKEN_MINUS)
     ) {
+        TokenType operator = parser->current.type;
+
         parser_advance(parser);
 
         AstNode *operand =
@@ -417,7 +417,9 @@ static AstNode *parse_unary(Parser *parser) {
         AstNode *node =
             ast_create_unary(
                 operand,
-                UNARY_NOT
+                operator == TOKEN_BANG
+                    ? UNARY_NOT
+                    : UNARY_NEGATE
             );
 
         if (node == NULL) {

@@ -436,6 +436,8 @@ static void emit_call(X86Gen *g,AstNode *n) {
         g->temp_depth--;
     }
 
+}
+
 static void emit_expr(X86Gen *g,AstNode *n) {
     if(g->error)return;
     if(!n){fail(g,"missing expression.");return;}

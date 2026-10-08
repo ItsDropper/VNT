@@ -7,12 +7,12 @@ Value copy_value(Value *value) {
     return value_copy(value);
 }
 
-static Value invalid_value(void) {
+Value invalid_value(void) {
     Value invalid = {0};
     return invalid;
 }
 
-static int values_equal(
+int values_equal(
     const Value *left,
     const Value *right
 ) {

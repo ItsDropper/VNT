@@ -39,7 +39,7 @@ ExecutionResult execution_continue_signal(void) {
     return result;
 }
 
-void interpreter_execute(
+int interpreter_execute(
     AstNode *program,
     Environment *environment
 ) {
@@ -48,4 +48,10 @@ void interpreter_execute(
         environment,
         0
     );
+
+    if (environment->had_error) {
+        return 1;
+    }
+
+    return 0;
 }

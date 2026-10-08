@@ -376,7 +376,8 @@ static void emit_call(X86Gen *g,AstNode *n) {
 
         int stack_count = total > 4 ? total - 4 : 0;
         int call_area = 32 + stack_count * 8;
-        int pad = (call_area % 16) ? 8 : 0;
+        int alignment = (g->temp_depth * 8 + total * 8 + call_area) % 16;
+        int pad = alignment ? 16 - alignment : 0;
         call_area += pad;
         fprintf(g->out, "    subq $%d,%%rsp\n", call_area);
 
@@ -409,7 +410,8 @@ static void emit_call(X86Gen *g,AstNode *n) {
 
     int stack_count = count > 4 ? count - 4 : 0;
     int call_area = 32 + stack_count * 8;
-    int pad = (call_area % 16) ? 8 : 0;
+    int alignment = (g->temp_depth * 8 + count * 8 + call_area) % 16;
+    int pad = alignment ? 16 - alignment : 0;
     call_area += pad;
 
     if (call_area)
@@ -708,6 +710,8 @@ int vnt_emit_x86_64(AstNode *program,const char *assembly_path){
         if(!g.error)fputs("    xorl %eax,%eax\n    leave\n    ret\n",g.out);
     }
     if(!g.error){
+        fputs(".Lvnt_int_div_zero:\n", g.out);
+        fputs("    subq $32, %rsp\n    call vnt_int_div_zero\n    addq $32, %rsp\n", g.out);
         if(g.string_count || g.float_count){
             fputs("\n.section .rdata\n",g.out);
             emit_float_table(&g);

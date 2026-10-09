@@ -208,8 +208,16 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 op == BINARY_GREATER_EQUAL || op == BINARY_LESS_EQUAL)
                 return TY_BOOL;
 
-            if (op == BINARY_ADD && left == TY_STRING && right == TY_STRING)
-                return TY_STRING;
+            if (op == BINARY_ADD &&
+                (left == TY_STRING || right == TY_STRING)) {
+                TypeKind other = left == TY_STRING ? right : left;
+                if (other == TY_STRING || other == TY_INT ||
+                    other == TY_FLOAT || other == TY_BOOL ||
+                    other == TY_UNKNOWN)
+                    return TY_STRING;
+                error(tc, "string concatenation requires string, number, or boolean values.");
+                return TY_UNKNOWN;
+            }
 
             if (!numeric(left) || !numeric(right)) {
                 if (left != TY_UNKNOWN && right != TY_UNKNOWN)

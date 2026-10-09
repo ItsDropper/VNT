@@ -310,13 +310,13 @@ static int load_recursive(Loader *loader, const char *path, const char *namespac
                 }
                 const char *name_end = declaration;
                 while (isalnum((unsigned char)*name_end) || *name_end == '_') name_end++;
-                size_t prefix_len = (size_t)(declaration - emit_line);
+                size_t prefix_len = 4;
                 size_t name_len = (size_t)(name_end - declaration);
                 size_t tail_len = strlen(name_end);
                 size_t alias_len = namespace_name ? strlen(namespace_name) : 0;
                 rewritten = malloc(prefix_len + (namespace_name ? alias_len + 2 : 0) + name_len + tail_len + 1);
                 if (!rewritten) { free(line); free(source); pop_active(loader); return 0; }
-                memcpy(rewritten, emit_line, prefix_len);
+                memcpy(rewritten, "fun ", prefix_len);
                 size_t pos = prefix_len;
                 if (namespace_name) { memcpy(rewritten + pos, namespace_name, alias_len); pos += alias_len; rewritten[pos++] = '_'; rewritten[pos++] = '_'; }
                 memcpy(rewritten + pos, declaration, name_len); pos += name_len;

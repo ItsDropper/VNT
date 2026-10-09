@@ -227,7 +227,7 @@ The compiler emits x86-64 assembly and links a small native runtime for dynamic 
 
 The compiler now lowers the AST into an explicit high-level IR (HIR): a flat, index-addressed node store with typed opcodes, named edge roles, copied literal/declaration metadata, and structural validation. Semantic analysis distinguishes first assignments (variable declarations) from later assignments (reassignments), and HIR represents reassignments with their own opcode. The x86-64 backend still consumes an AST compatibility tree reconstructed from HIR; direct HIR-native code generation remains future work.
 
-The module loader recursively expands relative `import "file.vnt"` directives before parsing, resolves existing paths to canonical paths before deduplication, and rejects malformed imports and circular imports. Imported declarations currently share one program-wide namespace; explicit module aliases/exports and incremental per-module compilation are not implemented yet.
+The module loader recursively expands relative `import "file.vnt"` directives before parsing, resolves existing paths to canonical paths before deduplication, and rejects malformed imports and circular imports. Export functions with `export fun name(...) { ... }`, then import them with `import "math.vnt" as math` and call them using `math.name(...)`. Qualified exported function names are lowered to compiler-safe names before parsing. This remains an early source-expansion module system: private-symbol isolation and incremental per-module compilation are not yet implemented.
 
 To inspect the lowered representation:
 
@@ -272,7 +272,7 @@ x = 10 / 0
 * [x] Struct definitions
 * [x] References / dereferencing
 * [x] Basic native library FFI
-* [~] Basic source-file imports (currently expanded before parsing; not yet a full module namespace system)
+* [~] Source-file imports with exported functions and module-qualified calls (source-expanded; private-symbol isolation and incremental compilation remain)
 * [~] Native Windows GUI/windowing foundation (basic drawing API; widget toolkit and Linux/macOS backends remain)
 * [ ] Game-oriented standard library
 * [x] Integer/boolean constant folding with overflow-safe folding rules

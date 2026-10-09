@@ -1,0 +1,13 @@
+# Fixed-workload benchmark: nested while loops and integer reassignment.
+# Each round sums 0..39999; repeat 20 times to reduce timer noise.
+round = 0
+while round < 20 {
+    i = 0
+    total = 0
+    while i < 40000 {
+        total = total + i
+        i = i + 1
+    }
+    round = round + 1
+}
+print(total)

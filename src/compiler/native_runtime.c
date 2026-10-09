@@ -1400,7 +1400,7 @@ static int vnt_gui_input_state(int x,int y,int width,int height,int multiline,in
     int i=vnt_gui_input_count++;memset(&vnt_gui_inputs[i],0,sizeof(vnt_gui_inputs[i]));
     vnt_gui_inputs[i].x=x;vnt_gui_inputs[i].y=y;vnt_gui_inputs[i].width=width;vnt_gui_inputs[i].height=height;vnt_gui_inputs[i].multiline=multiline;return i;
 }
-static int vnt_gui_native_input(int index){
+static int vnt_gui_native_input(int index,const char *placeholder){
     if(index<0||index>=vnt_gui_input_count||!vnt_gui_hwnd)return 0;
     VntGuiInputState *state=&vnt_gui_inputs[index];
     if(!state->edit_hwnd){
@@ -1413,6 +1413,11 @@ static int vnt_gui_native_input(int index){
         if(!state->edit_hwnd)return 0;
         SendMessageA(state->edit_hwnd,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
         SendMessageA(state->edit_hwnd,EM_SETLIMITTEXT,(WPARAM)(sizeof(state->text)-1),0);
+        if(placeholder&&*placeholder){
+            wchar_t cue[512];
+            int count=MultiByteToWideChar(CP_UTF8,0,placeholder,-1,cue,(int)(sizeof(cue)/sizeof(cue[0])));
+            if(count>0) SendMessageW(state->edit_hwnd,0x1501,TRUE,(LPARAM)cue);
+        }
     } else SetWindowPos(state->edit_hwnd,NULL,state->x,state->y,state->width,state->height,SWP_NOZORDER|SWP_NOACTIVATE);
     return 1;
 }
@@ -1440,13 +1445,13 @@ VntValue *vnt_gui_button_sized(VntValue *label,VntValue *x,VntValue *y,VntValue 
 VntValue *vnt_gui_input(VntValue *label,VntValue *x,VntValue *y,VntValue *width){
     const char *placeholder=vnt_app_string(label,"gui_input()");int xx=vnt_gui_require_int(x,"gui_input()"),yy=vnt_gui_require_int(y,"gui_input()"),ww=vnt_gui_require_int(width,"gui_input()");
     int index=vnt_gui_input_state(xx,yy,ww,36,0,1);
-    if(index>=0){vnt_gui_native_input(index);vnt_gui_read_native_input(index);return vnt_string(vnt_gui_inputs[index].text);}
+    if(index>=0){vnt_gui_native_input(index,placeholder);vnt_gui_read_native_input(index);return vnt_string(vnt_gui_inputs[index].text);}
     return vnt_string("");
 }
 VntValue *vnt_gui_textarea(VntValue *label,VntValue *x,VntValue *y,VntValue *width,VntValue *height){
     const char *placeholder=vnt_app_string(label,"gui_textarea()");int xx=vnt_gui_require_int(x,"gui_textarea()"),yy=vnt_gui_require_int(y,"gui_textarea()"),ww=vnt_gui_require_int(width,"gui_textarea()"),hh=vnt_gui_require_int(height,"gui_textarea()");
     int index=vnt_gui_input_state(xx,yy,ww,hh,1,1);
-    if(index>=0){vnt_gui_native_input(index);vnt_gui_read_native_input(index);return vnt_string(vnt_gui_inputs[index].text);}
+    if(index>=0){vnt_gui_native_input(index,placeholder);vnt_gui_read_native_input(index);return vnt_string(vnt_gui_inputs[index].text);}
     return vnt_string("");
 }
 VntValue *vnt_gui_input_set(VntValue *text,VntValue *x,VntValue *y){

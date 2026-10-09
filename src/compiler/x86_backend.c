@@ -7,7 +7,7 @@
 #include <limits.h>
 #include <stdint.h>
 
-typedef struct { char *name; int offset; int is_int; int has_decl; } Var;
+typedef struct { char *name; int offset; int is_int; int has_decl; int address_taken; } Var;
 typedef struct { char *value; int label; } StringLit;
 typedef struct { double value; int label; } FloatLit;
 typedef struct { char *name; } StructDef;
@@ -62,7 +62,7 @@ static void var_add(X86Gen *g, const char *name) {
     g->vars[g->var_count].name=strdup(name);
     if(!g->vars[g->var_count].name){fail(g,"out of memory.");return;}
     g->vars[g->var_count].offset=0;
-    g->vars[g->var_count].is_int=0; g->vars[g->var_count].has_decl=0; g->var_count++;
+    g->vars[g->var_count].is_int=0; g->vars[g->var_count].has_decl=0; g->vars[g->var_count].address_taken=0; g->var_count++;
 }
 
 static void free_vars(X86Gen *g) {
@@ -110,7 +110,15 @@ static void collect_vars(X86Gen *g, AstNode *n) {
             case AST_BINARY_EXPRESSION:
                 collect_vars(g,n->binary_expression.left);
                 collect_vars(g,n->binary_expression.right); break;
-            case AST_UNARY_EXPRESSION: collect_vars(g,n->unary_expression.operand); break;
+            case AST_UNARY_EXPRESSION:
+                collect_vars(g,n->unary_expression.operand);
+                if(n->unary_expression.operator==UNARY_REFERENCE &&
+                   n->unary_expression.operand &&
+                   n->unary_expression.operand->type==AST_VARIABLE) {
+                    int vi=var_find(g,n->unary_expression.operand->variable.name);
+                    if(vi>=0) g->vars[vi].address_taken=1;
+                }
+                break;
             case AST_RETURN_STATEMENT: collect_vars(g,n->return_statement.expression); break;
             default: break;
         }
@@ -288,7 +296,7 @@ static void infer_int_assignments(X86Gen *g, AstNode *n, int *changed) {
     }
 }
 static void infer_integer_variables(X86Gen *g, AstNode *program) {
-    for(int i=0;i<g->var_count;i++) g->vars[i].is_int=g->vars[i].has_decl;
+    for(int i=0;i<g->var_count;i++) g->vars[i].is_int=g->vars[i].has_decl && !g->vars[i].address_taken;
     int changed;
     do { changed=0; infer_int_assignments(g,program,&changed); } while(changed);
 }

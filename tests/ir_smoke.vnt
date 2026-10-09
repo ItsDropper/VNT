@@ -1,0 +1,10 @@
+# Small smoke test for the HIR lowering and constant-folding pipeline.
+x = 2 + 3 * 4
+flag = true && false
+print(x)
+print(flag)
+if x > 10 {
+    print("high")
+} else {
+    print("low")
+}

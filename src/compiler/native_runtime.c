@@ -246,7 +246,7 @@ VntValue *vnt_add(VntValue *a, VntValue *b) {
         return vnt_float(number_value(a) + number_value(b));
     int64_t result = (int64_t)a->integer + (int64_t)b->integer;
     if (result < INT_MIN || result > INT_MAX) {
-        fprintf(stderr, "Runtime error: integer overflow in addition.\\n");
+        fprintf(stderr, "Runtime error: integer overflow in addition.\n");
         exit(1);
     }
     return vnt_int((int)result);
@@ -257,7 +257,7 @@ VntValue *vnt_sub(VntValue *a, VntValue *b) {
         return vnt_float(number_value(a) - number_value(b));
     int64_t result = (int64_t)a->integer - (int64_t)b->integer;
     if (result < INT_MIN || result > INT_MAX) {
-        fprintf(stderr, "Runtime error: integer overflow in subtraction.\\n");
+        fprintf(stderr, "Runtime error: integer overflow in subtraction.\n");
         exit(1);
     }
     return vnt_int((int)result);
@@ -269,7 +269,7 @@ VntValue *vnt_mul(VntValue *a, VntValue *b) {
         return vnt_float(number_value(a) * number_value(b));
     int64_t result = (int64_t)a->integer * (int64_t)b->integer;
     if (result < INT_MIN || result > INT_MAX) {
-        fprintf(stderr, "Runtime error: integer overflow in multiplication.\\n");
+        fprintf(stderr, "Runtime error: integer overflow in multiplication.\n");
         exit(1);
     }
     return vnt_int((int)result);
@@ -284,7 +284,7 @@ VntValue *vnt_div(VntValue *a, VntValue *b) {
     if (a->type == VNT_FLOAT || b->type == VNT_FLOAT)
         return vnt_float(number_value(a) / number_value(b));
     if (a->integer == INT_MIN && b->integer == -1) {
-        fprintf(stderr, "Runtime error: integer overflow in division.\\n");
+        fprintf(stderr, "Runtime error: integer overflow in division.\n");
         exit(1);
     }
     return vnt_int(a->integer / b->integer);

@@ -327,9 +327,22 @@ static void emit_int_expr(X86Gen *g, AstNode *n) {
         default:fail(g,"unsupported native integer expression.");break;
     }
 }
+static int int_condition_supported(X86Gen *g, AstNode *n) {
+    if (!n || n->type != AST_BINARY_EXPRESSION) return 0;
+    BinaryOperator op = n->binary_expression.operator;
+    if (op == BINARY_AND || op == BINARY_OR)
+        return int_condition_supported(g, n->binary_expression.left) &&
+               int_condition_supported(g, n->binary_expression.right);
+    if (op != BINARY_EQUAL && op != BINARY_NOT_EQUAL &&
+        op != BINARY_LESS && op != BINARY_GREATER &&
+        op != BINARY_LESS_EQUAL && op != BINARY_GREATER_EQUAL)
+        return 0;
+    return known_int_expr(g, n->binary_expression.left) &&
+           known_int_expr(g, n->binary_expression.right);
+}
 static int emit_int_condition_true(X86Gen *g, AstNode *n, int target);
 static int emit_int_condition_false(X86Gen *g, AstNode *n, int target) {
-    if (!n) return 0;
+    if (!int_condition_supported(g, n)) return 0;
     if (n->type == AST_BINARY_EXPRESSION &&
         (n->binary_expression.operator == BINARY_AND ||
          n->binary_expression.operator == BINARY_OR)) {
@@ -364,7 +377,7 @@ static int emit_int_condition_false(X86Gen *g, AstNode *n, int target) {
     return 1;
 }
 static int emit_int_condition_true(X86Gen *g, AstNode *n, int target) {
-    if (!n) return 0;
+    if (!int_condition_supported(g, n)) return 0;
     if (n->type == AST_BINARY_EXPRESSION &&
         (n->binary_expression.operator == BINARY_AND ||
          n->binary_expression.operator == BINARY_OR)) {

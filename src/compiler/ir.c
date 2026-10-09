@@ -444,7 +444,7 @@ int vnt_ir_validate(const VntIrProgram *ir) {
     for (size_t i = 0; i < ir->node_count; ++i) {
         const VntIrNode *node = &ir->nodes[i];
         if (!node->source || (int)node->opcode < 0 ||
-            node->opcode > VNT_IR_UNARY ||
+            node->opcode > VNT_IR_REASSIGN ||
             !source_opcode_matches(node) ||
             (int)node->role < 0 || node->role > VNT_IR_EDGE_OPERAND ||
             (node->name_count && !node->names) ||

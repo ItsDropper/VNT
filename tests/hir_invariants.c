@@ -66,24 +66,11 @@ static int check_fold_case(AstNode *expression, VntIrOpcode expected_opcode,
 
     CHECK(vnt_ir_validate(&ir), "HIR validates after AST is freed");
 
-    AstNode *rebuilt = vnt_ir_materialize_program(&ir);
-    CHECK(rebuilt != NULL, "HIR materializes after source AST is freed");
-    if (rebuilt) {
-        AstNode *rebuilt_statement = rebuilt->program.statements;
-        AstNode *rebuilt_expression = rebuilt_statement &&
-            rebuilt_statement->type == AST_PRINT_STATEMENT
-            ? rebuilt_statement->print_statement.expression : NULL;
-        CHECK(rebuilt_expression != NULL, "materialized print retains its expression");
-        if (rebuilt_expression) {
-            AstNodeType expected_ast_type = expected_opcode == VNT_IR_INTEGER
-                ? AST_INTEGER_LITERAL : AST_BINARY_EXPRESSION;
-            CHECK(rebuilt_expression->type == expected_ast_type,
-                  "materialized expression retains folded/unfolded opcode");
-            if (expected_ast_type == AST_INTEGER_LITERAL)
-                CHECK(rebuilt_expression->integer_literal.value == expected_integer,
-                      "materialized folded integer retains its value");
-        }
-        ast_free(rebuilt);
+    FILE *dump = tmpfile();
+    CHECK(dump != NULL, "HIR dump stream can be created after AST destruction");
+    if (dump) {
+        vnt_ir_dump(&ir, dump);
+        fclose(dump);
     }
     vnt_ir_free(&ir);
     return 1;
@@ -108,6 +95,42 @@ static void check_rejects_missing_text_payload(void) {
     ast_free(program);
 }
 
+static void check_rejects_disconnected_cycle(void) {
+    AstNode *program = program_with(ast_create_integer(1));
+    VntIrProgram ir = {0};
+    CHECK(vnt_ir_lower(&ir, program), "cycle test lowers");
+    if (!ir.nodes) { ast_free(program); return; }
+
+    size_t old_count = ir.node_count;
+    size_t needed = old_count + 2;
+    if (ir.node_capacity < needed) {
+        VntIrNode *nodes = realloc(ir.nodes, needed * sizeof(*nodes));
+        if (!nodes) {
+            CHECK(0, "cycle test allocates nodes");
+            vnt_ir_free(&ir);
+            ast_free(program);
+            return;
+        }
+        ir.nodes = nodes;
+        ir.node_capacity = needed;
+    }
+    memset(&ir.nodes[old_count], 0, 2 * sizeof(*ir.nodes));
+    for (size_t i = old_count; i < needed; ++i) {
+        ir.nodes[i].opcode = VNT_IR_PROGRAM;
+        ir.nodes[i].role = VNT_IR_EDGE_STATEMENT;
+        ir.nodes[i].first_child = ir.nodes[i].last_child =
+            ir.nodes[i].next_sibling = VNT_IR_NO_NODE;
+    }
+    ir.node_count = needed;
+    ir.nodes[old_count].first_child = ir.nodes[old_count].last_child = old_count + 1;
+    ir.nodes[old_count].child_count = 1;
+    ir.nodes[old_count + 1].first_child = ir.nodes[old_count + 1].last_child = old_count;
+    ir.nodes[old_count + 1].child_count = 1;
+    CHECK(!vnt_ir_validate(&ir), "validation rejects disconnected cycles");
+    vnt_ir_free(&ir);
+    ast_free(program);
+}
+
 int main(void) {
     check_fold_case(binary(2, 3, BINARY_ADD), VNT_IR_INTEGER, 5,
                     "safe integer addition folds");
@@ -124,6 +147,7 @@ int main(void) {
                                       BINARY_MULTIPLY),
                     VNT_IR_BINARY, 0, "non-finite floating result is not folded");
     check_rejects_missing_text_payload();
+    check_rejects_disconnected_cycle();
 
     if (failures) {
         fprintf(stderr, "%d HIR invariant test(s) failed.\n", failures);

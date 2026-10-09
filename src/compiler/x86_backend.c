@@ -445,23 +445,23 @@ static void emit_int_expr(X86Gen *g, AstNode *n) {
                  */
                 int mask = divisor - 1;
                 fprintf(g->out,
-                    "    movl %%eax,%%r11d\\n"
-                    "    movl %%eax,%%r10d\\n"
-                    "    sarl $31,%%r10d\\n"
-                    "    andl $%d,%%r10d\\n"
-                    "    addl %%r10d,%%eax\\n"
-                    "    andl $-%d,%%eax\\n"
-                    "    subl %%eax,%%r11d\\n"
-                    "    movl %%r11d,%%eax\\n",
+                    "    movl %%eax,%%r11d\n"
+                    "    movl %%eax,%%r10d\n"
+                    "    sarl $31,%%r10d\n"
+                    "    andl $%d,%%r10d\n"
+                    "    addl %%r10d,%%eax\n"
+                    "    andl $-%d,%%eax\n"
+                    "    subl %%eax,%%r11d\n"
+                    "    movl %%r11d,%%eax\n",
                     mask, divisor);
             } else {
                 int normal=new_label(g), done=new_label(g);
-                fputs("    testl %r10d,%r10d\\n    jz .Lvnt_int_div_zero\\n",g->out);
-                fprintf(g->out,"    cmpl $-1,%%r10d\\n    jne .L%d\\n",normal);
-                fputs("    cmpl $-2147483648,%eax\\n",g->out);
-                fprintf(g->out,"    jne .L%d\\n    xorl %%eax,%%eax\\n    jmp .L%d\\n",normal,done);
+                fputs("    testl %r10d,%r10d\n    jz .Lvnt_int_div_zero\n",g->out);
+                fprintf(g->out,"    cmpl $-1,%%r10d\n    jne .L%d\n",normal);
+                fputs("    cmpl $-2147483648,%eax\n",g->out);
+                fprintf(g->out,"    jne .L%d\n    xorl %%eax,%%eax\n    jmp .L%d\n",normal,done);
                 label(g,normal);
-                fputs("    cltd\\n    idivl %r10d\\n    movl %edx,%eax\\n",g->out);
+                fputs("    cltd\n    idivl %r10d\n    movl %edx,%eax\n",g->out);
                 label(g,done);
             }
             break;

@@ -305,7 +305,12 @@ VntValue *vnt_mod(VntValue *a, VntValue *b) {
 
 VntValue *vnt_neg(VntValue *a) {
     require_number(a, a);
-    return a->type == VNT_FLOAT ? vnt_float(-a->floating) : vnt_int(-a->integer);
+    if (a->type == VNT_FLOAT) return vnt_float(-a->floating);
+    if (a->integer == INT_MIN) {
+        fprintf(stderr, "Runtime error: integer overflow in negation.\n");
+        exit(1);
+    }
+    return vnt_int(-a->integer);
 }
 
 static int equal_value(VntValue *a, VntValue *b) {

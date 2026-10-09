@@ -31,10 +31,27 @@ Currently implemented:
 * `print(...)`
 * Comments with `#`
 * Variable reassignment
+* Explicit variable type annotations (`let score: int = 100`)
+* Compile-time validation of annotated variable initializers
+* Parser source coordinates for common syntax errors
 * Runtime error handling
 * Nested blocks
 
 ### Example
+
+```vnt
+let score: int = 100
+let username: string = "ItsDropper"
+let enabled: bool = true
+let accuracy: float = 0.98
+
+print(score)
+print(username)
+print(enabled)
+print(accuracy)
+```
+
+Supported annotation names are `int`, `float`, `bool`, `string`, `array`, `object`, and `reference`. An annotated initializer must match its declared type; implicit numeric conversion is not performed for explicit annotations. Existing inferred assignment syntax remains supported.
 
 ```vnt
 x = 10
@@ -146,10 +163,11 @@ x = 10 / 0
 * [x] Struct definitions
 * [x] References / dereferencing
 * [x] Basic native library FFI
-* [ ] Modules / imports
+* [~] Basic source-file imports (currently expanded before parsing; not yet a full module namespace system)
 * [ ] Graphics and windowing
 * [ ] Game-oriented standard library
-* [ ] Compiler optimizations
+* [x] Integer/boolean constant folding with overflow-safe folding rules
+* [ ] HIR-native code generation and typed-value optimization
 
 ## Design Goals
 

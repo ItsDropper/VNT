@@ -521,6 +521,7 @@ int vnt_ir_validate(const VntIrProgram *ir) {
         }
 
         /* Validation uses HIR-owned metadata only; source nodes are optional. */
+    }
 
     int valid = parents[ir->root] == 0;
     for (size_t i = 0; valid && i < ir->node_count; ++i)

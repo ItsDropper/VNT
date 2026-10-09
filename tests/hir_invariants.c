@@ -68,7 +68,23 @@ static int check_fold_case(AstNode *expression, VntIrOpcode expected_opcode,
 
     AstNode *rebuilt = vnt_ir_materialize_program(&ir);
     CHECK(rebuilt != NULL, "HIR materializes after source AST is freed");
-    if (rebuilt) ast_free(rebuilt);
+    if (rebuilt) {
+        AstNode *rebuilt_statement = rebuilt->program.statements;
+        AstNode *rebuilt_expression = rebuilt_statement &&
+            rebuilt_statement->type == AST_PRINT_STATEMENT
+            ? rebuilt_statement->print_statement.expression : NULL;
+        CHECK(rebuilt_expression != NULL, "materialized print retains its expression");
+        if (rebuilt_expression) {
+            AstNodeType expected_ast_type = expected_opcode == VNT_IR_INTEGER
+                ? AST_INTEGER_LITERAL : AST_BINARY_EXPRESSION;
+            CHECK(rebuilt_expression->type == expected_ast_type,
+                  "materialized expression retains folded/unfolded opcode");
+            if (expected_ast_type == AST_INTEGER_LITERAL)
+                CHECK(rebuilt_expression->integer_literal.value == expected_integer,
+                      "materialized folded integer retains its value");
+        }
+        ast_free(rebuilt);
+    }
     vnt_ir_free(&ir);
     return 1;
 }

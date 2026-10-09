@@ -1,20 +1,25 @@
 # VNT native GUI demo (Windows)
-# Colors are 0xRRGGBB. gui_key() returns a Windows virtual-key code.
+# Styling is loaded from examples/gui_demo.css.
+# gui_button(label, x, y) returns true on a click.
 
 gui_size(900, 620)
+gui_css("examples/gui_demo.css")
 if gui_open("VNT GUI Demo") {
-    gui_fill(0xF5F7FA)
     gui_text("VNT native GUI")
-    gui_text("This window was created by a compiled .vnt program.")
-    gui_text("Close the window to exit. Press keys to see their virtual-key codes.")
-    gui_rect(0x2878D0)
+    gui_text("This window is styled with a CSS-like stylesheet.")
+    gui_text("Click a button to run its VNT code.")
 
     running = true
     while running {
         running = gui_poll()
-        key = gui_key()
-        if key != 0 {
-            gui_text("Key code: " + key)
+        if gui_button("Say hello", 32, 120) {
+            gui_text("Hello from a clicked VNT button.")
+        }
+        if gui_button("Change status", 32, 174) {
+            gui_text("Status changed: button events work.")
+        }
+        if gui_button("Exit", 32, 228) {
+            running = false
         }
         sleep_ms(16)
     }

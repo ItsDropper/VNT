@@ -273,17 +273,26 @@ Top-level variable declarations use shared storage and can be read or updated fr
 Regression example: `examples/global_variables.vnt`.
 
 
-## Native GUI and graphics (Windows)
+## Native GUI, CSS-like styling, and buttons (Windows)
 
-VNT supports decimal and hexadecimal integer literals (for example, `42` and `0x2A`). Its native runtime includes a small immediate-mode Win32 GUI API. It is suitable for simple desktop tools and prototypes; it is not yet a full widget toolkit.
+VNT supports decimal and hexadecimal integer literals (for example, `42` and `0x2A`). Its native runtime includes a small Win32 GUI API for desktop prototypes. `gui_css(path)` loads a stylesheet from disk. This is a deliberately limited CSS-like subset, not a browser engine: supported selectors are `window`, `label`, `button`, and `button:hover`; supported properties are `background-color`, `color`, `font-size`, `padding`, and `border-radius`. Colors use `#RRGGBB` notation. Unsupported CSS is ignored.
 
+- `gui_css(path)` — load stylesheet rules before opening the window; returns success.
 - `gui_size(width, height)` — choose window client dimensions before opening.
 - `gui_open(title)` — create and show a native window.
-- `gui_text(text)` — draw a line of text.
-- `gui_fill(0xRRGGBB)` — fill the window background with a color.
+- `gui_text(text)` — draw a line of text using the `label` style.
+- `gui_button(label, x, y)` — draw a styled button; returns `true` on a click so ordinary VNT `if` statements can run application logic.
+- `gui_fill(0xRRGGBB)` — set the window background color.
 - `gui_rect(0xRRGGBB)` — draw a sample rectangle.
 - `gui_poll()` — pump window events; returns false after the window closes.
 - `gui_key()` — return the next queued virtual-key code, or 0.
 - `gui_close()` — close the window.
 
-See `examples/gui_demo.vnt`. GUI support currently targets Windows; Linux/macOS GUI backends are not implemented.
+Compile and run the demo from the repository root so the relative stylesheet path resolves:
+
+```powershell
+.\\vnt.exe --compile examples\\gui_demo.vnt -o gui_demo.exe
+.\\gui_demo.exe
+```
+
+See `examples/gui_demo.vnt` and `examples/gui_demo.css`. GUI support currently targets Windows; Linux/macOS GUI backends are not implemented.

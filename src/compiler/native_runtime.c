@@ -4,6 +4,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <limits.h>
+#include <ctype.h>
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -1063,11 +1064,31 @@ static int vnt_gui_last_key;
 static int vnt_gui_text_y = 18;
 static COLORREF vnt_gui_background = RGB(245, 247, 250);
 static const char *vnt_gui_class_name = "VNTNativeWindow";
+static int vnt_gui_clicked;
+static int vnt_gui_click_x, vnt_gui_click_y;
+static int vnt_gui_mouse_x, vnt_gui_mouse_y;
+static COLORREF vnt_gui_text_color = RGB(25, 30, 40);
+static COLORREF vnt_gui_button_background = RGB(40, 120, 208);
+static COLORREF vnt_gui_button_hover = RGB(29, 95, 168);
+static COLORREF vnt_gui_button_text = RGB(255, 255, 255);
+static int vnt_gui_font_size = 16;
+static int vnt_gui_button_font_size = 16;
+static int vnt_gui_button_padding = 12;
+static int vnt_gui_button_radius = 8;
 
 static LRESULT CALLBACK vnt_gui_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     switch (msg) {
         case WM_KEYDOWN:
             vnt_gui_last_key = (int)wp;
+            return 0;
+        case WM_MOUSEMOVE:
+            vnt_gui_mouse_x = (short)LOWORD(lp);
+            vnt_gui_mouse_y = (short)HIWORD(lp);
+            return 0;
+        case WM_LBUTTONUP:
+            vnt_gui_click_x = (short)LOWORD(lp);
+            vnt_gui_click_y = (short)HIWORD(lp);
+            vnt_gui_clicked = 1;
             return 0;
         case WM_DESTROY:
             if (hwnd == vnt_gui_hwnd) vnt_gui_hwnd = NULL;
@@ -1088,7 +1109,7 @@ static LRESULT CALLBACK vnt_gui_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM l
 
 static int vnt_gui_require_int(VntValue *v, const char *fn) {
     if (!v || v->type != VNT_INT) {
-        fprintf(stderr, "Runtime error: %s expects integer arguments.\\n", fn);
+        fprintf(stderr, "Runtime error: %s expects integer arguments.\n", fn);
         exit(1);
     }
     return v->integer;
@@ -1098,11 +1119,101 @@ static COLORREF vnt_gui_color(int color) {
     return RGB((color >> 16) & 255, (color >> 8) & 255, color & 255);
 }
 
+static char *vnt_gui_trim(char *s) {
+    while (*s && (*s == ' ' || *s == '\t' || *s == '\r' || *s == '\n')) s++;
+    size_t n = strlen(s);
+    while (n && (s[n-1] == ' ' || s[n-1] == '\t' || s[n-1] == '\r' || s[n-1] == '\n')) s[--n] = 0;
+    return s;
+}
+
+static int vnt_gui_parse_color(const char *value, COLORREF *out) {
+    if (!value || value[0] != '#' || strlen(value) != 7) return 0;
+    char *end = NULL;
+    unsigned long rgb = strtoul(value + 1, &end, 16);
+    if (!end || *end) return 0;
+    *out = RGB((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255);
+    return 1;
+}
+
+/* A deliberately small CSS subset: selectors window, label, button, button:hover.
+   Supported declarations are background-color, color, font-size, padding, and border-radius. */
+static void vnt_gui_apply_css_rule(const char *css, const char *selector) {
+    size_t slen = strlen(selector);
+    const char *p = css;
+    while ((p = strstr(p, selector)) != NULL) {
+        if (p != css && (isalnum((unsigned char)p[-1]) || p[-1] == '_' || p[-1] == '-')) {
+            p += slen;
+            continue;
+        }
+        const char *q = p + slen;
+        while (*q == ' ' || *q == '\t' || *q == '\r' || *q == '\n') q++;
+        if (*q != '{') { p += slen; continue; }
+        const char *end = strchr(q + 1, '}');
+        if (!end) return;
+        char *body = (char *)malloc((size_t)(end - (q + 1)) + 1);
+        if (!body) return;
+        memcpy(body, q + 1, (size_t)(end - (q + 1)));
+        body[end - (q + 1)] = 0;
+        char *save = NULL;
+        for (char *decl = strtok_s(body, ";", &save); decl; decl = strtok_s(NULL, ";", &save)) {
+            char *colon = strchr(decl, ':');
+            if (!colon) continue;
+            *colon = 0;
+            char *key = vnt_gui_trim(decl);
+            char *value = vnt_gui_trim(colon + 1);
+            COLORREF color;
+            if (!strcmp(selector, "window") && !strcmp(key, "background-color") &&
+                vnt_gui_parse_color(value, &color)) vnt_gui_background = color;
+            else if (!strcmp(selector, "label") && !strcmp(key, "color") &&
+                vnt_gui_parse_color(value, &color)) vnt_gui_text_color = color;
+            else if (!strcmp(selector, "label") && !strcmp(key, "font-size")) {
+                int n = atoi(value); if (n >= 8 && n <= 72) vnt_gui_font_size = n;
+            } else if ((!strcmp(selector, "button") || !strcmp(selector, "button:hover")) &&
+                       !strcmp(key, "background-color") && vnt_gui_parse_color(value, &color)) {
+                if (!strcmp(selector, "button:hover")) vnt_gui_button_hover = color;
+                else vnt_gui_button_background = color;
+            } else if (!strcmp(selector, "button") && !strcmp(key, "color") &&
+                       vnt_gui_parse_color(value, &color)) vnt_gui_button_text = color;
+            else if (!strcmp(selector, "button") && !strcmp(key, "font-size")) {
+                int n = atoi(value); if (n >= 8 && n <= 48) vnt_gui_button_font_size = n;
+            } else if (!strcmp(selector, "button") && !strcmp(key, "padding")) {
+                int n = atoi(value); if (n >= 0 && n <= 48) vnt_gui_button_padding = n;
+            } else if (!strcmp(selector, "button") && !strcmp(key, "border-radius")) {
+                int n = atoi(value); if (n >= 0 && n <= 32) vnt_gui_button_radius = n;
+            }
+        }
+        free(body);
+        return;
+    }
+}
+
+VntValue *vnt_gui_css(VntValue *path) {
+    const char *filename = vnt_app_string(path, "gui_css()");
+    FILE *file = fopen(filename, "rb");
+    if (!file) return vnt_bool(0);
+    char *css = (char *)malloc(65536);
+    if (!css) { fclose(file); return vnt_bool(0); }
+    size_t n = fread(css, 1, 65535, file);
+    fclose(file);
+    css[n] = 0;
+    if (n == 65535) {
+        free(css);
+        fprintf(stderr, "Runtime error: gui_css() stylesheet exceeds 65535 bytes.\n");
+        return vnt_bool(0);
+    }
+    vnt_gui_apply_css_rule(css, "window");
+    vnt_gui_apply_css_rule(css, "label");
+    vnt_gui_apply_css_rule(css, "button");
+    vnt_gui_apply_css_rule(css, "button:hover");
+    free(css);
+    return vnt_bool(1);
+}
+
 VntValue *vnt_gui_size(VntValue *width, VntValue *height) {
     int w=vnt_gui_require_int(width,"gui_size()");
     int h=vnt_gui_require_int(height,"gui_size()");
     if(w<160 || h<120 || w>8192 || h>8192) {
-        fprintf(stderr,"Runtime error: gui_size() dimensions must be between 160x120 and 8192x8192.\\n");
+        fprintf(stderr,"Runtime error: gui_size() dimensions must be between 160x120 and 8192x8192.\n");
         return vnt_bool(0);
     }
     vnt_gui_width=w;vnt_gui_height=h;return vnt_bool(1);
@@ -1119,7 +1230,7 @@ VntValue *vnt_gui_open(VntValue *title) {
     if(!RegisterClassExA(&wc) && GetLastError()!=ERROR_CLASS_ALREADY_EXISTS) return vnt_bool(0);
     RECT rect={0,0,vnt_gui_width,vnt_gui_height};
     AdjustWindowRect(&rect,WS_OVERLAPPEDWINDOW,FALSE);
-    vnt_gui_text_y=18;vnt_gui_last_key=0;
+    vnt_gui_text_y=18;vnt_gui_last_key=0;vnt_gui_clicked=0;
     vnt_gui_hwnd=CreateWindowExA(0,vnt_gui_class_name,caption,WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT,CW_USEDEFAULT,rect.right-rect.left,rect.bottom-rect.top,
         NULL,NULL,instance,NULL);
@@ -1133,11 +1244,17 @@ VntValue *vnt_gui_text(VntValue *text) {
     if(!vnt_gui_hwnd) return vnt_bool(0);
     HDC dc=GetDC(vnt_gui_hwnd);
     if(!dc) return vnt_bool(0);
-    SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(25,30,40));
+    HFONT font=CreateFontA(-vnt_gui_font_size,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,
+        DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,
+        DEFAULT_PITCH|FF_DONTCARE,"Segoe UI");
+    HGDIOBJ old=font?SelectObject(dc,font):NULL;
+    SetBkMode(dc,TRANSPARENT);SetTextColor(dc,vnt_gui_text_color);
     TextOutA(dc,18,vnt_gui_text_y,line,(int)strlen(line));
-    vnt_gui_text_y+=22;
+    vnt_gui_text_y+=vnt_gui_font_size+8;
     RECT r;GetClientRect(vnt_gui_hwnd,&r);
     if(vnt_gui_text_y>r.bottom-20) vnt_gui_text_y=18;
+    if(old) SelectObject(dc,old);
+    if(font) DeleteObject(font);
     ReleaseDC(vnt_gui_hwnd,dc);
     return vnt_bool(1);
 }
@@ -1146,10 +1263,7 @@ VntValue *vnt_gui_fill(VntValue *color) {
     int c=vnt_gui_require_int(color,"gui_fill()");
     if(!vnt_gui_hwnd) return vnt_bool(0);
     vnt_gui_background=vnt_gui_color(c);
-    RECT r;GetClientRect(vnt_gui_hwnd,&r);
-    HDC dc=GetDC(vnt_gui_hwnd);HBRUSH brush=CreateSolidBrush(vnt_gui_background);
-    if(!dc||!brush){if(dc)ReleaseDC(vnt_gui_hwnd,dc);if(brush)DeleteObject(brush);return vnt_bool(0);}
-    FillRect(dc,&r,brush);DeleteObject(brush);ReleaseDC(vnt_gui_hwnd,dc);
+    InvalidateRect(vnt_gui_hwnd,NULL,TRUE);
     return vnt_bool(1);
 }
 
@@ -1162,8 +1276,47 @@ VntValue *vnt_gui_rect(VntValue *color) {
     DeleteObject(brush);ReleaseDC(vnt_gui_hwnd,dc);return vnt_bool(1);
 }
 
+VntValue *vnt_gui_button(VntValue *label, VntValue *xv, VntValue *yv) {
+    const char *text = vnt_app_string(label, "gui_button()");
+    int x = vnt_gui_require_int(xv, "gui_button()");
+    int y = vnt_gui_require_int(yv, "gui_button()");
+    if (!vnt_gui_hwnd) return vnt_bool(0);
+    int font_size = vnt_gui_button_font_size;
+    int width = (int)(strlen(text) * font_size * 0.62) + vnt_gui_button_padding * 2 + 12;
+    int height = font_size + vnt_gui_button_padding * 2;
+    RECT r = {x, y, x + width, y + height};
+    int hovered = vnt_gui_mouse_x >= r.left && vnt_gui_mouse_x < r.right &&
+                  vnt_gui_mouse_y >= r.top && vnt_gui_mouse_y < r.bottom;
+    HDC dc = GetDC(vnt_gui_hwnd);
+    if (!dc) return vnt_bool(0);
+    HBRUSH brush = CreateSolidBrush(hovered ? vnt_gui_button_hover : vnt_gui_button_background);
+    HPEN pen = CreatePen(PS_SOLID, 1, hovered ? vnt_gui_button_hover : vnt_gui_button_background);
+    HGDIOBJ old_brush = brush ? SelectObject(dc, brush) : NULL;
+    HGDIOBJ old_pen = pen ? SelectObject(dc, pen) : NULL;
+    int diameter = vnt_gui_button_radius * 2;
+    RoundRect(dc, r.left, r.top, r.right, r.bottom, diameter, diameter);
+    HFONT font = CreateFontA(-font_size, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+        DEFAULT_PITCH|FF_DONTCARE, "Segoe UI");
+    HGDIOBJ old_font = font ? SelectObject(dc, font) : NULL;
+    SetBkMode(dc, TRANSPARENT);
+    SetTextColor(dc, vnt_gui_button_text);
+    DrawTextA(dc, text, -1, &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    if (old_font) SelectObject(dc, old_font);
+    if (font) DeleteObject(font);
+    if (old_pen) SelectObject(dc, old_pen);
+    if (old_brush) SelectObject(dc, old_brush);
+    if (pen) DeleteObject(pen);
+    if (brush) DeleteObject(brush);
+    ReleaseDC(vnt_gui_hwnd, dc);
+    int clicked = vnt_gui_clicked && vnt_gui_click_x >= r.left && vnt_gui_click_x < r.right &&
+                  vnt_gui_click_y >= r.top && vnt_gui_click_y < r.bottom;
+    return vnt_bool(clicked);
+}
+
 VntValue *vnt_gui_poll(void) {
     if(!vnt_gui_hwnd) return vnt_bool(0);
+    vnt_gui_clicked = 0;
     MSG msg;
     while(PeekMessageA(&msg,NULL,0,0,PM_REMOVE)) {
         if(msg.message==WM_QUIT) {vnt_gui_hwnd=NULL;return vnt_bool(0);}
@@ -1178,6 +1331,18 @@ VntValue *vnt_gui_close(void) {
     if(vnt_gui_hwnd) DestroyWindow(vnt_gui_hwnd);
     vnt_gui_hwnd=NULL;return vnt_bool(1);
 }
+#else
+VntValue *vnt_gui_css(VntValue *path) { (void)path;fprintf(stderr,"Runtime error: native GUI is currently supported on Windows only.\n");return vnt_bool(0); }
+VntValue *vnt_gui_size(VntValue *width,VntValue *height) { (void)width;(void)height;fprintf(stderr,"Runtime error: native GUI is currently supported on Windows only.\n");return vnt_bool(0); }
+VntValue *vnt_gui_open(VntValue *title) { (void)title;fprintf(stderr,"Runtime error: native GUI is currently supported on Windows only.\n");return vnt_bool(0); }
+VntValue *vnt_gui_text(VntValue *text) { (void)text;return vnt_bool(0); }
+VntValue *vnt_gui_fill(VntValue *color) { (void)color;return vnt_bool(0); }
+VntValue *vnt_gui_rect(VntValue *color) { (void)color;return vnt_bool(0); }
+VntValue *vnt_gui_button(VntValue *label,VntValue *x,VntValue *y) { (void)label;(void)x;(void)y;return vnt_bool(0); }
+VntValue *vnt_gui_poll(void) { return vnt_bool(0); }
+VntValue *vnt_gui_key(void) { return vnt_int(0); }
+VntValue *vnt_gui_close(void) { return vnt_bool(1); }
+#endif
 #else
 VntValue *vnt_gui_size(VntValue *width,VntValue *height) { (void)width;(void)height;fprintf(stderr,"Runtime error: native GUI is currently supported on Windows only.\\n");return vnt_bool(0); }
 VntValue *vnt_gui_open(VntValue *title) { (void)title;fprintf(stderr,"Runtime error: native GUI is currently supported on Windows only.\\n");return vnt_bool(0); }

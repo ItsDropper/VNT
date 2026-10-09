@@ -816,6 +816,7 @@ static void emit_call(X86Gen *g,AstNode *n) {
                 fputs(runtime_name, g->out);
                 fputc('\n', g->out);
                 fprintf(g->out, "    addq $%d,%%rsp\n", call_area);
+                return;
             } else if (arity == 4) {
                 for (AstNode *a = arg; a; a = a->next) {
                     emit_expr(g, a);

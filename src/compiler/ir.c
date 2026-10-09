@@ -757,13 +757,15 @@ int vnt_ir_optimize(VntIrProgram *ir) {
         vnt_ir_free(&compact);
         return 0;
     }
+    /* Preserve the AST temporarily for the still-AST-based native backend. */
+    AstNode *source_program = ir->program;
     /* The old flat array can now be released, including unreachable folded operands. */
     clear_nodes(ir);
+    ir->program = source_program;
     ir->nodes = compact.nodes;
     ir->node_count = compact.node_count;
     ir->node_capacity = compact.node_capacity;
     ir->root = compact.root;
     ir->optimized_nodes = compact.optimized_nodes;
-    ir->program = compact.program;
     return vnt_ir_validate(ir);
 }

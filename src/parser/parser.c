@@ -23,7 +23,8 @@ int parser_consume(
         return 1;
     }
 
-    printf("Parser error: %s\n", message);
+    fprintf(stderr, "Parser error at %d:%d: %s\n",
+            parser->current.line, parser->current.column, message);
     return 0;
 }
 
@@ -78,7 +79,8 @@ AstNode *parser_parse(Parser *parser) {
     if (program == NULL) {
         ast_free(statements);
 
-        printf("Parser error: out of memory.\n");
+        fprintf(stderr, "Parser error at %d:%d: out of memory.\n",
+                parser->current.line, parser->current.column);
         return NULL;
     }
 

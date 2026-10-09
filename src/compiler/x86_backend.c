@@ -634,6 +634,23 @@ static void emit_call(X86Gen *g,AstNode *n) {
         return;
     }
 
+    if (count == 2) {
+        AstNode *first = n->function_call.arguments;
+        emit_expr(g, first);
+        fputs("    pushq %rax\n", g->out);
+        g->temp_depth++;
+        emit_expr(g, first->next);
+        fputs("    movq %rax,%rdx\n    popq %rcx\n", g->out);
+        g->temp_depth--;
+        int call_area = 32 + ((g->temp_depth * 8) % 16 ? 8 : 0);
+        fprintf(g->out, "    subq $%d,%%rsp\n", call_area);
+        fputs("    call vnt_fn_", g->out);
+        cname(g->out, "", name);
+        fputc('\n', g->out);
+        fprintf(g->out, "    addq $%d,%%rsp\n", call_area);
+        return;
+    }
+
     if (count > 32) {
         fail(g, "native functions currently support at most 32 arguments.");
         return;

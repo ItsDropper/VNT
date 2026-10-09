@@ -70,7 +70,7 @@ static VntValue *alloc_value(VntType type) {
     if (!slab || slab->used == VNT_VALUE_SLAB_CAPACITY) {
         VntValueSlab *next = calloc(1, sizeof(*next));
         if (!next) {
-            fprintf(stderr, "Runtime error: out of memory.\\n");
+            fprintf(stderr, "Runtime error: out of memory.\n");
             exit(1);
         }
         next->next = value_slabs;
@@ -198,11 +198,11 @@ VntValue *vnt_array_push(VntValue *a, VntValue *item) {
 
 VntValue *vnt_array_get_int(VntValue *a, int index) {
     if (!a || a->type != VNT_ARRAY) {
-        fprintf(stderr, "Runtime error: indexing requires an array.\\n");
+        fprintf(stderr, "Runtime error: indexing requires an array.\n");
         exit(1);
     }
     if (index < 0 || index >= a->array.count) {
-        fprintf(stderr, "Runtime error: array index out of bounds.\\n");
+        fprintf(stderr, "Runtime error: array index out of bounds.\n");
         exit(1);
     }
     return a->array.items[index];
@@ -210,11 +210,11 @@ VntValue *vnt_array_get_int(VntValue *a, int index) {
 
 VntValue *vnt_array_set_int(VntValue *a, int index, VntValue *value) {
     if (!a || a->type != VNT_ARRAY) {
-        fprintf(stderr, "Runtime error: array assignment requires an array.\\n");
+        fprintf(stderr, "Runtime error: array assignment requires an array.\n");
         exit(1);
     }
     if (index < 0 || index >= a->array.count) {
-        fprintf(stderr, "Runtime error: array index out of bounds.\\n");
+        fprintf(stderr, "Runtime error: array index out of bounds.\n");
         exit(1);
     }
     a->array.items[index] = value;

@@ -211,6 +211,8 @@ static int lower_one(VntIrProgram *ir, size_t parent, const AstNode *ast, VntIrE
     return add_child(ir, parent, child);
 }
 
+static int copy_text(char **destination, const char *source);
+
 static int copy_names(VntIrNode *node, char *const *names, int count) {
     if (count <= 0) return 1;
     node->names = calloc((size_t)count, sizeof(*node->names));
@@ -332,6 +334,11 @@ int vnt_ir_validate(const VntIrProgram *ir) {
         !ir->nodes || !ir->node_count || ir->root >= ir->node_count ||
         ir->nodes[ir->root].opcode != VNT_IR_PROGRAM) return 0;
 
+    if (ir->nodes[ir->root].role != VNT_IR_EDGE_ROOT ||
+        ir->nodes[ir->root].next_sibling != VNT_IR_NO_NODE) return 0;
+    size_t *parents = calloc(ir->node_count, sizeof(*parents));
+    if (!parents) return 0;
+
     for (size_t i = 0; i < ir->node_count; ++i) {
         const VntIrNode *node = &ir->nodes[i];
         if (!node->source || (int)node->opcode < 0 ||
@@ -349,15 +356,32 @@ int vnt_ir_validate(const VntIrProgram *ir) {
         size_t child = node->first_child;
         size_t seen = 0, last = VNT_IR_NO_NODE;
         while (child != VNT_IR_NO_NODE) {
-            if (child >= ir->node_count || child == i || ++seen > ir->node_count) return 0;
+            if (child >= ir->node_count || child == i || ++seen > ir->node_count) {
+                free(parents);
+                return 0;
+            }
+            if (++parents[child] > 1) {
+                free(parents);
+                return 0;
+            }
             last = child;
             child = ir->nodes[child].next_sibling;
         }
-        if (seen != node->child_count || last != node->last_child) return 0;
+        if (seen != node->child_count || last != node->last_child) {
+            free(parents);
+            return 0;
+        }
         if (node->last_child != VNT_IR_NO_NODE &&
-            ir->nodes[node->last_child].next_sibling != VNT_IR_NO_NODE) return 0;
+            ir->nodes[node->last_child].next_sibling != VNT_IR_NO_NODE) {
+            free(parents);
+            return 0;
+        }
     }
-    return 1;
+    int valid = parents[ir->root] == 0;
+    for (size_t i = 0; valid && i < ir->node_count; ++i)
+        if (i != ir->root && parents[i] != 1) valid = 0;
+    free(parents);
+    return valid;
 }
 
 static const char *opcode_name(VntIrOpcode opcode) {

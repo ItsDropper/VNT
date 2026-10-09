@@ -85,32 +85,28 @@ AstNode *ast_create_while(
     return node;
 }
 
-AstNode *ast_create_function_declaration(
-    const char *name,
-    char **parameters,
-    int parameter_count,
-    AstNode *body
-) {
-    AstNode *node = malloc(sizeof(AstNode));
+AstNode *ast_create_function_declaration(const char *name, char **parameters, int parameter_count, AstNode *body) {
+    return ast_create_typed_function_declaration(name, parameters, NULL, parameter_count, NULL, body);
+}
 
-    if (node == NULL) {
-        return NULL;
-    }
-
+AstNode *ast_create_typed_function_declaration(const char *name, char **parameters,
+    char **parameter_types, int parameter_count, const char *return_type, AstNode *body) {
+    AstNode *node = calloc(1, sizeof(AstNode));
+    if (!node) return NULL;
     node->type = AST_FUNCTION_DECLARATION;
-
     node->function_declaration.name = copy_string(name);
     node->function_declaration.parameters = parameters;
+    node->function_declaration.parameter_types = parameter_types;
     node->function_declaration.parameter_count = parameter_count;
+    node->function_declaration.return_type = return_type ? copy_string(return_type) : NULL;
     node->function_declaration.body = body;
-
-    node->next = NULL;
-
-    if (node->function_declaration.name == NULL) {
+    if (!node->function_declaration.name || (return_type && !node->function_declaration.return_type)) {
+        free(node->function_declaration.name);
+        free(node->function_declaration.return_type);
         free(node);
         return NULL;
     }
-
+    node->next = NULL;
     return node;
 }
 
@@ -478,7 +474,12 @@ void ast_free(AstNode *node) {
                 }
 
                 free(node->function_declaration.parameters);
-
+                if (node->function_declaration.parameter_types) {
+                    for (int i = 0; i < node->function_declaration.parameter_count; ++i)
+                        free(node->function_declaration.parameter_types[i]);
+                    free(node->function_declaration.parameter_types);
+                }
+                free(node->function_declaration.return_type);
                 ast_free(node->function_declaration.body);
                 break;
 

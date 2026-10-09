@@ -3,207 +3,98 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-AstNode *parse_function(Parser *parser) {
-    parser_advance(parser); /* consume "fun" */
-
-    if (!parser_check(parser, TOKEN_IDENTIFIER)) {
-        printf("Parser error: expected function name.\n");
-        return NULL;
-    }
-
-    char *name =
-        parser_token_to_string(parser->current);
-
-    if (name == NULL) {
-        printf("Parser error: out of memory.\n");
-        return NULL;
-    }
-
-    parser_advance(parser);
-
-    if (!parser_consume(
-            parser,
-            TOKEN_LEFT_PAREN,
-            "expected '(' after function name."
-        )) {
-        free(name);
-        return NULL;
-    }
-
-    char **parameters = NULL;
-    int parameter_count = 0;
-    int parameter_capacity = 0;
-
-    if (!parser_check(parser, TOKEN_RIGHT_PAREN)) {
-        for (;;) {
-            if (!parser_check(
-                    parser,
-                    TOKEN_IDENTIFIER
-                )) {
-                printf(
-                    "Parser error: expected parameter name.\n"
-                );
-
-                free(name);
-
-                for (int i = 0; i < parameter_count; i++) {
-                    free(parameters[i]);
-                }
-
-                free(parameters);
-
-                return NULL;
-            }
-
-            char *parameter =
-                parser_token_to_string(parser->current);
-
-            if (parameter == NULL) {
-                printf("Parser error: out of memory.\n");
-
-                free(name);
-
-                for (int i = 0; i < parameter_count; i++) {
-                    free(parameters[i]);
-                }
-
-                free(parameters);
-
-                return NULL;
-            }
-
-            parser_advance(parser);
-
-            if (parameter_count >= parameter_capacity) {
-                int new_capacity =
-                    parameter_capacity == 0
-                        ? 4
-                        : parameter_capacity * 2;
-
-                char **new_parameters = realloc(
-                    parameters,
-                    sizeof(char *) * new_capacity
-                );
-
-                if (new_parameters == NULL) {
-                    printf(
-                        "Parser error: out of memory.\n"
-                    );
-
-                    free(parameter);
-                    free(name);
-
-                    for (int i = 0; i < parameter_count; i++) {
-                        free(parameters[i]);
-                    }
-
-                    free(parameters);
-
-                    return NULL;
-                }
-
-                parameters = new_parameters;
-                parameter_capacity = new_capacity;
-            }
-
-            parameters[parameter_count++] = parameter;
-
-            if (parser_check(
-                    parser,
-                    TOKEN_RIGHT_PAREN
-                )) {
-                break;
-            }
-
-            if (!parser_consume(
-                    parser,
-                    TOKEN_COMMA,
-                    "expected ',' between parameters."
-                )) {
-                free(name);
-
-                for (int i = 0; i < parameter_count; i++) {
-                    free(parameters[i]);
-                }
-
-                free(parameters);
-
-                return NULL;
-            }
-        }
-    }
-
-    if (!parser_consume(
-            parser,
-            TOKEN_RIGHT_PAREN,
-            "expected ')' after parameters."
-        )) {
-        free(name);
-
-        for (int i = 0; i < parameter_count; i++) {
-            free(parameters[i]);
-        }
-
-        free(parameters);
-
-        return NULL;
-    }
-
-    if (!parser_consume(
-            parser,
-            TOKEN_LEFT_BRACE,
-            "expected '{' before function body."
-        )) {
-        free(name);
-
-        for (int i = 0; i < parameter_count; i++) {
-            free(parameters[i]);
-        }
-
-        free(parameters);
-
-        return NULL;
-    }
-
-    AstNode *body = parse_block(parser);
-
-    if (
-        body == NULL &&
-        !parser_check(parser, TOKEN_EOF)
-    ) {
-        free(name);
-
-        for (int i = 0; i < parameter_count; i++) {
-            free(parameters[i]);
-        }
-
-        free(parameters);
-
-        return NULL;
-    }
-
-    AstNode *node =
-        ast_create_function_declaration(
-            name,
-            parameters,
-            parameter_count,
-            body
-        );
-
+static void free_function_parse_data(char *name, char **parameters,
+    char **parameter_types, int count, char *return_type, AstNode *body) {
     free(name);
-
-    if (node == NULL) {
-        for (int i = 0; i < parameter_count; i++) {
-            free(parameters[i]);
-        }
-
-        free(parameters);
-        ast_free(body);
-
-        printf("Parser error: out of memory.\n");
-        return NULL;
+    for (int i = 0; i < count; ++i) {
+        free(parameters ? parameters[i] : NULL);
+        free(parameter_types ? parameter_types[i] : NULL);
     }
+    free(parameters); free(parameter_types); free(return_type); ast_free(body);
+}
 
+AstNode *parse_function(Parser *parser) {
+    parser_advance(parser);
+    if (!parser_check(parser, TOKEN_IDENTIFIER)) {
+        fprintf(stderr, "Parser error: expected function name.\n"); return NULL;
+    }
+    char *name = parser_token_to_string(parser->current);
+    if (!name) return NULL;
+    parser_advance(parser);
+    if (!parser_consume(parser, TOKEN_LEFT_PAREN, "expected '(' after function name.")) {
+        free(name); return NULL;
+    }
+    char **parameters = NULL, **parameter_types = NULL;
+    int count = 0, capacity = 0;
+    char *return_type = NULL;
+    AstNode *body = NULL;
+    while (!parser_check(parser, TOKEN_RIGHT_PAREN)) {
+        if (!parser_check(parser, TOKEN_IDENTIFIER)) {
+            fprintf(stderr, "Parser error at %d:%d: expected parameter name.\n", parser->current.line, parser->current.column);
+            free_function_parse_data(name, parameters, parameter_types, count, return_type, body); return NULL;
+        }
+        char *parameter = parser_token_to_string(parser->current);
+        if (!parameter) { free_function_parse_data(name, parameters, parameter_types, count, return_type, body); return NULL; }
+        parser_advance(parser);
+        char *parameter_type = NULL;
+        if (parser_check(parser, TOKEN_COLON)) {
+            parser_advance(parser);
+            if (!parser_check(parser, TOKEN_IDENTIFIER)) {
+                fprintf(stderr, "Parser error: expected parameter type after ':'.\n");
+                free(parameter); free_function_parse_data(name, parameters, parameter_types, count, return_type, body); return NULL;
+            }
+            parameter_type = parser_token_to_string(parser->current);
+            if (!parameter_type) { free(parameter); free_function_parse_data(name, parameters, parameter_types, count, return_type, body); return NULL; }
+            parser_advance(parser);
+        }
+        if (count == capacity) {
+            int next_capacity = capacity ? capacity * 2 : 4;
+            char **next_parameters = realloc(parameters, sizeof(*parameters) * next_capacity);
+            if (!next_parameters) {
+                free(parameter); free(parameter_type); free_function_parse_data(name, parameters, parameter_types, count, return_type, body); return NULL;
+            }
+            parameters = next_parameters;
+            char **next_types = realloc(parameter_types, sizeof(*parameter_types) * next_capacity);
+            if (!next_types) {
+                free(parameter); free(parameter_type); free_function_parse_data(name, parameters, parameter_types, count, return_type, body); return NULL;
+            }
+            parameter_types = next_types; capacity = next_capacity;
+        }
+        parameters[count] = parameter; parameter_types[count] = parameter_type; count++;
+        if (parser_check(parser, TOKEN_RIGHT_PAREN)) break;
+        if (!parser_consume(parser, TOKEN_COMMA, "expected ',' between parameters.")) {
+            free_function_parse_data(name, parameters, parameter_types, count, return_type, body); return NULL;
+        }
+    }
+    if (!parser_consume(parser, TOKEN_RIGHT_PAREN, "expected ')' after parameters.")) {
+        free_function_parse_data(name, parameters, parameter_types, count, return_type, body); return NULL;
+    }
+    if (parser_check(parser, TOKEN_MINUS)) {
+        parser_advance(parser);
+        if (!parser_consume(parser, TOKEN_GREATER, "expected '>' after '-' in return type.")) {
+            free_function_parse_data(name, parameters, parameter_types, count, return_type, body); return NULL;
+        }
+        if (!parser_check(parser, TOKEN_IDENTIFIER)) {
+            fprintf(stderr, "Parser error: expected function return type.\n");
+            free_function_parse_data(name, parameters, parameter_types, count, return_type, body); return NULL;
+        }
+        return_type = parser_token_to_string(parser->current);
+        if (!return_type) { free_function_parse_data(name, parameters, parameter_types, count, return_type, body); return NULL; }
+        parser_advance(parser);
+    }
+    if (!parser_consume(parser, TOKEN_LEFT_BRACE, "expected '{' before function body.")) {
+        free_function_parse_data(name, parameters, parameter_types, count, return_type, body); return NULL;
+    }
+    body = parse_block(parser);
+    if (!body && !parser_check(parser, TOKEN_EOF)) {
+        free_function_parse_data(name, parameters, parameter_types, count, return_type, body); return NULL;
+    }
+    AstNode *node = ast_create_typed_function_declaration(name, parameters, parameter_types, count, return_type, body);
+    if (!node) {
+        free_function_parse_data(name, parameters, parameter_types, count, return_type, body);
+        fprintf(stderr, "Parser error: out of memory while creating function.\n"); return NULL;
+    }
+    free(name); free(return_type);
     return node;
 }
 

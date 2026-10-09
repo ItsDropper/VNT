@@ -52,7 +52,28 @@ print(enabled)
 print(accuracy)
 ```
 
-Supported annotation names are `int`, `float`, `bool`, `string`, `array`, `object`, and `reference`. An annotated initializer must match its declared type; implicit numeric conversion is not performed for explicit annotations. Existing inferred assignment syntax remains supported.
+Supported variable annotation names are `int`, `float`, `bool`, `string`, `array`, `object`, and `reference`. An annotated initializer must match its declared type; implicit numeric conversion is not performed for explicit annotations. Existing inferred assignment syntax remains supported.
+
+Functions can declare parameter types and a return type:
+
+```vnt
+fun add(a: int, b: int) -> int {
+    return a + b
+}
+
+fun label(active: bool) -> string {
+    if active {
+        return "active"
+    } else {
+        return "inactive"
+    }
+}
+
+print(add(20, 22))
+print(label(true))
+```
+
+Parameter annotations are checked at call sites and inside function bodies. Return annotations are checked on each `return`, and typed non-`void` functions must return a value on every path. Existing unannotated functions remain supported for gradual migration. `void` is valid as a function return type, but not as a parameter or variable type.
 
 ```vnt
 x = 10

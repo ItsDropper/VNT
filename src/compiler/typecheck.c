@@ -5,11 +5,11 @@
 
 typedef enum {
     TY_UNDECLARED, TY_UNKNOWN, TY_INT, TY_FLOAT, TY_BOOL, TY_STRING,
-    TY_ARRAY, TY_OBJECT, TY_REFERENCE
+    TY_ARRAY, TY_OBJECT, TY_REFERENCE, TY_VOID
 } TypeKind;
 
 typedef struct { char *name; TypeKind type; int explicit_type; int dynamic; } Symbol;
-typedef struct { char *name; int arity; } FunctionDef;
+typedef struct { char *name; int arity; AstNode *node; } FunctionDef;
 typedef struct { char *name; int field_count; } StructDef;
 
 typedef struct {
@@ -20,6 +20,8 @@ typedef struct {
     StructDef *structs;
     int struct_count, struct_capacity;
     int error;
+    TypeKind expected_return;
+    int in_function;
 } TypeChecker;
 
 static void error(TypeChecker *tc, const char *message) {
@@ -87,6 +89,7 @@ static TypeKind type_from_name(const char *name) {
     if (!strcmp(name, "array")) return TY_ARRAY;
     if (!strcmp(name, "object")) return TY_OBJECT;
     if (!strcmp(name, "reference")) return TY_REFERENCE;
+    if (!strcmp(name, "void")) return TY_VOID;
     return TY_UNDECLARED;
 }
 
@@ -146,30 +149,34 @@ static int builtin_arity(const char *name, int argc) {
 
 static TypeKind expr_type(TypeChecker *tc, AstNode *n);
 
+static int type_compatible(TypeKind expected, TypeKind actual) {
+    return expected == TY_UNKNOWN || actual == TY_UNKNOWN || expected == actual;
+}
+
 static void check_call(TypeChecker *tc, AstNode *n) {
     int argc = n->function_call.argument_count;
-    for (AstNode *a = n->function_call.arguments; a; a = a->next)
-        (void)expr_type(tc, a);
-
+    for (AstNode *a = n->function_call.arguments; a; a = a->next) (void)expr_type(tc, a);
     int builtin = builtin_arity(n->function_call.name, argc);
-    if (builtin != -1) {
-        if (!builtin)
-            error(tc, "invalid argument count for builtin function.");
-        return;
-    }
-
-    /* Struct constructors are callable expressions, but are not functions. */
+    if (builtin != -1) { if (!builtin) error(tc, "invalid argument count for builtin function."); return; }
     if (find_struct(tc, n->function_call.name)) return;
-
     FunctionDef *fn = find_function(tc, n->function_call.name);
     if (!fn) {
         char message[256];
         snprintf(message, sizeof(message), "call to undeclared function '%s'.", n->function_call.name);
-        error(tc, message);
-        return;
+        error(tc, message); return;
     }
-    if (fn->arity != argc)
-        error(tc, "function called with the wrong number of arguments.");
+    if (fn->arity != argc) { error(tc, "function called with the wrong number of arguments."); return; }
+    AstNode *arg = n->function_call.arguments;
+    for (int i = 0; i < argc && arg; ++i, arg = arg->next) {
+        AstNode *decl = fn->node;
+        if (!decl || !decl->function_declaration.parameter_types || !decl->function_declaration.parameter_types[i]) continue;
+        TypeKind expected = type_from_name(decl->function_declaration.parameter_types[i]);
+        TypeKind actual = expr_type(tc, arg);
+        if (expected == TY_UNDECLARED || expected == TY_VOID)
+            error(tc, "function parameter uses an invalid type.");
+        else if (!type_compatible(expected, actual))
+            error(tc, "function argument type does not match its parameter annotation.");
+    }
 }
 
 static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
@@ -270,6 +277,13 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 !strcmp(n->function_call.name, "gui_rect") ||
                 !strcmp(n->function_call.name, "gui_close")) return TY_BOOL;
             if (find_struct(tc, n->function_call.name)) return TY_OBJECT;
+            {
+                FunctionDef *fn = find_function(tc, n->function_call.name);
+                if (fn && fn->node && fn->node->function_declaration.return_type) {
+                    TypeKind result = type_from_name(fn->node->function_declaration.return_type);
+                    return result == TY_UNDECLARED ? TY_UNKNOWN : result;
+                }
+            }
             return TY_UNKNOWN;
 
         case AST_UNARY_EXPRESSION: {
@@ -349,6 +363,7 @@ static void collect_declarations(TypeChecker *tc, AstNode *n) {
             }
             tc->functions[tc->function_count].name = strdup(n->function_declaration.name);
             tc->functions[tc->function_count].arity = n->function_declaration.parameter_count;
+            tc->functions[tc->function_count].node = n;
             if (!tc->functions[tc->function_count].name) { error(tc, "out of memory."); return; }
             tc->function_count++;
         }
@@ -373,6 +388,16 @@ static void collect_declarations(TypeChecker *tc, AstNode *n) {
     }
 }
 
+static int statement_list_returns(AstNode *n) {
+    for (; n; n = n->next) {
+        if (n->type == AST_RETURN_STATEMENT) return 1;
+        if (n->type == AST_IF_STATEMENT && n->if_statement.else_branch &&
+            statement_list_returns(n->if_statement.then_branch) &&
+            statement_list_returns(n->if_statement.else_branch)) return 1;
+    }
+    return 0;
+}
+
 static void check_statements(TypeChecker *tc, AstNode *n) {
     for (; n && !tc->error; n = n->next) {
         switch (n->type) {
@@ -391,7 +416,7 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                 if (n->variable_declaration.declared_type) {
                     TypeKind declared_type =
                         type_from_name(n->variable_declaration.declared_type);
-                    if (declared_type == TY_UNDECLARED) {
+                    if (declared_type == TY_UNDECLARED || declared_type == TY_VOID) {
                         char message[256];
                         snprintf(message, sizeof(message),
                                  "unknown type '%s'.",
@@ -449,9 +474,15 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                 break;
             }
 
-            case AST_RETURN_STATEMENT:
-                (void)expr_type(tc, n->return_statement.expression);
+            case AST_RETURN_STATEMENT: {
+                if (!tc->in_function) { error(tc, "return used outside a function."); break; }
+                TypeKind actual = expr_type(tc, n->return_statement.expression);
+                if (tc->expected_return == TY_VOID)
+                    error(tc, "void function cannot return a value.");
+                else if (tc->expected_return != TY_UNKNOWN && !type_compatible(tc->expected_return, actual))
+                    error(tc, "return expression does not match the function return type.");
                 break;
+            }
 
             case AST_FUNCTION_CALL:
                 (void)expr_type(tc, n);
@@ -459,13 +490,41 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
 
             case AST_FUNCTION_DECLARATION: {
                 int old_count = tc->count;
-                for (int i = 0; i < n->function_declaration.parameter_count; ++i)
-                    set_symbol(tc, n->function_declaration.parameters[i], TY_UNKNOWN, 0);
-                check_statements(tc, n->function_declaration.body);
-                while (tc->count > old_count) {
-                    free(tc->symbols[tc->count - 1].name);
-                    tc->count--;
+                TypeKind old_return = tc->expected_return;
+                int old_in_function = tc->in_function;
+                tc->in_function = 1;
+                tc->expected_return = n->function_declaration.return_type
+                    ? type_from_name(n->function_declaration.return_type) : TY_UNKNOWN;
+                if (n->function_declaration.return_type && tc->expected_return == TY_UNDECLARED)
+                    error(tc, "function declares an unknown return type.");
+                for (int i = 0; i < n->function_declaration.parameter_count; ++i) {
+                    TypeKind pt = TY_UNKNOWN;
+                    if (n->function_declaration.parameter_types && n->function_declaration.parameter_types[i]) {
+                        pt = type_from_name(n->function_declaration.parameter_types[i]);
+                        if (pt == TY_UNDECLARED || pt == TY_VOID) {
+                            error(tc, "function declares an invalid parameter type."); break;
+                        }
+                    }
+                    if (tc->count == tc->capacity) {
+                        int cap = tc->capacity ? tc->capacity * 2 : 32;
+                        Symbol *symbols = realloc(tc->symbols, sizeof(*symbols) * cap);
+                        if (!symbols) { error(tc, "out of memory."); break; }
+                        tc->symbols = symbols; tc->capacity = cap;
+                    }
+                    tc->symbols[tc->count].name = strdup(n->function_declaration.parameters[i]);
+                    if (!tc->symbols[tc->count].name) { error(tc, "out of memory."); break; }
+                    tc->symbols[tc->count].type = pt;
+                    tc->symbols[tc->count].explicit_type = pt != TY_UNKNOWN;
+                    tc->symbols[tc->count].dynamic = 0;
+                    tc->count++;
                 }
+                check_statements(tc, n->function_declaration.body);
+                if (tc->expected_return != TY_UNKNOWN && tc->expected_return != TY_VOID &&
+                    !statement_list_returns(n->function_declaration.body))
+                    error(tc, "not all paths in a typed function return a value.");
+                while (tc->count > old_count) { free(tc->symbols[tc->count - 1].name); tc->count--; }
+                tc->expected_return = old_return;
+                tc->in_function = old_in_function;
                 break;
             }
 

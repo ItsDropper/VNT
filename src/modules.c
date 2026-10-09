@@ -1,9 +1,15 @@
+#define _XOPEN_SOURCE 700
 #include <vnt/modules.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#ifdef _WIN32
+#include <direct.h>
+#else
+#include <unistd.h>
+#endif
 
 typedef struct {
     char **paths;
@@ -13,6 +19,23 @@ typedef struct {
     int active_count;
     int active_capacity;
 } Loader;
+
+static char *normalize_path(const char *path) {
+#ifdef _WIN32
+    char resolved[4096];
+    if (_fullpath(resolved, path, sizeof(resolved))) return strdup(resolved);
+#else
+    char *resolved = realpath(path, NULL);
+    if (resolved) return resolved;
+#endif
+    return strdup(path);
+}
+
+static int begins_import_directive(const char *line) {
+    while (isspace((unsigned char)*line)) line++;
+    return strncmp(line, "import", 6) == 0 &&
+           (line[6] == '\0' || isspace((unsigned char)line[6]));
+}
 
 static char *read_file(const char *path) {
     FILE *file = fopen(path, "rb");
@@ -165,7 +188,9 @@ static int is_import_line(const char *line, char *module, size_t module_size) {
         return 0;
 
     module[length] = '\0';
-    return 1;
+    line++;
+    while (isspace((unsigned char)*line)) line++;
+    return *line == '\0' || *line == '#';
 }
 
 static int append_text(char **output, size_t *length, size_t *capacity,
@@ -242,15 +267,23 @@ static int load_recursive(Loader *loader, const char *path,
         char module[4096];
         if (is_import_line(line, module, sizeof(module))) {
             char *module_path = join_path(directory, module);
-            if (!module_path ||
-                !load_recursive(loader, module_path, output, length, capacity)) {
-                free(module_path);
+            char *resolved_path = module_path ? normalize_path(module_path) : NULL;
+            free(module_path);
+            if (!resolved_path ||
+                !load_recursive(loader, resolved_path, output, length, capacity)) {
+                free(resolved_path);
                 free(line);
                 free(source);
                 pop_active(loader);
                 return 0;
             }
-            free(module_path);
+            free(resolved_path);
+        } else if (begins_import_directive(line)) {
+            fprintf(stderr, "Module error: malformed import directive in '%s'.\n", path);
+            free(line);
+            free(source);
+            pop_active(loader);
+            return 0;
         } else {
             if (!append_text(output, length, capacity, line) ||
                 !append_text(output, length, capacity, "\n")) {
@@ -276,10 +309,13 @@ char *vnt_load_project_source(const char *entry_path) {
     size_t length = 0;
     size_t capacity = 0;
 
-    if (!load_recursive(&loader, entry_path, &output, &length, &capacity)) {
+    char *normalized_entry = normalize_path(entry_path);
+    if (!normalized_entry ||
+        !load_recursive(&loader, normalized_entry, &output, &length, &capacity)) {
         free(output);
         output = NULL;
     }
+    free(normalized_entry);
 
     for (int i = 0; i < loader.count; ++i)
         free(loader.paths[i]);

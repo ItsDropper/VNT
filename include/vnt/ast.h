@@ -80,7 +80,9 @@ typedef struct AstNode {
         struct {
             char *name;
             char **parameters;
+            char **parameter_types;
             int parameter_count;
+            char *return_type;
             struct AstNode *body;
         } function_declaration;
 
@@ -168,6 +170,7 @@ AstNode *ast_create_print(AstNode *expression);
 AstNode *ast_create_if(AstNode *condition, AstNode *then_branch, AstNode *else_branch);
 AstNode *ast_create_while(AstNode *condition, AstNode *body);
 AstNode *ast_create_function_declaration(const char *name, char **parameters, int parameter_count, AstNode *body);
+AstNode *ast_create_typed_function_declaration(const char *name, char **parameters, char **parameter_types, int parameter_count, const char *return_type, AstNode *body);
 AstNode *ast_create_struct_declaration(const char *name, char **fields, int field_count);
 AstNode *ast_create_function_call(const char *name, AstNode *arguments, int argument_count);
 AstNode *ast_create_return(AstNode *expression);

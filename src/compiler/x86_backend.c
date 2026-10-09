@@ -116,8 +116,6 @@ static int float_label(HirGen *g,double d) {
     int l=label_new(g);g->floats[g->float_count++]=(HirFloat){d,l};return l;
 }
 static void call0(HirGen *g,const char *name) { fputs("    subq $32,%rsp\n    call ",g->out);fputs(name,g->out);fputs("\n    addq $32,%rsp\n",g->out); }
-/* Reuse reserved Windows x64 shadow space when the expression stack is balanced. */
-static void call_base(HirGen *g,const char *name) { fputs("    call ",g->out);fputs(name,g->out);fputc('\n',g->out); }
 static void emit_expr(HirGen *g,size_t i);
 static void emit_stmt(HirGen *g,size_t i);
 static void emit_stmt_role(HirGen *g,size_t i,VntIrEdgeRole role) {
@@ -302,7 +300,7 @@ static void emit_stmt(HirGen*g,size_t i) {
     const VntIrNode*n=node(g,i);if(!n||g->error)return;
     switch(n->opcode){
     case VNT_IR_PROGRAM:emit_stmt_role(g,i,VNT_IR_EDGE_STATEMENT);break;
-    case VNT_IR_PRINT:emit_expr(g,child(g,i,VNT_IR_EDGE_VALUE));fputs("    movq %rax,%rcx\n",g->out);call_base(g,"vnt_print");break;
+    case VNT_IR_PRINT:emit_expr(g,child(g,i,VNT_IR_EDGE_VALUE));fputs("    movq %rax,%rcx\n",g->out);call0(g,"vnt_print");break;
     case VNT_IR_VARIABLE_DECL:case VNT_IR_REASSIGN:{
         int vi=var_index(g->vars,g->var_count,n->value.text),gi=var_index(g->globals,g->global_count,n->value.text);
         emit_expr(g,child(g,i,VNT_IR_EDGE_VALUE));
@@ -314,12 +312,12 @@ static void emit_stmt(HirGen*g,size_t i) {
         break;}
     case VNT_IR_ASSIGN:emit_assignment(g,i);break;
     case VNT_IR_IF:{
-        int els=label_new(g),done=label_new(g);emit_expr(g,child(g,i,VNT_IR_EDGE_CONDITION));fputs("    movq %rax,%rcx\n",g->out);call_base(g,"vnt_truth");fprintf(g->out,"    testl %%eax,%%eax\n    jz .L%d\n",els);
+        int els=label_new(g),done=label_new(g);emit_expr(g,child(g,i,VNT_IR_EDGE_CONDITION));fputs("    movq %rax,%rcx\n",g->out);call0(g,"vnt_truth");fprintf(g->out,"    testl %%eax,%%eax\n    jz .L%d\n",els);
         emit_stmt_role(g,i,VNT_IR_EDGE_THEN);fprintf(g->out,"    jmp .L%d\n",done);label_emit(g,els);emit_stmt_role(g,i,VNT_IR_EDGE_ELSE);label_emit(g,done);break;}
     case VNT_IR_WHILE:{
         int s=label_new(g),e=label_new(g);if(g->loop_depth>=64){fail(g,"loop nesting too deep.");break;}
         g->loop_start[g->loop_depth]=s;g->loop_end[g->loop_depth]=e;g->loop_depth++;label_emit(g,s);
-        emit_expr(g,child(g,i,VNT_IR_EDGE_CONDITION));fputs("    movq %rax,%rcx\n",g->out);call_base(g,"vnt_truth");fprintf(g->out,"    testl %%eax,%%eax\n    jz .L%d\n",e);
+        emit_expr(g,child(g,i,VNT_IR_EDGE_CONDITION));fputs("    movq %rax,%rcx\n",g->out);call0(g,"vnt_truth");fprintf(g->out,"    testl %%eax,%%eax\n    jz .L%d\n",e);
         emit_stmt_role(g,i,VNT_IR_EDGE_BODY);fprintf(g->out,"    jmp .L%d\n",s);label_emit(g,e);g->loop_depth--;break;}
     case VNT_IR_BREAK:if(!g->loop_depth)fail(g,"break outside loop.");else fprintf(g->out,"    jmp .L%d\n",g->loop_end[g->loop_depth-1]);break;
     case VNT_IR_CONTINUE:if(!g->loop_depth)fail(g,"continue outside loop.");else fprintf(g->out,"    jmp .L%d\n",g->loop_start[g->loop_depth-1]);break;
@@ -338,7 +336,7 @@ static void emit_function(HirGen*g,size_t i) {
     for(size_t p=0;p<n->name_count;p++){int vi=var_index(g->vars,g->var_count,n->names[p]);if(vi>=0)g->vars[vi].global=0;}
     for(size_t v=0;v<g->var_count;v++)g->vars[v].offset=(int)(8+v*8);
     fprintf(g->out,".globl vnt_fn_");cname(g->out,"",n->value.text);fprintf(g->out,"\nvnt_fn_");cname(g->out,"",n->value.text);fputs(":\n    pushq %rbp\n    movq %rsp,%rbp\n",g->out);
-    int frame=(int)(((g->var_count*8+15)/16)*16)+32;fprintf(g->out,"    subq $%d,%%rsp\n",frame);
+    int frame=(int)(((g->var_count*8+15)/16)*16);if(frame)fprintf(g->out,"    subq $%d,%%rsp\n",frame);
     static const char*regs[]={"%rcx","%rdx","%r8","%r9"};
     for(size_t p=0;p<n->name_count&&p<4;p++){int vi=var_index(g->vars,g->var_count,n->names[p]);if(vi>=0)fprintf(g->out,"    movq %s,-%d(%%rbp)\n",regs[p],g->vars[vi].offset);}
     for(size_t p=4;p<n->name_count;p++){int vi=var_index(g->vars,g->var_count,n->names[p]);if(vi>=0)fprintf(g->out,"    movq %zu(%%rbp),%%r10\n    movq %%r10,-%d(%%rbp)\n",48+(p-4)*8,g->vars[vi].offset);}
@@ -365,7 +363,7 @@ int vnt_emit_x86_64(const VntIrProgram *ir,const char *assembly_path) {
         free_vars(g.vars,g.var_count);g.vars=NULL;g.var_count=g.var_cap=0;
         for(size_t c=root->first_child;c!=VNT_IR_NO_NODE;c=g.ir->nodes[c].next_sibling)if(g.ir->nodes[c].opcode!=VNT_IR_FUNCTION&&g.ir->nodes[c].opcode!=VNT_IR_STRUCT)collect_vars(&g,c);
         for(size_t v=0;v<g.var_count;v++){int gi=var_index(g.globals,g.global_count,g.vars[v].name);if(gi>=0)g.vars[v].global=1;g.vars[v].offset=(int)(8+v*8);}
-        fputs(".globl main\nmain:\n    pushq %rbp\n    movq %rsp,%rbp\n",g.out);int frame=(int)(((g.var_count*8+15)/16)*16)+32;fprintf(g.out,"    subq $%d,%%rsp\n",frame);
+        fputs(".globl main\nmain:\n    pushq %rbp\n    movq %rsp,%rbp\n",g.out);int frame=(int)(((g.var_count*8+15)/16)*16);if(frame)fprintf(g.out,"    subq $%d,%%rsp\n",frame);
         for(size_t c=root->first_child;c!=VNT_IR_NO_NODE&&!g.error;c=g.ir->nodes[c].next_sibling)if(g.ir->nodes[c].opcode!=VNT_IR_FUNCTION&&g.ir->nodes[c].opcode!=VNT_IR_STRUCT)emit_stmt(&g,c);
         if(!g.error)fputs("    xorl %eax,%eax\n    leave\n    ret\n",g.out);
     }

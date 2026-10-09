@@ -373,10 +373,10 @@ static const char *opcode_name(VntIrOpcode opcode) {
 
 void vnt_ir_dump(const VntIrProgram *ir, FILE *out) {
     if (!out || !vnt_ir_validate(ir)) {
-        if (out) fputs("VNT HIR error: invalid IR graph.\\n", out);
+        if (out) fputs("VNT HIR error: invalid IR graph.\n", out);
         return;
     }
-    fprintf(out, "VNT HIR: %zu nodes; root=%zu; folded=%zu\\n",
+    fprintf(out, "VNT HIR: %zu nodes; root=%zu; folded=%zu\n",
             ir->node_count, ir->root, ir->optimized_nodes);
     for (size_t i = 0; i < ir->node_count; ++i) {
         const VntIrNode *node = &ir->nodes[i];
@@ -397,7 +397,7 @@ void vnt_ir_dump(const VntIrProgram *ir, FILE *out) {
             case VNT_IR_MEMBER:
             case VNT_IR_CALL:
             case VNT_IR_FUNCTION:
-            case VNT_IR_STRUCT: fprintf(out, " name/text=\\\"%s\\\"", node->value.text); break;
+            case VNT_IR_STRUCT: fprintf(out, " name/text=\"%s\"", node->value.text); break;
             case VNT_IR_BINARY:
             case VNT_IR_UNARY: fprintf(out, " op=%d", node->operation); break;
             default: break;
@@ -408,7 +408,7 @@ void vnt_ir_dump(const VntIrProgram *ir, FILE *out) {
                 fprintf(out, "%s%s", j ? "," : "", node->names[j]);
             fputc(']', out);
         }
-        fputc('\\n', out);
+        fputc('\n', out);
     }
 }
 

@@ -133,7 +133,6 @@ static int lower_node(VntIrProgram *ir, const AstNode *ast, size_t *result) {
     VntIrNode *node = &ir->nodes[*result];
     node->opcode = op;
     node->role = VNT_IR_EDGE_ROOT;
-    node->source = ast;
     if (ast->type == AST_VARIABLE_DECLARATION &&
         ast->variable_declaration.declared_type &&
         !copy_text(&node->type_name,
@@ -205,10 +204,10 @@ static int lower_node(VntIrProgram *ir, const AstNode *ast, size_t *result) {
     }
 }
 
-static int build_hir(VntIrProgram *ir) {
+static int build_hir(VntIrProgram *ir, AstNode *program) {
     clear_nodes(ir);
-    if (!ir->program || ir->program->type != AST_PROGRAM) return 0;
-    if (!lower_node(ir, ir->program, &ir->root)) {
+    if (!program || program->type != AST_PROGRAM) return 0;
+    if (!lower_node(ir, program, &ir->root)) {
         clear_nodes(ir);
         return 0;
     }
@@ -219,8 +218,7 @@ int vnt_ir_lower(VntIrProgram *ir, AstNode *program) {
     if (!ir || !program || program->type != AST_PROGRAM) return 0;
     memset(ir, 0, sizeof(*ir));
     ir->root = VNT_IR_NO_NODE;
-    ir->program = program;
-    if (!build_hir(ir)) {
+    if (!build_hir(ir, program)) {
         vnt_ir_free(ir);
         return 0;
     }
@@ -618,7 +616,6 @@ void vnt_ir_dump(const VntIrProgram *ir, FILE *out) {
 void vnt_ir_free(VntIrProgram *ir) {
     if (!ir) return;
     clear_nodes(ir);
-    ir->program = NULL;
     ir->optimized_nodes = 0;
 }
 
@@ -720,7 +717,6 @@ static int hir_copy_node(const VntIrProgram *old, VntIrProgram *out,
     dst->opcode = src->opcode;
     dst->role = src->role;
     dst->operation = src->operation;
-    dst->source = src->source;
     dst->value = src->value;
     if (src->opcode == VNT_IR_STRING || src->opcode == VNT_IR_VARIABLE_DECL ||
         src->opcode == VNT_IR_REASSIGN || src->opcode == VNT_IR_VARIABLE ||
@@ -759,11 +755,8 @@ int vnt_ir_optimize(VntIrProgram *ir) {
         vnt_ir_free(&compact);
         return 0;
     }
-    /* Preserve the AST temporarily for the still-AST-based native backend. */
-    AstNode *source_program = ir->program;
     /* The old flat array can now be released, including unreachable folded operands. */
     clear_nodes(ir);
-    ir->program = source_program;
     ir->nodes = compact.nodes;
     ir->node_count = compact.node_count;
     ir->node_capacity = compact.node_capacity;

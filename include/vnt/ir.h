@@ -10,8 +10,7 @@
  * Nodes are stored in one growable array; child/sibling links are stable
  * integer indices, never pointers into a reallocatable array.
  *
- * source is retained only for diagnostics and the transitional x86 backend.
- * Code generation will migrate from source AST nodes to HIR instructions.
+ * The node graph owns its payloads and never stores pointers into the source AST.
  */
 typedef enum {
     VNT_IR_PROGRAM,
@@ -70,7 +69,6 @@ typedef struct {
     size_t last_child;
     size_t next_sibling;
     size_t child_count;
-    const AstNode *source;
     union {
         int integer;
         int boolean;
@@ -80,8 +78,6 @@ typedef struct {
 } VntIrNode;
 
 typedef struct {
-    /* Source tree kept for source mapping and the current x86 backend. */
-    AstNode *program;
     VntIrNode *nodes;
     size_t node_count;
     size_t node_capacity;

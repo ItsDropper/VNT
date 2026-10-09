@@ -47,12 +47,7 @@ static int check_fold_case(AstNode *expression, VntIrOpcode expected_opcode,
         return 0;
     }
 
-    /*
-     * Detach and destroy the source AST before optimization. This makes the
-     * test fail if HIR optimization, validation, or materialization reads it.
-     */
-    for (size_t i = 0; i < ir.node_count; ++i) ir.nodes[i].source = NULL;
-    ir.program = NULL;
+    /* HIR owns its payloads and stores no pointers into the source AST. */
     ast_free(program);
  
     ok = vnt_ir_optimize(&ir);
@@ -68,7 +63,7 @@ static int check_fold_case(AstNode *expression, VntIrOpcode expected_opcode,
                   "folded integer has expected value");
     }
 
-    CHECK(vnt_ir_validate(&ir), "HIR validates after AST is detached and freed");
+    CHECK(vnt_ir_validate(&ir), "HIR validates after AST is freed");
 
     AstNode *rebuilt = vnt_ir_materialize_program(&ir);
     CHECK(rebuilt != NULL, "HIR materializes after source AST is freed");

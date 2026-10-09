@@ -53,11 +53,17 @@ typedef struct {
     TokenType type;
     const char *start;
     int length;
+    int line;
+    int column;
 } Token;
 
 typedef struct {
     const char *source;
     int current;
+    int line;
+    int column;
+    int token_start_line;
+    int token_start_column;
 } Lexer;
 
 void lexer_init(Lexer *lexer, const char *source);

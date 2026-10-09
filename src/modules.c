@@ -9,6 +9,9 @@ typedef struct {
     char **paths;
     int count;
     int capacity;
+    char **active_paths;
+    int active_count;
+    int active_capacity;
 } Loader;
 
 static char *read_file(const char *path) {
@@ -45,6 +48,33 @@ static int seen(Loader *loader, const char *path) {
         if (!strcmp(loader->paths[i], path))
             return 1;
     return 0;
+}
+
+static int is_active(Loader *loader, const char *path) {
+    for (int i = 0; i < loader->active_count; ++i)
+        if (!strcmp(loader->active_paths[i], path))
+            return 1;
+    return 0;
+}
+
+static int push_active(Loader *loader, const char *path) {
+    if (loader->active_count == loader->active_capacity) {
+        int cap = loader->active_capacity ? loader->active_capacity * 2 : 16;
+        char **paths = realloc(loader->active_paths, sizeof(*paths) * cap);
+        if (!paths) return 0;
+        loader->active_paths = paths;
+        loader->active_capacity = cap;
+    }
+
+    char *copy = strdup(path);
+    if (!copy) return 0;
+    loader->active_paths[loader->active_count++] = copy;
+    return 1;
+}
+
+static void pop_active(Loader *loader) {
+    if (loader->active_count <= 0) return;
+    free(loader->active_paths[--loader->active_count]);
 }
 
 static int remember(Loader *loader, const char *path) {
@@ -161,6 +191,10 @@ static int append_text(char **output, size_t *length, size_t *capacity,
 
 static int load_recursive(Loader *loader, const char *path,
                           char **output, size_t *length, size_t *capacity) {
+    if (is_active(loader, path)) {
+        fprintf(stderr, "Module error: circular import detected at '%s'.\n", path);
+        return 0;
+    }
     if (seen(loader, path))
         return 1;
 
@@ -169,13 +203,21 @@ static int load_recursive(Loader *loader, const char *path,
         return 0;
     }
 
-    char *source = read_file(path);
-    if (!source)
+    if (!push_active(loader, path)) {
+        fprintf(stderr, "Module error: out of memory.\n");
         return 0;
+    }
+
+    char *source = read_file(path);
+    if (!source) {
+        pop_active(loader);
+        return 0;
+    }
 
     char directory[4096];
     if (!directory_of(path, directory, sizeof(directory))) {
         free(source);
+        pop_active(loader);
         fprintf(stderr, "Module error: path is too long.\n");
         return 0;
     }
@@ -190,6 +232,7 @@ static int load_recursive(Loader *loader, const char *path,
         char *line = malloc(line_length + 1);
         if (!line) {
             free(source);
+            pop_active(loader);
             return 0;
         }
 
@@ -204,6 +247,7 @@ static int load_recursive(Loader *loader, const char *path,
                 free(module_path);
                 free(line);
                 free(source);
+                pop_active(loader);
                 return 0;
             }
             free(module_path);
@@ -212,6 +256,7 @@ static int load_recursive(Loader *loader, const char *path,
                 !append_text(output, length, capacity, "\n")) {
                 free(line);
                 free(source);
+                pop_active(loader);
                 return 0;
             }
         }
@@ -221,6 +266,7 @@ static int load_recursive(Loader *loader, const char *path,
     }
 
     free(source);
+    pop_active(loader);
     return 1;
 }
 
@@ -238,6 +284,9 @@ char *vnt_load_project_source(const char *entry_path) {
     for (int i = 0; i < loader.count; ++i)
         free(loader.paths[i]);
     free(loader.paths);
+    for (int i = 0; i < loader.active_count; ++i)
+        free(loader.active_paths[i]);
+    free(loader.active_paths);
 
     return output;
 }

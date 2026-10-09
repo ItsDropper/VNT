@@ -22,6 +22,7 @@ Currently implemented:
 * References and dereferencing (`&x`, `*p`)
 * Functions with up to 32 parameters
 * Native integer arithmetic fast path
+* Integer, boolean, and finite floating-point constant folding
 * Basic native FFI (`ffi_int`)
 * Math functions (`sqrt`, `sin`, `cos`, `tan`, `abs`, `floor`, `ceil`, `min`, `max`)
 * Arithmetic expressions
@@ -116,7 +117,7 @@ VNT source code
  Native executable
 ```
 
-The compiler emits x86-64 assembly and links a small native runtime for dynamic values, arrays, strings, objects, and math operations. The old interpreter is no longer part of the build or execution path.
+The compiler emits x86-64 assembly and links a small native runtime for dynamic values, arrays, strings, objects, and math operations. The HIR retains explicit variable annotations as validated metadata, and its optimizer folds safe integer, boolean, and finite floating-point constant expressions. Source-file imports are currently expanded before parsing; direct circular imports are rejected, but imports do not yet provide isolated namespaces or exported symbols. The old interpreter is no longer part of the build or execution path.
 
 The compiler now lowers the AST into an explicit high-level IR (HIR): a flat, index-addressed node store with typed opcodes, named edge roles, copied literal/declaration metadata, and structural validation. Semantic analysis distinguishes first assignments (variable declarations) from later assignments (reassignments), and HIR represents reassignments with their own opcode. The x86-64 backend still consumes the AST adapter for code generation, so this is an IR representation milestone rather than a completed HIR backend migration. The current x86-64 backend still uses the retained AST source map; migrating code generation to consume HIR directly is the next architectural step.
 

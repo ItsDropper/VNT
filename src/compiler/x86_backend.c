@@ -269,6 +269,31 @@ static void emit_expr(HirGen *g,size_t i) {
             label_emit(g,shortl);fprintf(g->out,"    movl $%d,%%ecx\n",n->operation==BINARY_AND?0:1);call0(g,"vnt_bool");label_emit(g,done);break;
         }
         emit_expr(g,l);fputs("    pushq %rax\n",g->out);emit_expr(g,r);fputs("    movq %rax,%rdx\n    popq %rcx\n",g->out);
+        /*
+         * Integer arithmetic is the hot path in numeric loops. VntValue's
+         * tag is at offset 0 and its integer payload at offset 8. Guard both
+         * operands and retain the runtime helper as the exact fallback for
+         * strings, floats, and all non-integer values.
+         */
+        if(n->operation==BINARY_ADD||n->operation==BINARY_SUBTRACT||n->operation==BINARY_MULTIPLY) {
+            int slow=label_new(g),done=label_new(g);
+            fputs("    testq %rcx,%rcx\n    jz ",g->out);fprintf(g->out,".L%d\n",slow);
+            fputs("    testq %rdx,%rdx\n    jz ",g->out);fprintf(g->out,".L%d\n",slow);
+            fputs("    cmpl $1,0(%rcx)\n    jne ",g->out);fprintf(g->out,".L%d\n",slow);
+            fputs("    cmpl $1,0(%rdx)\n    jne ",g->out);fprintf(g->out,".L%d\n",slow);
+            fputs("    movl 8(%rcx),%r10d\n    ",g->out);
+            fputs(n->operation==BINARY_ADD?"addl 8(%rdx),%r10d\n    jo ":
+                  n->operation==BINARY_SUBTRACT?"subl 8(%rdx),%r10d\n    jo ":
+                  "imull 8(%rdx),%r10d\n    jo ",g->out);
+            fprintf(g->out,".L%d\n    movl %%r10d,%%ecx\n",slow);
+            call0(g,"vnt_int");
+            fprintf(g->out,"    jmp .L%d\n",done);
+            label_emit(g,slow);
+            const char *slow_fn=n->operation==BINARY_ADD?"vnt_add":n->operation==BINARY_SUBTRACT?"vnt_sub":"vnt_mul";
+            call0(g,slow_fn);
+            label_emit(g,done);
+            break;
+        }
         const char *fn=NULL;switch(n->operation){
         case BINARY_ADD:fn="vnt_add";break;case BINARY_SUBTRACT:fn="vnt_sub";break;case BINARY_MULTIPLY:fn="vnt_mul";break;
         case BINARY_DIVIDE:fn="vnt_div";break;case BINARY_MODULO:fn="vnt_mod";break;case BINARY_EQUAL:fn="vnt_eq";break;

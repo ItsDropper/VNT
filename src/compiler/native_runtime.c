@@ -1062,7 +1062,7 @@ typedef struct {
     COLORREF color,background;
     char text[4096];
 } VntGuiCommand;
-typedef struct { int x,y,width,height,multiline,select_all; char text[512]; } VntGuiInputState;
+typedef struct { int x,y,width,height,multiline,select_all; char text[4096]; } VntGuiInputState;
 static HWND vnt_gui_hwnd;
 static int vnt_gui_width=800, vnt_gui_height=600, vnt_gui_last_key, vnt_gui_text_y=18;
 static COLORREF vnt_gui_background=RGB(11,16,32);

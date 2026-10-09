@@ -222,7 +222,7 @@ static void emit_expr(HirGen *g,size_t i) {
     case VNT_IR_STRING:fprintf(g->out,"    lea .Lstr%d(%%rip),%%rcx\n",string_label(g,n->value.text));call0(g,"vnt_string");break;
     case VNT_IR_VARIABLE:{
         int vi=var_index(g->vars,g->var_count,n->value.text),gi=var_index(g->globals,g->global_count,n->value.text);
-        if(gi>=0&&(vi<0||!g->vars[vi].global)){fputs("    movq vnt_global_",g->out);cname(g->out,"",n->value.text);fputs("(%rip),%rax\n",g->out);}
+        if(gi>=0&&(vi<0||g->vars[vi].global)){fputs("    movq vnt_global_",g->out);cname(g->out,"",n->value.text);fputs("(%rip),%rax\n",g->out);}
         else if(vi>=0)fprintf(g->out,"    movq -%d(%%rbp),%%rax\n",g->vars[vi].offset);
         else fail(g,"unknown HIR variable.");
         break;}
@@ -241,7 +241,7 @@ static void emit_expr(HirGen *g,size_t i) {
             const VntIrNode*op=node(g,a);
             if(!op||op->opcode!=VNT_IR_VARIABLE){fail(g,"references require a variable.");break;}
             int vi=var_index(g->vars,g->var_count,op->value.text),gi=var_index(g->globals,g->global_count,op->value.text);
-            if(gi>=0&&(vi<0||!g->vars[vi].global)){fputs("    leaq vnt_global_",g->out);cname(g->out,"",op->value.text);fputs("(%rip),%rcx\n",g->out);}
+            if(gi>=0&&(vi<0||g->vars[vi].global)){fputs("    leaq vnt_global_",g->out);cname(g->out,"",op->value.text);fputs("(%rip),%rcx\n",g->out);}
             else if(vi>=0)fprintf(g->out,"    leaq -%d(%%rbp),%%rcx\n",g->vars[vi].offset);
             else {fail(g,"unknown reference variable.");break;}
             call0(g,"vnt_ref");
@@ -273,7 +273,7 @@ static void emit_assignment(HirGen*g,size_t i) {
     if(tn->opcode==VNT_IR_VARIABLE){
         int vi=var_index(g->vars,g->var_count,tn->value.text),gi=var_index(g->globals,g->global_count,tn->value.text);
         emit_expr(g,v);
-        if(gi>=0&&(vi<0||!g->vars[vi].global)){fputs("    movq %rax,vnt_global_",g->out);cname(g->out,"",tn->value.text);fputs("(%rip)\n",g->out);}
+        if(gi>=0&&(vi<0||g->vars[vi].global)){fputs("    movq %rax,vnt_global_",g->out);cname(g->out,"",tn->value.text);fputs("(%rip)\n",g->out);}
         else if(vi>=0)fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",g->vars[vi].offset);
         else fail(g,"unknown HIR assignment variable.");return;
     }
@@ -290,7 +290,7 @@ static void emit_stmt(HirGen*g,size_t i) {
     case VNT_IR_VARIABLE_DECL:case VNT_IR_REASSIGN:{
         int vi=var_index(g->vars,g->var_count,n->value.text),gi=var_index(g->globals,g->global_count,n->value.text);
         emit_expr(g,child(g,i,VNT_IR_EDGE_VALUE));
-        if(gi>=0&&(vi<0||!g->vars[vi].global)){fputs("    movq %rax,vnt_global_",g->out);cname(g->out,"",n->value.text);fputs("(%rip)\n",g->out);}
+        if(gi>=0&&(vi<0||g->vars[vi].global)){fputs("    movq %rax,vnt_global_",g->out);cname(g->out,"",n->value.text);fputs("(%rip)\n",g->out);}
         else if(vi>=0)fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",g->vars[vi].offset);
         else fail(g,"unknown HIR declaration variable.");break;}
     case VNT_IR_ASSIGN:emit_assignment(g,i);break;

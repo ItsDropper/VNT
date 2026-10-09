@@ -1262,9 +1262,17 @@ int vnt_emit_x86_64(const VntIrProgram *ir,const char *assembly_path){
         fprintf(stderr,"Native compiler error: invalid IR program.\n");
         return 0;
     }
-    AstNode *program = ir->program;
+    AstNode *program = vnt_ir_materialize_program(ir);
+    if (!program) {
+        fprintf(stderr, "Native compiler error: could not materialize HIR program.\n");
+        return 0;
+    }
     X86Gen g={0};g.out=fopen(assembly_path,"wb");
-    if(!g.out){fprintf(stderr,"Could not create assembly file: %s\n",assembly_path);return 0;}
+    if(!g.out){
+        fprintf(stderr,"Could not create assembly file: %s\n",assembly_path);
+        ast_free(program);
+        return 0;
+    }
     fputs(".text\n",g.out);
     collect_globals(&g,program->program.statements);
     emit_global_symbols(&g);
@@ -1294,5 +1302,6 @@ int vnt_emit_x86_64(const VntIrProgram *ir,const char *assembly_path){
         }
     }
     fclose(g.out);free_vars(&g);free_globals(&g);free_strings(&g);free_floats(&g);free_structs(&g);
+    ast_free(program);
     if(g.error){remove(assembly_path);return 0;}return 1;
 }

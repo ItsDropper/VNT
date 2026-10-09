@@ -161,7 +161,8 @@ static char *join_path(const char *directory, const char *name) {
     return path;
 }
 
-static int is_import_line(const char *line, char *module, size_t module_size) {
+static int is_import_line(const char *line, char *module, size_t module_size,
+                          char *alias, size_t alias_size) {
     while (isspace((unsigned char)*line))
         line++;
 
@@ -190,6 +191,19 @@ static int is_import_line(const char *line, char *module, size_t module_size) {
     module[length] = '\0';
     line++;
     while (isspace((unsigned char)*line)) line++;
+    alias[0] = '\0';
+    if (*line == '\0' || *line == '#') return 1;
+    if (strncmp(line, "as", 2) != 0 || !isspace((unsigned char)line[2])) return 0;
+    line += 2;
+    while (isspace((unsigned char)*line)) line++;
+    size_t alias_len = 0;
+    if (!(isalpha((unsigned char)*line) || *line == '_')) return 0;
+    while (isalnum((unsigned char)*line) || *line == '_') {
+        if (alias_len + 1 >= alias_size) return 0;
+        alias[alias_len++] = *line++;
+    }
+    alias[alias_len] = '\0';
+    while (isspace((unsigned char)*line)) line++;
     return *line == '\0' || *line == '#';
 }
 
@@ -214,7 +228,7 @@ static int append_text(char **output, size_t *length, size_t *capacity,
     return 1;
 }
 
-static int load_recursive(Loader *loader, const char *path,
+static int load_recursive(Loader *loader, const char *path, const char *namespace_name,
                           char **output, size_t *length, size_t *capacity) {
     if (is_active(loader, path)) {
         fprintf(stderr, "Module error: circular import detected at '%s'.\n", path);
@@ -264,13 +278,13 @@ static int load_recursive(Loader *loader, const char *path,
         memcpy(line, cursor, line_length);
         line[line_length] = '\0';
 
-        char module[4096];
-        if (is_import_line(line, module, sizeof(module))) {
+        char module[4096], alias[256];
+        if (is_import_line(line, module, sizeof(module), alias, sizeof(alias))) {
             char *module_path = join_path(directory, module);
             char *resolved_path = module_path ? normalize_path(module_path) : NULL;
             free(module_path);
             if (!resolved_path ||
-                !load_recursive(loader, resolved_path, output, length, capacity)) {
+                !load_recursive(loader, resolved_path, alias[0] ? alias : NULL, output, length, capacity)) {
                 free(resolved_path);
                 free(line);
                 free(source);
@@ -285,13 +299,42 @@ static int load_recursive(Loader *loader, const char *path,
             pop_active(loader);
             return 0;
         } else {
-            if (!append_text(output, length, capacity, line) ||
+            const char *emit_line = line;
+            char *rewritten = NULL;
+            while (isspace((unsigned char)*emit_line)) emit_line++;
+            if (strncmp(emit_line, "export fun ", 11) == 0) {
+                const char *declaration = emit_line + 11;
+                if (!(isalpha((unsigned char)*declaration) || *declaration == '_')) {
+                    fprintf(stderr, "Module error: expected exported function name in '%s'.\n", path);
+                    free(line); free(source); pop_active(loader); return 0;
+                }
+                const char *name_end = declaration;
+                while (isalnum((unsigned char)*name_end) || *name_end == '_') name_end++;
+                size_t prefix_len = (size_t)(declaration - emit_line);
+                size_t name_len = (size_t)(name_end - declaration);
+                size_t tail_len = strlen(name_end);
+                size_t alias_len = namespace_name ? strlen(namespace_name) : 0;
+                rewritten = malloc(prefix_len + (namespace_name ? alias_len + 2 : 0) + name_len + tail_len + 1);
+                if (!rewritten) { free(line); free(source); pop_active(loader); return 0; }
+                memcpy(rewritten, emit_line, prefix_len);
+                size_t pos = prefix_len;
+                if (namespace_name) { memcpy(rewritten + pos, namespace_name, alias_len); pos += alias_len; rewritten[pos++] = '_'; rewritten[pos++] = '_'; }
+                memcpy(rewritten + pos, declaration, name_len); pos += name_len;
+                memcpy(rewritten + pos, name_end, tail_len + 1);
+                emit_line = rewritten;
+            } else if (strncmp(emit_line, "export ", 7) == 0) {
+                fprintf(stderr, "Module error: only functions can currently be exported in '%s'.\n", path);
+                free(line); free(source); pop_active(loader); return 0;
+            }
+            if (!append_text(output, length, capacity, emit_line) ||
                 !append_text(output, length, capacity, "\n")) {
+                free(rewritten);
                 free(line);
                 free(source);
                 pop_active(loader);
                 return 0;
             }
+            free(rewritten);
         }
 
         free(line);

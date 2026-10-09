@@ -411,6 +411,39 @@ AstNode *parse_postfix(Parser *parser) {
                 return NULL;
             }
             expression = member_node;
+            if (token_is(parser, TOKEN_LEFT_PAREN) &&
+                expression->member_expression.object &&
+                expression->member_expression.object->type == AST_VARIABLE) {
+                const char *module_name = expression->member_expression.object->variable.name;
+                const char *function_name = expression->member_expression.member;
+                size_t qualified_len = strlen(module_name) + strlen(function_name) + 3;
+                char *qualified = malloc(qualified_len);
+                if (!qualified) { ast_free(expression); return NULL; }
+                snprintf(qualified, qualified_len, "%s__%s", module_name, function_name);
+                parser_advance(parser);
+                AstNode *arguments = NULL;
+                int argument_count = 0;
+                if (!token_is(parser, TOKEN_RIGHT_PAREN)) {
+                    for (;;) {
+                        AstNode *argument = parse_expression(parser);
+                        if (!argument) { free(qualified); ast_free(arguments); ast_free(expression); return NULL; }
+                        ast_append(&arguments, argument);
+                        argument_count++;
+                        if (token_is(parser, TOKEN_RIGHT_PAREN)) break;
+                        if (!parser_consume(parser, TOKEN_COMMA, "expected ',' between arguments.")) {
+                            free(qualified); ast_free(arguments); ast_free(expression); return NULL;
+                        }
+                    }
+                }
+                if (!parser_consume(parser, TOKEN_RIGHT_PAREN, "expected ')' after arguments.")) {
+                    free(qualified); ast_free(arguments); ast_free(expression); return NULL;
+                }
+                AstNode *call = ast_create_function_call(qualified, arguments, argument_count);
+                free(qualified);
+                ast_free(expression);
+                if (!call) { ast_free(arguments); return NULL; }
+                expression = call;
+            }
             continue;
         }
 

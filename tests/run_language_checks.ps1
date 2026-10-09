@@ -40,6 +40,14 @@ try {
         throw "Unexpected multi-file module output: $($moduleOutput -join ' | ')"
     }
 
+    $NamespacedExe = Join-Path $OutDir "namespaced_modules.exe"
+    & .\vnt.exe --compile tests\modules\namespaced_main.vnt -o $NamespacedExe
+    if ($LASTEXITCODE -ne 0) { throw "Namespaced cross-file function call did not compile." }
+    $namespacedOutput = & $NamespacedExe
+    if ($LASTEXITCODE -ne 0 -or ($namespacedOutput -join "|") -ne "42|NAMESPACED_MODULE_OK") {
+        throw "Unexpected namespaced module output: $($namespacedOutput -join ' | ')"
+    }
+
     foreach ($case in @(
         "tests\modules\circular_a.vnt",
         "tests\modules\malformed_import.vnt"

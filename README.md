@@ -106,7 +106,7 @@ The compiler now lowers the AST into an explicit high-level IR (HIR): a flat, in
 To inspect the lowered representation:
 
 ```powershell
-.\\vnt.exe --dump-ir tests\\native_compiler.vnt
+.\vnt.exe --dump-ir tests\native_compiler.vnt
 ```
 
 ## Error Handling

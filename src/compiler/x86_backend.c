@@ -655,9 +655,9 @@ static void emit_call(X86Gen *g,AstNode *n) {
     if (call_area)
         fprintf(g->out, "    addq $%d,%%rsp\n", call_area);
 
-    for (i = 0; i < count; i++) {
-        fputs("    popq %r10\n", g->out);
-        g->temp_depth--;
+    if (count) {
+        fprintf(g->out, "    addq $%d,%%rsp\\n", count * 8);
+        g->temp_depth -= count;
     }
 
 }

@@ -13,6 +13,10 @@
 #include <time.h>
 #include <unistd.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #endif
 #ifdef _WIN32
 #include <direct.h>
@@ -26,10 +30,12 @@ typedef enum {
     VNT_STRING,
     VNT_ARRAY,
     VNT_OBJECT,
+    VNT_PROCESS,
     VNT_REFERENCE
 } VntType;
 
 typedef struct VntValue VntValue;
+typedef struct VntProcess VntProcess;
 
 typedef struct {
     char *key;
@@ -54,10 +60,33 @@ struct VntValue {
             int capacity;
             char *type_name;
         } object;
+        VntProcess *process;
         struct {
             VntValue **slot;
         } reference;
     };
+
+};
+
+struct VntProcess {
+#ifdef _WIN32
+    HANDLE handle;
+    HANDLE thread;
+    HANDLE stdout_read;
+    HANDLE stderr_read;
+    DWORD pid;
+#else
+    pid_t pid;
+    int stdout_fd;
+    int stderr_fd;
+    int wait_status;
+#endif
+    int done;
+    int exit_code;
+    char *stdout_data;
+    size_t stdout_len;
+    char *stderr_data;
+    size_t stderr_len;
 };
 
 /*
@@ -404,6 +433,7 @@ static int equal_value(VntValue *a, VntValue *b) {
                 if (!equal_value(a->array.items[i], b->array.items[i])) return 0;
             return 1;
         case VNT_OBJECT:
+        case VNT_PROCESS:
             return a == b;
     }
     return 0;
@@ -471,6 +501,7 @@ static void print_value(VntValue *v) {
             printf("}");
             break;
         }
+        case VNT_PROCESS: printf("<process>"); break;
         case VNT_REFERENCE: printf("<reference>"); break;
     }
 }
@@ -757,4 +788,249 @@ VntValue *vnt_sleep_ms(VntValue *value) {
     while (nanosleep(&req, &req) != 0) if (errno != EINTR) return vnt_null();
 #endif
     return vnt_null();
+}
+
+
+/* Native process API. Arguments are passed as an array and never interpreted
+ * by a shell. Captured output is accumulated until program termination. */
+static void process_append(char **dst, size_t *length, const char *data, size_t n) {
+    if (!n) return;
+    if (n > SIZE_MAX - *length - 1) {
+        fprintf(stderr, "Runtime error: process output is too large.\n");
+        exit(1);
+    }
+    char *next = realloc(*dst, *length + n + 1);
+    if (!next) {
+        fprintf(stderr, "Runtime error: out of memory capturing process output.\n");
+        exit(1);
+    }
+    memcpy(next + *length, data, n);
+    *length += n;
+    next[*length] = '\0';
+}
+static VntProcess *process_from_value(VntValue *v, const char *fn) {
+    if (!v || v->type != VNT_PROCESS || !v->process) {
+        fprintf(stderr, "Runtime error: %s expects a process handle.\n", fn);
+        exit(1);
+    }
+    return v->process;
+}
+#ifdef _WIN32
+static void process_drain_pipe(HANDLE *pipe_handle, char **buffer, size_t *length) {
+    if (!*pipe_handle || *pipe_handle == INVALID_HANDLE_VALUE) return;
+    for (;;) {
+        DWORD available = 0;
+        if (!PeekNamedPipe(*pipe_handle, NULL, 0, NULL, &available, NULL)) {
+            CloseHandle(*pipe_handle); *pipe_handle = NULL; return;
+        }
+        if (!available) return;
+        char chunk[4096]; DWORD got = 0;
+        DWORD want = available < sizeof(chunk) ? available : (DWORD)sizeof(chunk);
+        if (!ReadFile(*pipe_handle, chunk, want, &got, NULL) || !got) {
+            CloseHandle(*pipe_handle); *pipe_handle = NULL; return;
+        }
+        process_append(buffer, length, chunk, got);
+    }
+}
+#else
+static void process_drain_fd(int *fd, char **buffer, size_t *length) {
+    if (*fd < 0) return;
+    for (;;) {
+        char chunk[4096];
+        ssize_t got = read(*fd, chunk, sizeof(chunk));
+        if (got > 0) { process_append(buffer, length, chunk, (size_t)got); continue; }
+        if (got == 0) { close(*fd); *fd = -1; return; }
+        if (errno == EINTR) continue;
+        if (errno == EAGAIN || errno == EWOULDBLOCK) return;
+        close(*fd); *fd = -1; return;
+    }
+}
+#endif
+static void process_refresh(VntProcess *p) {
+#ifdef _WIN32
+    process_drain_pipe(&p->stdout_read, &p->stdout_data, &p->stdout_len);
+    process_drain_pipe(&p->stderr_read, &p->stderr_data, &p->stderr_len);
+    if (!p->done && WaitForSingleObject(p->handle, 0) == WAIT_OBJECT_0) {
+        DWORD code = 1;
+        if (GetExitCodeProcess(p->handle, &code)) p->exit_code = (int)code;
+        p->done = 1;
+    }
+#else
+    process_drain_fd(&p->stdout_fd, &p->stdout_data, &p->stdout_len);
+    process_drain_fd(&p->stderr_fd, &p->stderr_data, &p->stderr_len);
+    if (!p->done) {
+        int status = 0; pid_t result = waitpid(p->pid, &status, WNOHANG);
+        if (result == p->pid) {
+            p->wait_status = status;
+            p->exit_code = WIFEXITED(status) ? WEXITSTATUS(status) :
+                           (WIFSIGNALED(status) ? 128 + WTERMSIG(status) : 1);
+            p->done = 1;
+        }
+    }
+#endif
+#ifdef _WIN32
+    process_drain_pipe(&p->stdout_read, &p->stdout_data, &p->stdout_len);
+    process_drain_pipe(&p->stderr_read, &p->stderr_data, &p->stderr_len);
+#else
+    process_drain_fd(&p->stdout_fd, &p->stdout_data, &p->stdout_len);
+    process_drain_fd(&p->stderr_fd, &p->stderr_data, &p->stderr_len);
+#endif
+}
+#ifdef _WIN32
+static void append_win_arg(char **cmd, size_t *len, size_t *cap, const char *arg) {
+    size_t need = strlen(arg) * 2 + 4;
+    if (*len + need + 1 > *cap) {
+        size_t nc = *cap ? *cap : 128;
+        while (nc < *len + need + 1) nc *= 2;
+        char *next = realloc(*cmd, nc);
+        if (!next) { fprintf(stderr, "Runtime error: out of memory building process command line.\n"); exit(1); }
+        *cmd = next; *cap = nc;
+    }
+    if (*len) (*cmd)[(*len)++] = ' ';
+    (*cmd)[(*len)++] = '"';
+    size_t slashes = 0;
+    for (const char *s = arg; ; ++s) {
+        if (*s == '\\') { ++slashes; continue; }
+        if (*s == '"') {
+            for (size_t i = 0; i < slashes * 2 + 1; ++i) (*cmd)[(*len)++] = '\\';
+            (*cmd)[(*len)++] = '"'; slashes = 0; continue;
+        }
+        if (*s == '\0') {
+            for (size_t i = 0; i < slashes * 2; ++i) (*cmd)[(*len)++] = '\\';
+            break;
+        }
+        for (size_t i = 0; i < slashes; ++i) (*cmd)[(*len)++] = '\\';
+        slashes = 0; (*cmd)[(*len)++] = *s;
+    }
+    (*cmd)[(*len)++] = '"'; (*cmd)[*len] = '\0';
+}
+#endif
+VntValue *vnt_process_start(VntValue *executable, VntValue *arguments) {
+    const char *exe = vnt_app_string(executable, "process_start()");
+    if (!arguments || arguments->type != VNT_ARRAY) {
+        fprintf(stderr, "Runtime error: process_start() expects an array of string arguments.\n"); exit(1);
+    }
+    for (int i = 0; i < arguments->array.count; ++i)
+        (void)vnt_app_string(arguments->array.items[i], "process_start() arguments");
+    VntProcess *p = calloc(1, sizeof(*p));
+    if (!p) { fprintf(stderr, "Runtime error: out of memory starting process.\n"); exit(1); }
+#ifdef _WIN32
+    p->stdout_read = NULL; p->stderr_read = NULL;
+    SECURITY_ATTRIBUTES sa; memset(&sa, 0, sizeof(sa)); sa.nLength = sizeof(sa); sa.bInheritHandle = TRUE;
+    HANDLE out_write = NULL, err_write = NULL;
+    if (!CreatePipe(&p->stdout_read, &out_write, &sa, 0) ||
+        !CreatePipe(&p->stderr_read, &err_write, &sa, 0)) {
+        if (p->stdout_read) CloseHandle(p->stdout_read);
+        if (out_write) CloseHandle(out_write);
+        if (p->stderr_read) CloseHandle(p->stderr_read);
+        if (err_write) CloseHandle(err_write);
+        free(p); fprintf(stderr, "Runtime error: process_start() could not create output pipes.\n"); return vnt_null();
+    }
+    SetHandleInformation(p->stdout_read, HANDLE_FLAG_INHERIT, 0);
+    SetHandleInformation(p->stderr_read, HANDLE_FLAG_INHERIT, 0);
+    char *cmd = NULL; size_t cmd_len = 0, cmd_cap = 0;
+    append_win_arg(&cmd, &cmd_len, &cmd_cap, exe);
+    for (int i = 0; i < arguments->array.count; ++i)
+        append_win_arg(&cmd, &cmd_len, &cmd_cap, arguments->array.items[i]->string);
+    STARTUPINFOA si; PROCESS_INFORMATION pi;
+    memset(&si, 0, sizeof(si)); memset(&pi, 0, sizeof(pi));
+    si.cb = sizeof(si); si.dwFlags = STARTF_USESTDHANDLES;
+    si.hStdInput = GetStdHandle(STD_INPUT_HANDLE); si.hStdOutput = out_write; si.hStdError = err_write;
+    BOOL ok = CreateProcessA(exe, cmd, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
+    free(cmd); CloseHandle(out_write); CloseHandle(err_write);
+    if (!ok) {
+        DWORD error = GetLastError();
+        CloseHandle(p->stdout_read); CloseHandle(p->stderr_read); free(p);
+        fprintf(stderr, "Runtime error: process_start() failed to launch '%s' (Windows error %lu).\n", exe, (unsigned long)error);
+        return vnt_null();
+    }
+    p->handle = pi.hProcess; p->thread = pi.hThread; p->pid = pi.dwProcessId;
+#else
+    int out_pipe[2] = {-1,-1}, err_pipe[2] = {-1,-1};
+    if (pipe(out_pipe) != 0 || pipe(err_pipe) != 0) {
+        if (out_pipe[0] >= 0) close(out_pipe[0]); if (out_pipe[1] >= 0) close(out_pipe[1]);
+        if (err_pipe[0] >= 0) close(err_pipe[0]); if (err_pipe[1] >= 0) close(err_pipe[1]);
+        free(p); fprintf(stderr, "Runtime error: process_start() could not create output pipes.\n"); return vnt_null();
+    }
+    pid_t pid = fork();
+    if (pid < 0) {
+        close(out_pipe[0]); close(out_pipe[1]); close(err_pipe[0]); close(err_pipe[1]); free(p);
+        fprintf(stderr, "Runtime error: process_start() could not fork.\n"); return vnt_null();
+    }
+    if (pid == 0) {
+        dup2(out_pipe[1], STDOUT_FILENO); dup2(err_pipe[1], STDERR_FILENO);
+        close(out_pipe[0]); close(out_pipe[1]); close(err_pipe[0]); close(err_pipe[1]);
+        char **argv = calloc((size_t)arguments->array.count + 2, sizeof(char *));
+        if (!argv) _exit(126);
+        argv[0] = (char *)exe;
+        for (int i = 0; i < arguments->array.count; ++i) argv[i+1] = arguments->array.items[i]->string;
+        execvp(exe, argv);
+        dprintf(STDERR_FILENO, "VNT process_start: could not execute '%s': %s\n", exe, strerror(errno));
+        _exit(127);
+    }
+    close(out_pipe[1]); close(err_pipe[1]);
+    int flags = fcntl(out_pipe[0], F_GETFL, 0); if (flags >= 0) fcntl(out_pipe[0], F_SETFL, flags | O_NONBLOCK);
+    flags = fcntl(err_pipe[0], F_GETFL, 0); if (flags >= 0) fcntl(err_pipe[0], F_SETFL, flags | O_NONBLOCK);
+    p->pid = pid; p->stdout_fd = out_pipe[0]; p->stderr_fd = err_pipe[0];
+#endif
+    VntValue *result = alloc_value(VNT_PROCESS); result->process = p; return result;
+}
+VntValue *vnt_process_poll(VntValue *value) {
+    VntProcess *p = process_from_value(value, "process_poll()"); process_refresh(p); return vnt_bool(p->done);
+}
+VntValue *vnt_process_wait(VntValue *value, VntValue *timeout) {
+    VntProcess *p = process_from_value(value, "process_wait()");
+    if (!timeout || timeout->type != VNT_INT || timeout->integer < -1) {
+        fprintf(stderr, "Runtime error: process_wait() timeout must be -1 or a non-negative integer.\n"); exit(1);
+    }
+    uint64_t start;
+#ifdef _WIN32
+    start = GetTickCount64();
+#else
+    struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
+    start = (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
+#endif
+    for (;;) {
+        process_refresh(p);
+        if (p->done) return vnt_bool(1);
+        if (timeout->integer >= 0) {
+            uint64_t now;
+#ifdef _WIN32
+            now = GetTickCount64();
+#else
+            clock_gettime(CLOCK_MONOTONIC, &ts);
+            now = (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
+#endif
+            if (now - start >= (uint64_t)timeout->integer) return vnt_bool(0);
+        }
+#ifdef _WIN32
+        Sleep(5);
+#else
+        struct timespec delay = {0,5000000L}; nanosleep(&delay, NULL);
+#endif
+    }
+}
+VntValue *vnt_process_pid(VntValue *value) {
+    VntProcess *p = process_from_value(value, "process_pid()"); return vnt_int((int)p->pid);
+}
+VntValue *vnt_process_terminate(VntValue *value) {
+    VntProcess *p = process_from_value(value, "process_terminate()"); process_refresh(p);
+    if (p->done) return vnt_bool(0);
+#ifdef _WIN32
+    return vnt_bool(TerminateProcess(p->handle, 1) != 0);
+#else
+    return vnt_bool(kill(p->pid, SIGTERM) == 0);
+#endif
+}
+VntValue *vnt_process_stdout(VntValue *value) {
+    VntProcess *p = process_from_value(value, "process_stdout()"); process_refresh(p);
+    return vnt_string(p->stdout_data ? p->stdout_data : "");
+}
+VntValue *vnt_process_stderr(VntValue *value) {
+    VntProcess *p = process_from_value(value, "process_stderr()"); process_refresh(p);
+    return vnt_string(p->stderr_data ? p->stderr_data : "");
+}
+VntValue *vnt_process_exit_code(VntValue *value) {
+    VntProcess *p = process_from_value(value, "process_exit_code()"); process_refresh(p);
+    return vnt_int(p->done ? p->exit_code : -1);
 }

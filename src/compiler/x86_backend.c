@@ -709,6 +709,14 @@ static void emit_call(X86Gen *g,AstNode *n) {
         else if (!strcmp(name, "env_set")) { arity = 2; runtime_name = "vnt_env_set"; }
         else if (!strcmp(name, "time_ms")) { arity = 0; runtime_name = "vnt_time_ms"; }
         else if (!strcmp(name, "sleep_ms")) { arity = 1; runtime_name = "vnt_sleep_ms"; }
+        else if (!strcmp(name, "process_start")) { arity = 2; runtime_name = "vnt_process_start"; }
+        else if (!strcmp(name, "process_poll")) { arity = 1; runtime_name = "vnt_process_poll"; }
+        else if (!strcmp(name, "process_wait")) { arity = 2; runtime_name = "vnt_process_wait"; }
+        else if (!strcmp(name, "process_pid")) { arity = 1; runtime_name = "vnt_process_pid"; }
+        else if (!strcmp(name, "process_terminate")) { arity = 1; runtime_name = "vnt_process_terminate"; }
+        else if (!strcmp(name, "process_stdout")) { arity = 1; runtime_name = "vnt_process_stdout"; }
+        else if (!strcmp(name, "process_stderr")) { arity = 1; runtime_name = "vnt_process_stderr"; }
+        else if (!strcmp(name, "process_exit_code")) { arity = 1; runtime_name = "vnt_process_exit_code"; }
         if (arity >= 0) {
             if (count != arity) {
                 fail(g, "native application API function called with the wrong number of arguments.");

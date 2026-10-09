@@ -109,6 +109,14 @@ VNT's generated executables include a cross-platform runtime API:
 | `env_set(name, value)` | Set an environment variable for the current process. |
 | `time_ms()` | Read a millisecond clock as a floating-point number. |
 | `sleep_ms(milliseconds)` | Block for a non-negative integer duration. |
+| `process_start(executable, args)` | Start a child process; `args` is an array of strings. |
+| `process_poll(process)` | Return whether the child has exited. |
+| `process_wait(process, timeout_ms)` | Wait for exit; `-1` means indefinitely, timeout returns false. |
+| `process_pid(process)` | Return the child process ID. |
+| `process_terminate(process)` | Request termination; returns whether the OS accepted it. |
+| `process_stdout(process)` | Return captured standard output so far. |
+| `process_stderr(process)` | Return captured standard error so far. |
+| `process_exit_code(process)` | Return exit code, or `-1` while still running. |
 
 File operations currently handle text strings, not arbitrary binary data. These
 functions establish a native runtime boundary for future process management,

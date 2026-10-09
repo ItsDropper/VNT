@@ -1,0 +1,16 @@
+# Windows process API smoke test. Arguments are passed as an array, not shell text.
+args = ["/c", "echo VNT_PROCESS_STDOUT_OK"]
+p = process_start("cmd.exe", args)
+print(process_pid(p) > 0)
+print(process_wait(p, 5000))
+print(process_stdout(p))
+print(process_stderr(p))
+print(process_exit_code(p))
+print(process_poll(p))
+
+slow_args = ["/c", "ping -n 10 127.0.0.1 > nul"]
+slow = process_start("cmd.exe", slow_args)
+print(process_wait(slow, 10))
+print(process_terminate(slow))
+print(process_wait(slow, 5000))
+print("NATIVE_PROCESS_API_OK")

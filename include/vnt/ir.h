@@ -92,6 +92,8 @@ typedef struct {
 int vnt_ir_lower(VntIrProgram *ir, AstNode *program);
 int vnt_ir_optimize(VntIrProgram *ir);
 int vnt_ir_validate(const VntIrProgram *ir);
+/* Rebuild a temporary compatibility AST using HIR-owned data only. */
+AstNode *vnt_ir_materialize_program(const VntIrProgram *ir);
 void vnt_ir_dump(const VntIrProgram *ir, FILE *out);
 void vnt_ir_free(VntIrProgram *ir);
 

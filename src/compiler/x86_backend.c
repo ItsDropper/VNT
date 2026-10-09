@@ -624,13 +624,13 @@ static void emit_call(X86Gen *g,AstNode *n) {
      */
     if (count == 1) {
         emit_expr(g, n->function_call.arguments);
-        fputs("    movq %rax,%rcx\\n", g->out);
+        fputs("    movq %rax,%rcx\n", g->out);
         int call_area = 32 + ((g->temp_depth * 8) % 16 ? 8 : 0);
-        fprintf(g->out, "    subq $%d,%%rsp\\n", call_area);
+        fprintf(g->out, "    subq $%d,%%rsp\n", call_area);
         fputs("    call vnt_fn_", g->out);
         cname(g->out, "", name);
-        fputc('\\n', g->out);
-        fprintf(g->out, "    addq $%d,%%rsp\\n", call_area);
+        fputc('\n', g->out);
+        fprintf(g->out, "    addq $%d,%%rsp\n", call_area);
         return;
     }
 

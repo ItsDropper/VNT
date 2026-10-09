@@ -402,6 +402,32 @@ static const char *opcode_name(VntIrOpcode opcode) {
         ? names[opcode] : "invalid";
 }
 
+static const char *edge_role_name(VntIrEdgeRole role) {
+    static const char *names[] = {
+        "root", "statement", "condition", "then", "else", "body",
+        "value", "target", "argument", "element", "object", "index",
+        "left", "right", "operand"
+    };
+    return role >= VNT_IR_EDGE_ROOT && role <= VNT_IR_EDGE_OPERAND
+        ? names[role] : "invalid";
+}
+
+static const char *operation_name(const VntIrNode *node) {
+    static const char *binary[] = {
+        "add", "subtract", "multiply", "divide", "modulo",
+        "equal", "not-equal", "greater", "less", "greater-equal",
+        "less-equal", "and", "or"
+    };
+    static const char *unary[] = {"not", "negate", "reference", "dereference"};
+    if (node->opcode == VNT_IR_BINARY &&
+        node->operation >= BINARY_ADD && node->operation <= BINARY_OR)
+        return binary[node->operation];
+    if (node->opcode == VNT_IR_UNARY &&
+        node->operation >= UNARY_NOT && node->operation <= UNARY_DEREFERENCE)
+        return unary[node->operation];
+    return "invalid";
+}
+
 void vnt_ir_dump(const VntIrProgram *ir, FILE *out) {
     if (!out || !vnt_ir_validate(ir)) {
         if (out) fputs("VNT HIR error: invalid IR graph.\n", out);
@@ -411,7 +437,7 @@ void vnt_ir_dump(const VntIrProgram *ir, FILE *out) {
             ir->node_count, ir->root, ir->optimized_nodes);
     for (size_t i = 0; i < ir->node_count; ++i) {
         const VntIrNode *node = &ir->nodes[i];
-        fprintf(out, "%04zu %-13s role=%d children=[", i, opcode_name(node->opcode), (int)node->role);
+        fprintf(out, "%04zu %-13s role=%s children=[", i, opcode_name(node->opcode), edge_role_name(node->role));
         size_t child = node->first_child;
         while (child != VNT_IR_NO_NODE) {
             fprintf(out, "%s%zu", child == node->first_child ? "" : ",", child);
@@ -430,7 +456,7 @@ void vnt_ir_dump(const VntIrProgram *ir, FILE *out) {
             case VNT_IR_FUNCTION:
             case VNT_IR_STRUCT: fprintf(out, " name/text=\"%s\"", node->value.text); break;
             case VNT_IR_BINARY:
-            case VNT_IR_UNARY: fprintf(out, " op=%d", node->operation); break;
+            case VNT_IR_UNARY: fprintf(out, " op=%s", operation_name(node)); break;
             default: break;
         }
         if (node->name_count) {

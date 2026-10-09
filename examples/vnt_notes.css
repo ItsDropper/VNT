@@ -5,3 +5,17 @@ title { color: #F4F7FF; font-size: 30; }
 panel { background-color: #151F34; }
 button { background-color: #1D2B45; color: #DCE7FF; font-size: 13; padding: 9; border-radius: 10; }
 button:hover { background-color: #315CE8; }
+
+/* Native Windows edit controls use the same dark palette as the canvas. */
+input {
+    background-color: #0A0F1D;
+    color: #DCE7FF;
+    border-color: #315CE8;
+    font-size: 14;
+}
+textarea {
+    background-color: #0A0F1D;
+    color: #DCE7FF;
+    border-color: #315CE8;
+    font-size: 14;
+}

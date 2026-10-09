@@ -789,7 +789,34 @@ static void emit_call(X86Gen *g,AstNode *n) {
                 return;
             }
             AstNode *arg = n->function_call.arguments;
-            if (arity == 4) {
+            if (arity == 5) {
+                /*
+                 * Windows x64 passes the first four arguments in registers
+                 * and the fifth at [rsp+32] after the 32-byte shadow space.
+                 * Evaluate and save arguments, load the registers, then rebuild
+                 * a correctly aligned call frame for the fifth stack argument.
+                 */
+                for (AstNode *a = arg; a; a = a->next) {
+                    emit_expr(g, a);
+                    fputs("    pushq %rax\\n", g->out);
+                    g->temp_depth++;
+                }
+                fputs("    movq 32(%rsp),%rcx\\n"
+                      "    movq 24(%rsp),%rdx\\n"
+                      "    movq 16(%rsp),%r8\\n"
+                      "    movq 8(%rsp),%r9\\n"
+                      "    movq 0(%rsp),%r10\\n", g->out);
+                fputs("    addq $40,%rsp\\n", g->out);
+                g->temp_depth -= 5;
+                int call_area = 40;
+                int alignment = (g->temp_depth * 8 + call_area) % 16;
+                if (alignment) call_area += 16 - alignment;
+                fprintf(g->out, "    subq $%d,%%rsp\\n", call_area);
+                fputs("    movq %r10,32(%rsp)\\n    call ", g->out);
+                fputs(runtime_name, g->out);
+                fputc('\\n', g->out);
+                fprintf(g->out, "    addq $%d,%%rsp\\n", call_area);
+            } else if (arity == 4) {
                 for (AstNode *a = arg; a; a = a->next) {
                     emit_expr(g, a);
                     fputs("    pushq %rax\n", g->out);

@@ -64,6 +64,17 @@ static void set_symbol(TypeChecker *tc, const char *name, TypeKind type) {
 
 static int numeric(TypeKind t) { return t == TY_INT || t == TY_FLOAT; }
 
+static TypeKind type_from_name(const char *name) {
+    if (!strcmp(name, "int")) return TY_INT;
+    if (!strcmp(name, "float")) return TY_FLOAT;
+    if (!strcmp(name, "bool")) return TY_BOOL;
+    if (!strcmp(name, "string")) return TY_STRING;
+    if (!strcmp(name, "array")) return TY_ARRAY;
+    if (!strcmp(name, "object")) return TY_OBJECT;
+    if (!strcmp(name, "reference")) return TY_REFERENCE;
+    return TY_UNDECLARED;
+}
+
 static FunctionDef *find_function(TypeChecker *tc, const char *name) {
     for (int i = 0; i < tc->function_count; ++i)
         if (!strcmp(tc->functions[i].name, name))
@@ -294,8 +305,37 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                  */
                 n->variable_declaration.is_reassignment =
                     find_symbol(tc, n->variable_declaration.name) != TY_UNDECLARED;
-                set_symbol(tc, n->variable_declaration.name,
-                           expr_type(tc, n->variable_declaration.value));
+
+                TypeKind value_type =
+                    expr_type(tc, n->variable_declaration.value);
+                if (n->variable_declaration.declared_type) {
+                    TypeKind declared_type =
+                        type_from_name(n->variable_declaration.declared_type);
+                    if (declared_type == TY_UNDECLARED) {
+                        char message[256];
+                        snprintf(message, sizeof(message),
+                                 "unknown type '%s'.",
+                                 n->variable_declaration.declared_type);
+                        error(tc, message);
+                        break;
+                    }
+                    if (n->variable_declaration.is_reassignment) {
+                        error(tc, "'let' cannot redeclare an existing variable.");
+                        break;
+                    }
+                    if (value_type != TY_UNKNOWN &&
+                        value_type != declared_type) {
+                        char message[256];
+                        snprintf(message, sizeof(message),
+                                 "initializer type does not match declared type '%s'.",
+                                 n->variable_declaration.declared_type);
+                        error(tc, message);
+                        break;
+                    }
+                    set_symbol(tc, n->variable_declaration.name, declared_type);
+                } else {
+                    set_symbol(tc, n->variable_declaration.name, value_type);
+                }
                 break;
 
             case AST_ASSIGNMENT: {

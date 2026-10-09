@@ -29,7 +29,7 @@
  * remains useful for access violations in the runtime itself.
  */
 static LONG WINAPI vnt_unhandled_exception(EXCEPTION_POINTERS *info) {
-    FILE *f = fopen("vnt_crash.log", "w");
+    FILE *f = fopen("vnt_crash.log", "a");
     if (f) {
         DWORD code = 0;
         void *address = NULL;
@@ -91,7 +91,52 @@ static LONG WINAPI vnt_unhandled_exception(EXCEPTION_POINTERS *info) {
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
+static LONG CALLBACK vnt_first_chance_exception(EXCEPTION_POINTERS *info) {
+    if (!info || !info->ExceptionRecord) return EXCEPTION_CONTINUE_SEARCH;
+    DWORD code = info->ExceptionRecord->ExceptionCode;
+    /* Log likely fatal native faults; leave normal exception handling intact. */
+    if (code != EXCEPTION_ACCESS_VIOLATION &&
+        code != EXCEPTION_ILLEGAL_INSTRUCTION &&
+        code != EXCEPTION_STACK_OVERFLOW &&
+        code != EXCEPTION_ARRAY_BOUNDS_EXCEEDED &&
+        code != EXCEPTION_INT_DIVIDE_BY_ZERO)
+        return EXCEPTION_CONTINUE_SEARCH;
+
+    FILE *f = fopen("vnt_crash.log", "a");
+    if (f) {
+        fprintf(f, "First-chance exception: 0x%08lX at %p; thread=%lu\\n",
+                (unsigned long)code, info->ExceptionRecord->ExceptionAddress,
+                (unsigned long)GetCurrentThreadId());
+        if (info->ExceptionRecord->NumberParameters > 0)
+            fprintf(f, "Exception detail[0]: 0x%llX\\n",
+                    (unsigned long long)info->ExceptionRecord->ExceptionInformation[0]);
+        if (info->ExceptionRecord->NumberParameters > 1)
+            fprintf(f, "Exception detail[1]: 0x%llX\\n",
+                    (unsigned long long)info->ExceptionRecord->ExceptionInformation[1]);
+#if defined(_M_X64) || defined(__x86_64__)
+        if (info->ContextRecord) {
+            CONTEXT *x = info->ContextRecord;
+            fprintf(f, "RIP=%016llX RSP=%016llX RBP=%016llX RCX=%016llX RDX=%016llX R8=%016llX R9=%016llX\\n",
+                    (unsigned long long)x->Rip, (unsigned long long)x->Rsp,
+                    (unsigned long long)x->Rbp, (unsigned long long)x->Rcx,
+                    (unsigned long long)x->Rdx, (unsigned long long)x->R8,
+                    (unsigned long long)x->R9);
+        }
+#endif
+        fflush(f);
+        fclose(f);
+    }
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
 static void vnt_install_crash_handler(void) {
+    FILE *f = fopen("vnt_crash.log", "w");
+    if (f) {
+        fprintf(f, "VNT crash logger initialized. PID=%lu\\n",
+                (unsigned long)GetCurrentProcessId());
+        fclose(f);
+    }
+    AddVectoredExceptionHandler(1, vnt_first_chance_exception);
     SetUnhandledExceptionFilter(vnt_unhandled_exception);
 }
 #if defined(__GNUC__)

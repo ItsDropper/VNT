@@ -289,6 +289,7 @@ static int lower_node(VntIrProgram *ir, const AstNode *ast, size_t *result) {
             return lower_one(ir, *result, ast->while_statement.condition, VNT_IR_EDGE_CONDITION) &&
                    lower_list(ir, *result, ast->while_statement.body, VNT_IR_EDGE_BODY);
         case AST_FUNCTION_DECLARATION: return lower_list(ir, *result, ast->function_declaration.body, VNT_IR_EDGE_BODY);
+        case AST_VARIABLE_DECLARATION: return lower_one(ir, *result, ast->variable_declaration.value, VNT_IR_EDGE_VALUE);
         case AST_FUNCTION_CALL: return lower_list(ir, *result, ast->function_call.arguments, VNT_IR_EDGE_ARGUMENT);
         case AST_RETURN_STATEMENT: return lower_one(ir, *result, ast->return_statement.expression, VNT_IR_EDGE_VALUE);
         case AST_ARRAY_LITERAL: return lower_list(ir, *result, ast->array_literal.elements, VNT_IR_EDGE_ELEMENT);
@@ -377,6 +378,16 @@ int vnt_ir_validate(const VntIrProgram *ir) {
         if (seen != node->child_count || last != node->last_child) {
             free(parents);
             return 0;
+        }
+        /* A declaration has zero children without an initializer, or exactly
+           one value child when its source declaration has an initializer. */
+        if (node->opcode == VNT_IR_VARIABLE_DECL) {
+            size_t expected = node->source->variable_declaration.value ? 1u : 0u;
+            if (node->child_count != expected ||
+                (expected && ir->nodes[node->first_child].role != VNT_IR_EDGE_VALUE)) {
+                free(parents);
+                return 0;
+            }
         }
         if (node->last_child != VNT_IR_NO_NODE &&
             ir->nodes[node->last_child].next_sibling != VNT_IR_NO_NODE) {

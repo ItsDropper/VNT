@@ -7,6 +7,7 @@
 #include <vnt/ast.h>
 #include <vnt/compiler.h>
 #include <vnt/modules.h>
+#include <vnt/ir.h>
 
 static int compile_native(AstNode *program, const char *output_path) {
     size_t length = strlen(output_path);
@@ -53,9 +54,11 @@ static int compile_native(AstNode *program, const char *output_path) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc != 5 || strcmp(argv[1], "--compile") != 0 ||
-        strcmp(argv[3], "-o") != 0) {
+    int dump_ir = argc == 3 && strcmp(argv[1], "--dump-ir") == 0;
+    if (!dump_ir && (argc != 5 || strcmp(argv[1], "--compile") != 0 ||
+        strcmp(argv[3], "-o") != 0)) {
         printf("Usage: vnt --compile <file.vnt> -o <output.exe>\n");
+        printf("       vnt --dump-ir <file.vnt>\n");
         return 1;
     }
 
@@ -75,7 +78,22 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    int result = compile_native(program, argv[4]);
+    int result;
+    if (dump_ir) {
+        VntIrProgram ir;
+        if (!vnt_ir_lower(&ir, program) ||
+            !vnt_ir_optimize(&ir) ||
+            !vnt_ir_validate(&ir)) {
+            fprintf(stderr, "VNT HIR lowering/validation failed.\\n");
+            result = 1;
+        } else {
+            vnt_ir_dump(&ir, stdout);
+            result = 0;
+        }
+        vnt_ir_free(&ir);
+    } else {
+        result = compile_native(program, argv[4]);
+    }
 
     ast_free(program);
     free(source);

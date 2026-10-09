@@ -1,0 +1,7 @@
+i = 1
+accumulator = 0
+while i <= 10000 {
+    accumulator += sqrt(i) + abs(0 - i) / 1000
+    i += 1
+}
+print("FLOAT_MATH_OK")

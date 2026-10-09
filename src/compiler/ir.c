@@ -1,5 +1,6 @@
 #include <vnt/ir.h>
 #include <limits.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,6 +15,12 @@ static int int_value(AstNode *n, int *out) {
 static int bool_value(AstNode *n, int *out) {
     if (!n || n->type != AST_BOOLEAN_LITERAL) return 0;
     *out = n->boolean_literal.value ? 1 : 0;
+    return 1;
+}
+
+static int float_value(AstNode *n, double *out) {
+    if (!n || n->type != AST_FLOAT_LITERAL) return 0;
+    *out = n->float_literal.value;
     return 1;
 }
 
@@ -34,6 +41,14 @@ static int replace_bool_binary(AstNode *n, int value) {
     n->binary_expression.right = NULL;
     n->type = AST_BOOLEAN_LITERAL;
     n->boolean_literal.value = value ? 1 : 0;
+    return 1;
+}
+
+static int replace_float_binary(AstNode *n, double value) {
+    ast_free(n->binary_expression.left);
+    ast_free(n->binary_expression.right);
+    n->type = AST_FLOAT_LITERAL;
+    n->float_literal.value = value;
     return 1;
 }
 
@@ -76,6 +91,32 @@ static int fold_binary(AstNode *n) {
         if (n->binary_expression.operator == BINARY_OR) return replace_bool_binary(n, a || b);
         if (n->binary_expression.operator == BINARY_EQUAL) return replace_bool_binary(n, a == b);
         if (n->binary_expression.operator == BINARY_NOT_EQUAL) return replace_bool_binary(n, a != b);
+    }
+
+    double x, y;
+    if (float_value(left, &x) && float_value(right, &y)) {
+        switch (n->binary_expression.operator) {
+            case BINARY_ADD:
+                if (isfinite(x + y)) return replace_float_binary(n, x + y);
+                break;
+            case BINARY_SUBTRACT:
+                if (isfinite(x - y)) return replace_float_binary(n, x - y);
+                break;
+            case BINARY_MULTIPLY:
+                if (isfinite(x * y)) return replace_float_binary(n, x * y);
+                break;
+            case BINARY_DIVIDE:
+                if (y != 0.0 && isfinite(x / y))
+                    return replace_float_binary(n, x / y);
+                break;
+            case BINARY_EQUAL: return replace_bool_binary(n, x == y);
+            case BINARY_NOT_EQUAL: return replace_bool_binary(n, x != y);
+            case BINARY_GREATER: return replace_bool_binary(n, x > y);
+            case BINARY_LESS: return replace_bool_binary(n, x < y);
+            case BINARY_GREATER_EQUAL: return replace_bool_binary(n, x >= y);
+            case BINARY_LESS_EQUAL: return replace_bool_binary(n, x <= y);
+            default: break;
+        }
     }
     return 0;
 }

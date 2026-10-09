@@ -15,7 +15,8 @@ fun show_header() {
     print("================================================")
     print("Journal: " + journal_path)
     print("Working directory: " + cwd())
-    print("Session entries added: " + session_entries)
+    print("Session entries added:")
+    print(session_entries)
     print("")
     return 0
 }
@@ -70,9 +71,12 @@ fun show_diagnostics() {
     print(env_get("OS"))
     print("Home directory variable:")
     print(env_get("HOME"))
-    print("Journal exists: " + fs_exists(journal_path))
-    print("Entries added this session: " + session_entries)
-    print("Session elapsed (ms): " + (time_ms() - session_start))
+    print("Journal exists:")
+    print(fs_exists(journal_path))
+    print("Entries added this session:")
+    print(session_entries)
+    print("Session elapsed (ms):")
+    print(time_ms() - session_start)
     print("================================================")
     return 0
 }

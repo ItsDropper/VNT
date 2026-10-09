@@ -854,6 +854,8 @@ static void process_refresh(VntProcess *p) {
         DWORD code = 1;
         if (GetExitCodeProcess(p->handle, &code)) p->exit_code = (int)code;
         p->done = 1;
+        if (p->thread) { CloseHandle(p->thread); p->thread = NULL; }
+        if (p->handle) { CloseHandle(p->handle); p->handle = NULL; }
     }
 #else
     process_drain_fd(&p->stdout_fd, &p->stdout_data, &p->stdout_len);

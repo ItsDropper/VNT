@@ -104,19 +104,19 @@ static LONG CALLBACK vnt_first_chance_exception(EXCEPTION_POINTERS *info) {
 
     FILE *f = fopen("vnt_crash.log", "a");
     if (f) {
-        fprintf(f, "First-chance exception: 0x%08lX at %p; thread=%lu\\n",
+        fprintf(f, "First-chance exception: 0x%08lX at %p; thread=%lu\n",
                 (unsigned long)code, info->ExceptionRecord->ExceptionAddress,
                 (unsigned long)GetCurrentThreadId());
         if (info->ExceptionRecord->NumberParameters > 0)
-            fprintf(f, "Exception detail[0]: 0x%llX\\n",
+            fprintf(f, "Exception detail[0]: 0x%llX\n",
                     (unsigned long long)info->ExceptionRecord->ExceptionInformation[0]);
         if (info->ExceptionRecord->NumberParameters > 1)
-            fprintf(f, "Exception detail[1]: 0x%llX\\n",
+            fprintf(f, "Exception detail[1]: 0x%llX\n",
                     (unsigned long long)info->ExceptionRecord->ExceptionInformation[1]);
 #if defined(_M_X64) || defined(__x86_64__)
         if (info->ContextRecord) {
             CONTEXT *x = info->ContextRecord;
-            fprintf(f, "RIP=%016llX RSP=%016llX RBP=%016llX RCX=%016llX RDX=%016llX R8=%016llX R9=%016llX\\n",
+            fprintf(f, "RIP=%016llX RSP=%016llX RBP=%016llX RCX=%016llX RDX=%016llX R8=%016llX R9=%016llX\n",
                     (unsigned long long)x->Rip, (unsigned long long)x->Rsp,
                     (unsigned long long)x->Rbp, (unsigned long long)x->Rcx,
                     (unsigned long long)x->Rdx, (unsigned long long)x->R8,
@@ -132,7 +132,7 @@ static LONG CALLBACK vnt_first_chance_exception(EXCEPTION_POINTERS *info) {
 static void vnt_install_crash_handler(void) {
     FILE *f = fopen("vnt_crash.log", "w");
     if (f) {
-        fprintf(f, "VNT crash logger initialized. PID=%lu\\n",
+        fprintf(f, "VNT crash logger initialized. PID=%lu\n",
                 (unsigned long)GetCurrentProcessId());
         fclose(f);
     }

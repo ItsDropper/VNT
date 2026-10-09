@@ -21,6 +21,7 @@ $sources = @(
     "src/compiler/compiler.c",
     "src/compiler/typecheck.c",
     "src/compiler/ir.c",
+    "src/compiler/ir_lower.c",
     "src/compiler/x86_backend.c"
 )
 

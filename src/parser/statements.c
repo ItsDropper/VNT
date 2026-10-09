@@ -2,6 +2,7 @@
 #include "../internal/parser_internal.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
 AstNode *parse_block(Parser *parser) {
     AstNode *statements = NULL;

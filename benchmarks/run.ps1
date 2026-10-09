@@ -8,15 +8,15 @@ if ($Runs -lt 3) { throw "Use at least 3 measured runs; recommended: -Runs 7." }
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
 $Cases = @(
-    @{ Name = "integer-loop"; Source = "benchmarks\loop_sum.vnt"; Marker = "799980000" },
-    @{ Name = "branches-logic"; Source = "benchmarks\suite\branches_logic.vnt"; Marker = "BRANCHES_LOGIC_OK" },
-    @{ Name = "function-calls"; Source = "benchmarks\suite\function_calls.vnt"; Marker = "FUNCTION_CALLS_OK" },
-    @{ Name = "recursion"; Source = "benchmarks\suite\recursion.vnt"; Marker = "RECURSION_OK" },
-    @{ Name = "strings"; Source = "benchmarks\suite\strings.vnt"; Marker = "STRINGS_OK" },
-    @{ Name = "arrays"; Source = "benchmarks\suite\arrays.vnt"; Marker = "ARRAYS_OK" },
-    @{ Name = "floats-math"; Source = "benchmarks\suite\floats_math.vnt"; Marker = "FLOAT_MATH_OK" },
-    @{ Name = "structs-refs-ffi"; Source = "benchmarks\suite\objects_structs_refs.vnt"; Marker = "OBJECTS_STRUCTS_REFS_OK" },
-    @{ Name = "multi-file"; Source = "benchmarks\suite\multifile\main.vnt"; Marker = "MULTIFILE_OK" }
+    @{ Name = "integer-loop"; Source = "benchmarks\loop_sum.vnt"; Marker = "799980000"; Expected = @("799980000") },
+    @{ Name = "branches-logic"; Source = "benchmarks\suite\branches_logic.vnt"; Marker = "BRANCHES_LOGIC_OK"; Expected = @("133255") },
+    @{ Name = "function-calls"; Source = "benchmarks\suite\function_calls.vnt"; Marker = "FUNCTION_CALLS_OK"; Expected = @("450195000") },
+    @{ Name = "recursion"; Source = "benchmarks\suite\recursion.vnt"; Marker = "RECURSION_OK"; Expected = @("51680") },
+    @{ Name = "strings"; Source = "benchmarks\suite\strings.vnt"; Marker = "STRINGS_OK"; Expected = @("900") },
+    @{ Name = "arrays"; Source = "benchmarks\suite\arrays.vnt"; Marker = "ARRAYS_OK"; Expected = @("50055") },
+    @{ Name = "floats-math"; Source = "benchmarks\suite\floats_math.vnt"; Marker = "FLOAT_MATH_OK"; Expected = @() },
+    @{ Name = "structs-refs-ffi"; Source = "benchmarks\suite\objects_structs_refs.vnt"; Marker = "OBJECTS_STRUCTS_REFS_OK"; Expected = @("10", "42", "36") },
+    @{ Name = "multi-file"; Source = "benchmarks\suite\multifile\main.vnt"; Marker = "MULTIFILE_OK"; Expected = @("1250275000", "102334155") }
 )
 function Invoke-VntCompile([string]$Source, [string]$Exe) {
     & $Vnt --compile $Source -o $Exe
@@ -37,7 +37,12 @@ try {
         Invoke-VntCompile $case.Source $exe
         $output = Get-ProgramOutput $exe
         if (-not ($output -contains $case.Marker)) {
-            throw ("Correctness failed for {0}; expected line {1}; actual output: {2}" -f $case.Name, $case.Marker, ($output -join ' | '))
+            throw ("Correctness failed for {0}; missing marker {1}; output: {2}" -f $case.Name, $case.Marker, ($output -join ' | '))
+        }
+        foreach ($expectedLine in $case.Expected) {
+            if (-not ($output -contains $expectedLine)) {
+                throw ("Correctness failed for {0}; expected output line {1}; output: {2}" -f $case.Name, $expectedLine, ($output -join ' | '))
+            }
         }
         Write-Host "Correctness: PASS"
         for ($i = 0; $i -lt $Warmups; $i++) {

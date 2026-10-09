@@ -286,6 +286,14 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
     for (; n && !tc->error; n = n->next) {
         switch (n->type) {
             case AST_VARIABLE_DECLARATION:
+                /*
+                 * Assignment syntax is intentionally implicit: the first
+                 * assignment introduces a variable, later assignments update it.
+                 * Record that distinction after name resolution so the parser
+                 * does not need to guess about scopes.
+                 */
+                n->variable_declaration.is_reassignment =
+                    find_symbol(tc, n->variable_declaration.name) != TY_UNDECLARED;
                 set_symbol(tc, n->variable_declaration.name,
                            expr_type(tc, n->variable_declaration.value));
                 break;

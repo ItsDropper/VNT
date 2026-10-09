@@ -1,0 +1,11 @@
+fun mix(a, b, c, d) {
+    return a + b * 2 - c + d
+}
+i = 0
+checksum = 0
+while i < 100000 {
+    checksum += mix(i, 3, 1, 2)
+    i += 1
+}
+print(checksum)
+print("FUNCTION_CALLS_OK")

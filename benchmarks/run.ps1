@@ -15,7 +15,10 @@ $Cases = @(
     @{ Name = "strings"; Source = "benchmarks\suite\strings.vnt"; Marker = "STRINGS_OK"; Expected = @("900") },
     @{ Name = "arrays"; Source = "benchmarks\suite\arrays.vnt"; Marker = "ARRAYS_OK"; Expected = @("50055") },
     @{ Name = "floats-math"; Source = "benchmarks\suite\floats_math.vnt"; Marker = "FLOAT_MATH_OK"; Expected = @() },
-    @{ Name = "structs-refs-ffi"; Source = "benchmarks\suite\objects_structs_refs.vnt"; Marker = "OBJECTS_STRUCTS_REFS_OK"; Expected = @("10", "42", "36") },
+    @{ Name = "references"; Source = "benchmarks\suite\references.vnt"; Marker = "REFERENCES_OK"; Expected = @("10", "42") },
+    @{ Name = "structs"; Source = "benchmarks\suite\struct_members.vnt"; Marker = "STRUCTS_OK"; Expected = @("12", "30") },
+    @{ Name = "many-arguments"; Source = "benchmarks\suite\arguments.vnt"; Marker = "ARGUMENTS_OK"; Expected = @("36") },
+    @{ Name = "ffi"; Source = "benchmarks\suite\ffi.vnt"; Marker = "FFI_OK"; Expected = @() },
     @{ Name = "multi-file"; Source = "benchmarks\suite\multifile\main.vnt"; Marker = "MULTIFILE_OK"; Expected = @("1250275000", "102334155") }
 )
 function Invoke-VntCompile([string]$Source, [string]$Exe) {
@@ -24,7 +27,8 @@ function Invoke-VntCompile([string]$Source, [string]$Exe) {
 }
 function Get-ProgramOutput([string]$Exe) {
     $output = @(& $Exe 2>&1 | ForEach-Object { "$_" })
-    if ($LASTEXITCODE -ne 0) { throw "Program failed: $Exe. Output: $($output -join ' | ')" }
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0) { throw "Program failed: $Exe (exit code $exitCode). Captured output: $($output -join ' | ')" }
     return ,$output
 }
 Push-Location $Root
@@ -47,12 +51,12 @@ try {
         Write-Host "Correctness: PASS"
         for ($i = 0; $i -lt $Warmups; $i++) {
             & $exe > $null
-            if ($LASTEXITCODE -ne 0) { throw "Warmup failed for $($case.Name)." }
+            if ($LASTEXITCODE -ne 0) { throw "Warmup failed for $($case.Name) (exit code $LASTEXITCODE)." }
         }
         $times = @()
         for ($i = 0; $i -lt $Runs; $i++) {
             $elapsed = (Measure-Command { & $exe > $null }).TotalMilliseconds
-            if ($LASTEXITCODE -ne 0) { throw "Timed run failed for $($case.Name)." }
+            if ($LASTEXITCODE -ne 0) { throw "Timed run failed for $($case.Name) (exit code $LASTEXITCODE)." }
             $times += [double]$elapsed
         }
         $sorted = @($times | Sort-Object)

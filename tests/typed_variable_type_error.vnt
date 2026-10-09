@@ -1,0 +1,2 @@
+# Expected to fail during compile-time type checking.
+let score: int = "not an integer"

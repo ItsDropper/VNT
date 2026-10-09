@@ -1,10 +1,12 @@
-# Function parameters are dynamically typed and must remain boxed.
+# Function parameters remain dynamically typed and boxed. The parameter name
+# intentionally collides with a native-int candidate in main.
+value = 10
+
 fun identity(value) {
+    value = "parameter"
     return value
 }
 
-main_value = 10
-print(identity("parameter"))
 print(identity(42))
-print(main_value)
+print(value)
 print("NATIVE_INT_FUNCTION_PARAMS_OK")

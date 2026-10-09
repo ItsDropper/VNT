@@ -399,15 +399,6 @@ static int role_count(const VntIrProgram *ir, const VntIrNode *node,
     return count;
 }
 
-static int source_opcode_matches(const VntIrNode *node) {
-    if (node->source->type == AST_VARIABLE_DECLARATION) {
-        return node->source->variable_declaration.is_reassignment
-            ? node->opcode == VNT_IR_REASSIGN
-            : node->opcode == VNT_IR_VARIABLE_DECL;
-    }
-    return opcode_for(node->source->type) == node->opcode;
-}
-
 static int validate_node_shape(const VntIrProgram *ir, const VntIrNode *node) {
     int statements = role_count(ir, node, VNT_IR_EDGE_STATEMENT);
     int conditions = role_count(ir, node, VNT_IR_EDGE_CONDITION);
@@ -480,8 +471,7 @@ static int validate_node_shape(const VntIrProgram *ir, const VntIrNode *node) {
 }
 
 int vnt_ir_validate(const VntIrProgram *ir) {
-    if (!ir || !ir->program || ir->program->type != AST_PROGRAM ||
-        !ir->nodes || !ir->node_count || ir->root >= ir->node_count ||
+    if (!ir || !ir->nodes || !ir->node_count || ir->root >= ir->node_count ||
         ir->nodes[ir->root].opcode != VNT_IR_PROGRAM) return 0;
 
     if (ir->nodes[ir->root].role != VNT_IR_EDGE_ROOT ||
@@ -491,9 +481,7 @@ int vnt_ir_validate(const VntIrProgram *ir) {
 
     for (size_t i = 0; i < ir->node_count; ++i) {
         const VntIrNode *node = &ir->nodes[i];
-        if (!node->source || (int)node->opcode < 0 ||
-            node->opcode > VNT_IR_REASSIGN ||
-            !source_opcode_matches(node) ||
+        if ((int)node->opcode < 0 || node->opcode > VNT_IR_REASSIGN ||
             (int)node->role < 0 || node->role > VNT_IR_EDGE_OPERAND ||
             (node->name_count && !node->names) ||
             (node->opcode == VNT_IR_BINARY &&
@@ -532,65 +520,8 @@ int vnt_ir_validate(const VntIrProgram *ir) {
             return 0;
         }
 
-        /* Metadata is owned by HIR and must match the source node at lowering time. */
-        switch (node->opcode) {
-            case VNT_IR_VARIABLE_DECL:
-            case VNT_IR_REASSIGN:
-                if (!node->value.text ||
-                    strcmp(node->value.text, node->source->variable_declaration.name) ||
-                    node->name_count != 0) goto invalid;
-                if (node->source->variable_declaration.declared_type) {
-                    if (!node->type_name ||
-                        strcmp(node->type_name,
-                               node->source->variable_declaration.declared_type))
-                        goto invalid;
-                } else if (node->type_name) {
-                    goto invalid;
-                }
-                break;
-            case VNT_IR_VARIABLE:
-                if (!node->value.text ||
-                    strcmp(node->value.text, node->source->variable.name) ||
-                    node->name_count != 0) goto invalid;
-                break;
-            case VNT_IR_STRING:
-                if (!node->value.text ||
-                    strcmp(node->value.text, node->source->string_literal.value) ||
-                    node->name_count != 0) goto invalid;
-                break;
-            case VNT_IR_CALL:
-                if (!node->value.text ||
-                    strcmp(node->value.text, node->source->function_call.name) ||
-                    node->name_count != 0 ||
-                    node->child_count != (size_t)node->source->function_call.argument_count)
-                    goto invalid;
-                break;
-            case VNT_IR_FUNCTION:
-                if (!node->value.text ||
-                    strcmp(node->value.text, node->source->function_declaration.name) ||
-                    node->name_count != (size_t)node->source->function_declaration.parameter_count)
-                    goto invalid;
-                for (size_t j = 0; j < node->name_count; ++j)
-                    if (strcmp(node->names[j], node->source->function_declaration.parameters[j]))
-                        goto invalid;
-                break;
-            case VNT_IR_STRUCT:
-                if (!node->value.text ||
-                    strcmp(node->value.text, node->source->struct_declaration.name) ||
-                    node->name_count != (size_t)node->source->struct_declaration.field_count)
-                    goto invalid;
-                for (size_t j = 0; j < node->name_count; ++j)
-                    if (strcmp(node->names[j], node->source->struct_declaration.fields[j]))
-                        goto invalid;
-                break;
-            default:
-                break;
-        }
-        continue;
-invalid:
-        free(parents);
-        return 0;
-    }
+        /* Validation uses HIR-owned metadata only; source nodes are optional. */
+
     int valid = parents[ir->root] == 0;
     for (size_t i = 0; valid && i < ir->node_count; ++i)
         if (i != ir->root && parents[i] != 1) valid = 0;

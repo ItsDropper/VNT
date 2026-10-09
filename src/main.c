@@ -33,9 +33,15 @@ static int compile_native(AstNode *program, const char *output_path) {
         return 1;
     }
 
+#ifdef _WIN32
+    sprintf(command,
+        "gcc \"%s\" src/compiler/native_runtime.c -O2 -lgdi32 -luser32 -o \"%s\"",
+        assembly_path, output_path);
+#else
     sprintf(command,
         "gcc \"%s\" src/compiler/native_runtime.c -O2 -o \"%s\"",
         assembly_path, output_path);
+#endif
 
     int result = system(command);
     free(command);

@@ -1,0 +1,24 @@
+# VNT native GUI demo (Windows)
+# Colors are 0xRRGGBB. gui_key() returns a Windows virtual-key code.
+
+gui_size(900, 620)
+if gui_open("VNT GUI Demo") {
+    gui_fill(0xF5F7FA)
+    gui_text("VNT native GUI")
+    gui_text("This window was created by a compiled .vnt program.")
+    gui_text("Close the window to exit. Press keys to see their virtual-key codes.")
+    gui_rect(0x2878D0)
+
+    running = true
+    while running {
+        running = gui_poll()
+        key = gui_key()
+        if key != 0 {
+            gui_text("Key code: " + key)
+        }
+        sleep_ms(16)
+    }
+    gui_close()
+} else {
+    print("Could not create the VNT GUI window.")
+}

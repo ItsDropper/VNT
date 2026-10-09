@@ -1051,3 +1051,140 @@ VntValue *vnt_process_exit_code(VntValue *value) {
     VntProcess *p = process_from_value(value, "process_exit_code()"); process_refresh(p);
     return vnt_int(p->done ? p->exit_code : -1);
 }
+
+
+/* Minimal native Win32 GUI API. Colors use 0xRRGGBB. Drawing calls are
+ * immediate-mode helpers intended for small VNT tools and prototypes. */
+#ifdef _WIN32
+static HWND vnt_gui_hwnd;
+static int vnt_gui_width = 800;
+static int vnt_gui_height = 600;
+static int vnt_gui_last_key;
+static int vnt_gui_text_y = 18;
+static COLORREF vnt_gui_background = RGB(245, 247, 250);
+static const char *vnt_gui_class_name = "VNTNativeWindow";
+
+static LRESULT CALLBACK vnt_gui_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+    switch (msg) {
+        case WM_KEYDOWN:
+            vnt_gui_last_key = (int)wp;
+            return 0;
+        case WM_DESTROY:
+            if (hwnd == vnt_gui_hwnd) vnt_gui_hwnd = NULL;
+            PostQuitMessage(0);
+            return 0;
+        case WM_ERASEBKGND: {
+            RECT r;
+            GetClientRect(hwnd, &r);
+            HBRUSH brush = CreateSolidBrush(vnt_gui_background);
+            FillRect((HDC)wp, &r, brush);
+            DeleteObject(brush);
+            return 1;
+        }
+        default:
+            return DefWindowProcA(hwnd, msg, wp, lp);
+    }
+}
+
+static int vnt_gui_require_int(VntValue *v, const char *fn) {
+    if (!v || v->type != VNT_INT) {
+        fprintf(stderr, "Runtime error: %s expects integer arguments.\\n", fn);
+        exit(1);
+    }
+    return v->integer;
+}
+
+static COLORREF vnt_gui_color(int color) {
+    return RGB((color >> 16) & 255, (color >> 8) & 255, color & 255);
+}
+
+VntValue *vnt_gui_size(VntValue *width, VntValue *height) {
+    int w=vnt_gui_require_int(width,"gui_size()");
+    int h=vnt_gui_require_int(height,"gui_size()");
+    if(w<160 || h<120 || w>8192 || h>8192) {
+        fprintf(stderr,"Runtime error: gui_size() dimensions must be between 160x120 and 8192x8192.\\n");
+        return vnt_bool(0);
+    }
+    vnt_gui_width=w;vnt_gui_height=h;return vnt_bool(1);
+}
+
+VntValue *vnt_gui_open(VntValue *title) {
+    const char *caption=vnt_app_string(title,"gui_open()");
+    if(vnt_gui_hwnd) return vnt_bool(1);
+    HINSTANCE instance=GetModuleHandleA(NULL);
+    WNDCLASSEXA wc;memset(&wc,0,sizeof(wc));
+    wc.cbSize=sizeof(wc);wc.lpfnWndProc=vnt_gui_wndproc;wc.hInstance=instance;
+    wc.hCursor=LoadCursor(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);
+    wc.lpszClassName=vnt_gui_class_name;
+    if(!RegisterClassExA(&wc) && GetLastError()!=ERROR_CLASS_ALREADY_EXISTS) return vnt_bool(0);
+    RECT rect={0,0,vnt_gui_width,vnt_gui_height};
+    AdjustWindowRect(&rect,WS_OVERLAPPEDWINDOW,FALSE);
+    vnt_gui_text_y=18;vnt_gui_last_key=0;
+    vnt_gui_hwnd=CreateWindowExA(0,vnt_gui_class_name,caption,WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT,CW_USEDEFAULT,rect.right-rect.left,rect.bottom-rect.top,
+        NULL,NULL,instance,NULL);
+    if(!vnt_gui_hwnd) return vnt_bool(0);
+    ShowWindow(vnt_gui_hwnd,SW_SHOW);UpdateWindow(vnt_gui_hwnd);
+    return vnt_bool(1);
+}
+
+VntValue *vnt_gui_text(VntValue *text) {
+    const char *line=vnt_app_string(text,"gui_text()");
+    if(!vnt_gui_hwnd) return vnt_bool(0);
+    HDC dc=GetDC(vnt_gui_hwnd);
+    if(!dc) return vnt_bool(0);
+    SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(25,30,40));
+    TextOutA(dc,18,vnt_gui_text_y,line,(int)strlen(line));
+    vnt_gui_text_y+=22;
+    RECT r;GetClientRect(vnt_gui_hwnd,&r);
+    if(vnt_gui_text_y>r.bottom-20) vnt_gui_text_y=18;
+    ReleaseDC(vnt_gui_hwnd,dc);
+    return vnt_bool(1);
+}
+
+VntValue *vnt_gui_fill(VntValue *color) {
+    int c=vnt_gui_require_int(color,"gui_fill()");
+    if(!vnt_gui_hwnd) return vnt_bool(0);
+    vnt_gui_background=vnt_gui_color(c);
+    RECT r;GetClientRect(vnt_gui_hwnd,&r);
+    HDC dc=GetDC(vnt_gui_hwnd);HBRUSH brush=CreateSolidBrush(vnt_gui_background);
+    if(!dc||!brush){if(dc)ReleaseDC(vnt_gui_hwnd,dc);if(brush)DeleteObject(brush);return vnt_bool(0);}
+    FillRect(dc,&r,brush);DeleteObject(brush);ReleaseDC(vnt_gui_hwnd,dc);
+    return vnt_bool(1);
+}
+
+VntValue *vnt_gui_rect(VntValue *color) {
+    int c=vnt_gui_require_int(color,"gui_rect()");
+    if(!vnt_gui_hwnd) return vnt_bool(0);
+    HDC dc=GetDC(vnt_gui_hwnd);HBRUSH brush=CreateSolidBrush(vnt_gui_color(c));
+    if(!dc||!brush){if(dc)ReleaseDC(vnt_gui_hwnd,dc);if(brush)DeleteObject(brush);return vnt_bool(0);}
+    RECT r={32,64,192,144};FillRect(dc,&r,brush);
+    DeleteObject(brush);ReleaseDC(vnt_gui_hwnd,dc);return vnt_bool(1);
+}
+
+VntValue *vnt_gui_poll(void) {
+    if(!vnt_gui_hwnd) return vnt_bool(0);
+    MSG msg;
+    while(PeekMessageA(&msg,NULL,0,0,PM_REMOVE)) {
+        if(msg.message==WM_QUIT) {vnt_gui_hwnd=NULL;return vnt_bool(0);}
+        TranslateMessage(&msg);DispatchMessageA(&msg);
+    }
+    return vnt_bool(vnt_gui_hwnd!=NULL);
+}
+VntValue *vnt_gui_key(void) {
+    int key=vnt_gui_last_key;vnt_gui_last_key=0;return vnt_int(key);
+}
+VntValue *vnt_gui_close(void) {
+    if(vnt_gui_hwnd) DestroyWindow(vnt_gui_hwnd);
+    vnt_gui_hwnd=NULL;return vnt_bool(1);
+}
+#else
+VntValue *vnt_gui_size(VntValue *width,VntValue *height) { (void)width;(void)height;fprintf(stderr,"Runtime error: native GUI is currently supported on Windows only.\\n");return vnt_bool(0); }
+VntValue *vnt_gui_open(VntValue *title) { (void)title;fprintf(stderr,"Runtime error: native GUI is currently supported on Windows only.\\n");return vnt_bool(0); }
+VntValue *vnt_gui_text(VntValue *text) { (void)text;return vnt_bool(0); }
+VntValue *vnt_gui_fill(VntValue *color) { (void)color;return vnt_bool(0); }
+VntValue *vnt_gui_rect(VntValue *color) { (void)color;return vnt_bool(0); }
+VntValue *vnt_gui_poll(void) { return vnt_bool(0); }
+VntValue *vnt_gui_key(void) { return vnt_int(0); }
+VntValue *vnt_gui_close(void) { return vnt_bool(1); }
+#endif

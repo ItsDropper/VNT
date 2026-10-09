@@ -760,6 +760,14 @@ static void emit_call(X86Gen *g,AstNode *n) {
         else if (!strcmp(name, "process_stdout")) { arity = 1; runtime_name = "vnt_process_stdout"; }
         else if (!strcmp(name, "process_stderr")) { arity = 1; runtime_name = "vnt_process_stderr"; }
         else if (!strcmp(name, "process_exit_code")) { arity = 1; runtime_name = "vnt_process_exit_code"; }
+        else if (!strcmp(name, "gui_open")) { arity = 1; runtime_name = "vnt_gui_open"; }
+        else if (!strcmp(name, "gui_size")) { arity = 2; runtime_name = "vnt_gui_size"; }
+        else if (!strcmp(name, "gui_text")) { arity = 1; runtime_name = "vnt_gui_text"; }
+        else if (!strcmp(name, "gui_fill")) { arity = 1; runtime_name = "vnt_gui_fill"; }
+        else if (!strcmp(name, "gui_rect")) { arity = 1; runtime_name = "vnt_gui_rect"; }
+        else if (!strcmp(name, "gui_poll")) { arity = 0; runtime_name = "vnt_gui_poll"; }
+        else if (!strcmp(name, "gui_key")) { arity = 0; runtime_name = "vnt_gui_key"; }
+        else if (!strcmp(name, "gui_close")) { arity = 0; runtime_name = "vnt_gui_close"; }
         if (arity >= 0) {
             if (count != arity) {
                 fail(g, "native application API function called with the wrong number of arguments.");

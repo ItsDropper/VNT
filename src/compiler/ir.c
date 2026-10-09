@@ -6,6 +6,54 @@
 #include <stdlib.h>
 #include <string.h>
 
+static void clear_nodes(VntIrProgram *ir) {
+    for (size_t i = 0; i < ir->node_count; ++i) {
+        VntIrOpcode op = ir->nodes[i].opcode;
+        if (op == VNT_IR_STRING || op == VNT_IR_VARIABLE_DECL ||
+            op == VNT_IR_REASSIGN || op == VNT_IR_VARIABLE ||
+            op == VNT_IR_MEMBER || op == VNT_IR_CALL ||
+            op == VNT_IR_FUNCTION || op == VNT_IR_STRUCT)
+            free(ir->nodes[i].value.text);
+        for (size_t j = 0; j < ir->nodes[i].name_count; ++j)
+            free(ir->nodes[i].names[j]);
+        free(ir->nodes[i].names);
+        free(ir->nodes[i].type_name);
+    }
+    free(ir->nodes);
+    ir->nodes = NULL;
+    ir->node_count = 0;
+    ir->node_capacity = 0;
+    ir->root = VNT_IR_NO_NODE;
+}
+
+static int reserve_node(VntIrProgram *ir, size_t *index) {
+    if (ir->node_count == ir->node_capacity) {
+        size_t cap = ir->node_capacity ? ir->node_capacity * 2 : 64;
+        if (cap < ir->node_capacity || cap > SIZE_MAX / sizeof(*ir->nodes)) return 0;
+        VntIrNode *nodes = realloc(ir->nodes, cap * sizeof(*nodes));
+        if (!nodes) return 0;
+        ir->nodes = nodes;
+        ir->node_capacity = cap;
+    }
+    *index = ir->node_count++;
+    VntIrNode *node = &ir->nodes[*index];
+    memset(node, 0, sizeof(*node));
+    node->first_child = node->last_child = node->next_sibling = VNT_IR_NO_NODE;
+    return 1;
+}
+
+static int add_child(VntIrProgram *ir, size_t parent, size_t child) {
+    if (parent >= ir->node_count || child >= ir->node_count) return 0;
+    if (ir->nodes[parent].last_child == VNT_IR_NO_NODE)
+        ir->nodes[parent].first_child = child;
+    else
+        ir->nodes[ir->nodes[parent].last_child].next_sibling = child;
+    ir->nodes[parent].last_child = child;
+    ir->nodes[parent].child_count++;
+    return 1;
+}
+
+
 static int copy_text(char **destination, const char *source) {
     if (!source) source = "";
     size_t len = strlen(source);

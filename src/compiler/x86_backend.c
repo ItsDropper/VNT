@@ -702,6 +702,7 @@ static void emit_call(X86Gen *g,AstNode *n) {
         else if (!strcmp(name, "fs_read")) { arity = 1; runtime_name = "vnt_fs_read"; }
         else if (!strcmp(name, "fs_write")) { arity = 2; runtime_name = "vnt_fs_write"; }
         else if (!strcmp(name, "fs_append")) { arity = 2; runtime_name = "vnt_fs_append"; }
+        else if (!strcmp(name, "fs_delete")) { arity = 1; runtime_name = "vnt_fs_delete"; }
         else if (!strcmp(name, "dir_create")) { arity = 1; runtime_name = "vnt_dir_create"; }
         else if (!strcmp(name, "cwd")) { arity = 0; runtime_name = "vnt_cwd"; }
         else if (!strcmp(name, "env_get")) { arity = 1; runtime_name = "vnt_env_get"; }

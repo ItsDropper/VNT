@@ -117,7 +117,7 @@ static int builtin_arity(const char *name, int argc) {
     if (!strcmp(name, "ffi_int")) return argc >= 2 && argc <= 8;
     if (!strcmp(name, "cwd") || !strcmp(name, "time_ms")) return argc == 0;
     if (!strcmp(name, "fs_exists") || !strcmp(name, "fs_read") ||
-        !strcmp(name, "dir_create") || !strcmp(name, "env_get") ||
+        !strcmp(name, "fs_delete") || !strcmp(name, "dir_create") || !strcmp(name, "env_get") ||
         !strcmp(name, "sleep_ms")) return argc == 1;
     if (!strcmp(name, "fs_write") || !strcmp(name, "fs_append") ||
         !strcmp(name, "env_set")) return argc == 2;
@@ -214,6 +214,7 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
             if (!strcmp(n->function_call.name, "fs_exists") ||
                 !strcmp(n->function_call.name, "fs_write") ||
                 !strcmp(n->function_call.name, "fs_append") ||
+                !strcmp(n->function_call.name, "fs_delete") ||
                 !strcmp(n->function_call.name, "dir_create") ||
                 !strcmp(n->function_call.name, "env_set")) return TY_BOOL;
             if (!strcmp(n->function_call.name, "time_ms")) return TY_FLOAT;

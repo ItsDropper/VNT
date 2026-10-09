@@ -175,6 +175,31 @@ VntValue *vnt_array_push(VntValue *a, VntValue *item) {
     return a;
 }
 
+VntValue *vnt_array_get_int(VntValue *a, int index) {
+    if (!a || a->type != VNT_ARRAY) {
+        fprintf(stderr, "Runtime error: indexing requires an array.\\n");
+        exit(1);
+    }
+    if (index < 0 || index >= a->array.count) {
+        fprintf(stderr, "Runtime error: array index out of bounds.\\n");
+        exit(1);
+    }
+    return a->array.items[index];
+}
+
+VntValue *vnt_array_set_int(VntValue *a, int index, VntValue *value) {
+    if (!a || a->type != VNT_ARRAY) {
+        fprintf(stderr, "Runtime error: array assignment requires an array.\\n");
+        exit(1);
+    }
+    if (index < 0 || index >= a->array.count) {
+        fprintf(stderr, "Runtime error: array index out of bounds.\\n");
+        exit(1);
+    }
+    a->array.items[index] = value;
+    return value;
+}
+
 VntValue *vnt_array_get(VntValue *a, VntValue *index) {
     if (a && a->type == VNT_STRING)
         return vnt_string_get(a, index);

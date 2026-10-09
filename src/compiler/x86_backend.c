@@ -280,26 +280,103 @@ static int known_int_expr(X86Gen *g, AstNode *n) {
     }
     return 0;
 }
-static void infer_int_assignments(X86Gen *g, AstNode *n, int *changed) {
-    for(;n;n=n->next) {
-        if(n->type==AST_VARIABLE_DECLARATION) {
-            int i=var_find(g,n->variable_declaration.name);
-            if(i>=0 && g->vars[i].is_int && !known_int_expr(g,n->variable_declaration.value)) {g->vars[i].is_int=0;*changed=1;}
-        } else if(n->type==AST_ASSIGNMENT && n->assignment.target && n->assignment.target->type==AST_VARIABLE) {
-            int i=var_find(g,n->assignment.target->variable.name);
-            if(i>=0 && g->vars[i].is_int && !known_int_expr(g,n->assignment.value)) {g->vars[i].is_int=0;*changed=1;}
+/* Seed native-int candidates from assignments as well as declarations.
+ * This pass only adds candidates. A separate pass below removes any variable
+ * whose assignments are not all safe integer expressions. */
+static void infer_int_candidates(X86Gen *g, AstNode *n, int *changed) {
+    for (; n; n = n->next) {
+        const char *name = NULL;
+        AstNode *value = NULL;
+
+        if (n->type == AST_VARIABLE_DECLARATION) {
+            name = n->variable_declaration.name;
+            value = n->variable_declaration.value;
+        } else if (n->type == AST_ASSIGNMENT &&
+                   n->assignment.target &&
+                   n->assignment.target->type == AST_VARIABLE) {
+            name = n->assignment.target->variable.name;
+            value = n->assignment.value;
         }
-        if(n->type==AST_IF_STATEMENT) {
-            infer_int_assignments(g,n->if_statement.then_branch,changed);
-            infer_int_assignments(g,n->if_statement.else_branch,changed);
-        } else if(n->type==AST_WHILE_STATEMENT) infer_int_assignments(g,n->while_statement.body,changed);
-        else if(n->type==AST_FUNCTION_DECLARATION) infer_int_assignments(g,n->function_declaration.body,changed);
+
+        if (name && value) {
+            int i = var_find(g, name);
+            if (i >= 0 && !g->vars[i].is_int &&
+                !g->vars[i].address_taken && known_int_expr(g, value)) {
+                g->vars[i].is_int = 1;
+                *changed = 1;
+            }
+        }
+
+        switch (n->type) {
+            case AST_IF_STATEMENT:
+                infer_int_candidates(g, n->if_statement.then_branch, changed);
+                infer_int_candidates(g, n->if_statement.else_branch, changed);
+                break;
+            case AST_WHILE_STATEMENT:
+                infer_int_candidates(g, n->while_statement.body, changed);
+                break;
+            /* Function bodies have separate variable tables and are analyzed
+             * when their own code is emitted. Never infer them against main's
+             * variable table (names may collide). */
+            default:
+                break;
+        }
     }
 }
+
+/* Inference is deliberately conservative: one mixed-type assignment or an
+ * address-taken variable disqualifies the variable from native storage. */
+static void infer_int_assignments(X86Gen *g, AstNode *n, int *changed) {
+    for (; n; n = n->next) {
+        if (n->type == AST_VARIABLE_DECLARATION) {
+            int i = var_find(g, n->variable_declaration.name);
+            if (i >= 0 && g->vars[i].is_int &&
+                !known_int_expr(g, n->variable_declaration.value)) {
+                g->vars[i].is_int = 0;
+                *changed = 1;
+            }
+        } else if (n->type == AST_ASSIGNMENT &&
+                   n->assignment.target &&
+                   n->assignment.target->type == AST_VARIABLE) {
+            int i = var_find(g, n->assignment.target->variable.name);
+            if (i >= 0 && g->vars[i].is_int &&
+                !known_int_expr(g, n->assignment.value)) {
+                g->vars[i].is_int = 0;
+                *changed = 1;
+            }
+        }
+
+        switch (n->type) {
+            case AST_IF_STATEMENT:
+                infer_int_assignments(g, n->if_statement.then_branch, changed);
+                infer_int_assignments(g, n->if_statement.else_branch, changed);
+                break;
+            case AST_WHILE_STATEMENT:
+                infer_int_assignments(g, n->while_statement.body, changed);
+                break;
+            default:
+                break;
+        }
+    }
+}
+
 static void infer_integer_variables(X86Gen *g, AstNode *program) {
-    for(int i=0;i<g->var_count;i++) g->vars[i].is_int=g->vars[i].has_decl && !g->vars[i].address_taken;
+    for (int i = 0; i < g->var_count; i++)
+        g->vars[i].is_int = 0;
+
+    /* Candidate discovery needs a fixed point for assignments such as
+     * a = b + 1 where b is declared later in the source. */
     int changed;
-    do { changed=0; infer_int_assignments(g,program,&changed); } while(changed);
+    do {
+        changed = 0;
+        infer_int_candidates(g, program, &changed);
+    } while (changed);
+
+    /* Only remove candidates in this phase, so the analysis always converges. */
+    do {
+        changed = 0;
+        infer_int_assignments(g, program, &changed);
+    } while (changed);
 }
 static void emit_int_expr(X86Gen *g, AstNode *n) {
     if(n->type==AST_INTEGER_LITERAL) {fprintf(g->out,"    movl $%d,%%eax\n",n->integer_literal.value);return;}

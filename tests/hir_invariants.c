@@ -54,8 +54,7 @@ static int check_fold_case(AstNode *expression, VntIrOpcode expected_opcode,
     for (size_t i = 0; i < ir.node_count; ++i) ir.nodes[i].source = NULL;
     ir.program = NULL;
     ast_free(program);
-    program = NULL;
-
+ 
     ok = vnt_ir_optimize(&ir);
     CHECK(ok, "optimization succeeds without the source AST");
     size_t statement = find_role(&ir, ir.root, VNT_IR_EDGE_STATEMENT);

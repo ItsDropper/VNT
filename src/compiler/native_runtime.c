@@ -8,6 +8,14 @@
 #include <windows.h>
 #else
 #include <dlfcn.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <time.h>
+#include <unistd.h>
+#include <errno.h>
+#endif
+#ifdef _WIN32
+#include <direct.h>
 #endif
 
 typedef enum {
@@ -649,4 +657,103 @@ VntValue *vnt_ffi_int(
 void vnt_int_div_zero(void) {
     fprintf(stderr, "Runtime error: division or modulo by zero.\n");
     exit(1);
+}
+
+
+/* Native application API: portable file, environment, and timing calls. */
+static const char *vnt_app_string(VntValue *v, const char *fn) {
+    if (!v || v->type != VNT_STRING || !v->string) {
+        fprintf(stderr, "Runtime error: %s expects a string argument.\n", fn);
+        exit(1);
+    }
+    return v->string;
+}
+VntValue *vnt_fs_exists(VntValue *path) {
+    const char *p = vnt_app_string(path, "fs_exists()");
+#ifdef _WIN32
+    return vnt_bool(GetFileAttributesA(p) != INVALID_FILE_ATTRIBUTES);
+#else
+    struct stat st; return vnt_bool(stat(p, &st) == 0);
+#endif
+}
+VntValue *vnt_fs_read(VntValue *path) {
+    const char *p = vnt_app_string(path, "fs_read()");
+    FILE *f = fopen(p, "rb");
+    if (!f) { fprintf(stderr, "Runtime error: fs_read() could not open '%s'.\n", p); exit(1); }
+    if (fseek(f, 0, SEEK_END) != 0) { fclose(f); fprintf(stderr, "Runtime error: fs_read() seek failed.\n"); exit(1); }
+    long n = ftell(f);
+    if (n < 0 || fseek(f, 0, SEEK_SET) != 0) { fclose(f); fprintf(stderr, "Runtime error: fs_read() size query failed.\n"); exit(1); }
+    if ((unsigned long)n > (size_t)-1 - 1) { fclose(f); fprintf(stderr, "Runtime error: fs_read() file too large.\n"); exit(1); }
+    char *buf = malloc((size_t)n + 1);
+    if (!buf) { fclose(f); fprintf(stderr, "Runtime error: out of memory.\n"); exit(1); }
+    size_t got = fread(buf, 1, (size_t)n, f);
+    int bad = ferror(f) || got != (size_t)n; fclose(f);
+    if (bad) { free(buf); fprintf(stderr, "Runtime error: fs_read() failed.\n"); exit(1); }
+    buf[n] = '\0';
+    VntValue *result = vnt_string(buf); free(buf); return result;
+}
+static VntValue *vnt_fs_write_mode(VntValue *path, VntValue *contents, const char *mode, const char *fn) {
+    const char *p = vnt_app_string(path, fn), *data = vnt_app_string(contents, fn);
+    FILE *f = fopen(p, mode);
+    if (!f) { fprintf(stderr, "Runtime error: %s could not open file.\n", fn); return vnt_bool(0); }
+    size_t n = strlen(data), written = fwrite(data, 1, n, f);
+    int bad = written != n || ferror(f); if (fclose(f) != 0) bad = 1;
+    return vnt_bool(!bad);
+}
+VntValue *vnt_fs_write(VntValue *p, VntValue *s) { return vnt_fs_write_mode(p, s, "wb", "fs_write()"); }
+VntValue *vnt_fs_append(VntValue *p, VntValue *s) { return vnt_fs_write_mode(p, s, "ab", "fs_append()"); }
+VntValue *vnt_dir_create(VntValue *path) {
+    const char *p = vnt_app_string(path, "dir_create()");
+#ifdef _WIN32
+    return vnt_bool(_mkdir(p) == 0);
+#else
+    return vnt_bool(mkdir(p, 0777) == 0);
+#endif
+}
+VntValue *vnt_cwd(void) {
+    size_t cap = 256; char *buf = NULL;
+    for (;;) {
+        char *next = realloc(buf, cap);
+        if (!next) { free(buf); fprintf(stderr, "Runtime error: out of memory in cwd().\n"); exit(1); }
+        buf = next;
+#ifdef _WIN32
+        if (_getcwd(buf, (int)cap)) break;
+#else
+        if (getcwd(buf, cap)) break;
+#endif
+        if (errno != ERANGE || cap >= 1048576) { free(buf); fprintf(stderr, "Runtime error: cwd() failed.\n"); exit(1); }
+        cap *= 2;
+    }
+    VntValue *out = vnt_string(buf); free(buf); return out;
+}
+VntValue *vnt_env_get(VntValue *name) {
+    const char *v = getenv(vnt_app_string(name, "env_get()")); return v ? vnt_string(v) : vnt_null();
+}
+VntValue *vnt_env_set(VntValue *name, VntValue *value) {
+    const char *k = vnt_app_string(name, "env_set()"), *v = vnt_app_string(value, "env_set()");
+#ifdef _WIN32
+    return vnt_bool(_putenv_s(k, v) == 0);
+#else
+    return vnt_bool(setenv(k, v, 1) == 0);
+#endif
+}
+VntValue *vnt_time_ms(void) {
+#ifdef _WIN32
+    return vnt_float((double)GetTickCount64());
+#else
+    struct timeval tv; if (gettimeofday(&tv, NULL) != 0) return vnt_float(-1.0);
+    return vnt_float((double)tv.tv_sec * 1000.0 + (double)tv.tv_usec / 1000.0);
+#endif
+}
+VntValue *vnt_sleep_ms(VntValue *value) {
+    if (!value || value->type != VNT_INT || value->integer < 0) {
+        fprintf(stderr, "Runtime error: sleep_ms() expects a non-negative integer.\n"); exit(1);
+    }
+#ifdef _WIN32
+    Sleep((DWORD)value->integer);
+#else
+    struct timespec req = { value->integer / 1000, (long)(value->integer % 1000) * 1000000L };
+    while (nanosleep(&req, &req) != 0) if (errno != EINTR) return vnt_null();
+#endif
+    return vnt_null();
 }

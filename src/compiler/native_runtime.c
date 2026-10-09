@@ -109,9 +109,15 @@ static LONG CALLBACK vnt_first_chance_exception(EXCEPTION_POINTERS *info) {
 
     FILE *f = fopen("vnt_crash.log", "a");
     if (f) {
+        void *fault_address = info->ExceptionRecord->ExceptionAddress;
+        HMODULE image_base = GetModuleHandleA(NULL);
         fprintf(f, "First-chance exception: 0x%08lX at %p; thread=%lu\n",
-                (unsigned long)code, info->ExceptionRecord->ExceptionAddress,
+                (unsigned long)code, fault_address,
                 (unsigned long)GetCurrentThreadId());
+        fprintf(f, "Module base: %p\n", (void *)image_base);
+        if (image_base && fault_address)
+            fprintf(f, "Fault RVA: 0x%llX\n",
+                    (unsigned long long)((uintptr_t)fault_address - (uintptr_t)image_base));
         if (info->ExceptionRecord->NumberParameters > 0)
             fprintf(f, "Exception detail[0]: 0x%llX\n",
                     (unsigned long long)info->ExceptionRecord->ExceptionInformation[0]);

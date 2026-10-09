@@ -198,6 +198,7 @@ static void clear_nodes(VntIrProgram *ir) {
         for (size_t j = 0; j < ir->nodes[i].name_count; ++j)
             free(ir->nodes[i].names[j]);
         free(ir->nodes[i].names);
+        free(ir->nodes[i].type_name);
     }
     free(ir->nodes);
     ir->nodes = NULL;
@@ -286,6 +287,10 @@ static int lower_node(VntIrProgram *ir, const AstNode *ast, size_t *result) {
     node->opcode = op;
     node->role = VNT_IR_EDGE_ROOT;
     node->source = ast;
+    if (ast->type == AST_VARIABLE_DECLARATION &&
+        ast->variable_declaration.declared_type &&
+        !copy_text(&node->type_name,
+                   ast->variable_declaration.declared_type)) return 0;
     if (ast->type == AST_BINARY_EXPRESSION)
         node->operation = (int)ast->binary_expression.operator;
     else if (ast->type == AST_UNARY_EXPRESSION)
@@ -532,6 +537,14 @@ int vnt_ir_validate(const VntIrProgram *ir) {
                 if (!node->value.text ||
                     strcmp(node->value.text, node->source->variable_declaration.name) ||
                     node->name_count != 0) goto invalid;
+                if (node->source->variable_declaration.declared_type) {
+                    if (!node->type_name ||
+                        strcmp(node->type_name,
+                               node->source->variable_declaration.declared_type))
+                        goto invalid;
+                } else if (node->type_name) {
+                    goto invalid;
+                }
                 break;
             case VNT_IR_VARIABLE:
                 if (!node->value.text ||
@@ -652,6 +665,8 @@ void vnt_ir_dump(const VntIrProgram *ir, FILE *out) {
             case VNT_IR_UNARY: fprintf(out, " op=%s", operation_name(node)); break;
             default: break;
         }
+        if (node->type_name)
+            fprintf(out, " type=%s", node->type_name);
         if (node->name_count) {
             fputs(" names=[", out);
             for (size_t j = 0; j < node->name_count; ++j)

@@ -917,6 +917,21 @@ VntValue *vnt_process_start(VntValue *executable, VntValue *arguments) {
     VntProcess *p = calloc(1, sizeof(*p));
     if (!p) { fprintf(stderr, "Runtime error: out of memory starting process.\n"); exit(1); }
 #ifdef _WIN32
+    /* CreateProcessA does not search PATH when lpApplicationName is explicit.
+       Resolve bare executable names first (e.g. "cmd.exe" -> System32\cmd.exe). */
+    char resolved_exe[MAX_PATH];
+    const char *launch_exe = exe;
+    if (!strchr(exe, '\\\\') && !strchr(exe, '/') && !strchr(exe, ':')) {
+        DWORD found = SearchPathA(NULL, exe, NULL, MAX_PATH, resolved_exe, NULL);
+        if (found == 0 || found >= MAX_PATH) {
+            DWORD error = found == 0 ? GetLastError() : ERROR_INSUFFICIENT_BUFFER;
+            free(p);
+            fprintf(stderr, "Runtime error: process_start() could not find executable '%s' (Windows error %lu).\\n",
+                    exe, (unsigned long)error);
+            exit(1);
+        }
+        launch_exe = resolved_exe;
+    }
     p->stdout_read = NULL; p->stderr_read = NULL;
     SECURITY_ATTRIBUTES sa; memset(&sa, 0, sizeof(sa)); sa.nLength = sizeof(sa); sa.bInheritHandle = TRUE;
     HANDLE out_write = NULL, err_write = NULL;
@@ -931,14 +946,14 @@ VntValue *vnt_process_start(VntValue *executable, VntValue *arguments) {
     SetHandleInformation(p->stdout_read, HANDLE_FLAG_INHERIT, 0);
     SetHandleInformation(p->stderr_read, HANDLE_FLAG_INHERIT, 0);
     char *cmd = NULL; size_t cmd_len = 0, cmd_cap = 0;
-    append_win_arg(&cmd, &cmd_len, &cmd_cap, exe);
+    append_win_arg(&cmd, &cmd_len, &cmd_cap, launch_exe);
     for (int i = 0; i < arguments->array.count; ++i)
         append_win_arg(&cmd, &cmd_len, &cmd_cap, arguments->array.items[i]->string);
     STARTUPINFOA si; PROCESS_INFORMATION pi;
     memset(&si, 0, sizeof(si)); memset(&pi, 0, sizeof(pi));
     si.cb = sizeof(si); si.dwFlags = STARTF_USESTDHANDLES;
     si.hStdInput = GetStdHandle(STD_INPUT_HANDLE); si.hStdOutput = out_write; si.hStdError = err_write;
-    BOOL ok = CreateProcessA(exe, cmd, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
+    BOOL ok = CreateProcessA(launch_exe, cmd, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
     free(cmd); CloseHandle(out_write); CloseHandle(err_write);
     if (!ok) {
         DWORD error = GetLastError();

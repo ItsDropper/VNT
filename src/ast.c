@@ -284,12 +284,30 @@ AstNode *ast_create_variable_declaration(
 
     node->type = AST_VARIABLE_DECLARATION;
     node->variable_declaration.name = copy_string(name);
+    node->variable_declaration.declared_type = NULL;
     node->variable_declaration.value = value;
     node->variable_declaration.is_reassignment = 0;
     node->next = NULL;
 
     if (node->variable_declaration.name == NULL) {
         free(node);
+        return NULL;
+    }
+
+    return node;
+}
+
+AstNode *ast_create_typed_variable_declaration(
+    const char *name,
+    const char *type,
+    AstNode *value
+) {
+    AstNode *node = ast_create_variable_declaration(name, value);
+    if (!node) return NULL;
+
+    node->variable_declaration.declared_type = copy_string(type);
+    if (!node->variable_declaration.declared_type) {
+        ast_free(node);
         return NULL;
     }
 
@@ -501,6 +519,7 @@ void ast_free(AstNode *node) {
 
             case AST_VARIABLE_DECLARATION:
                 free(node->variable_declaration.name);
+                free(node->variable_declaration.declared_type);
                 ast_free(node->variable_declaration.value);
                 break;
 

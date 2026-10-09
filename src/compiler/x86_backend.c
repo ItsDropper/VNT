@@ -359,12 +359,78 @@ static void emit_condition_false_branch(HirGen *g,size_t condition,int false_lab
     fputs("    movq %rax,%rcx\n",g->out);call0(g,"vnt_truth");
     fprintf(g->out,"    testl %%eax,%%eax\n    jz .L%d\n",false_label);
 }
+/* A variable may be updated in place only when its boxed value cannot escape
+ * or be copied into another language-visible slot. */
+static int integer_slot_is_unaliased(const HirGen *g,const char *name) {
+    for(size_t i=0;i<g->ir->node_count;i++) {
+        const VntIrNode *use=&g->ir->nodes[i];
+        if(use->opcode!=VNT_IR_VARIABLE||!use->value.text||strcmp(use->value.text,name)) continue;
+        const VntIrNode *parent=NULL;
+        VntIrEdgeRole role=VNT_IR_EDGE_ROOT;
+        for(size_t p=0;p<g->ir->node_count&&!parent;p++) {
+            const VntIrNode *candidate=&g->ir->nodes[p];
+            for(size_t c=candidate->first_child;c!=VNT_IR_NO_NODE;c=g->ir->nodes[c].next_sibling) {
+                if(c==i) { parent=candidate; role=g->ir->nodes[c].role; break; }
+            }
+        }
+        if(!parent) return 0;
+        if(parent->opcode==VNT_IR_BINARY &&
+           (role==VNT_IR_EDGE_LEFT||role==VNT_IR_EDGE_RIGHT)) continue;
+        if(parent->opcode==VNT_IR_PRINT&&role==VNT_IR_EDGE_VALUE) continue;
+        if((parent->opcode==VNT_IR_ASSIGN)&&role==VNT_IR_EDGE_TARGET) continue;
+        return 0;
+    }
+    return 1;
+}
+/* Reuse a local integer's existing value cell for x = x +/-/* y.
+ * This is safe only after the conservative no-alias/no-escape scan above.
+ * Overflow and non-integer values retain the ordinary runtime path. */
+static int emit_mutating_integer_assignment(HirGen *g,const char *target,size_t value) {
+    const VntIrNode *n=node(g,value);
+    if(!n||n->opcode!=VNT_IR_BINARY||
+       (n->operation!=BINARY_ADD&&n->operation!=BINARY_SUBTRACT&&n->operation!=BINARY_MULTIPLY)) return 0;
+    size_t left=child(g,value,VNT_IR_EDGE_LEFT),right=child(g,value,VNT_IR_EDGE_RIGHT);
+    const VntIrNode *ln=node(g,left),*rn=node(g,right);
+    if(!ln||ln->opcode!=VNT_IR_VARIABLE||!ln->value.text||strcmp(ln->value.text,target)||!rn) return 0;
+    int vi=var_index(g->vars,g->var_count,target);
+    if(vi<0||g->vars[vi].global||!integer_slot_is_unaliased(g,target)) return 0;
+    int right_var=rn->opcode==VNT_IR_VARIABLE&&rn->value.text;
+    int right_int=rn->opcode==VNT_IR_INTEGER;
+    if(!right_var&&!right_int) return 0;
+    if(right_var) {
+        int ri=var_index(g->vars,g->var_count,rn->value.text);
+        if(ri<0||g->vars[ri].global||!integer_slot_is_unaliased(g,rn->value.text)) return 0;
+    }
+    int slow=label_new(g),done=label_new(g);
+    fprintf(g->out,"    movq -%d(%%rbp),%%r9\n",g->vars[vi].offset);
+    fputs("    testq %r9,%r9\n",g->out); fprintf(g->out,"    jz .L%d\n",slow);
+    fputs("    cmpl $1,0(%r9)\n",g->out); fprintf(g->out,"    jne .L%d\n",slow);
+    fputs("    movl 8(%r9),%r10d\n",g->out);
+    if(right_int) {
+        fprintf(g->out,"    %sl $%d,%%r10d\n",
+            n->operation==BINARY_ADD?"add":n->operation==BINARY_SUBTRACT?"sub":"imul",
+            rn->value.integer);
+    } else {
+        int ri=var_index(g->vars,g->var_count,rn->value.text);
+        fprintf(g->out,"    movq -%d(%%rbp),%%r11\n",g->vars[ri].offset);
+        fputs("    testq %r11,%r11\n",g->out); fprintf(g->out,"    jz .L%d\n",slow);
+        fputs("    cmpl $1,0(%r11)\n",g->out); fprintf(g->out,"    jne .L%d\n",slow);
+        fputs("    movl 8(%r11),%eax\n",g->out);
+        fprintf(g->out,"    %sl %%eax,%%r10d\n",
+            n->operation==BINARY_ADD?"add":n->operation==BINARY_SUBTRACT?"sub":"imul");
+    }
+    fprintf(g->out,"    jo .L%d\n    movl %%r10d,8(%%r9)\n    movq %%r9,%%rax\n    jmp .L%d\n",slow,done);
+    label_emit(g,slow);
+    emit_expr(g,value);
+    label_emit(g,done);
+    return 1;
+}
 static void emit_assignment(HirGen*g,size_t i) {
     size_t t=child(g,i,VNT_IR_EDGE_TARGET),v=child(g,i,VNT_IR_EDGE_VALUE);const VntIrNode*tn=node(g,t);
     if(!tn){fail(g,"missing HIR assignment target.");return;}
     if(tn->opcode==VNT_IR_VARIABLE){
         int vi=var_index(g->vars,g->var_count,tn->value.text),gi=var_index(g->globals,g->global_count,tn->value.text);
-        emit_expr(g,v);
+        if(!emit_mutating_integer_assignment(g,tn->value.text,v)) emit_expr(g,v);
         if(gi>=0&&(vi<0||g->vars[vi].global)){fputs("    movq %rax,vnt_global_",g->out);cname(g->out,"",tn->value.text);fputs("(%rip)\n",g->out);}
         else if(vi>=0)fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",g->vars[vi].offset);
         else {
@@ -384,7 +450,10 @@ static void emit_stmt(HirGen*g,size_t i) {
     case VNT_IR_PRINT:emit_expr(g,child(g,i,VNT_IR_EDGE_VALUE));fputs("    movq %rax,%rcx\n",g->out);call0(g,"vnt_print");break;
     case VNT_IR_VARIABLE_DECL:case VNT_IR_REASSIGN:{
         int vi=var_index(g->vars,g->var_count,n->value.text),gi=var_index(g->globals,g->global_count,n->value.text);
-        emit_expr(g,child(g,i,VNT_IR_EDGE_VALUE));
+        size_t assigned_value=child(g,i,VNT_IR_EDGE_VALUE);
+        if(n->opcode!=VNT_IR_VARIABLE_DECL&&
+           !emit_mutating_integer_assignment(g,n->value.text,assigned_value)) emit_expr(g,assigned_value);
+        else if(n->opcode==VNT_IR_VARIABLE_DECL) emit_expr(g,assigned_value);
         if(gi>=0&&(vi<0||g->vars[vi].global)){fputs("    movq %rax,vnt_global_",g->out);cname(g->out,"",n->value.text);fputs("(%rip)\n",g->out);}
         else if(vi>=0)fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",g->vars[vi].offset);
         else {

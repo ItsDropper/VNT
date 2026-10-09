@@ -1138,8 +1138,8 @@ static int vnt_gui_parse_color(const char *value, COLORREF *out) {
     return 1;
 }
 
-/* A deliberately small CSS subset: selectors window, label, button, button:hover.
-   Supported declarations are background-color, color, font-size, padding, and border-radius. */
+/* CSS subset: window, label, title, panel, button, button:hover. Properties include
+   background-color, color, font-size, padding, and border-radius. */
 static void vnt_gui_apply_css_rule(const char *css, const char *selector) {
     size_t slen = strlen(selector);
     const char *p = css;

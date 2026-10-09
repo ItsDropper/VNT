@@ -9,6 +9,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "AST-free HIR pipeline test build failed." }
     & $Exe
     if ($LASTEXITCODE -ne 0) { throw "AST-free HIR pipeline test failed." }
+    $Assembly = Join-Path $OutDir "ast_free_native.s"
+    $Object = Join-Path $OutDir "ast_free_native.o"
+    & gcc "-c" $Assembly "-o" $Object
+    if ($LASTEXITCODE -ne 0) { throw "AST-free HIR assembly did not assemble." }
 }
 finally {
     Pop-Location

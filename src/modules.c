@@ -91,7 +91,11 @@ static const char *directory_of(const char *path, char *buffer, size_t size) {
 static char *join_path(const char *directory, const char *name) {
     size_t a = strlen(directory);
     size_t b = strlen(name);
+#ifdef _WIN32
     char separator = '\\';
+#else
+    char separator = '/';
+#endif
 
     char *path = malloc(a + b + 2);
     if (!path)

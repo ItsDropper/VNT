@@ -36,9 +36,9 @@ static AstNode *parse_primary(Parser *parser) {
         errno = 0;
         char *end = NULL;
         long value = strtol(buffer, &end, 10);
-        if (errno == ERANGE || end == buffer || *end != '\\0' ||
+        if (errno == ERANGE || end == buffer || *end != '\0' ||
             value < INT_MIN || value > INT_MAX) {
-            printf("Parser error: integer literal is outside the supported range.\\n");
+            printf("Parser error: integer literal is outside the supported range.\n");
             return NULL;
         }
 
@@ -46,7 +46,7 @@ static AstNode *parse_primary(Parser *parser) {
 
         AstNode *node = ast_create_integer((int)value);
         if (!node)
-            printf("Parser error: out of memory.\\n");
+            printf("Parser error: out of memory.\n");
         return node;
     }
 

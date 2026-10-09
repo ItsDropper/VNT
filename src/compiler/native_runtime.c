@@ -112,6 +112,24 @@ VntValue *vnt_int(int x) {
     return v;
 }
 
+/* Error exits used by generated native integer fast paths on overflow. */
+void vnt_int_add_overflow(void) {
+    fprintf(stderr, "Runtime error: integer overflow in addition.\n");
+    exit(1);
+}
+void vnt_int_sub_overflow(void) {
+    fprintf(stderr, "Runtime error: integer overflow in subtraction.\n");
+    exit(1);
+}
+void vnt_int_mul_overflow(void) {
+    fprintf(stderr, "Runtime error: integer overflow in multiplication.\n");
+    exit(1);
+}
+void vnt_int_neg_overflow(void) {
+    fprintf(stderr, "Runtime error: integer overflow in unary '-'.\n");
+    exit(1);
+}
+
 VntValue *vnt_float(double x) {
     VntValue *v = alloc_value(VNT_FLOAT);
     v->floating = x;

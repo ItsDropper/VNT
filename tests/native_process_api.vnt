@@ -8,7 +8,14 @@ print(process_stderr(p))
 print(process_exit_code(p))
 print(process_poll(p))
 
-slow_args = ["/c", "ping -n 10 127.0.0.1 > nul"]
+stderr_args = ["/c", "echo VNT_PROCESS_STDERR_OK 1>&2 & exit /b 7"]
+stderr_process = process_start("cmd.exe", stderr_args)
+print(process_wait(stderr_process, 5000))
+print(process_stdout(stderr_process))
+print(process_stderr(stderr_process))
+print(process_exit_code(stderr_process))
+
+slow_args = ["/c", "timeout /t 10 /nobreak > nul"]
 slow = process_start("cmd.exe", slow_args)
 print(process_wait(slow, 10))
 print(process_terminate(slow))

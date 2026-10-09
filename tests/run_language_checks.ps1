@@ -20,8 +20,16 @@ try {
         "tests\typed_function_return_error.vnt",
         "tests\typed_function_missing_return.vnt"
     )) {
-        & .\vnt.exe --compile $case -o (Join-Path $OutDir "should_not_exist.exe") 2>&1 | Out-Null
-        if ($LASTEXITCODE -eq 0) { throw "Expected type-check failure for $case, but compilation succeeded." }
+        $previousPreference = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        try {
+            & .\vnt.exe --compile $case -o (Join-Path $OutDir "should_not_exist.exe") 2>&1 | Out-Null
+            $compileExitCode = $LASTEXITCODE
+        }
+        finally {
+            $ErrorActionPreference = $previousPreference
+        }
+        if ($compileExitCode -eq 0) { throw "Expected type-check failure for $case, but compilation succeeded." }
     }
 
     $ModuleExe = Join-Path $OutDir "modules.exe"
@@ -36,8 +44,16 @@ try {
         "tests\modules\circular_a.vnt",
         "tests\modules\malformed_import.vnt"
     )) {
-        & .\vnt.exe --compile $case -o (Join-Path $OutDir "invalid_module.exe") 2>&1 | Out-Null
-        if ($LASTEXITCODE -eq 0) { throw "Expected module-loading failure for $case, but compilation succeeded." }
+        $previousPreference = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        try {
+            & .\vnt.exe --compile $case -o (Join-Path $OutDir "invalid_module.exe") 2>&1 | Out-Null
+            $compileExitCode = $LASTEXITCODE
+        }
+        finally {
+            $ErrorActionPreference = $previousPreference
+        }
+        if ($compileExitCode -eq 0) { throw "Expected module-loading failure for $case, but compilation succeeded." }
     }
     Write-Host "Language and module checks: PASS"
 }

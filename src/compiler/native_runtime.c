@@ -1335,7 +1335,19 @@ static LRESULT CALLBACK vnt_gui_wndproc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) 
             EndPaint(hwnd,&ps);
             return 0;
         }
-        case WM_CTLCOLOREDIT: {\n            HWND control=(HWND)lp;\n            for(int i=0;i<vnt_gui_input_count;i++) if(vnt_gui_inputs[i].edit_hwnd==control) {\n                int multi=vnt_gui_inputs[i].multiline;\n                SetTextColor((HDC)wp,multi?vnt_gui_textarea_text:vnt_gui_input_text);\n                SetBkColor((HDC)wp,multi?vnt_gui_textarea_background:vnt_gui_input_background);\n                HBRUSH brush=multi?vnt_gui_textarea_brush:vnt_gui_input_brush;\n                if(brush)return (LRESULT)brush;\n                break;\n            }\n            return DefWindowProcA(hwnd,msg,wp,lp);\n        }\n        case WM_ERASEBKGND:return 1;
+        case WM_CTLCOLOREDIT: {
+            HWND control=(HWND)lp;
+            for(int i=0;i<vnt_gui_input_count;i++) if(vnt_gui_inputs[i].edit_hwnd==control) {
+                int multi=vnt_gui_inputs[i].multiline;
+                SetTextColor((HDC)wp,multi?vnt_gui_textarea_text:vnt_gui_input_text);
+                SetBkColor((HDC)wp,multi?vnt_gui_textarea_background:vnt_gui_input_background);
+                HBRUSH brush=multi?vnt_gui_textarea_brush:vnt_gui_input_brush;
+                if(brush)return (LRESULT)brush;
+                break;
+            }
+            return DefWindowProcA(hwnd,msg,wp,lp);
+        }
+        case WM_ERASEBKGND:return 1;
         case WM_KEYDOWN:
             vnt_gui_last_key=(int)wp;
             return 0;
@@ -1359,7 +1371,12 @@ VntValue *vnt_gui_css(VntValue *path) {
     size_t n=fread(css,1,65535,file);fclose(file);css[n]=0;
     if(n==65535){free(css);fprintf(stderr,"Runtime error: stylesheet exceeds 65535 bytes.\n");return vnt_bool(0);}
     vnt_gui_apply_css_rule(css,"window");vnt_gui_apply_css_rule(css,"label");vnt_gui_apply_css_rule(css,"title");
-    vnt_gui_apply_css_rule(css,"panel");vnt_gui_apply_css_rule(css,"button");vnt_gui_apply_css_rule(css,"button:hover");\n    vnt_gui_apply_css_rule(css,"input");vnt_gui_apply_css_rule(css,"textarea");\n    if(vnt_gui_input_brush)DeleteObject(vnt_gui_input_brush);\n    if(vnt_gui_textarea_brush)DeleteObject(vnt_gui_textarea_brush);\n    vnt_gui_input_brush=CreateSolidBrush(vnt_gui_input_background);\n    vnt_gui_textarea_brush=CreateSolidBrush(vnt_gui_textarea_background);free(css);
+    vnt_gui_apply_css_rule(css,"panel");vnt_gui_apply_css_rule(css,"button");vnt_gui_apply_css_rule(css,"button:hover");
+    vnt_gui_apply_css_rule(css,"input");vnt_gui_apply_css_rule(css,"textarea");
+    if(vnt_gui_input_brush)DeleteObject(vnt_gui_input_brush);
+    if(vnt_gui_textarea_brush)DeleteObject(vnt_gui_textarea_brush);
+    vnt_gui_input_brush=CreateSolidBrush(vnt_gui_input_background);
+    vnt_gui_textarea_brush=CreateSolidBrush(vnt_gui_textarea_background);free(css);
     return vnt_bool(1);
 }
 VntValue *vnt_gui_size(VntValue *width,VntValue *height) {
@@ -1375,7 +1392,7 @@ VntValue *vnt_gui_open(VntValue *title) {
     if(!RegisterClassExA(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return vnt_bool(0);
     RECT rect={0,0,vnt_gui_width,vnt_gui_height};AdjustWindowRect(&rect,WS_OVERLAPPEDWINDOW,FALSE);
     vnt_gui_text_y=18;vnt_gui_last_key=0;vnt_gui_clicked=0;vnt_gui_command_count=0;vnt_gui_input_count=0;vnt_gui_focused_input=-1;
-    vnt_gui_hwnd=CreateWindowExA(0,vnt_gui_class_name,caption,WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,rect.right-rect.left,rect.bottom-rect.top,NULL,NULL,instance,NULL);
+    vnt_gui_hwnd=CreateWindowExA(0,vnt_gui_class_name,caption,WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,rect.right-rect.left,rect.bottom-rect.top,NULL,NULL,instance,NULL);
     if(!vnt_gui_hwnd)return vnt_bool(0);ShowWindow(vnt_gui_hwnd,SW_SHOW);UpdateWindow(vnt_gui_hwnd);return vnt_bool(1);
 }
 static VntValue *vnt_gui_draw_text(const char *text,int x,int y,int title) {
@@ -1393,7 +1410,14 @@ static int vnt_gui_input_state(int x,int y,int width,int height,int multiline,in
     for(int i=0;i<vnt_gui_input_count;i++) if(vnt_gui_inputs[i].x==x&&vnt_gui_inputs[i].y==y){
         VntGuiInputState *state=&vnt_gui_inputs[i];
         state->width=width;state->height=height;state->multiline=multiline;
-        if(state->edit_hwnd&&width>0&&height>0) {\n            RECT r;\n            if(GetWindowRect(state->edit_hwnd,&r)) {\n                POINT p={r.left,r.top};ScreenToClient(vnt_gui_hwnd,&p);\n                if(p.x!=x||p.y!=y||(r.right-r.left)!=width||(r.bottom-r.top)!=height)\n                    SetWindowPos(state->edit_hwnd,NULL,x,y,width,height,SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOREDRAW);\n            }\n        }
+        if(state->edit_hwnd&&width>0&&height>0) {
+            RECT r;
+            if(GetWindowRect(state->edit_hwnd,&r)) {
+                POINT p={r.left,r.top};ScreenToClient(vnt_gui_hwnd,&p);
+                if(p.x!=x||p.y!=y||(r.right-r.left)!=width||(r.bottom-r.top)!=height)
+                    SetWindowPos(state->edit_hwnd,NULL,x,y,width,height,SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOREDRAW);
+            }
+        }
         return i;
     }
     if(!create||vnt_gui_input_count>=16)return -1;
@@ -1411,14 +1435,22 @@ static int vnt_gui_native_input(int index,const char *placeholder){
             state->x,state->y,state->width,state->height,vnt_gui_hwnd,
             (HMENU)(INT_PTR)(1000+index),GetModuleHandleA(NULL),NULL);
         if(!state->edit_hwnd)return 0;
-        HFONT font=CreateFontA(-((state->multiline)?vnt_gui_textarea_font_size:vnt_gui_input_font_size),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,"Segoe UI");\n        if(font)SendMessageA(state->edit_hwnd,WM_SETFONT,(WPARAM)font,TRUE);
+        HFONT font=CreateFontA(-((state->multiline)?vnt_gui_textarea_font_size:vnt_gui_input_font_size),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,"Segoe UI");
+        if(font)SendMessageA(state->edit_hwnd,WM_SETFONT,(WPARAM)font,TRUE);
         SendMessageA(state->edit_hwnd,EM_SETLIMITTEXT,(WPARAM)(sizeof(state->text)-1),0);
         if(placeholder&&*placeholder){
             wchar_t cue[512];
             int count=MultiByteToWideChar(CP_UTF8,0,placeholder,-1,cue,(int)(sizeof(cue)/sizeof(cue[0])));
             if(count>0) SendMessageW(state->edit_hwnd,0x1501,TRUE,(LPARAM)cue);
         }
-    } else {\n        RECT r;\n        if(GetWindowRect(state->edit_hwnd,&r)) {\n            POINT p={r.left,r.top};ScreenToClient(vnt_gui_hwnd,&p);\n            if(p.x!=state->x||p.y!=state->y||(r.right-r.left)!=state->width||(r.bottom-r.top)!=state->height)\n                SetWindowPos(state->edit_hwnd,NULL,state->x,state->y,state->width,state->height,SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOREDRAW);\n        }\n    }
+    } else {
+        RECT r;
+        if(GetWindowRect(state->edit_hwnd,&r)) {
+            POINT p={r.left,r.top};ScreenToClient(vnt_gui_hwnd,&p);
+            if(p.x!=state->x||p.y!=state->y||(r.right-r.left)!=state->width||(r.bottom-r.top)!=state->height)
+                SetWindowPos(state->edit_hwnd,NULL,state->x,state->y,state->width,state->height,SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOREDRAW);
+        }
+    }
     return 1;
 }
 static void vnt_gui_read_native_input(int index){

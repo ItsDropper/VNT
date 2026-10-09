@@ -86,7 +86,11 @@ VNT source code
       ↓
      AST
       ↓
- Native x86-64 backend
+ HIR lowering + validation
+      ↓
+ Constant-folding pass
+      ↓
+ x86-64 backend adapter
       ↓
    Assembly
       ↓
@@ -96,6 +100,14 @@ VNT source code
 ```
 
 The compiler emits x86-64 assembly and links a small native runtime for dynamic values, arrays, strings, objects, and math operations. The old interpreter is no longer part of the build or execution path.
+
+The compiler now lowers the AST into an explicit high-level IR (HIR): a flat, index-addressed node store with typed opcodes, named edge roles, copied literal/declaration metadata, and structural validation. The current x86-64 backend still uses the retained AST source map; migrating code generation to consume HIR directly is the next architectural step.
+
+To inspect the lowered representation:
+
+```powershell
+.\\vnt.exe --dump-ir tests\\native_compiler.vnt
+```
 
 ## Error Handling
 

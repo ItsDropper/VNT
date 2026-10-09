@@ -616,6 +616,24 @@ static void emit_call(X86Gen *g,AstNode *n) {
         return;
     }
 
+    /*
+     * The common recursive case has one argument. Avoid pushing it and then
+     * reloading it from the stack: evaluate directly into the first Windows
+     * x64 argument register and reserve only the required shadow/alignment
+     * space. temp_depth accounts for values saved by the surrounding expression.
+     */
+    if (count == 1) {
+        emit_expr(g, n->function_call.arguments);
+        fputs("    movq %rax,%rcx\\n", g->out);
+        int call_area = 32 + ((g->temp_depth * 8) % 16 ? 8 : 0);
+        fprintf(g->out, "    subq $%d,%%rsp\\n", call_area);
+        fputs("    call vnt_fn_", g->out);
+        cname(g->out, "", name);
+        fputc('\\n', g->out);
+        fprintf(g->out, "    addq $%d,%%rsp\\n", call_area);
+        return;
+    }
+
     if (count > 32) {
         fail(g, "native functions currently support at most 32 arguments.");
         return;

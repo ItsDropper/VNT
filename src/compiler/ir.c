@@ -80,13 +80,13 @@ static int fold_binary(AstNode *n) {
     return 0;
 }
 
-static void fold(AstNode *n, int *changed) {
+static void fold(AstNode *n, size_t *changed) {
     for (; n; n = n->next) {
         switch (n->type) {
             case AST_BINARY_EXPRESSION:
                 fold(n->binary_expression.left, changed);
                 fold(n->binary_expression.right, changed);
-                if (fold_binary(n)) *changed = 1;
+                if (fold_binary(n)) ++*changed;
                 break;
             case AST_UNARY_EXPRESSION: fold(n->unary_expression.operand, changed); break;
             case AST_ARRAY_LITERAL: fold(n->array_literal.elements, changed); break;
@@ -424,10 +424,10 @@ int vnt_ir_optimize(VntIrProgram *ir) {
 
     size_t changed = 0;
     for (int pass = 0; pass < 8; ++pass) {
-        int pass_changed = 0;
+        size_t pass_changed = 0;
         fold(ir->program->program.statements, &pass_changed);
         if (!pass_changed) break;
-        changed += (size_t)pass_changed;
+        changed += pass_changed;
     }
 
     ir->optimized_nodes = changed;

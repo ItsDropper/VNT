@@ -7,7 +7,8 @@
 #include <limits.h>
 #include <stdint.h>
 
-typedef struct { char *name; int offset; int is_int; int has_decl; int address_taken; } Var;
+typedef struct { char *name; int offset; int is_int; int has_decl; int address_taken; int is_global; } Var;
+typedef struct { char *name; } GlobalVar;
 typedef struct { char *value; int label; } StringLit;
 typedef struct { double value; int label; } FloatLit;
 typedef struct { char *name; } StructDef;
@@ -28,6 +29,8 @@ typedef struct {
     int float_count, float_capacity;
     StructDef *structs;
     int struct_count, struct_capacity;
+    GlobalVar *globals;
+    int global_count, global_capacity;
 } X86Gen;
 
 static void fail(X86Gen *g, const char *msg) {
@@ -62,7 +65,47 @@ static void var_add(X86Gen *g, const char *name) {
     g->vars[g->var_count].name=strdup(name);
     if(!g->vars[g->var_count].name){fail(g,"out of memory.");return;}
     g->vars[g->var_count].offset=0;
-    g->vars[g->var_count].is_int=0; g->vars[g->var_count].has_decl=0; g->vars[g->var_count].address_taken=0; g->var_count++;
+    g->vars[g->var_count].is_int=0; g->vars[g->var_count].has_decl=0; g->vars[g->var_count].address_taken=0; g->vars[g->var_count].is_global=0; g->var_count++;
+}
+
+static int global_find(X86Gen *g,const char *name) {
+    for(int i=0;i<g->global_count;i++) if(!strcmp(g->globals[i].name,name)) return i;
+    return -1;
+}
+static void global_add(X86Gen *g,const char *name) {
+    if(g->error || global_find(g,name)>=0) return;
+    if(g->global_count==g->global_capacity) {
+        int cap=g->global_capacity?g->global_capacity*2:16;
+        GlobalVar *v=realloc(g->globals,sizeof(*v)*cap);
+        if(!v){fail(g,"out of memory.");return;}
+        g->globals=v;g->global_capacity=cap;
+    }
+    g->globals[g->global_count].name=strdup(name);
+    if(!g->globals[g->global_count].name){fail(g,"out of memory.");return;}
+    g->global_count++;
+}
+static void collect_globals(X86Gen *g,AstNode *n) {
+    for(;n;n=n->next) if(n->type==AST_VARIABLE_DECLARATION) global_add(g,n->variable_declaration.name);
+}
+static int var_is_global(X86Gen *g,const char *name) { return global_find(g,name)>=0; }
+static void emit_global_load(X86Gen *g,const char *name) {
+    fputs("    movq vnt_global_",g->out);cname(g->out,"",name);fputs("(%rip),%rax\n",g->out);
+}
+static void emit_global_store(X86Gen *g,const char *name) {
+    fputs("    movq %rax,vnt_global_",g->out);cname(g->out,"",name);fputs("(%rip)\n",g->out);
+}
+static void emit_global_symbols(X86Gen *g) {
+    if(!g->global_count) return;
+    fputs(".bss\n",g->out);
+    for(int i=0;i<g->global_count;i++) {
+        fputs(".globl vnt_global_",g->out);cname(g->out,"",g->globals[i].name);
+        fputs("\n.comm vnt_global_",g->out);cname(g->out,"",g->globals[i].name);fputs(",8,8\n",g->out);
+    }
+    fputs(".text\n",g->out);
+}
+static void free_globals(X86Gen *g) {
+    for(int i=0;i<g->global_count;i++) free(g->globals[i].name);
+    free(g->globals);g->globals=NULL;g->global_count=g->global_capacity=0;
 }
 
 static void free_vars(X86Gen *g) {
@@ -269,7 +312,7 @@ static int static_integer_expr(AstNode *n) {
 static int known_int_expr(X86Gen *g, AstNode *n) {
     if (!n) return 0;
     if (n->type==AST_INTEGER_LITERAL) return 1;
-    if (n->type==AST_VARIABLE) { int i=var_find(g,n->variable.name); return i>=0 && g->vars[i].is_int; }
+    if (n->type==AST_VARIABLE) { int i=var_find(g,n->variable.name); return i>=0 && !g->vars[i].is_global && g->vars[i].is_int; }
     if (n->type==AST_UNARY_EXPRESSION)
         return n->unary_expression.operator==UNARY_NEGATE && known_int_expr(g,n->unary_expression.operand);
     if (n->type==AST_BINARY_EXPRESSION) {
@@ -846,7 +889,8 @@ static void emit_expr(X86Gen *g,AstNode *n) {
             break;
         case AST_VARIABLE: {
             int vi=var_find(g,n->variable.name);
-            if(vi>=0 && g->vars[vi].is_int) {fprintf(g->out,"    movl -%d(%%rbp),%%ecx\n",g->vars[vi].offset);call0(g,"vnt_int");}
+            if(vi>=0 && g->vars[vi].is_global) emit_global_load(g,n->variable.name);
+            else if(vi>=0 && g->vars[vi].is_int) {fprintf(g->out,"    movl -%d(%%rbp),%%ecx\n",g->vars[vi].offset);call0(g,"vnt_int");}
             else {fprintf(g->out,"    movq ");mem(g,var_offset(g,n->variable.name));fputs(",%rax\n",g->out);}
             break;
         }
@@ -961,7 +1005,8 @@ static void emit_assignment(X86Gen *g,AstNode *n){
     AstNode *t=n->assignment.target;
     if(t->type==AST_VARIABLE){
         int vi=var_find(g,t->variable.name);
-        if(vi>=0 && g->vars[vi].is_int && known_int_expr(g,n->assignment.value)) {emit_int_expr(g,n->assignment.value);fprintf(g->out,"    movl %%eax,-%d(%%rbp)\n",g->vars[vi].offset);}
+        if(vi>=0 && g->vars[vi].is_global) { emit_expr(g,n->assignment.value); emit_global_store(g,t->variable.name); }
+        else if(vi>=0 && g->vars[vi].is_int && known_int_expr(g,n->assignment.value)) {emit_int_expr(g,n->assignment.value);fprintf(g->out,"    movl %%eax,-%d(%%rbp)\n",g->vars[vi].offset);}
         else {emit_expr(g,n->assignment.value);fprintf(g->out,"    movq %%rax,");mem(g,var_offset(g,t->variable.name));fputc('\n',g->out);}
         return;
     }
@@ -1012,7 +1057,8 @@ static void emit_stmt(X86Gen *g,AstNode *n){
         case AST_PRINT_STATEMENT:emit_print(g,n->print_statement.expression);break;
         case AST_VARIABLE_DECLARATION: {
             int vi=var_find(g,n->variable_declaration.name);
-            if(vi>=0 && g->vars[vi].is_int && known_int_expr(g,n->variable_declaration.value)) {emit_int_expr(g,n->variable_declaration.value);fprintf(g->out,"    movl %%eax,-%d(%%rbp)\n",g->vars[vi].offset);}
+            if(vi>=0 && g->vars[vi].is_global) { emit_expr(g,n->variable_declaration.value); emit_global_store(g,n->variable_declaration.name); }
+            else if(vi>=0 && g->vars[vi].is_int && known_int_expr(g,n->variable_declaration.value)) {emit_int_expr(g,n->variable_declaration.value);fprintf(g->out,"    movl %%eax,-%d(%%rbp)\n",g->vars[vi].offset);}
             else {emit_expr(g,n->variable_declaration.value);fprintf(g->out,"    movq %%rax,");mem(g,var_offset(g,n->variable_declaration.name));fputc('\n',g->out);}
             break;
         }
@@ -1055,7 +1101,8 @@ static void emit_function(X86Gen *g,AstNode *fn){
     int count=fn->function_declaration.parameter_count;
     if(count>32){fail(g,"native functions currently support at most 32 parameters.");return;}
     free_vars(g);collect_vars(g,fn->function_declaration.body);
-    for(int i=0;i<count;i++)var_add(g,fn->function_declaration.parameters[i]);
+    for(int i=0;i<count;i++){var_add(g,fn->function_declaration.parameters[i]);int pi=var_find(g,fn->function_declaration.parameters[i]);if(pi>=0)g->vars[pi].has_decl=1;}
+    for(int i=0;i<g->var_count;i++) if(var_is_global(g,g->vars[i].name) && !g->vars[i].has_decl) g->vars[i].is_global=1;
     assign_offsets(g);
     fputs(".globl vnt_fn_",g->out);cname(g->out,"",fn->function_declaration.name);fputc('\n',g->out);
     fputs("vnt_fn_",g->out);cname(g->out,"",fn->function_declaration.name);fputs(":\n    pushq %rbp\n    movq %rsp,%rbp\n",g->out);
@@ -1110,11 +1157,15 @@ int vnt_emit_x86_64(const VntIrProgram *ir,const char *assembly_path){
     X86Gen g={0};g.out=fopen(assembly_path,"wb");
     if(!g.out){fprintf(stderr,"Could not create assembly file: %s\n",assembly_path);return 0;}
     fputs(".text\n",g.out);
+    collect_globals(&g,program->program.statements);
+    emit_global_symbols(&g);
     collect_structs(&g, program->program.statements);
     for(AstNode *n=program->program.statements;n;n=n->next)
         if(n->type==AST_FUNCTION_DECLARATION){emit_function(&g,n);if(g.error)break;fputc('\n',g.out);}
     if(!g.error){
-        free_vars(&g);collect_vars(&g,program->program.statements);infer_integer_variables(&g,program->program.statements);assign_offsets(&g);
+        free_vars(&g);collect_vars(&g,program->program.statements);
+        for(int i=0;i<g.var_count;i++) if(var_is_global(&g,g.vars[i].name)) g.vars[i].is_global=1;
+        infer_integer_variables(&g,program->program.statements);assign_offsets(&g);
         fputs(".globl main\nmain:\n    pushq %rbp\n    movq %rsp,%rbp\n",g.out);
         int frame=((g.var_count*8+15)/16)*16;if(frame)fprintf(g.out,"    subq $%d,%%rsp\n",frame);
         emit_stmt_list(&g,program->program.statements);
@@ -1133,6 +1184,6 @@ int vnt_emit_x86_64(const VntIrProgram *ir,const char *assembly_path){
             emit_string_table(&g);
         }
     }
-    fclose(g.out);free_vars(&g);free_strings(&g);free_floats(&g);free_structs(&g);
+    fclose(g.out);free_vars(&g);free_globals(&g);free_strings(&g);free_floats(&g);free_structs(&g);
     if(g.error){remove(assembly_path);return 0;}return 1;
 }

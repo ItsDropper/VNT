@@ -264,3 +264,10 @@ The syntax, runtime, and internal architecture may change as development continu
 ## License
 
 VNT's licensing terms have not been finalized yet.
+
+
+## Global variables
+
+Top-level variable declarations use shared storage and can be read or updated from functions. Function-local declarations and parameters remain local.
+
+Regression example: `examples/global_variables.vnt`.

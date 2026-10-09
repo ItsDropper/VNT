@@ -80,15 +80,10 @@ static void check_rejects_missing_text_payload(void) {
     if (ir.nodes) {
         for (size_t i = 0; i < ir.node_count; ++i) {
             if (ir.nodes[i].opcode == VNT_IR_STRING) {
+                char *owned_text = ir.nodes[i].value.text;
                 ir.nodes[i].value.text = NULL;
-                break;
-            }
-        }
-        CHECK(!vnt_ir_validate(&ir), "validation rejects a string node without text");
-        /* Restore ownership before freeing the graph. */
-        for (size_t i = 0; i < ir.node_count; ++i) {
-            if (ir.nodes[i].opcode == VNT_IR_STRING) {
-                ir.nodes[i].value.text = NULL;
+                CHECK(!vnt_ir_validate(&ir), "validation rejects a string node without text");
+                ir.nodes[i].value.text = owned_text;
                 break;
             }
         }

@@ -3,7 +3,7 @@ fun mix(a, b, c, d) {
 }
 i = 0
 checksum = 0
-while i < 100000 {
+while i < 30000 {
     checksum += mix(i, 3, 1, 2)
     i += 1
 }

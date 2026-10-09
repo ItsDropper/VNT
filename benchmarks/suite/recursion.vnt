@@ -1,0 +1,14 @@
+fun fib(n) {
+    if n <= 1 {
+        return n
+    }
+    return fib(n - 1) + fib(n - 2)
+}
+i = 0
+checksum = 0
+while i < 20 {
+    checksum += fib(18)
+    i += 1
+}
+print(checksum)
+print("RECURSION_OK")

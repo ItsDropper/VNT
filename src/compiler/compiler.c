@@ -1,6 +1,7 @@
 #include <vnt/compiler.h>
 #include <vnt/typecheck.h>
 #include <vnt/ir.h>
+#include <vnt/ir_lower.h>
 #include <stdio.h>
 
 #include "x86_backend.h"

@@ -1,4 +1,5 @@
 #include <vnt/ir.h>
+#include <vnt/ir_lower.h>
 
 #include <float.h>
 #include <limits.h>

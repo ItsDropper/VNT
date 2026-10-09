@@ -4,1304 +4,314 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <limits.h>
 #include <stdint.h>
 
-typedef struct { char *name; int offset; int is_int; int has_decl; int address_taken; int is_global; } Var;
-typedef struct { char *name; } GlobalVar;
-typedef struct { char *value; int label; } StringLit;
-typedef struct { double value; int label; } FloatLit;
-typedef struct { char *name; } StructDef;
-
+typedef struct { char *name; int offset; int global; } HirVar;
+typedef struct { char *value; int label; } HirString;
+typedef struct { double value; int label; } HirFloat;
 typedef struct {
+    const VntIrProgram *ir;
     FILE *out;
-    Var *vars;
-    int var_count, var_capacity;
-    int label_count;
-    int loop_depth;
-    int loop_start[64];
-    int loop_end[64];
-    int error;
-    int temp_depth;
-    StringLit *strings;
-    int string_count, string_capacity;
-    FloatLit *floats;
-    int float_count, float_capacity;
-    StructDef *structs;
-    int struct_count, struct_capacity;
-    GlobalVar *globals;
-    int global_count, global_capacity;
-} X86Gen;
+    HirVar *vars; size_t var_count, var_cap;
+    HirVar *globals; size_t global_count, global_cap;
+    HirString *strings; size_t string_count, string_cap;
+    HirFloat *floats; size_t float_count, float_cap;
+    char **structs; size_t struct_count, struct_cap;
+    int labels, loop_depth, loop_start[64], loop_end[64], error;
+} HirGen;
 
-static void fail(X86Gen *g, const char *msg) {
-    if (!g->error) fprintf(stderr, "Native compiler error: %s\n", msg);
-    g->error = 1;
+static const VntIrNode *node(const HirGen *g, size_t i) {
+    return i < g->ir->node_count ? &g->ir->nodes[i] : NULL;
 }
-
-static int new_label(X86Gen *g) { return g->label_count++; }
-
-static void label(X86Gen *g, int n) { fprintf(g->out, ".L%d:\n", n); }
-
-static void cname(FILE *out, const char *prefix, const char *name) {
-    fputs(prefix, out);
-    for (const unsigned char *p=(const unsigned char*)name; *p; ++p)
-        fputc(isalnum(*p) || *p=='_' ? *p : '_', out);
+static size_t child(const HirGen *g, size_t i, VntIrEdgeRole role) {
+    const VntIrNode *n = node(g, i);
+    if (!n) return VNT_IR_NO_NODE;
+    for (size_t c=n->first_child; c!=VNT_IR_NO_NODE; c=g->ir->nodes[c].next_sibling)
+        if (g->ir->nodes[c].role==role) return c;
+    return VNT_IR_NO_NODE;
 }
-
-static int var_find(X86Gen *g, const char *name) {
-    for (int i=0;i<g->var_count;i++)
-        if (!strcmp(g->vars[i].name,name)) return i;
+static size_t next_role(const HirGen *g, size_t i, VntIrEdgeRole role) {
+    const VntIrNode *n = node(g, i);
+    if (!n) return VNT_IR_NO_NODE;
+    for (size_t c=n->next_sibling; c!=VNT_IR_NO_NODE; c=g->ir->nodes[c].next_sibling)
+        if (g->ir->nodes[c].role==role) return c;
+    return VNT_IR_NO_NODE;
+}
+static void fail(HirGen *g, const char *s) {
+    if (!g->error) fprintf(stderr, "Native compiler error: %s\n", s);
+    g->error=1;
+}
+static void cname(FILE *f, const char *prefix, const char *s) {
+    fputs(prefix,f);
+    for (const unsigned char *p=(const unsigned char*)s; *p; ++p)
+        fputc(isalnum(*p)||*p=='_'?*p:'_',f);
+}
+static int label_new(HirGen *g) { return g->labels++; }
+static void label_emit(HirGen *g,int l) { fprintf(g->out,".L%d:\n",l); }
+static int add_name(HirVar **a,size_t *count,size_t *cap,const char *name) {
+    for(size_t i=0;i<*count;i++) if(!strcmp((*a)[i].name,name)) return 1;
+    if(*count==*cap) { size_t nc=*cap?*cap*2:16; HirVar *p=realloc(*a,nc*sizeof(*p)); if(!p)return 0;*a=p;*cap=nc; }
+    (*a)[*count]=(HirVar){strdup(name),0,0};
+    if(!(*a)[*count].name)return 0;
+    ++*count; return 1;
+}
+static int var_index(HirVar *a,size_t count,const char *name) {
+    for(size_t i=0;i<count;i++) if(!strcmp(a[i].name,name))return (int)i;
     return -1;
 }
-
-static void var_add(X86Gen *g, const char *name) {
-    if (g->error || var_find(g,name)>=0) return;
-    if (g->var_count==g->var_capacity) {
-        int cap=g->var_capacity?g->var_capacity*2:16;
-        Var *v=realloc(g->vars,sizeof(*v)*cap);
-        if(!v){fail(g,"out of memory.");return;}
-        g->vars=v; g->var_capacity=cap;
-    }
-    g->vars[g->var_count].name=strdup(name);
-    if(!g->vars[g->var_count].name){fail(g,"out of memory.");return;}
-    g->vars[g->var_count].offset=0;
-    g->vars[g->var_count].is_int=0; g->vars[g->var_count].has_decl=0; g->vars[g->var_count].address_taken=0; g->vars[g->var_count].is_global=0; g->var_count++;
-}
-
-static int global_find(X86Gen *g,const char *name) {
-    for(int i=0;i<g->global_count;i++) if(!strcmp(g->globals[i].name,name)) return i;
-    return -1;
-}
-static void global_add(X86Gen *g,const char *name) {
-    if(g->error || global_find(g,name)>=0) return;
-    if(g->global_count==g->global_capacity) {
-        int cap=g->global_capacity?g->global_capacity*2:16;
-        GlobalVar *v=realloc(g->globals,sizeof(*v)*cap);
-        if(!v){fail(g,"out of memory.");return;}
-        g->globals=v;g->global_capacity=cap;
-    }
-    g->globals[g->global_count].name=strdup(name);
-    if(!g->globals[g->global_count].name){fail(g,"out of memory.");return;}
-    g->global_count++;
-}
-static void collect_globals(X86Gen *g,AstNode *n) {
-    for(;n;n=n->next) if(n->type==AST_VARIABLE_DECLARATION) global_add(g,n->variable_declaration.name);
-}
-static int var_is_global(X86Gen *g,const char *name) { return global_find(g,name)>=0; }
-static void emit_global_load(X86Gen *g,const char *name) {
-    fputs("    movq vnt_global_",g->out);cname(g->out,"",name);fputs("(%rip),%rax\n",g->out);
-}
-static void emit_global_store(X86Gen *g,const char *name) {
-    fputs("    movq %rax,vnt_global_",g->out);cname(g->out,"",name);fputs("(%rip)\n",g->out);
-}
-static void emit_global_symbols(X86Gen *g) {
-    if(!g->global_count) return;
-    fputs(".bss\n",g->out);
-    for(int i=0;i<g->global_count;i++) {
-        fputs(".globl vnt_global_",g->out);cname(g->out,"",g->globals[i].name);
-        fputs("\n.comm vnt_global_",g->out);cname(g->out,"",g->globals[i].name);fputs(",8,8\n",g->out);
-    }
-    fputs(".text\n",g->out);
-}
-static void free_globals(X86Gen *g) {
-    for(int i=0;i<g->global_count;i++) free(g->globals[i].name);
-    free(g->globals);g->globals=NULL;g->global_count=g->global_capacity=0;
-}
-
-static void free_vars(X86Gen *g) {
-    for(int i=0;i<g->var_count;i++) free(g->vars[i].name);
-    free(g->vars); g->vars=NULL; g->var_count=g->var_capacity=0;
-}
-
-static int var_offset(X86Gen *g,const char *name) {
-    int i=var_find(g,name);
-    if(i<0){fail(g,"unknown variable.");return 0;}
-    return g->vars[i].offset;
-}
-
-static void collect_vars(X86Gen *g, AstNode *n) {
-    for(;n;n=n->next) {
-        switch(n->type) {
-            case AST_VARIABLE_DECLARATION: var_add(g,n->variable_declaration.name); { int vi=var_find(g,n->variable_declaration.name); if(vi>=0) g->vars[vi].has_decl=1; } collect_vars(g,n->variable_declaration.value); break;
-            case AST_VARIABLE: var_add(g,n->variable.name); break;
-            case AST_ASSIGNMENT:
-                if(n->assignment.target && n->assignment.target->type==AST_VARIABLE)
-                    var_add(g,n->assignment.target->variable.name);
-                else if(n->assignment.target && n->assignment.target->type==AST_INDEX_EXPRESSION) {
-                    collect_vars(g,n->assignment.target->index_expression.array);
-                    collect_vars(g,n->assignment.target->index_expression.index);
-                } else if(n->assignment.target && n->assignment.target->type==AST_MEMBER_EXPRESSION) {
-                    collect_vars(g,n->assignment.target->member_expression.object);
-                }
-                collect_vars(g,n->assignment.value);
-                break;
-            case AST_PRINT_STATEMENT: collect_vars(g,n->print_statement.expression); break;
-            case AST_IF_STATEMENT:
-                collect_vars(g,n->if_statement.condition);
-                collect_vars(g,n->if_statement.then_branch);
-                collect_vars(g,n->if_statement.else_branch); break;
-            case AST_WHILE_STATEMENT:
-                collect_vars(g,n->while_statement.condition);
-                collect_vars(g,n->while_statement.body); break;
-            case AST_FUNCTION_CALL: collect_vars(g,n->function_call.arguments); break;
-            case AST_ARRAY_LITERAL: collect_vars(g,n->array_literal.elements); break;
-            case AST_INDEX_EXPRESSION:
-                collect_vars(g,n->index_expression.array);
-                collect_vars(g,n->index_expression.index); break;
-            case AST_MEMBER_EXPRESSION:
-                collect_vars(g,n->member_expression.object); break;
-            case AST_BINARY_EXPRESSION:
-                collect_vars(g,n->binary_expression.left);
-                collect_vars(g,n->binary_expression.right); break;
-            case AST_UNARY_EXPRESSION:
-                collect_vars(g,n->unary_expression.operand);
-                if(n->unary_expression.operator==UNARY_REFERENCE &&
-                   n->unary_expression.operand &&
-                   n->unary_expression.operand->type==AST_VARIABLE) {
-                    int vi=var_find(g,n->unary_expression.operand->variable.name);
-                    if(vi>=0) g->vars[vi].address_taken=1;
-                }
-                break;
-            case AST_RETURN_STATEMENT: collect_vars(g,n->return_statement.expression); break;
-            default: break;
-        }
-    }
-}
-
-static void assign_offsets(X86Gen *g) {
-    for(int i=0;i<g->var_count;i++) g->vars[i].offset=8+i*8;
-}
-
-static void mem(X86Gen *g,int off) { fprintf(g->out,"-%d(%%rbp)",off); }
-
-static void call0(X86Gen *g,const char *fn) {
-    fputs("    subq $32, %rsp\n    call ",g->out);
-    fputs(fn,g->out); fputc('\n',g->out);
-    fputs("    addq $32, %rsp\n",g->out);
-}
-
-static void call1(X86Gen *g,const char *fn) {
-    fputs("    movq %rax, %rcx\n",g->out);
-    call0(g,fn);
-}
-
-static void call2_from_stack(X86Gen *g,const char *fn) {
-    fputs("    movq %rax, %rdx\n    popq %rcx\n",g->out);
-    call0(g,fn);
-}
-
-static int string_label(X86Gen *g, const char *value) {
-    for (int i=0;i<g->string_count;i++)
-        if (!strcmp(g->strings[i].value,value)) return g->strings[i].label;
-    if (g->string_count==g->string_capacity) {
-        int cap=g->string_capacity?g->string_capacity*2:8;
-        StringLit *s=realloc(g->strings,sizeof(*s)*cap);
-        if(!s){fail(g,"out of memory.");return 0;}
-        g->strings=s;g->string_capacity=cap;
-    }
-    int label=new_label(g);
-    g->strings[g->string_count].value=strdup(value);
-    if(!g->strings[g->string_count].value){fail(g,"out of memory.");return 0;}
-    g->strings[g->string_count].label=label;
-    g->string_count++;
-    return label;
-}
-
-static int float_label(X86Gen *g, double value) {
-    for (int i=0;i<g->float_count;i++)
-        if (g->floats[i].value == value) return g->floats[i].label;
-    if (g->float_count == g->float_capacity) {
-        int cap = g->float_capacity ? g->float_capacity * 2 : 8;
-        FloatLit *f = realloc(g->floats, sizeof(*f) * cap);
-        if (!f) { fail(g, "out of memory."); return 0; }
-        g->floats = f;
-        g->float_capacity = cap;
-    }
-    int l = new_label(g);
-    g->floats[g->float_count].value = value;
-    g->floats[g->float_count].label = l;
-    g->float_count++;
-    return l;
-}
-
-static void free_floats(X86Gen *g) {
-    free(g->floats);
-    g->floats = NULL;
-    g->float_count = g->float_capacity = 0;
-}
-
-static void free_strings(X86Gen *g) {
-    for(int i=0;i<g->string_count;i++) free(g->strings[i].value);
-    free(g->strings);g->strings=NULL;g->string_count=g->string_capacity=0;
-}
-
-static int struct_find(X86Gen *g, const char *name) {
-    for (int i = 0; i < g->struct_count; i++)
-        if (!strcmp(g->structs[i].name, name)) return i;
-    return -1;
-}
-
-static void collect_structs(X86Gen *g, AstNode *n) {
-    for (; n; n = n->next) {
-        if (n->type == AST_STRUCT_DECLARATION) {
-            if (struct_find(g, n->struct_declaration.name) >= 0) {
-                fail(g, "duplicate struct definition.");
-                return;
-            }
-            if (g->struct_count == g->struct_capacity) {
-                int cap = g->struct_capacity ? g->struct_capacity * 2 : 8;
-                StructDef *defs = realloc(g->structs, sizeof(*defs) * cap);
-                if (!defs) { fail(g, "out of memory."); return; }
-                g->structs = defs;
-                g->struct_capacity = cap;
-            }
-            g->structs[g->struct_count].name = strdup(n->struct_declaration.name);
-            if (!g->structs[g->struct_count].name) { fail(g, "out of memory."); return; }
-            g->struct_count++;
-        }
-    }
-}
-
-static void free_structs(X86Gen *g) {
-    for (int i = 0; i < g->struct_count; i++) free(g->structs[i].name);
-    free(g->structs);
-    g->structs = NULL;
-    g->struct_count = g->struct_capacity = 0;
-}
-
-static int static_integer_value(AstNode *n, int64_t *out) {
-    if (!n || !out) return 0;
-    if (n->type == AST_INTEGER_LITERAL) {
-        *out = n->integer_literal.value;
-        return 1;
-    }
-    if (n->type != AST_BINARY_EXPRESSION) return 0;
-
-    int64_t left, right, result;
-    if (!static_integer_value(n->binary_expression.left, &left) ||
-        !static_integer_value(n->binary_expression.right, &right)) return 0;
-
-    switch (n->binary_expression.operator) {
-        case BINARY_ADD: result = left + right; break;
-        case BINARY_SUBTRACT: result = left - right; break;
-        case BINARY_MULTIPLY: result = left * right; break;
-        case BINARY_DIVIDE:
-            if (!right || (left == INT_MIN && right == -1)) return 0;
-            result = left / right;
-            break;
-        case BINARY_MODULO:
-            if (!right || (left == INT_MIN && right == -1)) return 0;
-            result = left % right;
-            break;
-        default: return 0;
-    }
-
-    if (result < INT_MIN || result > INT_MAX) return 0;
-    *out = result;
+static int var_add(HirGen *g,const char *name) {
+    if(!add_name(&g->vars,&g->var_count,&g->var_cap,name)){fail(g,"out of memory collecting HIR variables.");return 0;}
     return 1;
 }
-
-static int static_integer_expr(AstNode *n) {
-    int64_t value;
-    return static_integer_value(n, &value);
-}
-
-
-/* Conservative native-int specialization. Unknown or mixed-type variables
- * remain boxed VntValue pointers and use the ordinary runtime helpers. */
-static int known_int_expr(X86Gen *g, AstNode *n) {
-    if (!n) return 0;
-    if (n->type==AST_INTEGER_LITERAL) return 1;
-    if (n->type==AST_VARIABLE) { int i=var_find(g,n->variable.name); return i>=0 && !g->vars[i].is_global && g->vars[i].is_int; }
-    if (n->type==AST_UNARY_EXPRESSION)
-        return n->unary_expression.operator==UNARY_NEGATE && known_int_expr(g,n->unary_expression.operand);
-    if (n->type==AST_BINARY_EXPRESSION) {
-        BinaryOperator op=n->binary_expression.operator;
-        if(op!=BINARY_ADD && op!=BINARY_SUBTRACT && op!=BINARY_MULTIPLY &&
-           op!=BINARY_MODULO) return 0;
-        return known_int_expr(g,n->binary_expression.left) && known_int_expr(g,n->binary_expression.right);
-    }
-    return 0;
-}
-/* Seed native-int candidates from assignments as well as declarations.
- * This pass only adds candidates. A separate pass below removes any variable
- * whose assignments are not all safe integer expressions. */
-static void infer_int_candidates(X86Gen *g, AstNode *n, int *changed) {
-    for (; n; n = n->next) {
-        const char *name = NULL;
-        AstNode *value = NULL;
-
-        if (n->type == AST_VARIABLE_DECLARATION) {
-            name = n->variable_declaration.name;
-            value = n->variable_declaration.value;
-        } else if (n->type == AST_ASSIGNMENT &&
-                   n->assignment.target &&
-                   n->assignment.target->type == AST_VARIABLE) {
-            name = n->assignment.target->variable.name;
-            value = n->assignment.value;
-        }
-
-        if (name && value) {
-            int i = var_find(g, name);
-            if (i >= 0 && !g->vars[i].is_int &&
-                !g->vars[i].address_taken && known_int_expr(g, value)) {
-                g->vars[i].is_int = 1;
-                *changed = 1;
-            }
-        }
-
-        switch (n->type) {
-            case AST_IF_STATEMENT:
-                infer_int_candidates(g, n->if_statement.then_branch, changed);
-                infer_int_candidates(g, n->if_statement.else_branch, changed);
-                break;
-            case AST_WHILE_STATEMENT:
-                infer_int_candidates(g, n->while_statement.body, changed);
-                break;
-            /* Function bodies have separate variable tables and are analyzed
-             * when their own code is emitted. Never infer them against main's
-             * variable table (names may collide). */
-            default:
-                break;
-        }
-    }
-}
-
-/* Inference is deliberately conservative: one mixed-type assignment or an
- * address-taken variable disqualifies the variable from native storage. */
-static void infer_int_assignments(X86Gen *g, AstNode *n, int *changed) {
-    for (; n; n = n->next) {
-        if (n->type == AST_VARIABLE_DECLARATION) {
-            int i = var_find(g, n->variable_declaration.name);
-            if (i >= 0 && g->vars[i].is_int &&
-                !known_int_expr(g, n->variable_declaration.value)) {
-                g->vars[i].is_int = 0;
-                *changed = 1;
-            }
-        } else if (n->type == AST_ASSIGNMENT &&
-                   n->assignment.target &&
-                   n->assignment.target->type == AST_VARIABLE) {
-            int i = var_find(g, n->assignment.target->variable.name);
-            if (i >= 0 && g->vars[i].is_int &&
-                !known_int_expr(g, n->assignment.value)) {
-                g->vars[i].is_int = 0;
-                *changed = 1;
-            }
-        }
-
-        switch (n->type) {
-            case AST_IF_STATEMENT:
-                infer_int_assignments(g, n->if_statement.then_branch, changed);
-                infer_int_assignments(g, n->if_statement.else_branch, changed);
-                break;
-            case AST_WHILE_STATEMENT:
-                infer_int_assignments(g, n->while_statement.body, changed);
-                break;
-            default:
-                break;
-        }
-    }
-}
-
-static void infer_integer_variables(X86Gen *g, AstNode *program) {
-    for (int i = 0; i < g->var_count; i++)
-        g->vars[i].is_int = 0;
-
-    /* Candidate discovery needs a fixed point for assignments such as
-     * a = b + 1 where b is declared later in the source. */
-    int changed;
-    do {
-        changed = 0;
-        infer_int_candidates(g, program, &changed);
-    } while (changed);
-
-    /* Only remove candidates in this phase, so the analysis always converges. */
-    do {
-        changed = 0;
-        infer_int_assignments(g, program, &changed);
-    } while (changed);
-}
-static void emit_int_expr(X86Gen *g, AstNode *n) {
-    if(n->type==AST_INTEGER_LITERAL) {fprintf(g->out,"    movl $%d,%%eax\n",n->integer_literal.value);return;}
-    if(n->type==AST_VARIABLE) {fprintf(g->out,"    movl -%d(%%rbp),%%eax\n",var_offset(g,n->variable.name));return;}
-    if(n->type==AST_UNARY_EXPRESSION) {emit_int_expr(g,n->unary_expression.operand);fputs("    negl %eax\n    jo .Lvnt_int_neg_overflow\n",g->out);return;}
-    emit_int_expr(g,n->binary_expression.left);
-    fputs("    pushq %rax\n",g->out);
-    emit_int_expr(g,n->binary_expression.right);
-    fputs("    movl %eax,%r10d\n    popq %rax\n",g->out);
-    switch(n->binary_expression.operator) {
-        case BINARY_ADD:fputs("    addl %r10d,%eax\n    jo .Lvnt_int_add_overflow\n",g->out);break;
-        case BINARY_SUBTRACT:fputs("    subl %r10d,%eax\n    jo .Lvnt_int_sub_overflow\n",g->out);break;
-        case BINARY_MULTIPLY:fputs("    imull %r10d,%eax\n    jo .Lvnt_int_mul_overflow\n",g->out);break;
-        case BINARY_MODULO: {
-            int divisor = n->binary_expression.right->type == AST_INTEGER_LITERAL
-                ? n->binary_expression.right->integer_literal.value : 0;
-            if (divisor > 0 && (divisor & (divisor - 1)) == 0) {
-                /*
-                 * Signed remainder by a positive power of two can avoid IDIV.
-                 * Bias negative inputs toward zero before masking, then
-                 * subtract the rounded-down multiple to preserve VNT's
-                 * dividend-sign remainder semantics.
-                 */
-                int mask = divisor - 1;
-                fprintf(g->out,
-                    "    movl %%eax,%%r11d\n"
-                    "    movl %%eax,%%r10d\n"
-                    "    sarl $31,%%r10d\n"
-                    "    andl $%d,%%r10d\n"
-                    "    addl %%r10d,%%eax\n"
-                    "    andl $-%d,%%eax\n"
-                    "    subl %%eax,%%r11d\n"
-                    "    movl %%r11d,%%eax\n",
-                    mask, divisor);
-            } else {
-                int normal=new_label(g), done=new_label(g);
-                fputs("    testl %r10d,%r10d\n    jz .Lvnt_int_div_zero\n",g->out);
-                fprintf(g->out,"    cmpl $-1,%%r10d\n    jne .L%d\n",normal);
-                fputs("    cmpl $-2147483648,%eax\n",g->out);
-                fprintf(g->out,"    jne .L%d\n    xorl %%eax,%%eax\n    jmp .L%d\n",normal,done);
-                label(g,normal);
-                fputs("    cltd\n    idivl %r10d\n    movl %edx,%eax\n",g->out);
-                label(g,done);
-            }
-            break;
-        }
-        default:fail(g,"unsupported native integer expression.");break;
-    }
-}
-static int int_condition_supported(X86Gen *g, AstNode *n) {
-    if (!n || n->type != AST_BINARY_EXPRESSION) return 0;
-    BinaryOperator op = n->binary_expression.operator;
-    if (op == BINARY_AND || op == BINARY_OR)
-        return int_condition_supported(g, n->binary_expression.left) &&
-               int_condition_supported(g, n->binary_expression.right);
-    if (op != BINARY_EQUAL && op != BINARY_NOT_EQUAL &&
-        op != BINARY_LESS && op != BINARY_GREATER &&
-        op != BINARY_LESS_EQUAL && op != BINARY_GREATER_EQUAL)
-        return 0;
-    return known_int_expr(g, n->binary_expression.left) &&
-           known_int_expr(g, n->binary_expression.right);
-}
-static int emit_int_condition_true(X86Gen *g, AstNode *n, int target);
-static int emit_int_condition_false(X86Gen *g, AstNode *n, int target) {
-    if (!int_condition_supported(g, n)) return 0;
-    if (n->type == AST_BINARY_EXPRESSION &&
-        (n->binary_expression.operator == BINARY_AND ||
-         n->binary_expression.operator == BINARY_OR)) {
-        if (n->binary_expression.operator == BINARY_AND) {
-            return emit_int_condition_false(g, n->binary_expression.left, target) &&
-                   emit_int_condition_false(g, n->binary_expression.right, target);
-        }
-        int done = new_label(g);
-        if (!emit_int_condition_true(g, n->binary_expression.left, done)) return 0;
-        if (!emit_int_condition_false(g, n->binary_expression.right, target)) return 0;
-        label(g, done);
-        return 1;
-    }
-    if (n->type != AST_BINARY_EXPRESSION ||
-        !known_int_expr(g,n->binary_expression.left) ||
-        !known_int_expr(g,n->binary_expression.right)) return 0;
-    const char *j = NULL;
-    switch (n->binary_expression.operator) {
-        case BINARY_EQUAL: j="jne"; break;
-        case BINARY_NOT_EQUAL: j="je"; break;
-        case BINARY_LESS: j="jge"; break;
-        case BINARY_GREATER: j="jle"; break;
-        case BINARY_LESS_EQUAL: j="jg"; break;
-        case BINARY_GREATER_EQUAL: j="jl"; break;
-        default: return 0;
-    }
-    emit_int_expr(g,n->binary_expression.left);
-    fputs("    pushq %rax\n",g->out);
-    emit_int_expr(g,n->binary_expression.right);
-    fputs("    movl %eax,%r10d\n    popq %rax\n    cmpl %r10d,%eax\n",g->out);
-    fprintf(g->out,"    %s .L%d\n",j,target);
+static int global_add(HirGen *g,const char *name) {
+    if(!add_name(&g->globals,&g->global_count,&g->global_cap,name)){fail(g,"out of memory collecting HIR globals.");return 0;}
     return 1;
 }
-static int emit_int_condition_true(X86Gen *g, AstNode *n, int target) {
-    if (!int_condition_supported(g, n)) return 0;
-    if (n->type == AST_BINARY_EXPRESSION &&
-        (n->binary_expression.operator == BINARY_AND ||
-         n->binary_expression.operator == BINARY_OR)) {
-        if (n->binary_expression.operator == BINARY_OR) {
-            return emit_int_condition_true(g, n->binary_expression.left, target) &&
-                   emit_int_condition_true(g, n->binary_expression.right, target);
-        }
-        int next = new_label(g);
-        if (!emit_int_condition_false(g, n->binary_expression.left, next)) return 0;
-        if (!emit_int_condition_true(g, n->binary_expression.right, target)) return 0;
-        label(g, next);
-        return 1;
-    }
-    if (n->type != AST_BINARY_EXPRESSION ||
-        !known_int_expr(g,n->binary_expression.left) ||
-        !known_int_expr(g,n->binary_expression.right)) return 0;
-    const char *j = NULL;
-    switch (n->binary_expression.operator) {
-        case BINARY_EQUAL: j="je"; break;
-        case BINARY_NOT_EQUAL: j="jne"; break;
-        case BINARY_LESS: j="jl"; break;
-        case BINARY_GREATER: j="jg"; break;
-        case BINARY_LESS_EQUAL: j="jle"; break;
-        case BINARY_GREATER_EQUAL: j="jge"; break;
-        default: return 0;
-    }
-    emit_int_expr(g,n->binary_expression.left);
-    fputs("    pushq %rax\n",g->out);
-    emit_int_expr(g,n->binary_expression.right);
-    fputs("    movl %eax,%r10d\n    popq %rax\n    cmpl %r10d,%eax\n",g->out);
-    fprintf(g->out,"    %s .L%d\n",j,target);
-    return 1;
-}
-static void emit_raw_integer(X86Gen *g, AstNode *n) {
-    if (n->type == AST_INTEGER_LITERAL) {
-        fprintf(g->out, "    movl $%d,%%eax\n", n->integer_literal.value);
-        return;
-    }
-
-    AstNode *left = n->binary_expression.left;
-    AstNode *right = n->binary_expression.right;
-    emit_raw_integer(g, left);
-    fputs("    pushq %rax\n", g->out);
-    emit_raw_integer(g, right);
-    fputs("    movl %eax,%r10d\n    popq %rax\n", g->out);
-
-    switch (n->binary_expression.operator) {
-        case BINARY_ADD: fputs("    addl %r10d,%eax\n", g->out); break;
-        case BINARY_SUBTRACT: fputs("    subl %r10d,%eax\n", g->out); break;
-        case BINARY_MULTIPLY: fputs("    imull %r10d,%eax\n", g->out); break;
-        case BINARY_DIVIDE:
-        case BINARY_MODULO:
-            fputs("    testl %r10d,%r10d\n", g->out);
-            fputs("    jz .Lvnt_int_div_zero\n", g->out);
-            fputs("    cltd\n    idivl %r10d\n", g->out);
-            if (n->binary_expression.operator == BINARY_MODULO)
-                fputs("    movl %edx,%eax\n", g->out);
-            break;
-        default:
-            fail(g, "invalid integer fast-path expression.");
-            break;
+static void collect_vars(HirGen *g,size_t i) {
+    const VntIrNode *n=node(g,i); if(!n||g->error)return;
+    switch(n->opcode) {
+    case VNT_IR_VARIABLE_DECL: case VNT_IR_REASSIGN:
+        var_add(g,n->value.text);
+        collect_vars(g,child(g,i,VNT_IR_EDGE_VALUE)); break;
+    case VNT_IR_VARIABLE: var_add(g,n->value.text); break;
+    case VNT_IR_ASSIGN:
+        collect_vars(g,child(g,i,VNT_IR_EDGE_TARGET)); collect_vars(g,child(g,i,VNT_IR_EDGE_VALUE)); break;
+    case VNT_IR_PRINT: case VNT_IR_RETURN: collect_vars(g,child(g,i,VNT_IR_EDGE_VALUE)); break;
+    case VNT_IR_IF:
+        collect_vars(g,child(g,i,VNT_IR_EDGE_CONDITION));
+        for(size_t c=child(g,i,VNT_IR_EDGE_THEN);c!=VNT_IR_NO_NODE;c=next_role(g,c,VNT_IR_EDGE_THEN))collect_vars(g,c);
+        for(size_t c=child(g,i,VNT_IR_EDGE_ELSE);c!=VNT_IR_NO_NODE;c=next_role(g,c,VNT_IR_EDGE_ELSE))collect_vars(g,c); break;
+    case VNT_IR_WHILE:
+        collect_vars(g,child(g,i,VNT_IR_EDGE_CONDITION));
+        for(size_t c=child(g,i,VNT_IR_EDGE_BODY);c!=VNT_IR_NO_NODE;c=next_role(g,c,VNT_IR_EDGE_BODY))collect_vars(g,c); break;
+    case VNT_IR_CALL: case VNT_IR_ARRAY:
+        for(size_t c=n->first_child;c!=VNT_IR_NO_NODE;c=g->ir->nodes[c].next_sibling)collect_vars(g,c);break;
+    case VNT_IR_INDEX: collect_vars(g,child(g,i,VNT_IR_EDGE_OBJECT));collect_vars(g,child(g,i,VNT_IR_EDGE_INDEX));break;
+    case VNT_IR_MEMBER: collect_vars(g,child(g,i,VNT_IR_EDGE_OBJECT));break;
+    case VNT_IR_BINARY: collect_vars(g,child(g,i,VNT_IR_EDGE_LEFT));collect_vars(g,child(g,i,VNT_IR_EDGE_RIGHT));break;
+    case VNT_IR_UNARY: collect_vars(g,child(g,i,VNT_IR_EDGE_OPERAND));break;
+    default: break;
     }
 }
-
-static void emit_expr(X86Gen *g,AstNode *n);
-
-static void emit_call(X86Gen *g,AstNode *n) {
-    const char *name=n->function_call.name;
-    int count=n->function_call.argument_count;
-
-    if(!strcmp(name,"range")) {
-        if(count<1||count>3){fail(g,"range() expects 1, 2, or 3 arguments.");return;}
-        AstNode *a=n->function_call.arguments;
-        for(int i=0;i<count;i++,a=a->next){emit_expr(g,a);fputs("    pushq %rax\n",g->out);g->temp_depth++;}
-        if(count==1){
-            fputs("    popq %rcx\n",g->out); g->temp_depth--;
-            fputs("    xorl %edx,%edx\n    xorl %r8d,%r8d\n    movl $1,%r9d\n",g->out);
-        } else if(count==2) {
-            fputs("    popq %rdx\n    popq %rcx\n",g->out); g->temp_depth-=2;
-            fputs("    xorl %r8d,%r8d\n    movl $2,%r9d\n",g->out);
-        } else {
-            fputs("    popq %r8\n    popq %rdx\n    popq %rcx\n    movl $3,%r9d\n",g->out); g->temp_depth-=3;
-        }
-        call0(g,"vnt_range");
-        return;
-    }
-
-    if (struct_find(g, name) >= 0) {
-        if (count != 0) {
-            fail(g, "struct constructors currently take no arguments.");
-            return;
-        }
-        fprintf(g->out, "    lea .Lstr%d(%%rip),%%rcx\n", string_label(g, name));
-        call0(g, "vnt_struct_new");
-        return;
-    }
-
-    if(!strcmp(name,"object")) {
-        if(count!=0){fail(g,"object() expects no arguments.");return;}
-        call0(g,"vnt_object_new");
-        return;
-    }
-
-    if(!strcmp(name,"sqrt")||!strcmp(name,"sin")||!strcmp(name,"cos")||
-       !strcmp(name,"tan")||!strcmp(name,"abs")||!strcmp(name,"floor")||
-       !strcmp(name,"ceil")) {
-        if(count!=1){fail(g,"math function expects 1 argument.");return;}
-        emit_expr(g,n->function_call.arguments);
-        fputs("    movq %rax,%rcx\n",g->out);
-        const char *fn=!strcmp(name,"sqrt")?"vnt_sqrt":
-                      !strcmp(name,"sin")?"vnt_sin":
-                      !strcmp(name,"cos")?"vnt_cos":
-                      !strcmp(name,"tan")?"vnt_tan":
-                      !strcmp(name,"abs")?"vnt_abs":
-                      !strcmp(name,"floor")?"vnt_floor":"vnt_ceil";
-        call0(g,fn);
-        return;
-    }
-
-    if(!strcmp(name,"min")||!strcmp(name,"max")) {
-        if(count!=2){fail(g,"min()/max() expect 2 arguments.");return;}
-        AstNode *a=n->function_call.arguments;
-        emit_expr(g,a);
-        fputs("    pushq %rax\n",g->out);
-        emit_expr(g,a->next);
-        fputs("    movq %rax,%rdx\n    popq %rcx\n",g->out);
-        call0(g,!strcmp(name,"min")?"vnt_min":"vnt_max");
-        return;
-    }
-
-    if(!strcmp(name,"mod")||!strcmp(name,"len")||!strcmp(name,"input")) {
-        if(!strcmp(name,"mod") && count!=2){fail(g,"mod() expects 2 arguments.");return;}
-        if(!strcmp(name,"len") && count!=1){fail(g,"len() expects 1 argument.");return;}
-        if(!strcmp(name,"input") && count!=1){fail(g,"input() expects 1 argument.");return;}
-        AstNode *a=n->function_call.arguments;
-        if(count==1) {
-            emit_expr(g,a);
-            fputs("    movq %rax,%rcx\n",g->out);
-        } else {
-            emit_expr(g,a);
-            fputs("    pushq %rax\n",g->out);
-            emit_expr(g,a->next);
-            fputs("    movq %rax,%rdx\n    popq %rcx\n",g->out);
-        }
-        call0(g,!strcmp(name,"mod")?"vnt_mod":(!strcmp(name,"len")?"vnt_len":"vnt_input"));
-        return;
-    }
-
-    if (!strcmp(name, "ffi_int")) {
-        if (count < 2 || count > 8) {
-            fail(g, "ffi_int() expects a library, symbol, and 0-6 integer arguments.");
-            return;
-        }
-
-        /*
-         * vnt_ffi_int has a fixed 9-parameter ABI:
-         *   library, symbol, a0..a5, argc
-         * The C runtime needs all nine positions populated even when
-         * fewer than six native arguments were requested.
-         */
-        int ffi_argc = count - 2;
-        int pushed = count + 1;
-        int total = 9;
-        AstNode *a = n->function_call.arguments;
-
-        for (int j = 0; j < count; j++, a = a->next) {
-            emit_expr(g, a);
-            fputs("    pushq %rax\n", g->out);
-            g->temp_depth++;
-        }
-        fprintf(g->out, "    pushq $%d\n", ffi_argc);
-        g->temp_depth++;
-
-        /*
-         * Before call_area is allocated, the temporary stack layout is:
-         *   [rsp+0]              argc
-         *   [rsp+8]              last source argument
-         *   ...
-         *   [rsp+8*count]        library
-         *
-         * Load the first four fixed ABI parameters. Missing a0/a1 are
-         * passed as NULL because the runtime ignores arguments >= argc.
-         */
-        static const char *ffi_regs[] = {"%rcx", "%rdx", "%r8", "%r9"};
-        for (int j = 0; j < 4; j++) {
-            if (j >= 2 && (j - 2) >= ffi_argc) {
-                fprintf(g->out, "    xorl %s,%s\n",
-                        j == 2 ? "%r8d" : "%r9d",
-                        j == 2 ? "%r8d" : "%r9d");
-            } else {
-                int source;
-                if (j == 0)
-                    source = 8 * count;
-                else if (j == 1)
-                    source = 8 * (count - 1);
-                else
-                    source = 8 + (count - 1 - (j - 2)) * 8;
-                fprintf(g->out, "    movq %d(%%rsp),%s\n", source, ffi_regs[j]);
-            }
-        }
-
-        int stack_count = 5; /* a2, a3, a4, a5, argc */
-        int call_area = 32 + stack_count * 8;
-        int alignment = (g->temp_depth * 8 + call_area) % 16;
-        int pad = alignment ? 16 - alignment : 0;
-        call_area += pad;
-        fprintf(g->out, "    subq $%d,%%rsp\n", call_area);
-
-        /*
-         * Stack parameters are fixed positions 4..8 of vnt_ffi_int:
-         * a2, a3, a4, a5, argc. Populate absent native arguments with 0.
-         */
-        for (int j = 4; j < total; j++) {
-            int param = j - 2; /* native argument index for params 4..7 */
-            int dest = 32 + (j - 4) * 8;
-
-            if (j == 8) {
-                int source = call_area; /* argc was at old rsp+0 */
-                fprintf(g->out, "    movq %d(%%rsp),%%r10\n", source);
-                fprintf(g->out, "    movq %%r10,%d(%%rsp)\n", dest);
-            } else if (param >= ffi_argc) {
-                fprintf(g->out, "    movq $0,%d(%%rsp)\n", dest);
-            } else {
-                int source = call_area + 8 + (count - 1 - param) * 8;
-                fprintf(g->out, "    movq %d(%%rsp),%%r10\n", source);
-                fprintf(g->out, "    movq %%r10,%d(%%rsp)\n", dest);
-            }
-        }
-
-        fputs("    call vnt_ffi_int\n", g->out);
-        fprintf(g->out, "    addq $%d,%%rsp\n", call_area);
-        for (int j = 0; j < pushed; j++) {
-            fputs("    popq %r10\n", g->out);
-            g->temp_depth--;
-        }
-        return;
-    }
-
-
-    /* Native application API: explicit OS/runtime boundary. */
-    {
-        int arity = -1;
-        const char *runtime_name = NULL;
-        if (!strcmp(name, "fs_exists")) { arity = 1; runtime_name = "vnt_fs_exists"; }
-        else if (!strcmp(name, "fs_read")) { arity = 1; runtime_name = "vnt_fs_read"; }
-        else if (!strcmp(name, "fs_write")) { arity = 2; runtime_name = "vnt_fs_write"; }
-        else if (!strcmp(name, "fs_append")) { arity = 2; runtime_name = "vnt_fs_append"; }
-        else if (!strcmp(name, "fs_delete")) { arity = 1; runtime_name = "vnt_fs_delete"; }
-        else if (!strcmp(name, "dir_create")) { arity = 1; runtime_name = "vnt_dir_create"; }
-        else if (!strcmp(name, "cwd")) { arity = 0; runtime_name = "vnt_cwd"; }
-        else if (!strcmp(name, "env_get")) { arity = 1; runtime_name = "vnt_env_get"; }
-        else if (!strcmp(name, "env_set")) { arity = 2; runtime_name = "vnt_env_set"; }
-        else if (!strcmp(name, "time_ms")) { arity = 0; runtime_name = "vnt_time_ms"; }
-        else if (!strcmp(name, "sleep_ms")) { arity = 1; runtime_name = "vnt_sleep_ms"; }
-        else if (!strcmp(name, "process_start")) { arity = 2; runtime_name = "vnt_process_start"; }
-        else if (!strcmp(name, "process_poll")) { arity = 1; runtime_name = "vnt_process_poll"; }
-        else if (!strcmp(name, "process_wait")) { arity = 2; runtime_name = "vnt_process_wait"; }
-        else if (!strcmp(name, "process_pid")) { arity = 1; runtime_name = "vnt_process_pid"; }
-        else if (!strcmp(name, "process_terminate")) { arity = 1; runtime_name = "vnt_process_terminate"; }
-        else if (!strcmp(name, "process_stdout")) { arity = 1; runtime_name = "vnt_process_stdout"; }
-        else if (!strcmp(name, "process_stderr")) { arity = 1; runtime_name = "vnt_process_stderr"; }
-        else if (!strcmp(name, "process_exit_code")) { arity = 1; runtime_name = "vnt_process_exit_code"; }
-        else if (!strcmp(name, "gui_css")) { arity = 1; runtime_name = "vnt_gui_css"; }
-        else if (!strcmp(name, "gui_button")) { arity = 3; runtime_name = "vnt_gui_button"; }
-        else if (!strcmp(name, "gui_button_sized")) { arity = 5; runtime_name = "vnt_gui_button_sized"; }
-        else if (!strcmp(name, "gui_textarea")) { arity = 5; runtime_name = "vnt_gui_textarea"; }
-        else if (!strcmp(name, "gui_input_set")) { arity = 3; runtime_name = "vnt_gui_input_set"; }
-        else if (!strcmp(name, "gui_panel_color")) { arity = 5; runtime_name = "vnt_gui_panel_color"; }
-        else if (!strcmp(name, "gui_text_style")) { arity = 5; runtime_name = "vnt_gui_text_style"; }
-        else if (!strcmp(name, "gui_input")) { arity = 4; runtime_name = "vnt_gui_input"; }
-        else if (!strcmp(name, "gui_checkbox")) { arity = 4; runtime_name = "vnt_gui_checkbox"; }
-        else if (!strcmp(name, "gui_progress")) { arity = 4; runtime_name = "vnt_gui_progress"; }
-        else if (!strcmp(name, "gui_separator")) { arity = 3; runtime_name = "vnt_gui_separator"; }
-        else if (!strcmp(name, "gui_present")) { arity = 0; runtime_name = "vnt_gui_present"; }
-        else if (!strcmp(name, "gui_open")) { arity = 1; runtime_name = "vnt_gui_open"; }
-        else if (!strcmp(name, "gui_size")) { arity = 2; runtime_name = "vnt_gui_size"; }
-        else if (!strcmp(name, "gui_text")) { arity = 1; runtime_name = "vnt_gui_text"; }
-        else if (!strcmp(name, "gui_text_at")) { arity = 3; runtime_name = "vnt_gui_text_at"; }
-        else if (!strcmp(name, "gui_title")) { arity = 3; runtime_name = "vnt_gui_title"; }
-        else if (!strcmp(name, "gui_panel")) { arity = 4; runtime_name = "vnt_gui_panel"; }
-        else if (!strcmp(name, "gui_fill")) { arity = 1; runtime_name = "vnt_gui_fill"; }
-        else if (!strcmp(name, "gui_rect")) { arity = 1; runtime_name = "vnt_gui_rect"; }
-        else if (!strcmp(name, "gui_poll")) { arity = 0; runtime_name = "vnt_gui_poll"; }
-        else if (!strcmp(name, "gui_key")) { arity = 0; runtime_name = "vnt_gui_key"; }
-        else if (!strcmp(name, "gui_close")) { arity = 0; runtime_name = "vnt_gui_close"; }
-        if (arity >= 0) {
-            if (count != arity) {
-                fail(g, "native application API function called with the wrong number of arguments.");
-                return;
-            }
-            AstNode *arg = n->function_call.arguments;
-            if (arity == 5) {
-                /*
-                 * Windows x64 passes the first four arguments in registers
-                 * and the fifth at [rsp+32] after the 32-byte shadow space.
-                 * Evaluate and save arguments, load the registers, then rebuild
-                 * a correctly aligned call frame for the fifth stack argument.
-                 */
-                for (AstNode *a = arg; a; a = a->next) {
-                    emit_expr(g, a);
-                    fputs("    pushq %rax\n", g->out);
-                    g->temp_depth++;
-                }
-                fputs("    movq 32(%rsp),%rcx\n"
-                      "    movq 24(%rsp),%rdx\n"
-                      "    movq 16(%rsp),%r8\n"
-                      "    movq 8(%rsp),%r9\n"
-                      "    movq 0(%rsp),%r10\n", g->out);
-                fputs("    addq $40,%rsp\n", g->out);
-                g->temp_depth -= 5;
-                int call_area = 40;
-                int alignment = (g->temp_depth * 8 + call_area) % 16;
-                if (alignment) call_area += 16 - alignment;
-                fprintf(g->out, "    subq $%d,%%rsp\n", call_area);
-                fputs("    movq %r10,32(%rsp)\n    call ", g->out);
-                fputs(runtime_name, g->out);
-                fputc('\n', g->out);
-                fprintf(g->out, "    addq $%d,%%rsp\n", call_area);
-                return;
-            } else if (arity == 4) {
-                for (AstNode *a = arg; a; a = a->next) {
-                    emit_expr(g, a);
-                    fputs("    pushq %rax\n", g->out);
-                    g->temp_depth++;
-                }
-                fputs("    movq 24(%rsp),%rcx\n    movq 16(%rsp),%rdx\n    movq 8(%rsp),%r8\n    movq 0(%rsp),%r9\n", g->out);
-                fputs("    addq $32,%rsp\n", g->out);
-                g->temp_depth -= 4;
-            } else if (arity == 3) {
-                for (AstNode *a = arg; a; a = a->next) {
-                    emit_expr(g, a);
-                    fputs("    pushq %rax\n", g->out);
-                    g->temp_depth++;
-                }
-                fputs("    movq 16(%rsp),%rcx\n    movq 8(%rsp),%rdx\n    movq 0(%rsp),%r8\n", g->out);
-                fputs("    addq $24,%rsp\n", g->out);
-                g->temp_depth -= 3;
-            } else if (arity == 2) {
-                emit_expr(g, arg);
-                fputs("    pushq %rax\n", g->out);
-                g->temp_depth++;
-                emit_expr(g, arg->next);
-                fputs("    movq %rax,%rdx\n    popq %rcx\n", g->out);
-                g->temp_depth--;
-            } else if (arity == 1) {
-                emit_expr(g, arg);
-                fputs("    movq %rax,%rcx\n", g->out);
-            }
-            call0(g, runtime_name);
-            return;
-        }
-    }
-
-    /*
-     * The common recursive case has one argument. Avoid pushing it and then
-     * reloading it from the stack: evaluate directly into the first Windows
-     * x64 argument register and reserve only the required shadow/alignment
-     * space. temp_depth accounts for values saved by the surrounding expression.
-     */
-    if (count == 1) {
-        emit_expr(g, n->function_call.arguments);
-        fputs("    movq %rax,%rcx\n", g->out);
-        int call_area = 32 + ((g->temp_depth * 8) % 16 ? 8 : 0);
-        fprintf(g->out, "    subq $%d,%%rsp\n", call_area);
-        fputs("    call vnt_fn_", g->out);
-        cname(g->out, "", name);
-        fputc('\n', g->out);
-        fprintf(g->out, "    addq $%d,%%rsp\n", call_area);
-        return;
-    }
-
-    if (count == 2) {
-        AstNode *first = n->function_call.arguments;
-        emit_expr(g, first);
-        fputs("    pushq %rax\n", g->out);
-        g->temp_depth++;
-        emit_expr(g, first->next);
-        fputs("    movq %rax,%rdx\n    popq %rcx\n", g->out);
-        g->temp_depth--;
-        int call_area = 32 + ((g->temp_depth * 8) % 16 ? 8 : 0);
-        fprintf(g->out, "    subq $%d,%%rsp\n", call_area);
-        fputs("    call vnt_fn_", g->out);
-        cname(g->out, "", name);
-        fputc('\n', g->out);
-        fprintf(g->out, "    addq $%d,%%rsp\n", call_area);
-        return;
-    }
-
-    if (count > 32) {
-        fail(g, "native functions currently support at most 32 arguments.");
-        return;
-    }
-
-    int i = 0;
-    for (AstNode *a = n->function_call.arguments; a; a = a->next, i++) {
-        emit_expr(g, a);
-        fputs("    pushq %rax\n", g->out);
-        g->temp_depth++;
-    }
-
-    static const char *regs[] = {"%rcx", "%rdx", "%r8", "%r9"};
-    for (i = 0; i < count && i < 4; i++)
-        fprintf(g->out, "    movq %d(%%rsp), %s\n", (count - 1 - i) * 8, regs[i]);
-
-    int stack_count = count > 4 ? count - 4 : 0;
-    int call_area = 32 + stack_count * 8;
-    int alignment = (g->temp_depth * 8 + call_area) % 16;
-    int pad = alignment ? 16 - alignment : 0;
-    call_area += pad;
-
-    if (call_area)
-        fprintf(g->out, "    subq $%d,%%rsp\n", call_area);
-
-    for (i = 4; i < count; i++) {
-        int source = call_area + (count - 1 - i) * 8;
-        int dest = 32 + (i - 4) * 8;
-        fprintf(g->out, "    movq %d(%%rsp),%%r10\n", source);
-        fprintf(g->out, "    movq %%r10,%d(%%rsp)\n", dest);
-    }
-
-    fputs("    call vnt_fn_", g->out);
-    cname(g->out, "", name);
-    fputc('\n', g->out);
-
-    if (call_area)
-        fprintf(g->out, "    addq $%d,%%rsp\n", call_area);
-
-    if (count) {
-        fprintf(g->out, "    addq $%d,%%rsp\n", count * 8);
-        g->temp_depth -= count;
-    }
-
+static int string_label(HirGen *g,const char *s) {
+    for(size_t i=0;i<g->string_count;i++)if(!strcmp(g->strings[i].value,s))return g->strings[i].label;
+    if(g->string_count==g->string_cap){size_t nc=g->string_cap?g->string_cap*2:8;HirString*p=realloc(g->strings,nc*sizeof(*p));if(!p){fail(g,"out of memory in string table.");return 0;}g->strings=p;g->string_cap=nc;}
+    char *copy=strdup(s);if(!copy){fail(g,"out of memory in string table.");return 0;}
+    int l=label_new(g);g->strings[g->string_count++]=(HirString){copy,l};return l;
 }
-
-static void emit_expr(X86Gen *g,AstNode *n) {
-    if(g->error)return;
-    if(!n){fail(g,"missing expression.");return;}
-
-    switch(n->type) {
-        case AST_INTEGER_LITERAL:
-            fprintf(g->out,"    movl $%d,%%ecx\n",n->integer_literal.value);
-            call0(g,"vnt_int");
-            break;
-        case AST_FLOAT_LITERAL: {
-            int l=float_label(g,n->float_literal.value);
-            fprintf(g->out,"    movsd .Lflt%d(%%rip),%%xmm0\n",l);
-            call0(g,"vnt_float");
-            break;
-        }
-
-        case AST_BOOLEAN_LITERAL:
-            fprintf(g->out,"    movl $%d,%%ecx\n",n->boolean_literal.value?1:0);
-            call0(g,"vnt_bool");
-            break;
-        case AST_STRING_LITERAL:
-            fprintf(g->out,"    lea .Lstr%d(%%rip),%%rcx\n",string_label(g,n->string_literal.value));
-            call0(g,"vnt_string");
-            break;
-        case AST_VARIABLE: {
-            int vi=var_find(g,n->variable.name);
-            if(vi>=0 && g->vars[vi].is_global) emit_global_load(g,n->variable.name);
-            else if(vi>=0 && g->vars[vi].is_int) {fprintf(g->out,"    movl -%d(%%rbp),%%ecx\n",g->vars[vi].offset);call0(g,"vnt_int");}
-            else {fprintf(g->out,"    movq ");mem(g,var_offset(g,n->variable.name));fputs(",%rax\n",g->out);}
-            break;
-        }
-        case AST_ARRAY_LITERAL: {
-            call0(g,"vnt_array_new");
-            for(AstNode *e=n->array_literal.elements;e;e=e->next){
-                fputs("    pushq %rax\n",g->out);
-                emit_expr(g,e);
-                fputs("    movq %rax,%rdx\n    popq %rcx\n",g->out);
-                call0(g,"vnt_array_push");
-            }
-            break;
-        }
-        case AST_INDEX_EXPRESSION:
-            if (known_int_expr(g,n->index_expression.index)) {
-                emit_expr(g,n->index_expression.array);
-                fputs("    pushq %rax\n",g->out);
-                emit_int_expr(g,n->index_expression.index);
-                fputs("    movl %eax,%edx\n    popq %rcx\n",g->out);
-                call0(g,"vnt_array_get_int");
-            } else {
-                emit_expr(g,n->index_expression.array);
-                fputs("    pushq %rax\n",g->out);
-                emit_expr(g,n->index_expression.index);
-                fputs("    movq %rax,%rdx\n    popq %rcx\n",g->out);
-                call0(g,"vnt_array_get");
-            }
-            break;
-        case AST_MEMBER_EXPRESSION:
-            emit_expr(g,n->member_expression.object);
-            fputs("    pushq %rax\n",g->out);
-            fprintf(g->out,"    lea .Lstr%d(%%rip),%%rdx\n",string_label(g,n->member_expression.member));
-            fputs("    popq %rcx\n",g->out);
-            call0(g,"vnt_object_get");
-            break;
-        case AST_UNARY_EXPRESSION:
-            if (n->unary_expression.operator == UNARY_REFERENCE) {
-                AstNode *operand = n->unary_expression.operand;
-                if (operand->type != AST_VARIABLE) {
-                    fail(g, "references currently require a variable.");
-                    break;
-                }
-                if (var_is_global(g, operand->variable.name)) {
-                    fputs("    leaq vnt_global_", g->out);
-                    cname(g->out, "", operand->variable.name);
-                    fputs("(%rip),%rcx\n", g->out);
-                } else {
-                    fprintf(g->out, "    leaq ");
-                    mem(g, var_offset(g, operand->variable.name));
-                    fputs(",%rcx\n", g->out);
-                }
-                call0(g, "vnt_ref");
-                break;
-            }
-            if (n->unary_expression.operator == UNARY_DEREFERENCE) {
-                emit_expr(g, n->unary_expression.operand);
-                call1(g, "vnt_deref");
-                break;
-            }
-            emit_expr(g,n->unary_expression.operand);
-            call1(g,n->unary_expression.operator==UNARY_NEGATE?"vnt_neg":"vnt_not");
-            break;
-        case AST_FUNCTION_CALL:
-            emit_call(g,n); break;
-        case AST_BINARY_EXPRESSION: {
-            BinaryOperator op=n->binary_expression.operator;
-            if(known_int_expr(g,n)) {emit_int_expr(g,n);fputs("    movl %eax,%ecx\n",g->out);call0(g,"vnt_int");break;}
-            if (static_integer_expr(n)) {
-                emit_raw_integer(g, n);
-                fputs("    movl %eax,%ecx\n", g->out);
-                call0(g, "vnt_int");
-                break;
-            }
-            if(op==BINARY_AND||op==BINARY_OR){
-                int short_l=new_label(g),done=new_label(g);
-                emit_expr(g,n->binary_expression.left);
-                call1(g,"vnt_truth");
-                if(op==BINARY_AND) fprintf(g->out,"    testl %%eax,%%eax\n    jz .L%d\n",short_l);
-                else fprintf(g->out,"    testl %%eax,%%eax\n    jnz .L%d\n",short_l);
-                emit_expr(g,n->binary_expression.right);
-                call1(g,"vnt_truth");
-                fputs("    movl %eax,%ecx\n    movq %rcx,%rax\n    movq %rax,%rcx\n",g->out);
-                call0(g,"vnt_bool");
-                fprintf(g->out,"    jmp .L%d\n",done);
-                label(g,short_l);
-                fprintf(g->out,"    movl $%d,%%eax\n    movq %%rax,%%rcx\n",op==BINARY_AND?0:1);
-                call0(g,"vnt_bool");
-                label(g,done);
-                break;
-            }
-            emit_expr(g,n->binary_expression.left);
-            fputs("    pushq %rax\n",g->out);
-            emit_expr(g,n->binary_expression.right);
-            fputs("    movq %rax,%rdx\n    popq %rcx\n",g->out);
-            const char *fn=NULL;
-            switch(op){
-                case BINARY_ADD:fn="vnt_add";break; case BINARY_SUBTRACT:fn="vnt_sub";break;
-                case BINARY_MULTIPLY:fn="vnt_mul";break; case BINARY_DIVIDE:fn="vnt_div";break;
-                case BINARY_MODULO:fn="vnt_mod";break; case BINARY_EQUAL:fn="vnt_eq";break;
-                case BINARY_NOT_EQUAL:fn="vnt_ne";break; case BINARY_GREATER:fn="vnt_gt";break;
-                case BINARY_LESS:fn="vnt_lt";break; case BINARY_GREATER_EQUAL:fn="vnt_ge";break;
-                case BINARY_LESS_EQUAL:fn="vnt_le";break; default:break;
-            }
-            if(fn) call0(g,fn); else fail(g,"unsupported binary operator.");
-            break;
-        }
-        default: fail(g,"unsupported native expression."); break;
-    }
+static int float_label(HirGen *g,double d) {
+    for(size_t i=0;i<g->float_count;i++)if(g->floats[i].value==d)return g->floats[i].label;
+    if(g->float_count==g->float_cap){size_t nc=g->float_cap?g->float_cap*2:8;HirFloat*p=realloc(g->floats,nc*sizeof(*p));if(!p){fail(g,"out of memory in float table.");return 0;}g->floats=p;g->float_cap=nc;}
+    int l=label_new(g);g->floats[g->float_count++]=(HirFloat){d,l};return l;
 }
-
-static void emit_print(X86Gen *g,AstNode *e){
-    emit_expr(g,e);
-    fputs("    movq %rax,%rcx\n",g->out);
-    call0(g,"vnt_print");
+static void call0(HirGen *g,const char *name) { fputs("    subq $32,%rsp\n    call ",g->out);fputs(name,g->out);fputs("\n    addq $32,%rsp\n",g->out); }
+static void emit_expr(HirGen *g,size_t i);
+static void emit_stmt(HirGen *g,size_t i);
+static void emit_stmt_role(HirGen *g,size_t i,VntIrEdgeRole role) {
+    for(size_t c=child(g,i,role);c!=VNT_IR_NO_NODE&&!g->error;c=next_role(g,c,role))emit_stmt(g,c);
 }
-
-static void emit_assignment(X86Gen *g,AstNode *n){
-    AstNode *t=n->assignment.target;
-    if(t->type==AST_VARIABLE){
-        int vi=var_find(g,t->variable.name);
-        if(vi>=0 && g->vars[vi].is_global) { emit_expr(g,n->assignment.value); emit_global_store(g,t->variable.name); }
-        else if(vi>=0 && g->vars[vi].is_int && known_int_expr(g,n->assignment.value)) {emit_int_expr(g,n->assignment.value);fprintf(g->out,"    movl %%eax,-%d(%%rbp)\n",g->vars[vi].offset);}
-        else {emit_expr(g,n->assignment.value);fprintf(g->out,"    movq %%rax,");mem(g,var_offset(g,t->variable.name));fputc('\n',g->out);}
-        return;
+static void emit_user_call(HirGen *g,const VntIrNode*n,size_t i) {
+    size_t args[32];int count=0;
+    for(size_t c=n->first_child;c!=VNT_IR_NO_NODE;c=g->ir->nodes[c].next_sibling) {
+        if(count==32){fail(g,"native functions support at most 32 arguments.");return;}
+        args[count++]=c;
     }
-    if(t->type==AST_INDEX_EXPRESSION){
-        emit_expr(g,t->index_expression.array);
-        fputs("    pushq %rax\n",g->out);
-        if (known_int_expr(g,t->index_expression.index)) {
-            emit_int_expr(g,t->index_expression.index);
-            fputs("    pushq %rax\n",g->out);
-            emit_expr(g,n->assignment.value);
-            fputs("    movq %rax,%r8\n    popq %rdx\n    popq %rcx\n",g->out);
-            fputs("    subq $32,%rsp\n    call vnt_array_set_int\n    addq $32,%rsp\n",g->out);
-        } else {
-            emit_expr(g,t->index_expression.index);
-            fputs("    pushq %rax\n",g->out);
-            emit_expr(g,n->assignment.value);
-            fputs("    movq %rax,%r8\n    popq %rdx\n    popq %rcx\n",g->out);
-            fputs("    subq $32,%rsp\n    call vnt_array_set\n    addq $32,%rsp\n",g->out);
-        }
-        return;
-    }
-    if(t->type==AST_UNARY_EXPRESSION && t->unary_expression.operator==UNARY_DEREFERENCE){
-        emit_expr(g, t->unary_expression.operand);
-        fputs("    pushq %rax\n", g->out);
-        emit_expr(g, n->assignment.value);
-        fputs("    movq %rax,%rdx\n    popq %rcx\n", g->out);
-        call0(g, "vnt_ref_set");
-        return;
-    }
-    if(t->type==AST_MEMBER_EXPRESSION){
-        emit_expr(g,t->member_expression.object);
-        fputs("    pushq %rax\n",g->out);
-        emit_expr(g,n->assignment.value);
-        fputs("    movq %rax,%r8\n",g->out);
-        fprintf(g->out,"    lea .Lstr%d(%%rip),%%rdx\n",string_label(g,t->member_expression.member));
-        fputs("    popq %rcx\n",g->out);
-        fputs("    subq $32,%rsp\n    call vnt_object_set\n    addq $32,%rsp\n",g->out);
-        return;
-    }
-    fail(g,"invalid assignment target.");
-}
-
-static void emit_stmt_list(X86Gen *g,AstNode *n);
-
-static void emit_stmt(X86Gen *g,AstNode *n){
-    if(g->error)return;
-    switch(n->type){
-        case AST_PRINT_STATEMENT:emit_print(g,n->print_statement.expression);break;
-        case AST_VARIABLE_DECLARATION: {
-            int vi=var_find(g,n->variable_declaration.name);
-            if(vi>=0 && g->vars[vi].is_global) { emit_expr(g,n->variable_declaration.value); emit_global_store(g,n->variable_declaration.name); }
-            else if(vi>=0 && g->vars[vi].is_int && known_int_expr(g,n->variable_declaration.value)) {emit_int_expr(g,n->variable_declaration.value);fprintf(g->out,"    movl %%eax,-%d(%%rbp)\n",g->vars[vi].offset);}
-            else {emit_expr(g,n->variable_declaration.value);fprintf(g->out,"    movq %%rax,");mem(g,var_offset(g,n->variable_declaration.name));fputc('\n',g->out);}
-            break;
-        }
-        case AST_ASSIGNMENT:emit_assignment(g,n);break;
-        case AST_IF_STATEMENT:{
-            int els=new_label(g),done=new_label(g);
-            if(!emit_int_condition_false(g,n->if_statement.condition,els)) {emit_expr(g,n->if_statement.condition);call1(g,"vnt_truth");fprintf(g->out,"    testl %%eax,%%eax\n    jz .L%d\n",els);}
-            emit_stmt_list(g,n->if_statement.then_branch);
-            fprintf(g->out,"    jmp .L%d\n",done);label(g,els);
-            emit_stmt_list(g,n->if_statement.else_branch);label(g,done);break;
-        }
-        case AST_WHILE_STATEMENT:{
-            int s=new_label(g),e=new_label(g);
-            if(g->loop_depth>=64){fail(g,"loop nesting is too deep.");return;}
-            g->loop_start[g->loop_depth]=s;g->loop_end[g->loop_depth]=e;g->loop_depth++;
-            label(g,s);if(!emit_int_condition_false(g,n->while_statement.condition,e)){emit_expr(g,n->while_statement.condition);call1(g,"vnt_truth");fprintf(g->out,"    testl %%eax,%%eax\n    jz .L%d\n",e);}
-            emit_stmt_list(g,n->while_statement.body);fprintf(g->out,"    jmp .L%d\n",s);label(g,e);
-            g->loop_depth--;break;
-        }
-        case AST_BREAK_STATEMENT:
-            if(!g->loop_depth){fail(g,"break outside a loop.");return;}
-            fprintf(g->out,"    jmp .L%d\n",g->loop_end[g->loop_depth-1]);break;
-        case AST_CONTINUE_STATEMENT:
-            if(!g->loop_depth){fail(g,"continue outside a loop.");return;}
-            fprintf(g->out,"    jmp .L%d\n",g->loop_start[g->loop_depth-1]);break;
-        case AST_RETURN_STATEMENT:
-            if(n->return_statement.expression)emit_expr(g,n->return_statement.expression);
-            else fputs("    xorl %eax,%eax\n",g->out);
-            fputs("    leave\n    ret\n",g->out);break;
-        case AST_FUNCTION_CALL:emit_expr(g,n);break;
-        case AST_FUNCTION_DECLARATION:break;
-        case AST_STRUCT_DECLARATION:break;
-        default:fail(g,"unsupported native statement.");break;
-    }
-}
-
-static void emit_stmt_list(X86Gen *g,AstNode *n){for(;n&&!g->error;n=n->next)emit_stmt(g,n);}
-
-static void emit_function(X86Gen *g,AstNode *fn){
-    int count=fn->function_declaration.parameter_count;
-    if(count>32){fail(g,"native functions currently support at most 32 parameters.");return;}
-    free_vars(g);collect_vars(g,fn->function_declaration.body);
-    for(int i=0;i<count;i++){var_add(g,fn->function_declaration.parameters[i]);int pi=var_find(g,fn->function_declaration.parameters[i]);if(pi>=0)g->vars[pi].has_decl=1;}
-    for(int i=0;i<g->var_count;i++) {
-        if (!var_is_global(g, g->vars[i].name)) continue;
-        int is_parameter = 0;
-        for (int p = 0; p < count; p++) {
-            if (!strcmp(g->vars[i].name, fn->function_declaration.parameters[p])) {
-                is_parameter = 1;
-                break;
-            }
-        }
-        /* Inferred declarations are also used for reassignment syntax. A
-         * matching top-level name must therefore resolve to global storage. */
-        if (!is_parameter) g->vars[i].is_global = 1;
-    }
-    assign_offsets(g);
-    fputs(".globl vnt_fn_",g->out);cname(g->out,"",fn->function_declaration.name);fputc('\n',g->out);
-    fputs("vnt_fn_",g->out);cname(g->out,"",fn->function_declaration.name);fputs(":\n    pushq %rbp\n    movq %rsp,%rbp\n",g->out);
-    int frame=((g->var_count*8+15)/16)*16;if(frame)fprintf(g->out,"    subq $%d,%%rsp\n",frame);
+    if(count>4){fail(g,"HIR backend currently supports at most four call arguments.");return;}
+    for(int a=0;a<count;a++){emit_expr(g,args[a]);fputs("    pushq %rax\n",g->out);}
     static const char *regs[]={"%rcx","%rdx","%r8","%r9"};
-    for(int i=0;i<count;i++){
-        if(i < 4){
-            fprintf(g->out,"    movq %s,",regs[i]);
-            mem(g,var_offset(g,fn->function_declaration.parameters[i]));
-            fputc('\n',g->out);
-        } else {
-            fprintf(g->out,"    movq %d(%%rbp),%%r10\n",48 + (i - 4) * 8);
-            fprintf(g->out,"    movq %%r10,");
-            mem(g,var_offset(g,fn->function_declaration.parameters[i]));
-            fputc('\n',g->out);
-        }
+    for(int a=0;a<count;a++)fprintf(g->out,"    movq %d(%%rsp),%s\n",(count-1-a)*8,regs[a]);
+    if(count)fprintf(g->out,"    addq $%d,%%rsp\n",count*8);
+    fprintf(g->out,"    subq $32,%%rsp\n    call vnt_fn_");
+    cname(g->out,"",n->value.text);fputs("\n    addq $32,%rsp\n",g->out);
+    (void)i;
+}
+static const char *builtin(const char *s,int *arity) {
+    struct Entry { const char *name,*target; int arity; };
+    static const struct Entry e[]={
+      {"sqrt","vnt_sqrt",1},{"sin","vnt_sin",1},{"cos","vnt_cos",1},{"tan","vnt_tan",1},
+      {"abs","vnt_abs",1},{"floor","vnt_floor",1},{"ceil","vnt_ceil",1},{"min","vnt_min",2},{"max","vnt_max",2},
+      {"mod","vnt_mod",2},{"len","vnt_len",1},{"input","vnt_input",1},{"fs_exists","vnt_fs_exists",1},
+      {"fs_read","vnt_fs_read",1},{"fs_write","vnt_fs_write",2},{"fs_append","vnt_fs_append",2},{"fs_delete","vnt_fs_delete",1},
+      {"dir_create","vnt_dir_create",1},{"cwd","vnt_cwd",0},{"env_get","vnt_env_get",1},{"env_set","vnt_env_set",2},
+      {"time_ms","vnt_time_ms",0},{"sleep_ms","vnt_sleep_ms",1},{"process_start","vnt_process_start",2},
+      {"process_poll","vnt_process_poll",1},{"process_wait","vnt_process_wait",2},{"process_pid","vnt_process_pid",1},
+      {"process_terminate","vnt_process_terminate",1},{"process_stdout","vnt_process_stdout",1},{"process_stderr","vnt_process_stderr",1},
+      {"process_exit_code","vnt_process_exit_code",1},{"gui_css","vnt_gui_css",1},{"gui_button","vnt_gui_button",3},
+      {"gui_button_sized","vnt_gui_button_sized",5},{"gui_textarea","vnt_gui_textarea",5},{"gui_input_set","vnt_gui_input_set",3},
+      {"gui_panel_color","vnt_gui_panel_color",5},{"gui_text_style","vnt_gui_text_style",5},{"gui_input","vnt_gui_input",4},
+      {"gui_checkbox","vnt_gui_checkbox",4},{"gui_progress","vnt_gui_progress",4},{"gui_separator","vnt_gui_separator",3},
+      {"gui_present","vnt_gui_present",0},{"gui_open","vnt_gui_open",1},{"gui_size","vnt_gui_size",2},{"gui_text","vnt_gui_text",1},
+      {"gui_text_at","vnt_gui_text_at",3},{"gui_title","vnt_gui_title",3},{"gui_panel","vnt_gui_panel",4},
+      {"gui_fill","vnt_gui_fill",1},{"gui_rect","vnt_gui_rect",1},{"gui_poll","vnt_gui_poll",0},{"gui_key","vnt_gui_key",0},{"gui_close","vnt_gui_close",0}
+    };
+    for(size_t i=0;i<sizeof(e)/sizeof(e[0]);i++)if(!strcmp(s,e[i].name)){*arity=e[i].arity;return e[i].target;}
+    return NULL;
+}
+static void emit_call(HirGen *g,size_t i,const VntIrNode*n) {
+    const char *name=n->value.text;size_t args[32];int count=0;
+    for(size_t c=n->first_child;c!=VNT_IR_NO_NODE;c=g->ir->nodes[c].next_sibling){if(count==32){fail(g,"too many call arguments.");return;}args[count++]=c;}
+    int arity=-1;const char *target=builtin(name,&arity);
+    if(!strcmp(name,"object")){if(count){fail(g,"object() takes no arguments.");return;}call0(g,"vnt_object_new");return;}
+    if(!strcmp(name,"range")) {
+        if(count<1||count>3){fail(g,"range() expects 1-3 arguments.");return;}
+        for(int a=0;a<count;a++){emit_expr(g,args[a]);fputs("    pushq %rax\n",g->out);}
+        if(count==1){fputs("    popq %rcx\n    xorl %edx,%edx\n    xorl %r8d,%r8d\n    movl $1,%r9d\n",g->out);}
+        else if(count==2){fputs("    popq %rdx\n    popq %rcx\n    xorl %r8d,%r8d\n    movl $2,%r9d\n",g->out);}
+        else fputs("    popq %r8\n    popq %rdx\n    popq %rcx\n    movl $3,%r9d\n",g->out);
+        call0(g,"vnt_range");return;
     }
-    emit_stmt_list(g,fn->function_declaration.body);
+    int is_struct=0;for(size_t a=0;a<g->struct_count;a++)if(!strcmp(g->structs[a],name))is_struct=1;
+    if(is_struct){if(count){fail(g,"struct constructors take no arguments.");return;}fprintf(g->out,"    lea .Lstr%d(%%rip),%%rcx\n",string_label(g,name));call0(g,"vnt_struct_new");return;}
+    if(!target){emit_user_call(g,n,i);return;}
+    if(arity!=count){fail(g,"native builtin called with wrong argument count.");return;}
+    if(count>4){fail(g,"native builtin currently supports at most four arguments.");return;}
+    for(int a=0;a<count;a++){emit_expr(g,args[a]);fputs("    pushq %rax\n",g->out);}
+    static const char *regs[]={"%rcx","%rdx","%r8","%r9"};
+    for(int a=0;a<count;a++)fprintf(g->out,"    movq %d(%%rsp),%s\n",(count-1-a)*8,regs[a]);
+    if(count)fprintf(g->out,"    addq $%d,%%rsp\n",count*8);
+    call0(g,target);
+}
+static void emit_expr(HirGen *g,size_t i) {
+    const VntIrNode*n=node(g,i);if(g->error)return;if(!n){fail(g,"missing HIR expression.");return;}
+    switch(n->opcode){
+    case VNT_IR_INTEGER:fprintf(g->out,"    movl $%d,%%ecx\n",n->value.integer);call0(g,"vnt_int");break;
+    case VNT_IR_BOOLEAN:fprintf(g->out,"    movl $%d,%%ecx\n",!!n->value.boolean);call0(g,"vnt_bool");break;
+    case VNT_IR_FLOAT:fprintf(g->out,"    movsd .Lflt%d(%%rip),%%xmm0\n",float_label(g,n->value.floating));call0(g,"vnt_float");break;
+    case VNT_IR_STRING:fprintf(g->out,"    lea .Lstr%d(%%rip),%%rcx\n",string_label(g,n->value.text));call0(g,"vnt_string");break;
+    case VNT_IR_VARIABLE:{
+        int vi=var_index(g->vars,g->var_count,n->value.text),gi=var_index(g->globals,g->global_count,n->value.text);
+        if(gi>=0&&(vi<0||!g->vars[vi].global)){fputs("    movq vnt_global_",g->out);cname(g->out,"",n->value.text);fputs("(%rip),%rax\n",g->out);}
+        else if(vi>=0)fprintf(g->out,"    movq -%d(%%rbp),%%rax\n",g->vars[vi].offset);
+        else fail(g,"unknown HIR variable.");
+        break;}
+    case VNT_IR_ARRAY:
+        call0(g,"vnt_array_new");
+        for(size_t c=n->first_child;c!=VNT_IR_NO_NODE;c=g->ir->nodes[c].next_sibling){fputs("    pushq %rax\n",g->out);emit_expr(g,c);fputs("    movq %rax,%rdx\n    popq %rcx\n",g->out);call0(g,"vnt_array_push");}
+        break;
+    case VNT_IR_INDEX:{
+        size_t a=child(g,i,VNT_IR_EDGE_OBJECT),b=child(g,i,VNT_IR_EDGE_INDEX);
+        emit_expr(g,a);fputs("    pushq %rax\n",g->out);emit_expr(g,b);fputs("    movq %rax,%rdx\n    popq %rcx\n",g->out);call0(g,"vnt_array_get");break;}
+    case VNT_IR_MEMBER:
+        emit_expr(g,child(g,i,VNT_IR_EDGE_OBJECT));fputs("    pushq %rax\n",g->out);fprintf(g->out,"    lea .Lstr%d(%%rip),%%rdx\n",string_label(g,n->value.text));fputs("    popq %rcx\n",g->out);call0(g,"vnt_object_get");break;
+    case VNT_IR_UNARY:{
+        size_t a=child(g,i,VNT_IR_EDGE_OPERAND);
+        if(n->operation==UNARY_REFERENCE){
+            const VntIrNode*op=node(g,a);
+            if(!op||op->opcode!=VNT_IR_VARIABLE){fail(g,"references require a variable.");break;}
+            int vi=var_index(g->vars,g->var_count,op->value.text),gi=var_index(g->globals,g->global_count,op->value.text);
+            if(gi>=0&&(vi<0||!g->vars[vi].global)){fputs("    leaq vnt_global_",g->out);cname(g->out,"",op->value.text);fputs("(%rip),%rcx\n",g->out);}
+            else if(vi>=0)fprintf(g->out,"    leaq -%d(%%rbp),%%rcx\n",g->vars[vi].offset);
+            else {fail(g,"unknown reference variable.");break;}
+            call0(g,"vnt_ref");
+        } else if(n->operation==UNARY_DEREFERENCE){emit_expr(g,a);call0(g,"vnt_deref");}
+        else {emit_expr(g,a);fputs("    movq %rax,%rcx\n",g->out);call0(g,n->operation==UNARY_NEGATE?"vnt_neg":"vnt_not");}
+        break;}
+    case VNT_IR_CALL:emit_call(g,i,n);break;
+    case VNT_IR_BINARY:{
+        size_t l=child(g,i,VNT_IR_EDGE_LEFT),r=child(g,i,VNT_IR_EDGE_RIGHT);
+        if(n->operation==BINARY_AND||n->operation==BINARY_OR){
+            int shortl=label_new(g),done=label_new(g);emit_expr(g,l);fputs("    movq %rax,%rcx\n",g->out);call0(g,"vnt_truth");
+            fprintf(g->out,n->operation==BINARY_AND?"    testl %%eax,%%eax\n    jz .L%d\n":"    testl %%eax,%%eax\n    jnz .L%d\n",shortl);
+            emit_expr(g,r);fputs("    movq %rax,%rcx\n",g->out);call0(g,"vnt_truth");fputs("    movl %eax,%ecx\n",g->out);call0(g,"vnt_bool");fprintf(g->out,"    jmp .L%d\n",done);
+            label_emit(g,shortl);fprintf(g->out,"    movl $%d,%%ecx\n",n->operation==BINARY_AND?0:1);call0(g,"vnt_bool");label_emit(g,done);break;
+        }
+        emit_expr(g,l);fputs("    pushq %rax\n",g->out);emit_expr(g,r);fputs("    movq %rax,%rdx\n    popq %rcx\n",g->out);
+        const char *fn=NULL;switch(n->operation){
+        case BINARY_ADD:fn="vnt_add";break;case BINARY_SUBTRACT:fn="vnt_sub";break;case BINARY_MULTIPLY:fn="vnt_mul";break;
+        case BINARY_DIVIDE:fn="vnt_div";break;case BINARY_MODULO:fn="vnt_mod";break;case BINARY_EQUAL:fn="vnt_eq";break;
+        case BINARY_NOT_EQUAL:fn="vnt_ne";break;case BINARY_GREATER:fn="vnt_gt";break;case BINARY_LESS:fn="vnt_lt";break;
+        case BINARY_GREATER_EQUAL:fn="vnt_ge";break;case BINARY_LESS_EQUAL:fn="vnt_le";break;default:break;}
+        if(fn)call0(g,fn);else fail(g,"unsupported HIR binary operator.");break;}
+    default:fail(g,"unsupported HIR expression opcode.");break;
+    }
+}
+static void emit_assignment(HirGen*g,size_t i) {
+    size_t t=child(g,i,VNT_IR_EDGE_TARGET),v=child(g,i,VNT_IR_EDGE_VALUE);const VntIrNode*tn=node(g,t);
+    if(!tn){fail(g,"missing HIR assignment target.");return;}
+    if(tn->opcode==VNT_IR_VARIABLE){
+        int vi=var_index(g->vars,g->var_count,tn->value.text),gi=var_index(g->globals,g->global_count,tn->value.text);
+        emit_expr(g,v);
+        if(gi>=0&&(vi<0||!g->vars[vi].global)){fputs("    movq %rax,vnt_global_",g->out);cname(g->out,"",tn->value.text);fputs("(%rip)\n",g->out);}
+        else if(vi>=0)fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",g->vars[vi].offset);
+        else fail(g,"unknown HIR assignment variable.");return;
+    }
+    if(tn->opcode==VNT_IR_INDEX){emit_expr(g,child(g,t,VNT_IR_EDGE_OBJECT));fputs("    pushq %rax\n",g->out);emit_expr(g,child(g,t,VNT_IR_EDGE_INDEX));fputs("    pushq %rax\n",g->out);emit_expr(g,v);fputs("    movq %rax,%r8\n    popq %rdx\n    popq %rcx\n",g->out);call0(g,"vnt_array_set");return;}
+    if(tn->opcode==VNT_IR_MEMBER){emit_expr(g,child(g,t,VNT_IR_EDGE_OBJECT));fputs("    pushq %rax\n",g->out);emit_expr(g,v);fputs("    movq %rax,%r8\n",g->out);fprintf(g->out,"    lea .Lstr%d(%%rip),%%rdx\n",string_label(g,tn->value.text));fputs("    popq %rcx\n",g->out);call0(g,"vnt_object_set");return;}
+    if(tn->opcode==VNT_IR_UNARY&&tn->operation==UNARY_DEREFERENCE){emit_expr(g,child(g,t,VNT_IR_EDGE_OPERAND));fputs("    pushq %rax\n",g->out);emit_expr(g,v);fputs("    movq %rax,%rdx\n    popq %rcx\n",g->out);call0(g,"vnt_ref_set");return;}
+    fail(g,"unsupported HIR assignment target.");
+}
+static void emit_stmt(HirGen*g,size_t i) {
+    const VntIrNode*n=node(g,i);if(!n||g->error)return;
+    switch(n->opcode){
+    case VNT_IR_PROGRAM:emit_stmt_role(g,i,VNT_IR_EDGE_STATEMENT);break;
+    case VNT_IR_PRINT:emit_expr(g,child(g,i,VNT_IR_EDGE_VALUE));fputs("    movq %rax,%rcx\n",g->out);call0(g,"vnt_print");break;
+    case VNT_IR_VARIABLE_DECL:case VNT_IR_REASSIGN:{
+        int vi=var_index(g->vars,g->var_count,n->value.text),gi=var_index(g->globals,g->global_count,n->value.text);
+        emit_expr(g,child(g,i,VNT_IR_EDGE_VALUE));
+        if(gi>=0&&(vi<0||!g->vars[vi].global)){fputs("    movq %rax,vnt_global_",g->out);cname(g->out,"",n->value.text);fputs("(%rip)\n",g->out);}
+        else if(vi>=0)fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",g->vars[vi].offset);
+        else fail(g,"unknown HIR declaration variable.");break;}
+    case VNT_IR_ASSIGN:emit_assignment(g,i);break;
+    case VNT_IR_IF:{
+        int els=label_new(g),done=label_new(g);emit_expr(g,child(g,i,VNT_IR_EDGE_CONDITION));fputs("    movq %rax,%rcx\n",g->out);call0(g,"vnt_truth");fprintf(g->out,"    testl %%eax,%%eax\n    jz .L%d\n",els);
+        emit_stmt_role(g,i,VNT_IR_EDGE_THEN);fprintf(g->out,"    jmp .L%d\n",done);label_emit(g,els);emit_stmt_role(g,i,VNT_IR_EDGE_ELSE);label_emit(g,done);break;}
+    case VNT_IR_WHILE:{
+        int s=label_new(g),e=label_new(g);if(g->loop_depth>=64){fail(g,"loop nesting too deep.");break;}
+        g->loop_start[g->loop_depth]=s;g->loop_end[g->loop_depth]=e;g->loop_depth++;label_emit(g,s);
+        emit_expr(g,child(g,i,VNT_IR_EDGE_CONDITION));fputs("    movq %rax,%rcx\n",g->out);call0(g,"vnt_truth");fprintf(g->out,"    testl %%eax,%%eax\n    jz .L%d\n",e);
+        emit_stmt_role(g,i,VNT_IR_EDGE_BODY);fprintf(g->out,"    jmp .L%d\n",s);label_emit(g,e);g->loop_depth--;break;}
+    case VNT_IR_BREAK:if(!g->loop_depth)fail(g,"break outside loop.");else fprintf(g->out,"    jmp .L%d\n",g->loop_end[g->loop_depth-1]);break;
+    case VNT_IR_CONTINUE:if(!g->loop_depth)fail(g,"continue outside loop.");else fprintf(g->out,"    jmp .L%d\n",g->loop_start[g->loop_depth-1]);break;
+    case VNT_IR_RETURN:{size_t v=child(g,i,VNT_IR_EDGE_VALUE);if(v!=VNT_IR_NO_NODE)emit_expr(g,v);else fputs("    xorl %eax,%eax\n",g->out);fputs("    leave\n    ret\n",g->out);break;}
+    case VNT_IR_CALL:emit_expr(g,i);break;
+    case VNT_IR_FUNCTION:case VNT_IR_STRUCT:break;
+    default:fail(g,"unsupported HIR statement opcode.");break;
+    }
+}
+static void free_vars(HirVar*a,size_t n){for(size_t i=0;i<n;i++)free(a[i].name);free(a);}
+static void emit_function(HirGen*g,size_t i) {
+    const VntIrNode*n=node(g,i);free_vars(g->vars,g->var_count);g->vars=NULL;g->var_count=g->var_cap=0;
+    for(size_t c=child(g,i,VNT_IR_EDGE_BODY);c!=VNT_IR_NO_NODE;c=next_role(g,c,VNT_IR_EDGE_BODY))collect_vars(g,c);
+    for(size_t p=0;p<n->name_count;p++)var_add(g,n->names[p]);
+    for(size_t v=0;v<g->var_count;v++){int gi=var_index(g->globals,g->global_count,g->vars[v].name);if(gi>=0)g->vars[v].global=1;}
+    for(size_t p=0;p<n->name_count;p++){int vi=var_index(g->vars,g->var_count,n->names[p]);if(vi>=0)g->vars[vi].global=0;}
+    for(size_t v=0;v<g->var_count;v++)g->vars[v].offset=(int)(8+v*8);
+    fprintf(g->out,".globl vnt_fn_");cname(g->out,"",n->value.text);fprintf(g->out,"\nvnt_fn_");cname(g->out,"",n->value.text);fputs(":\n    pushq %rbp\n    movq %rsp,%rbp\n",g->out);
+    int frame=(int)(((g->var_count*8+15)/16)*16);if(frame)fprintf(g->out,"    subq $%d,%%rsp\n",frame);
+    static const char*regs[]={"%rcx","%rdx","%r8","%r9"};
+    for(size_t p=0;p<n->name_count&&p<4;p++){int vi=var_index(g->vars,g->var_count,n->names[p]);if(vi>=0)fprintf(g->out,"    movq %s,-%d(%%rbp)\n",regs[p],g->vars[vi].offset);}
+    for(size_t c=child(g,i,VNT_IR_EDGE_BODY);c!=VNT_IR_NO_NODE&&!g->error;c=next_role(g,c,VNT_IR_EDGE_BODY))emit_stmt(g,c);
     if(!g->error)fputs("    xorl %eax,%eax\n    leave\n    ret\n",g->out);
 }
-
-static void emit_float_table(X86Gen *g) {
-    for(int i=0;i<g->float_count;i++)
-        fprintf(g->out,".Lflt%d:\n    .double %.17g\n",g->floats[i].label,g->floats[i].value);
+static void emit_tables(HirGen*g) {
+    if(g->float_count||g->string_count)fputs("\n.section .rdata\n",g->out);
+    for(size_t i=0;i<g->float_count;i++)fprintf(g->out,".Lflt%d:\n    .double %.17g\n",g->floats[i].label,g->floats[i].value);
+    for(size_t i=0;i<g->string_count;i++){fprintf(g->out,".Lstr%d:\n    .asciz \"",g->strings[i].label);for(const unsigned char*p=(const unsigned char*)g->strings[i].value;*p;p++){switch(*p){case '\\':fputs("\\\\",g->out);break;case '"':fputs("\\\"",g->out);break;case '\n':fputs("\\n",g->out);break;case '\r':fputs("\\r",g->out);break;case '\t':fputs("\\t",g->out);break;default:fputc(*p,g->out);}}fputs("\"\n",g->out);}
 }
-
-static void emit_string_table(X86Gen *g) {
-    for(int i=0;i<g->string_count;i++) {
-        fprintf(g->out,".Lstr%d:\n    .asciz ",g->strings[i].label);
-        fputc('"',g->out);
-        for(const unsigned char *p=(const unsigned char*)g->strings[i].value;*p;p++) {
-            switch(*p) {
-                case '\\': fputs("\\\\",g->out); break;
-                case '"': fputs("\\\"",g->out); break;
-                case '\n': fputs("\n",g->out); break;
-                case '\r': fputs("\\r",g->out); break;
-                case '\t': fputs("\\t",g->out); break;
-                default: fputc(*p,g->out); break;
-            }
-        }
-        fputc('"',g->out);
-        fputc('\n',g->out);
+int vnt_emit_x86_64(const VntIrProgram *ir,const char *assembly_path) {
+    if(!ir||!assembly_path||!vnt_ir_validate(ir)){fprintf(stderr,"Native compiler error: invalid HIR program.\n");return 0;}
+    HirGen g={0};g.ir=ir;g.out=fopen(assembly_path,"wb");if(!g.out){fprintf(stderr,"Could not create assembly file: %s\n",assembly_path);return 0;}
+    const VntIrNode*root=node(&g,ir->root);fputs(".text\n",g.out);
+    for(size_t c=root->first_child;c!=VNT_IR_NO_NODE;c=g.ir->nodes[c].next_sibling){
+        const VntIrNode*n=node(&g,c);
+        if(n->opcode==VNT_IR_VARIABLE_DECL||n->opcode==VNT_IR_REASSIGN)global_add(&g,n->value.text);
+        if(n->opcode==VNT_IR_STRUCT){if(g.struct_count==g.struct_cap){size_t nc=g.struct_cap?g.struct_cap*2:8;char**p=realloc(g.structs,nc*sizeof(*p));if(!p){fail(&g,"out of memory collecting structs.");break;}g.structs=p;g.struct_cap=nc;}g.structs[g.struct_count++]=strdup(n->value.text);}
     }
-}
-
-int vnt_emit_x86_64(const VntIrProgram *ir,const char *assembly_path){
-    if(!ir || !vnt_ir_validate(ir)){
-        fprintf(stderr,"Native compiler error: invalid IR program.\n");
-        return 0;
-    }
-    AstNode *program = vnt_ir_materialize_program(ir);
-    if (!program) {
-        fprintf(stderr, "Native compiler error: could not materialize HIR program.\n");
-        return 0;
-    }
-    X86Gen g={0};g.out=fopen(assembly_path,"wb");
-    if(!g.out){
-        fprintf(stderr,"Could not create assembly file: %s\n",assembly_path);
-        ast_free(program);
-        return 0;
-    }
-    fputs(".text\n",g.out);
-    collect_globals(&g,program->program.statements);
-    emit_global_symbols(&g);
-    collect_structs(&g, program->program.statements);
-    for(AstNode *n=program->program.statements;n;n=n->next)
-        if(n->type==AST_FUNCTION_DECLARATION){emit_function(&g,n);if(g.error)break;fputc('\n',g.out);}
+    if(g.global_count){fputs(".bss\n",g.out);for(size_t i=0;i<g.global_count;i++){fputs(".globl vnt_global_",g.out);cname(g.out,"",g.globals[i].name);fputs("\n.comm vnt_global_",g.out);cname(g.out,"",g.globals[i].name);fputs(",8,8\n",g.out);}fputs(".text\n",g.out);}
+    for(size_t c=root->first_child;c!=VNT_IR_NO_NODE&&!g.error;c=g.ir->nodes[c].next_sibling)if(g.ir->nodes[c].opcode==VNT_IR_FUNCTION){emit_function(&g,c);fputc('\n',g.out);}
     if(!g.error){
-        free_vars(&g);collect_vars(&g,program->program.statements);
-        for(int i=0;i<g.var_count;i++) if(var_is_global(&g,g.vars[i].name)) g.vars[i].is_global=1;
-        infer_integer_variables(&g,program->program.statements);assign_offsets(&g);
-        fputs(".globl main\nmain:\n    pushq %rbp\n    movq %rsp,%rbp\n",g.out);
-        int frame=((g.var_count*8+15)/16)*16;if(frame)fprintf(g.out,"    subq $%d,%%rsp\n",frame);
-        emit_stmt_list(&g,program->program.statements);
+        free_vars(g.vars,g.var_count);g.vars=NULL;g.var_count=g.var_cap=0;
+        for(size_t c=root->first_child;c!=VNT_IR_NO_NODE;c=g.ir->nodes[c].next_sibling)if(g.ir->nodes[c].opcode!=VNT_IR_FUNCTION&&g.ir->nodes[c].opcode!=VNT_IR_STRUCT)collect_vars(&g,c);
+        for(size_t v=0;v<g.var_count;v++){int gi=var_index(g.globals,g.global_count,g.vars[v].name);if(gi>=0)g.vars[v].global=1;g.vars[v].offset=(int)(8+v*8);}
+        fputs(".globl main\nmain:\n    pushq %rbp\n    movq %rsp,%rbp\n",g.out);int frame=(int)(((g.var_count*8+15)/16)*16);if(frame)fprintf(g.out,"    subq $%d,%%rsp\n",frame);
+        for(size_t c=root->first_child;c!=VNT_IR_NO_NODE&&!g.error;c=g.ir->nodes[c].next_sibling)if(g.ir->nodes[c].opcode!=VNT_IR_FUNCTION&&g.ir->nodes[c].opcode!=VNT_IR_STRUCT)emit_stmt(&g,c);
         if(!g.error)fputs("    xorl %eax,%eax\n    leave\n    ret\n",g.out);
     }
-    if(!g.error){
-        fputs(".Lvnt_int_add_overflow:\n    subq $32,%rsp\n    call vnt_int_add_overflow\n    addq $32,%rsp\n",g.out);
-        fputs(".Lvnt_int_sub_overflow:\n    subq $32,%rsp\n    call vnt_int_sub_overflow\n    addq $32,%rsp\n",g.out);
-        fputs(".Lvnt_int_mul_overflow:\n    subq $32,%rsp\n    call vnt_int_mul_overflow\n    addq $32,%rsp\n",g.out);
-        fputs(".Lvnt_int_neg_overflow:\n    subq $32,%rsp\n    call vnt_int_neg_overflow\n    addq $32,%rsp\n",g.out);
-        fputs(".Lvnt_int_div_zero:\n", g.out);
-        fputs("    subq $32, %rsp\n    call vnt_int_div_zero\n    addq $32, %rsp\n", g.out);
-        if(g.string_count || g.float_count){
-            fputs("\n.section .rdata\n",g.out);
-            emit_float_table(&g);
-            emit_string_table(&g);
-        }
-    }
-    fclose(g.out);free_vars(&g);free_globals(&g);free_strings(&g);free_floats(&g);free_structs(&g);
-    ast_free(program);
+    if(!g.error){fputs(".Lvnt_int_add_overflow:\n    subq $32,%rsp\n    call vnt_int_add_overflow\n    addq $32,%rsp\n.Lvnt_int_sub_overflow:\n    subq $32,%rsp\n    call vnt_int_sub_overflow\n    addq $32,%rsp\n.Lvnt_int_mul_overflow:\n    subq $32,%rsp\n    call vnt_int_mul_overflow\n    addq $32,%rsp\n.Lvnt_int_neg_overflow:\n    subq $32,%rsp\n    call vnt_int_neg_overflow\n    addq $32,%rsp\n.Lvnt_int_div_zero:\n    subq $32,%rsp\n    call vnt_int_div_zero\n    addq $32,%rsp\n",g.out);emit_tables(&g);}
+    fclose(g.out);
+    free_vars(g.vars,g.var_count);free_vars(g.globals,g.global_count);
+    for(size_t i=0;i<g.string_count;i++)free(g.strings[i].value);free(g.strings);
+    free(g.floats);
+    for(size_t i=0;i<g.struct_count;i++)free(g.structs[i]);free(g.structs);
     if(g.error){remove(assembly_path);return 0;}return 1;
 }

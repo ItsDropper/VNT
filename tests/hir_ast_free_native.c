@@ -1,4 +1,5 @@
 #include <vnt/ir.h>
+#include <vnt/ir_lower.h>
 #include <vnt/ast.h>
 #include "x86_backend.h"
 

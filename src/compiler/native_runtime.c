@@ -1206,7 +1206,11 @@ static int vnt_gui_clicked, vnt_gui_click_x, vnt_gui_click_y, vnt_gui_mouse_x, v
 static COLORREF vnt_gui_text_color=RGB(170,182,211), vnt_gui_title_color=RGB(244,247,255);
 static COLORREF vnt_gui_panel_background=RGB(21,30,51), vnt_gui_button_background=RGB(49,92,232);
 static COLORREF vnt_gui_button_hover=RGB(80,120,255), vnt_gui_button_text=RGB(255,255,255);
-static COLORREF vnt_gui_input_background=RGB(10,15,29), vnt_gui_input_text=RGB(220,231,255), vnt_gui_input_border=RGB(49,92,232);\nstatic COLORREF vnt_gui_textarea_background=RGB(10,15,29), vnt_gui_textarea_text=RGB(220,231,255), vnt_gui_textarea_border=RGB(49,92,232);\nstatic HBRUSH vnt_gui_input_brush, vnt_gui_textarea_brush;\nstatic int vnt_gui_input_font_size=14, vnt_gui_textarea_font_size=14;\nstatic COLORREF vnt_gui_accent=RGB(49,92,232);
+static COLORREF vnt_gui_input_background=RGB(10,15,29), vnt_gui_input_text=RGB(220,231,255), vnt_gui_input_border=RGB(49,92,232);
+static COLORREF vnt_gui_textarea_background=RGB(10,15,29), vnt_gui_textarea_text=RGB(220,231,255), vnt_gui_textarea_border=RGB(49,92,232);
+static HBRUSH vnt_gui_input_brush, vnt_gui_textarea_brush;
+static int vnt_gui_input_font_size=14, vnt_gui_textarea_font_size=14;
+static COLORREF vnt_gui_accent=RGB(49,92,232);
 static int vnt_gui_font_size=16, vnt_gui_title_font_size=30, vnt_gui_button_font_size=15;
 static int vnt_gui_button_padding=10, vnt_gui_button_radius=9;
 static VntGuiCommand vnt_gui_commands[2048];
@@ -1246,7 +1250,15 @@ static void vnt_gui_apply_css_rule(const char *css,const char *selector) {
             else if(!strcmp(selector,"label")&&!strcmp(key,"font-size")){int n=atoi(value);if(n>=8&&n<=72)vnt_gui_font_size=n;}
             else if(!strcmp(selector,"title")&&!strcmp(key,"color")&&vnt_gui_parse_color(value,&c))vnt_gui_title_color=c;
             else if(!strcmp(selector,"title")&&!strcmp(key,"font-size")){int n=atoi(value);if(n>=12&&n<=72)vnt_gui_title_font_size=n;}
-            else if(!strcmp(selector,"panel")&&!strcmp(key,"background-color")&&vnt_gui_parse_color(value,&c))vnt_gui_panel_background=c;\n            else if(!strcmp(selector,"input")&&!strcmp(key,"background-color")&&vnt_gui_parse_color(value,&c))vnt_gui_input_background=c;\n            else if(!strcmp(selector,"input")&&!strcmp(key,"color")&&vnt_gui_parse_color(value,&c))vnt_gui_input_text=c;\n            else if(!strcmp(selector,"input")&&!strcmp(key,"border-color")&&vnt_gui_parse_color(value,&c))vnt_gui_input_border=c;\n            else if(!strcmp(selector,"input")&&!strcmp(key,"font-size")){int n=atoi(value);if(n>=8&&n<=48)vnt_gui_input_font_size=n;}\n            else if(!strcmp(selector,"textarea")&&!strcmp(key,"background-color")&&vnt_gui_parse_color(value,&c))vnt_gui_textarea_background=c;\n            else if(!strcmp(selector,"textarea")&&!strcmp(key,"color")&&vnt_gui_parse_color(value,&c))vnt_gui_textarea_text=c;\n            else if(!strcmp(selector,"textarea")&&!strcmp(key,"border-color")&&vnt_gui_parse_color(value,&c))vnt_gui_textarea_border=c;\n            else if(!strcmp(selector,"textarea")&&!strcmp(key,"font-size")){int n=atoi(value);if(n>=8&&n<=48)vnt_gui_textarea_font_size=n;}
+            else if(!strcmp(selector,"panel")&&!strcmp(key,"background-color")&&vnt_gui_parse_color(value,&c))vnt_gui_panel_background=c;
+            else if(!strcmp(selector,"input")&&!strcmp(key,"background-color")&&vnt_gui_parse_color(value,&c))vnt_gui_input_background=c;
+            else if(!strcmp(selector,"input")&&!strcmp(key,"color")&&vnt_gui_parse_color(value,&c))vnt_gui_input_text=c;
+            else if(!strcmp(selector,"input")&&!strcmp(key,"border-color")&&vnt_gui_parse_color(value,&c))vnt_gui_input_border=c;
+            else if(!strcmp(selector,"input")&&!strcmp(key,"font-size")){int n=atoi(value);if(n>=8&&n<=48)vnt_gui_input_font_size=n;}
+            else if(!strcmp(selector,"textarea")&&!strcmp(key,"background-color")&&vnt_gui_parse_color(value,&c))vnt_gui_textarea_background=c;
+            else if(!strcmp(selector,"textarea")&&!strcmp(key,"color")&&vnt_gui_parse_color(value,&c))vnt_gui_textarea_text=c;
+            else if(!strcmp(selector,"textarea")&&!strcmp(key,"border-color")&&vnt_gui_parse_color(value,&c))vnt_gui_textarea_border=c;
+            else if(!strcmp(selector,"textarea")&&!strcmp(key,"font-size")){int n=atoi(value);if(n>=8&&n<=48)vnt_gui_textarea_font_size=n;}
             else if((!strcmp(selector,"button")||!strcmp(selector,"button:hover"))&&!strcmp(key,"background-color")&&vnt_gui_parse_color(value,&c)){if(!strcmp(selector,"button:hover"))vnt_gui_button_hover=c;else vnt_gui_button_background=c;}
             else if(!strcmp(selector,"button")&&!strcmp(key,"color")&&vnt_gui_parse_color(value,&c))vnt_gui_button_text=c;
             else if(!strcmp(selector,"button")&&!strcmp(key,"font-size")){int n=atoi(value);if(n>=8&&n<=48)vnt_gui_button_font_size=n;}

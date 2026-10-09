@@ -268,6 +268,26 @@ static void emit_expr(HirGen *g,size_t i) {
             emit_expr(g,r);fputs("    movq %rax,%rcx\n",g->out);call0(g,"vnt_truth");fputs("    movl %eax,%ecx\n",g->out);call0(g,"vnt_bool");fprintf(g->out,"    jmp .L%d\n",done);
             label_emit(g,shortl);fprintf(g->out,"    movl $%d,%%ecx\n",n->operation==BINARY_AND?0:1);call0(g,"vnt_bool");label_emit(g,done);break;
         }
+        const VntIrNode *right_node=node(g,r);
+        if((n->operation==BINARY_ADD||n->operation==BINARY_SUBTRACT||n->operation==BINARY_MULTIPLY)&&
+           right_node&&right_node->opcode==VNT_IR_INTEGER) {
+            int slow=label_new(g),done=label_new(g);
+            emit_expr(g,l);
+            fputs("    pushq %rax\n    movq (%rsp),%r11\n    testq %r11,%r11\n    jz ",g->out);fprintf(g->out,".L%d\n",slow);
+            fputs("    cmpl $1,0(%r11)\n    jne ",g->out);fprintf(g->out,".L%d\n    movl 8(%%r11),%%r10d\n",slow);
+            if(n->operation==BINARY_ADD)fprintf(g->out,"    addl $%d,%%r10d\n    jo .L%d\n",right_node->value.integer,slow);
+            else if(n->operation==BINARY_SUBTRACT)fprintf(g->out,"    subl $%d,%%r10d\n    jo .L%d\n",right_node->value.integer,slow);
+            else fprintf(g->out,"    imull $%d,%%r10d,%%r10d\n    jo .L%d\n",right_node->value.integer,slow);
+            fputs("    movl %r10d,%ecx\n    addq $8,%rsp\n",g->out);
+            call0(g,"vnt_int");
+            fprintf(g->out,"    jmp .L%d\n",done);
+            label_emit(g,slow);
+            emit_expr(g,r);
+            fputs("    movq %rax,%rdx\n    popq %rcx\n",g->out);
+            call0(g,n->operation==BINARY_ADD?"vnt_add":n->operation==BINARY_SUBTRACT?"vnt_sub":"vnt_mul");
+            label_emit(g,done);
+            break;
+        }
         emit_expr(g,l);fputs("    pushq %rax\n",g->out);emit_expr(g,r);fputs("    movq %rax,%rdx\n    popq %rcx\n",g->out);
         /*
          * Integer arithmetic is the hot path in numeric loops. VntValue's

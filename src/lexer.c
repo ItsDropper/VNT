@@ -8,7 +8,14 @@ static char peek(Lexer *lexer) {
 }
 
 static char advance(Lexer *lexer) {
-    return lexer->source[lexer->current++];
+    char c = lexer->source[lexer->current++];
+    if (c == '\n') {
+        lexer->line++;
+        lexer->column = 1;
+    } else if (c != '\0') {
+        lexer->column++;
+    }
+    return c;
 }
 
 static void skip_whitespace(Lexer *lexer) {
@@ -46,6 +53,8 @@ static Token make_token(
     token.start = start;
     token.length =
         (int)(lexer->source + lexer->current - start);
+    token.line = lexer->token_start_line;
+    token.column = lexer->token_start_column;
 
     return token;
 }
@@ -130,11 +139,17 @@ void lexer_init(
 ) {
     lexer->source = source;
     lexer->current = 0;
+    lexer->line = 1;
+    lexer->column = 1;
+    lexer->token_start_line = 1;
+    lexer->token_start_column = 1;
 }
 
 Token lexer_next(Lexer *lexer) {
     skip_whitespace(lexer);
 
+    lexer->token_start_line = lexer->line;
+    lexer->token_start_column = lexer->column;
     const char *start =
         lexer->source + lexer->current;
 

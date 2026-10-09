@@ -227,14 +227,6 @@ int vnt_ir_lower(VntIrProgram *ir, AstNode *program) {
     return 1;
 }
 
-static size_t child_for_role(const VntIrProgram *ir, const VntIrNode *node,
-                            VntIrEdgeRole role) {
-    for (size_t child = node->first_child; child != VNT_IR_NO_NODE;
-         child = ir->nodes[child].next_sibling)
-        if (ir->nodes[child].role == role) return child;
-    return VNT_IR_NO_NODE;
-}
-
 static int role_count(const VntIrProgram *ir, const VntIrNode *node,
                       VntIrEdgeRole role) {
     int count = 0;
@@ -532,10 +524,6 @@ static AstNode *hir_materialize_node(const VntIrProgram *ir, size_t index) {
             if (!x) return NULL;
             a = ast_create_unary(x,(UnaryOperator)n->operation); break;
         default: return NULL;
-    }
-    if (a && n->type_name && n->opcode != VNT_IR_VARIABLE_DECL &&
-        n->opcode != VNT_IR_REASSIGN) {
-        /* type_name is currently meaningful only for declarations. */
     }
     return a;
 }

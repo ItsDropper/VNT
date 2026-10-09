@@ -1351,7 +1351,27 @@ static LRESULT CALLBACK vnt_gui_wndproc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) 
             }
             return 0;
         case WM_MOUSEMOVE:{int oldx=vnt_gui_mouse_x,oldy=vnt_gui_mouse_y;vnt_gui_mouse_x=(short)LOWORD(lp);vnt_gui_mouse_y=(short)HIWORD(lp);if(oldx!=vnt_gui_mouse_x||oldy!=vnt_gui_mouse_y)InvalidateRect(hwnd,NULL,FALSE);return 0;}
-        case WM_LBUTTONUP:vnt_gui_click_x=(short)LOWORD(lp);vnt_gui_click_y=(short)HIWORD(lp);vnt_gui_clicked=1;return 0;
+        case WM_LBUTTONDOWN:
+            SetFocus(hwnd);
+            return 0;
+        case WM_LBUTTONUP: {
+            vnt_gui_click_x=(short)LOWORD(lp);
+            vnt_gui_click_y=(short)HIWORD(lp);
+            vnt_gui_clicked=1;
+            /* Assign keyboard focus from the actual click coordinates. Do not
+               depend on the app rebuilding its input commands later that frame. */
+            vnt_gui_focused_input=-1;
+            for(int i=0;i<vnt_gui_input_count;i++) {
+                VntGuiInputState *state=&vnt_gui_inputs[i];
+                if(vnt_gui_click_x>=state->x&&vnt_gui_click_x<state->x+state->width&&
+                   vnt_gui_click_y>=state->y&&vnt_gui_click_y<state->y+state->height) {
+                    vnt_gui_focused_input=i;
+                    break;
+                }
+            }
+            InvalidateRect(hwnd,NULL,FALSE);
+            return 0;
+        }
         case WM_DESTROY:if(hwnd==vnt_gui_hwnd)vnt_gui_hwnd=NULL;PostQuitMessage(0);return 0;
         default:return DefWindowProcA(hwnd,msg,wp,lp);
     }

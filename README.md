@@ -332,3 +332,16 @@ Compile and run the demo from the repository root so the relative stylesheet pat
 ```
 
 See `examples/gui_demo.vnt` and `examples/gui_demo.css`. GUI support currently targets Windows; Linux/macOS GUI backends are not implemented.
+
+
+## Expanded native GUI controls
+
+The Windows GUI foundation includes these additional APIs:
+
+- `gui_button_sized(label, x, y, width, height)` — fixed-size button for consistent layouts.
+- `gui_textarea(placeholder, x, y, width, height)` — multiline text editor with word wrapping and Enter-to-newline.
+- `gui_input_set(text, x, y)` — set an input's current value by its position, useful for loading saved form state.
+- `gui_panel_color(x, y, width, height, color)` — rounded surface with a custom `0xRRGGBB` color.
+- `gui_text_style(text, x, y, color, size)` — draw text with a custom color and font size.
+
+Text inputs support basic ASCII typing, Backspace, and Ctrl+A replacement. GUI state is retained across frames while draw commands are rebuilt. This is a foundational toolkit, not a complete accessibility-ready GUI framework; caret navigation, IME input, and platform-independent backends remain future work.

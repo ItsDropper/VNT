@@ -51,3 +51,23 @@ fun vanta_progress(value, maximum, x, y) {
 fun vanta_separator(x, y, width) {
     return gui_separator(x, y, width)
 }
+
+fun vanta_button_sized(text, x, y, width, height) {
+    return gui_button_sized(text, x, y, width, height)
+}
+
+fun vanta_textarea(placeholder, x, y, width, height) {
+    return gui_textarea(placeholder, x, y, width, height)
+}
+
+fun vanta_input_set(text, x, y) {
+    return gui_input_set(text, x, y)
+}
+
+fun vanta_surface(x, y, width, height, color) {
+    return gui_panel_color(x, y, width, height, color)
+}
+
+fun vanta_text_style(text, x, y, color, size) {
+    return gui_text_style(text, x, y, color, size)
+}

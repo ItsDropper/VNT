@@ -1,0 +1,154 @@
+import "../lib/vanta/gui.vnt"
+
+# VNT Notes — a local-first writing space with four persistent note slots.
+# Files are plain text, remain on this device, and need no account or network.
+
+fun note_title_path(index) {
+    if index == 1 { return "vnt_notes_1_title.txt" }
+    if index == 2 { return "vnt_notes_2_title.txt" }
+    if index == 3 { return "vnt_notes_3_title.txt" }
+    return "vnt_notes_4_title.txt"
+}
+fun note_body_path(index) {
+    if index == 1 { return "vnt_notes_1_body.txt" }
+    if index == 2 { return "vnt_notes_2_body.txt" }
+    if index == 3 { return "vnt_notes_3_body.txt" }
+    return "vnt_notes_4_body.txt"
+}
+
+current_note = 1
+title_path = note_title_path(current_note)
+body_path = note_body_path(current_note)
+saved_title = "Untitled note"
+saved_body = ""
+if fs_exists(title_path) { saved_title = fs_read(title_path) }
+if fs_exists(body_path) { saved_body = fs_read(body_path) }
+
+if vanta_gui_start("VNT Notes  |  Private by default", 1120, 760, "examples/vnt_notes.css") {
+    vanta_input_set(saved_title, 290, 186)
+    vanta_input_set(saved_body, 290, 254)
+    status = "Ready. Your notes stay on this device."
+    running = true
+
+    while running {
+        running = vanta_gui_poll()
+
+        vanta_surface(0, 0, 248, 760, 0x10182A)
+        vanta_surface(18, 18, 212, 76, 0x17233A)
+        vanta_surface(270, 18, 830, 104, 0x151F34)
+        vanta_surface(270, 140, 830, 560, 0x151F34)
+        vanta_surface(286, 154, 798, 2, 0x315CE8)
+
+        vanta_heading("VNT NOTES", 36, 35)
+        vanta_text_style("LOCAL WRITING SPACE", 37, 70, 0x7F96C4, 11)
+        vanta_text_style("YOUR NOTEBOOK", 30, 128, 0x7F96C4, 11)
+        vanta_text_style("Pick a note to open it.", 30, 157, 0xD8E2F8, 13)
+        vanta_separator(24, 195, 200)
+
+        if current_note == 1 {
+            vanta_surface(24, 211, 200, 42, 0x263A60)
+        }
+        if vanta_button_sized("01   Quick note", 30, 213, 188, 38) {
+            current_note = 1
+            title_path = note_title_path(current_note)
+            body_path = note_body_path(current_note)
+            saved_title = "Untitled note"
+            saved_body = ""
+            if fs_exists(title_path) { saved_title = fs_read(title_path) }
+            if fs_exists(body_path) { saved_body = fs_read(body_path) }
+            vanta_input_set(saved_title, 290, 186)
+            vanta_input_set(saved_body, 290, 254)
+            status = "Opened note 1."
+        }
+        if current_note == 2 { vanta_surface(24, 257, 200, 42, 0x263A60) }
+        if vanta_button_sized("02   Project ideas", 30, 259, 188, 38) {
+            current_note = 2
+            title_path = note_title_path(current_note)
+            body_path = note_body_path(current_note)
+            saved_title = "Untitled note"
+            saved_body = ""
+            if fs_exists(title_path) { saved_title = fs_read(title_path) }
+            if fs_exists(body_path) { saved_body = fs_read(body_path) }
+            vanta_input_set(saved_title, 290, 186)
+            vanta_input_set(saved_body, 290, 254)
+            status = "Opened note 2."
+        }
+        if current_note == 3 { vanta_surface(24, 303, 200, 42, 0x263A60) }
+        if vanta_button_sized("03   To remember", 30, 305, 188, 38) {
+            current_note = 3
+            title_path = note_title_path(current_note)
+            body_path = note_body_path(current_note)
+            saved_title = "Untitled note"
+            saved_body = ""
+            if fs_exists(title_path) { saved_title = fs_read(title_path) }
+            if fs_exists(body_path) { saved_body = fs_read(body_path) }
+            vanta_input_set(saved_title, 290, 186)
+            vanta_input_set(saved_body, 290, 254)
+            status = "Opened note 3."
+        }
+        if current_note == 4 { vanta_surface(24, 349, 200, 42, 0x263A60) }
+        if vanta_button_sized("04   Scratch space", 30, 351, 188, 38) {
+            current_note = 4
+            title_path = note_title_path(current_note)
+            body_path = note_body_path(current_note)
+            saved_title = "Untitled note"
+            saved_body = ""
+            if fs_exists(title_path) { saved_title = fs_read(title_path) }
+            if fs_exists(body_path) { saved_body = fs_read(body_path) }
+            vanta_input_set(saved_title, 290, 186)
+            vanta_input_set(saved_body, 290, 254)
+            status = "Opened note 4."
+        }
+
+        vanta_separator(24, 414, 200)
+        vanta_text_style("STORAGE", 30, 438, 0x7F96C4, 11)
+        vanta_text_style("Plain text files", 30, 466, 0xD8E2F8, 12)
+        vanta_text_style("Portable and readable", 30, 489, 0xAAB6D3, 11)
+        vanta_text_style("Saved in the current", 30, 514, 0xAAB6D3, 11)
+        vanta_text_style("working directory.", 30, 532, 0xAAB6D3, 11)
+        vanta_surface(24, 632, 200, 78, 0x1A2944)
+        vanta_text_style("OFFLINE BY DESIGN", 38, 648, 0x62D6B0, 11)
+        vanta_text_style("No accounts or telemetry.", 38, 674, 0xAAB6D3, 10)
+
+        vanta_heading("A quieter place to think.", 300, 42)
+        vanta_text_style("Four local notes. Nothing leaves your computer.", 302, 84, 0xAAB6D3, 13)
+        vanta_text_style("NOTE TITLE", 302, 172, 0x7F96C4, 11)
+        title_text = vanta_text_input("Give this note a title", 290, 186, 790)
+        vanta_text_style("NOTE CONTENT", 302, 229, 0x7F96C4, 11)
+        body_text = vanta_textarea("Start writing here... Enter creates a new line.", 290, 254, 790, 330)
+        vanta_separator(302, 604, 770)
+        vanta_text_style(status, 302, 620, 0xAAB6D3, 12)
+        vanta_text_style("Slot " + current_note + "  /  Plain text  /  Local-first", 302, 651, 0x7F96C4, 11)
+
+        if vanta_button_sized("Save note", 302, 670, 132, 38) {
+            title_ok = fs_write(title_path, title_text)
+            body_ok = fs_write(body_path, body_text)
+            if title_ok && body_ok {
+                status = "Saved note " + current_note + ". Both files are up to date."
+            } else {
+                status = "Save failed. Check write permissions for this folder."
+            }
+        }
+        if vanta_button_sized("Clear draft", 446, 670, 132, 38) {
+            title_text = "Untitled note"
+            body_text = ""
+            vanta_input_set(title_text, 290, 186)
+            vanta_input_set(body_text, 290, 254)
+            status = "Draft cleared. Existing saved files are unchanged until Save."
+        }
+        if vanta_button_sized("Reload saved", 590, 670, 132, 38) {
+            saved_title = "Untitled note"
+            saved_body = ""
+            if fs_exists(title_path) { saved_title = fs_read(title_path) }
+            if fs_exists(body_path) { saved_body = fs_read(body_path) }
+            vanta_input_set(saved_title, 290, 186)
+            vanta_input_set(saved_body, 290, 254)
+            status = "Reloaded note " + current_note + " from disk."
+        }
+        vanta_gui_present()
+        sleep_ms(16)
+    }
+    vanta_gui_close()
+} else {
+    print("Could not create the VNT Notes window.")
+}

@@ -1056,13 +1056,13 @@ VntValue *vnt_process_exit_code(VntValue *value) {
 
 /* Vanta GUI native backend: retained command list + double-buffered WM_PAINT. */
 #ifdef _WIN32
-enum { VG_TEXT=1, VG_TITLE, VG_PANEL, VG_BUTTON, VG_INPUT, VG_CHECKBOX, VG_PROGRESS, VG_SEPARATOR, VG_RECT };
+enum { VG_TEXT=1, VG_TITLE, VG_PANEL, VG_BUTTON, VG_INPUT, VG_TEXTAREA, VG_CHECKBOX, VG_PROGRESS, VG_SEPARATOR, VG_RECT };
 typedef struct {
-    int type,x,y,w,h,font_size,radius,hovered,checked,value,maximum;
+    int type,x,y,w,h,font_size,radius,hovered,checked,value,maximum,placeholder;
     COLORREF color,background;
     char text[512];
 } VntGuiCommand;
-typedef struct { int x,y,width; char text[512]; } VntGuiInputState;
+typedef struct { int x,y,width,height,multiline,select_all; char text[512]; } VntGuiInputState;
 static HWND vnt_gui_hwnd;
 static int vnt_gui_width=800, vnt_gui_height=600, vnt_gui_last_key, vnt_gui_text_y=18;
 static COLORREF vnt_gui_background=RGB(11,16,32);
@@ -1140,13 +1140,13 @@ static void vnt_gui_render(HDC dc) {
             HGDIOBJ old=font?SelectObject(dc,font):NULL; SetTextColor(dc,ink);
             TextOutA(dc,c->x,c->y,c->text,(int)strlen(c->text));
             if(old)SelectObject(dc,old);if(font)DeleteObject(font);
-        } else if(c->type==VG_PANEL||c->type==VG_BUTTON||c->type==VG_INPUT||c->type==VG_CHECKBOX) {
+        } else if(c->type==VG_PANEL||c->type==VG_BUTTON||c->type==VG_INPUT||c->type==VG_TEXTAREA||c->type==VG_CHECKBOX) {
             if(c->type==VG_BUTTON) fill=c->hovered?vnt_gui_button_hover:vnt_gui_button_background;
-            if(c->type==VG_INPUT) fill=vnt_gui_input_background;
+            if(c->type==VG_INPUT||c->type==VG_TEXTAREA) fill=vnt_gui_input_background;
             if(c->type==VG_CHECKBOX) fill=c->checked?vnt_gui_accent:vnt_gui_input_background;
             HBRUSH brush=CreateSolidBrush(fill); HPEN pen=CreatePen(PS_SOLID,1,fill);
             HGDIOBJ ob=brush?SelectObject(dc,brush):NULL, op=pen?SelectObject(dc,pen):NULL;
-            if(c->type==VG_PANEL||c->type==VG_BUTTON) RoundRect(dc,r.left,r.top,r.right,r.bottom,c->radius*2,c->radius*2);
+            if(c->type==VG_PANEL||c->type==VG_BUTTON||c->type==VG_TEXTAREA) RoundRect(dc,r.left,r.top,r.right,r.bottom,c->radius*2,c->radius*2);
             else Rectangle(dc,r.left,r.top,r.right,r.bottom);
             if(op)SelectObject(dc,op);if(ob)SelectObject(dc,ob);if(pen)DeleteObject(pen);if(brush)DeleteObject(brush);
             if(c->type==VG_CHECKBOX) {
@@ -1156,9 +1156,11 @@ static void vnt_gui_render(HDC dc) {
                 HFONT font=CreateFontA(-c->font_size,0,0,0,c->type==VG_BUTTON?FW_SEMIBOLD:FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,"Segoe UI");
                 HGDIOBJ old=font?SelectObject(dc,font):NULL;
                 SetTextColor(dc,c->type==VG_BUTTON?vnt_gui_button_text:vnt_gui_text_color);
-                if(c->type==VG_INPUT&&c->text[0]==0) SetTextColor(dc,RGB(110,125,153));
-                RECT tr={r.left+10,r.top,r.right-8,r.bottom};DrawTextA(dc,c->text,-1,&tr,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-                if(c->type==VG_INPUT&&vnt_gui_focused_input>=0) { SIZE sz={0};GetTextExtentPoint32A(dc,c->text,(int)strlen(c->text),&sz); if(vnt_gui_inputs[vnt_gui_focused_input].x==c->x&&vnt_gui_inputs[vnt_gui_focused_input].y==c->y) {MoveToEx(dc,r.left+10+sz.cx,r.top+7,NULL);LineTo(dc,r.left+10+sz.cx,r.bottom-7);} }
+                if(c->placeholder) SetTextColor(dc,RGB(110,125,153));
+                RECT tr={r.left+10,r.top+(c->type==VG_TEXTAREA?8:0),r.right-8,r.bottom-6};
+                if(c->type==VG_TEXTAREA) DrawTextA(dc,c->text,-1,&tr,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
+                else DrawTextA(dc,c->text,-1,&tr,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                if(c->type==VG_INPUT&&vnt_gui_focused_input>=0&&vnt_gui_inputs[vnt_gui_focused_input].x==c->x&&vnt_gui_inputs[vnt_gui_focused_input].y==c->y&&!c->placeholder) { SIZE sz={0};GetTextExtentPoint32A(dc,c->text,(int)strlen(c->text),&sz);MoveToEx(dc,r.left+10+sz.cx,r.top+7,NULL);LineTo(dc,r.left+10+sz.cx,r.bottom-7); }
                 if(old)SelectObject(dc,old);if(font)DeleteObject(font);
             }
         } else if(c->type==VG_PROGRESS) {
@@ -1184,16 +1186,21 @@ static LRESULT CALLBACK vnt_gui_wndproc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) 
             EndPaint(hwnd,&ps);return 0;
         }
         case WM_ERASEBKGND:return 1;
-        case WM_KEYDOWN:vnt_gui_last_key=(int)wp;return 0;
+        case WM_KEYDOWN:
+            vnt_gui_last_key=(int)wp;
+            if(wp=='A'&&(GetKeyState(VK_CONTROL)&0x8000)&&vnt_gui_focused_input>=0&&vnt_gui_focused_input<vnt_gui_input_count) vnt_gui_inputs[vnt_gui_focused_input].select_all=1;
+            return 0;
         case WM_CHAR:
             if(vnt_gui_focused_input>=0&&vnt_gui_focused_input<vnt_gui_input_count){
-                char *s=vnt_gui_inputs[vnt_gui_focused_input].text;size_t n=strlen(s);
+                VntGuiInputState *state=&vnt_gui_inputs[vnt_gui_focused_input];char *s=state->text;size_t n=strlen(s);
+                if(state->select_all){s[0]=0;n=0;state->select_all=0;}
                 if(wp==VK_BACK){if(n)s[n-1]=0;}
-                else if(wp>=32&&wp<127&&n<sizeof(vnt_gui_inputs[0].text)-1){s[n]=(char)wp;s[n+1]=0;}
+                else if((wp=='\r'||wp=='\n')&&state->multiline){if(n<sizeof(state->text)-1){s[n]='\n';s[n+1]=0;}}
+                else if(wp>=32&&wp<127&&n<sizeof(state->text)-1){s[n]=(char)wp;s[n+1]=0;}
                 InvalidateRect(hwnd,NULL,FALSE);
             }
             return 0;
-        case WM_MOUSEMOVE:vnt_gui_mouse_x=(short)LOWORD(lp);vnt_gui_mouse_y=(short)HIWORD(lp);return 0;
+        case WM_MOUSEMOVE:{int oldx=vnt_gui_mouse_x,oldy=vnt_gui_mouse_y;vnt_gui_mouse_x=(short)LOWORD(lp);vnt_gui_mouse_y=(short)HIWORD(lp);if(oldx!=vnt_gui_mouse_x||oldy!=vnt_gui_mouse_y)InvalidateRect(hwnd,NULL,FALSE);return 0;}
         case WM_LBUTTONUP:vnt_gui_click_x=(short)LOWORD(lp);vnt_gui_click_y=(short)HIWORD(lp);vnt_gui_clicked=1;return 0;
         case WM_DESTROY:if(hwnd==vnt_gui_hwnd)vnt_gui_hwnd=NULL;PostQuitMessage(0);return 0;
         default:return DefWindowProcA(hwnd,msg,wp,lp);
@@ -1235,24 +1242,56 @@ VntValue *vnt_gui_panel(VntValue *x,VntValue *y,VntValue *w,VntValue *h){
     int xx=vnt_gui_require_int(x,"gui_panel()"),yy=vnt_gui_require_int(y,"gui_panel()"),ww=vnt_gui_require_int(w,"gui_panel()"),hh=vnt_gui_require_int(h,"gui_panel()");
     VntGuiCommand *c=vnt_gui_add(VG_PANEL,xx,yy,ww,hh,NULL);if(!c)return vnt_bool(0);c->background=vnt_gui_panel_background;c->radius=12;return vnt_bool(1);
 }
-VntValue *vnt_gui_button(VntValue *label,VntValue *x,VntValue *y){
-    const char *text=vnt_app_string(label,"gui_button()");int xx=vnt_gui_require_int(x,"gui_button()"),yy=vnt_gui_require_int(y,"gui_button()");
-    int w=(int)(strlen(text)*vnt_gui_button_font_size*0.62)+vnt_gui_button_padding*2+16,h=vnt_gui_button_font_size+vnt_gui_button_padding*2+2;
-    RECT r={xx,yy,xx+w,yy+h};int hover=vnt_gui_mouse_x>=r.left&&vnt_gui_mouse_x<r.right&&vnt_gui_mouse_y>=r.top&&vnt_gui_mouse_y<r.bottom;
+static int vnt_gui_input_state(int x,int y,int width,int height,int multiline,int create){
+    for(int i=0;i<vnt_gui_input_count;i++) if(vnt_gui_inputs[i].x==x&&vnt_gui_inputs[i].y==y){vnt_gui_inputs[i].width=width;vnt_gui_inputs[i].height=height;vnt_gui_inputs[i].multiline=multiline;return i;}
+    if(!create||vnt_gui_input_count>=16)return -1;
+    int i=vnt_gui_input_count++;memset(&vnt_gui_inputs[i],0,sizeof(vnt_gui_inputs[i]));
+    vnt_gui_inputs[i].x=x;vnt_gui_inputs[i].y=y;vnt_gui_inputs[i].width=width;vnt_gui_inputs[i].height=height;vnt_gui_inputs[i].multiline=multiline;return i;
+}
+static VntValue *vnt_gui_button_draw(const char *text,int xx,int yy,int w,int h){
+    if(w<24)w=24;if(h<24)h=24;RECT r={xx,yy,xx+w,yy+h};
+    int hover=vnt_gui_mouse_x>=r.left&&vnt_gui_mouse_x<r.right&&vnt_gui_mouse_y>=r.top&&vnt_gui_mouse_y<r.bottom;
     VntGuiCommand *c=vnt_gui_add(VG_BUTTON,xx,yy,w,h,text);if(c){c->font_size=vnt_gui_button_font_size;c->radius=vnt_gui_button_radius;c->hovered=hover;}
     return vnt_bool(vnt_gui_clicked&&vnt_gui_click_x>=r.left&&vnt_gui_click_x<r.right&&vnt_gui_click_y>=r.top&&vnt_gui_click_y<r.bottom);
 }
+VntValue *vnt_gui_button(VntValue *label,VntValue *x,VntValue *y){
+    const char *text=vnt_app_string(label,"gui_button()");int xx=vnt_gui_require_int(x,"gui_button()"),yy=vnt_gui_require_int(y,"gui_button()");
+    int w=(int)(strlen(text)*vnt_gui_button_font_size*0.62)+vnt_gui_button_padding*2+16,h=vnt_gui_button_font_size+vnt_gui_button_padding*2+2;
+    return vnt_gui_button_draw(text,xx,yy,w,h);
+}
+VntValue *vnt_gui_button_sized(VntValue *label,VntValue *x,VntValue *y,VntValue *width,VntValue *height){
+    return vnt_gui_button_draw(vnt_app_string(label,"gui_button_sized()"),vnt_gui_require_int(x,"gui_button_sized()"),vnt_gui_require_int(y,"gui_button_sized()"),vnt_gui_require_int(width,"gui_button_sized()"),vnt_gui_require_int(height,"gui_button_sized()"));
+}
 VntValue *vnt_gui_input(VntValue *label,VntValue *x,VntValue *y,VntValue *width){
     const char *placeholder=vnt_app_string(label,"gui_input()");int xx=vnt_gui_require_int(x,"gui_input()"),yy=vnt_gui_require_int(y,"gui_input()"),ww=vnt_gui_require_int(width,"gui_input()");
-    int index=-1;for(int i=0;i<vnt_gui_input_count;i++)if(vnt_gui_inputs[i].x==xx&&vnt_gui_inputs[i].y==yy){index=i;break;}
-    if(index<0&&vnt_gui_input_count<16){index=vnt_gui_input_count++;vnt_gui_inputs[index].x=xx;vnt_gui_inputs[index].y=yy;vnt_gui_inputs[index].width=ww;vnt_gui_inputs[index].text[0]=0;}
-    if(index>=0){
-        if(vnt_gui_clicked&&vnt_gui_click_x>=xx&&vnt_gui_click_x<xx+ww&&vnt_gui_click_y>=yy&&vnt_gui_click_y<yy+36)vnt_gui_focused_input=index;
-        VntGuiCommand *c=vnt_gui_add(VG_INPUT,xx,yy,ww,36,vnt_gui_inputs[index].text[0]?vnt_gui_inputs[index].text:placeholder);if(c)c->font_size=vnt_gui_font_size;
-        return vnt_string(vnt_gui_inputs[index].text);
-    }
+    int index=vnt_gui_input_state(xx,yy,ww,36,0,1);
+    if(index>=0){if(vnt_gui_clicked&&vnt_gui_click_x>=xx&&vnt_gui_click_x<xx+ww&&vnt_gui_click_y>=yy&&vnt_gui_click_y<yy+36)vnt_gui_focused_input=index;
+        int empty=!vnt_gui_inputs[index].text[0];VntGuiCommand *c=vnt_gui_add(VG_INPUT,xx,yy,ww,36,empty?placeholder:vnt_gui_inputs[index].text);if(c){c->font_size=vnt_gui_font_size;c->radius=7;c->placeholder=empty;}
+        return vnt_string(vnt_gui_inputs[index].text);}
     return vnt_string("");
 }
+VntValue *vnt_gui_textarea(VntValue *label,VntValue *x,VntValue *y,VntValue *width,VntValue *height){
+    const char *placeholder=vnt_app_string(label,"gui_textarea()");int xx=vnt_gui_require_int(x,"gui_textarea()"),yy=vnt_gui_require_int(y,"gui_textarea()"),ww=vnt_gui_require_int(width,"gui_textarea()"),hh=vnt_gui_require_int(height,"gui_textarea()");
+    int index=vnt_gui_input_state(xx,yy,ww,hh,1,1);
+    if(index>=0){if(vnt_gui_clicked&&vnt_gui_click_x>=xx&&vnt_gui_click_x<xx+ww&&vnt_gui_click_y>=yy&&vnt_gui_click_y<yy+hh)vnt_gui_focused_input=index;
+        int empty=!vnt_gui_inputs[index].text[0];VntGuiCommand *c=vnt_gui_add(VG_TEXTAREA,xx,yy,ww,hh,empty?placeholder:vnt_gui_inputs[index].text);if(c){c->font_size=vnt_gui_font_size;c->radius=8;c->placeholder=empty;}
+        return vnt_string(vnt_gui_inputs[index].text);}
+    return vnt_string("");
+}
+VntValue *vnt_gui_input_set(VntValue *text,VntValue *x,VntValue *y){
+    const char *value=vnt_app_string(text,"gui_input_set()");int xx=vnt_gui_require_int(x,"gui_input_set()"),yy=vnt_gui_require_int(y,"gui_input_set()");
+    int index=vnt_gui_input_state(xx,yy,0,0,0,1);if(index<0)return vnt_bool(0);
+    snprintf(vnt_gui_inputs[index].text,sizeof(vnt_gui_inputs[index].text),"%s",value);vnt_gui_inputs[index].select_all=0;return vnt_bool(1);
+}
+VntValue *vnt_gui_panel_color(VntValue *x,VntValue *y,VntValue *w,VntValue *h,VntValue *color){
+    int xx=vnt_gui_require_int(x,"gui_panel_color()"),yy=vnt_gui_require_int(y,"gui_panel_color()"),ww=vnt_gui_require_int(w,"gui_panel_color()"),hh=vnt_gui_require_int(h,"gui_panel_color()");
+    VntGuiCommand *c=vnt_gui_add(VG_PANEL,xx,yy,ww,hh,NULL);if(!c)return vnt_bool(0);c->background=vnt_gui_color(vnt_gui_require_int(color,"gui_panel_color()"));c->radius=12;return vnt_bool(1);
+}
+VntValue *vnt_gui_text_style(VntValue *text,VntValue *x,VntValue *y,VntValue *color,VntValue *size){
+    const char *s=vnt_app_string(text,"gui_text_style()");int xx=vnt_gui_require_int(x,"gui_text_style()"),yy=vnt_gui_require_int(y,"gui_text_style()"),font=vnt_gui_require_int(size,"gui_text_style()");
+    if(font<8||font>72)font=16;VntGuiCommand *c=vnt_gui_add(VG_TEXT,xx,yy,0,0,s);if(!c)return vnt_bool(0);c->font_size=font;c->color=vnt_gui_color(vnt_gui_require_int(color,"gui_text_style()"));return vnt_bool(1);
+}
+
 VntValue *vnt_gui_checkbox(VntValue *label,VntValue *x,VntValue *y,VntValue *checked){
     const char *text=vnt_app_string(label,"gui_checkbox()");int xx=vnt_gui_require_int(x,"gui_checkbox()"),yy=vnt_gui_require_int(y,"gui_checkbox()");
     int on=checked&&(checked->type==VNT_BOOL?checked->boolean:checked->type==VNT_INT?checked->integer:0);
@@ -1291,7 +1330,12 @@ VntValue *vnt_gui_panel(VntValue *x,VntValue *y,VntValue *w,VntValue *h) { (void
 VntValue *vnt_gui_fill(VntValue *color) { (void)color;return vnt_bool(0); }
 VntValue *vnt_gui_rect(VntValue *color) { (void)color;return vnt_bool(0); }
 VntValue *vnt_gui_button(VntValue *label,VntValue *x,VntValue *y) { (void)label;(void)x;(void)y;return vnt_bool(0); }
+VntValue *vnt_gui_button_sized(VntValue *label,VntValue *x,VntValue *y,VntValue *w,VntValue *h) { (void)label;(void)x;(void)y;(void)w;(void)h;return vnt_bool(0); }
 VntValue *vnt_gui_input(VntValue *label,VntValue *x,VntValue *y,VntValue *w) { (void)label;(void)x;(void)y;(void)w;return vnt_string(""); }
+VntValue *vnt_gui_textarea(VntValue *label,VntValue *x,VntValue *y,VntValue *w,VntValue *h) { (void)label;(void)x;(void)y;(void)w;(void)h;return vnt_string(""); }
+VntValue *vnt_gui_input_set(VntValue *text,VntValue *x,VntValue *y) { (void)text;(void)x;(void)y;return vnt_bool(0); }
+VntValue *vnt_gui_panel_color(VntValue *x,VntValue *y,VntValue *w,VntValue *h,VntValue *c) { (void)x;(void)y;(void)w;(void)h;(void)c;return vnt_bool(0); }
+VntValue *vnt_gui_text_style(VntValue *t,VntValue *x,VntValue *y,VntValue *c,VntValue *s) { (void)t;(void)x;(void)y;(void)c;(void)s;return vnt_bool(0); }
 VntValue *vnt_gui_checkbox(VntValue *label,VntValue *x,VntValue *y,VntValue *checked) { (void)label;(void)x;(void)y;(void)checked;return vnt_bool(0); }
 VntValue *vnt_gui_progress(VntValue *v,VntValue *m,VntValue *x,VntValue *y) { (void)v;(void)m;(void)x;(void)y;return vnt_bool(0); }
 VntValue *vnt_gui_separator(VntValue *x,VntValue *y,VntValue *w) { (void)x;(void)y;(void)w;return vnt_bool(0); }

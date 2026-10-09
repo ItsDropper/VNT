@@ -1,0 +1,7 @@
+/* VNT Notes: a layered midnight palette with restrained blue and mint accents. */
+window { background-color: #0B1020; }
+label { color: #AAB6D3; font-size: 14; }
+title { color: #F4F7FF; font-size: 30; }
+panel { background-color: #151F34; }
+button { background-color: #1D2B45; color: #DCE7FF; font-size: 13; padding: 9; border-radius: 10; }
+button:hover { background-color: #315CE8; }

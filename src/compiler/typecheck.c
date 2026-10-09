@@ -130,9 +130,11 @@ static int builtin_arity(const char *name, int argc) {
        runtime dispatch table in x86_backend.c. */
     if (!strcmp(name, "gui_css")) return argc == 1;
     if (!strcmp(name, "gui_button") || !strcmp(name, "gui_text_at") ||
-        !strcmp(name, "gui_title")) return argc == 3;
+        !strcmp(name, "gui_title") || !strcmp(name, "gui_input_set")) return argc == 3;
     if (!strcmp(name, "gui_panel") || !strcmp(name, "gui_input") ||
         !strcmp(name, "gui_checkbox") || !strcmp(name, "gui_progress")) return argc == 4;
+    if (!strcmp(name, "gui_button_sized") || !strcmp(name, "gui_textarea") ||
+        !strcmp(name, "gui_panel_color") || !strcmp(name, "gui_text_style")) return argc == 5;
     if (!strcmp(name, "gui_separator")) return argc == 3;
     if (!strcmp(name, "gui_size")) return argc == 2;
     if (!strcmp(name, "gui_open") || !strcmp(name, "gui_text") ||
@@ -249,15 +251,19 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 !strcmp(n->function_call.name, "gui_poll") ||
                 !strcmp(n->function_call.name, "gui_css") ||
                 !strcmp(n->function_call.name, "gui_button") ||
+                !strcmp(n->function_call.name, "gui_button_sized") ||
                 !strcmp(n->function_call.name, "gui_text_at") ||
                 !strcmp(n->function_call.name, "gui_title") ||
                 !strcmp(n->function_call.name, "gui_panel") ||
+                !strcmp(n->function_call.name, "gui_panel_color") ||
+                !strcmp(n->function_call.name, "gui_text_style") ||
+                !strcmp(n->function_call.name, "gui_input_set") ||
                 !strcmp(n->function_call.name, "gui_checkbox") ||
                 !strcmp(n->function_call.name, "gui_progress") ||
                 !strcmp(n->function_call.name, "gui_separator") ||
                 !strcmp(n->function_call.name, "gui_present")) return TY_BOOL;
             if (!strcmp(n->function_call.name, "gui_key")) return TY_INT;
-            if (!strcmp(n->function_call.name, "gui_input")) return TY_STRING;
+            if (!strcmp(n->function_call.name, "gui_input") || !strcmp(n->function_call.name, "gui_textarea")) return TY_STRING;
             if (!strcmp(n->function_call.name, "gui_size") ||
                 !strcmp(n->function_call.name, "gui_text") ||
                 !strcmp(n->function_call.name, "gui_fill") ||

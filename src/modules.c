@@ -354,7 +354,7 @@ char *vnt_load_project_source(const char *entry_path) {
 
     char *normalized_entry = normalize_path(entry_path);
     if (!normalized_entry ||
-        !load_recursive(&loader, normalized_entry, &output, &length, &capacity)) {
+        !load_recursive(&loader, normalized_entry, NULL, &output, &length, &capacity)) {
         free(output);
         output = NULL;
     }

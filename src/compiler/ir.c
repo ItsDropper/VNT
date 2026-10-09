@@ -343,16 +343,23 @@ int vnt_ir_validate(const VntIrProgram *ir) {
         const VntIrNode *node = &ir->nodes[i];
         if (!node->source || (int)node->opcode < 0 ||
             node->opcode > VNT_IR_UNARY ||
-            opcode_for(node->source->type) != node->opcode) return 0;
-        if ((int)node->role < 0 || node->role > VNT_IR_EDGE_OPERAND) return 0;
-        if (node->name_count && !node->names) return 0;
-        for (size_t j = 0; j < node->name_count; ++j)
-            if (!node->names[j]) return 0;
-        if (node->opcode == VNT_IR_BINARY &&
-            (node->operation < BINARY_ADD || node->operation > BINARY_OR)) return 0;
-        if (node->opcode == VNT_IR_UNARY &&
-            (node->operation < UNARY_NOT || node->operation > UNARY_DEREFERENCE)) return 0;
-        if ((node->first_child == VNT_IR_NO_NODE) != (node->child_count == 0)) return 0;
+            opcode_for(node->source->type) != node->opcode ||
+            (int)node->role < 0 || node->role > VNT_IR_EDGE_OPERAND ||
+            (node->name_count && !node->names) ||
+            (node->opcode == VNT_IR_BINARY &&
+             (node->operation < BINARY_ADD || node->operation > BINARY_OR)) ||
+            (node->opcode == VNT_IR_UNARY &&
+             (node->operation < UNARY_NOT || node->operation > UNARY_DEREFERENCE)) ||
+            ((node->first_child == VNT_IR_NO_NODE) != (node->child_count == 0))) {
+            free(parents);
+            return 0;
+        }
+        for (size_t j = 0; j < node->name_count; ++j) {
+            if (!node->names[j]) {
+                free(parents);
+                return 0;
+            }
+        }
         size_t child = node->first_child;
         size_t seen = 0, last = VNT_IR_NO_NODE;
         while (child != VNT_IR_NO_NODE) {

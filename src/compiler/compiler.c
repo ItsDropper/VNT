@@ -17,6 +17,11 @@ int compiler_compile(AstNode *program, const char *assembly_path) {
         return 0;
     }
 
+    /*
+     * From this point onward, native code generation must rely on HIR-owned
+     * metadata, not the original parser AST.
+     */
+    ir.program = NULL;
     if (!vnt_emit_x86_64(&ir, assembly_path)) {
         fprintf(stderr, "Native compiler: x86-64 code generation failed.\n");
         vnt_ir_free(&ir);

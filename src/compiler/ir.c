@@ -701,8 +701,6 @@ static int hir_fold_node(VntIrProgram *ir, size_t index, size_t *changed) {
     if (kind == 1) n->value.integer = result_int;
     else if (kind == 2) n->value.boolean = !!result_bool;
     else n->value.floating = result_float;
-    n->first_child = n->last_child = n->next_sibling == VNT_IR_NO_NODE
-        ? VNT_IR_NO_NODE : n->first_child;
     /* Children are discarded by the compaction pass below. */
     n->first_child = n->last_child = VNT_IR_NO_NODE;
     n->child_count = 0;

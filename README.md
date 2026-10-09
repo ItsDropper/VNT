@@ -156,6 +156,26 @@ directory where you want the data file created. The app uses VNT functions, loop
 conditionals, string handling, and the native file, environment, clock, and current
 directory APIs.
 
+## Native GUI: VNT Focus
+
+VNT's Windows GUI API includes CSS-subset styling, positioned text, rounded panels, and clickable buttons. The VNT Focus example is a local-first focus timer dashboard with task toggles and a local session log.
+
+Build and run it from the repository root:
+
+```powershell
+.\vnt.exe --compile examples\vnt_focus.vnt -o vnt_focus.exe
+.\vnt_focus.exe
+```
+
+The app reads `examples/vnt_focus.css` relative to the current working directory and writes session notes to `vnt_focus.log`. No network connection or account is used. The GUI backend is currently Windows-only.
+
+Available drawing functions:
+
+- `gui_text_at(text, x, y)` — draw a label at a position.
+- `gui_title(text, x, y)` — draw a larger title using the `title` CSS rule.
+- `gui_panel(x, y, width, height)` — draw a rounded panel using the `panel` CSS rule.
+- `gui_button(label, x, y)` — draw a button and return true when clicked.
+
 ## How VNT Works
 
 VNT is compiled to native x86-64 code.

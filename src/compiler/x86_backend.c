@@ -765,6 +765,9 @@ static void emit_call(X86Gen *g,AstNode *n) {
         else if (!strcmp(name, "gui_open")) { arity = 1; runtime_name = "vnt_gui_open"; }
         else if (!strcmp(name, "gui_size")) { arity = 2; runtime_name = "vnt_gui_size"; }
         else if (!strcmp(name, "gui_text")) { arity = 1; runtime_name = "vnt_gui_text"; }
+        else if (!strcmp(name, "gui_text_at")) { arity = 3; runtime_name = "vnt_gui_text_at"; }
+        else if (!strcmp(name, "gui_title")) { arity = 3; runtime_name = "vnt_gui_title"; }
+        else if (!strcmp(name, "gui_panel")) { arity = 4; runtime_name = "vnt_gui_panel"; }
         else if (!strcmp(name, "gui_fill")) { arity = 1; runtime_name = "vnt_gui_fill"; }
         else if (!strcmp(name, "gui_rect")) { arity = 1; runtime_name = "vnt_gui_rect"; }
         else if (!strcmp(name, "gui_poll")) { arity = 0; runtime_name = "vnt_gui_poll"; }
@@ -776,7 +779,16 @@ static void emit_call(X86Gen *g,AstNode *n) {
                 return;
             }
             AstNode *arg = n->function_call.arguments;
-            if (arity == 3) {
+            if (arity == 4) {
+                for (AstNode *a = arg; a; a = a->next) {
+                    emit_expr(g, a);
+                    fputs("    pushq %rax\n", g->out);
+                    g->temp_depth++;
+                }
+                fputs("    movq 24(%rsp),%rcx\n    movq 16(%rsp),%rdx\n    movq 8(%rsp),%r8\n    movq 0(%rsp),%r9\n", g->out);
+                fputs("    addq $32,%rsp\n", g->out);
+                g->temp_depth -= 4;
+            } else if (arity == 3) {
                 for (AstNode *a = arg; a; a = a->next) {
                     emit_expr(g, a);
                     fputs("    pushq %rax\n", g->out);

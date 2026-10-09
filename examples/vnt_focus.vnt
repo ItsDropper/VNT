@@ -1,0 +1,93 @@
+# VNT Focus — a local-first focus timer and lightweight task dashboard.
+# Run from the repository root so the stylesheet path resolves.
+
+gui_size(1000, 720)
+gui_css("examples/vnt_focus.css")
+
+if gui_open("VNT Focus  |  Make room for deep work") {
+    running = true
+    timer_running = false
+    remaining_seconds = 1500
+    last_tick = time_ms()
+    task_one_done = false
+    task_two_done = false
+    task_three_done = false
+    sessions_saved = 0
+    status_message = "Ready when you are. Start a focus session."
+    log_path = "vnt_focus.log"
+
+    while running {
+        running = gui_poll()
+        if timer_running {
+            if time_ms() - last_tick >= 1000 {
+                remaining_seconds = remaining_seconds - 1
+                last_tick = time_ms()
+                if remaining_seconds <= 0 {
+                    timer_running = false
+                    status_message = "Focus block complete. Take a short break."
+                    fs_append(log_path, "Completed 25-minute focus block.\n")
+                    sessions_saved = sessions_saved + 1
+                }
+            }
+        }
+        minutes_left = remaining_seconds / 60
+        seconds_left = remaining_seconds % 60
+        if minutes_left < 10 { minutes_text = "0" + minutes_left } else { minutes_text = "" + minutes_left }
+        if seconds_left < 10 { seconds_text = "0" + seconds_left } else { seconds_text = "" + seconds_left }
+
+        gui_panel(28, 120, 610, 330)
+        gui_panel(658, 120, 312, 330)
+        gui_panel(28, 470, 942, 190)
+        gui_title("VNT FOCUS", 34, 26)
+        gui_text_at("YOUR QUIET SPACE FOR GETTING THINGS DONE", 36, 72)
+        gui_text_at("LOCAL FIRST  /  NO ACCOUNTS  /  NO TELEMETRY", 36, 94)
+        gui_text_at("FOCUS SESSION", 52, 145)
+        gui_title(minutes_text + ":" + seconds_text, 52, 184)
+        if timer_running { gui_text_at("IN FOCUS  -  STAY WITH ONE THING", 54, 244) }
+        else { gui_text_at("A 25-MINUTE BLOCK. ONE THING AT A TIME.", 54, 244) }
+        gui_text_at("Choose a control to manage your session.", 54, 280)
+        gui_text_at("TODAY'S TASKS", 682, 145)
+        if task_one_done { gui_text_at("[x] Review current VNT build", 682, 190) }
+        else { gui_text_at("[ ] Review current VNT build", 682, 190) }
+        if task_two_done { gui_text_at("[x] Ship one useful feature", 682, 226) }
+        else { gui_text_at("[ ] Ship one useful feature", 682, 226) }
+        if task_three_done { gui_text_at("[x] Write a short dev log", 682, 262) }
+        else { gui_text_at("[ ] Write a short dev log", 682, 262) }
+        gui_text_at("Click a task below to toggle it.", 682, 305)
+        gui_text_at("SESSION CONTROLS", 52, 495)
+        gui_text_at(status_message, 52, 526)
+        gui_text_at("Saved sessions this run: " + sessions_saved, 52, 554)
+
+        if gui_button("Start / Resume", 52, 350) {
+            if remaining_seconds <= 0 { remaining_seconds = 1500 }
+            timer_running = true
+            last_tick = time_ms()
+            status_message = "Focus timer running. Notifications stay out of your way."
+        }
+        if gui_button("Pause", 220, 350) { timer_running = false; status_message = "Paused. Resume whenever you're ready." }
+        if gui_button("Reset", 326, 350) { timer_running = false; remaining_seconds = 1500; status_message = "Timer reset to 25:00." }
+        if gui_button("Toggle task 1", 682, 344) {
+            task_one_done = !task_one_done
+            if task_one_done { status_message = "Task completed: Review current VNT build." }
+            else { status_message = "Task reopened: Review current VNT build." }
+        }
+        if gui_button("Toggle task 2", 682, 382) {
+            task_two_done = !task_two_done
+            if task_two_done { status_message = "Task completed: Ship one useful feature." }
+            else { status_message = "Task reopened: Ship one useful feature." }
+        }
+        if gui_button("Toggle task 3", 682, 420) {
+            task_three_done = !task_three_done
+            if task_three_done { status_message = "Task completed: Write a short dev log." }
+            else { status_message = "Task reopened: Write a short dev log." }
+        }
+        if gui_button("Save session", 52, 590) {
+            saved = fs_append(log_path, "Manual log: remaining " + minutes_text + ":" + seconds_text + " | " + status_message + "\n")
+            if saved { sessions_saved = sessions_saved + 1; status_message = "Session note saved to vnt_focus.log." }
+            else { status_message = "Could not write vnt_focus.log in this folder." }
+        }
+        if gui_button("Exit", 202, 590) { running = false }
+        sleep_ms(16)
+    }
+    gui_close()
+} else { print("Could not create the VNT Focus window.") }

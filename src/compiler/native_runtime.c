@@ -1067,11 +1067,14 @@ static const char *vnt_gui_class_name = "VNTNativeWindow";
 static int vnt_gui_clicked;
 static int vnt_gui_click_x, vnt_gui_click_y;
 static int vnt_gui_mouse_x, vnt_gui_mouse_y;
-static COLORREF vnt_gui_text_color = RGB(25, 30, 40);
+static COLORREF vnt_gui_text_color = RGB(225, 231, 242);
+static COLORREF vnt_gui_title_color = RGB(245, 247, 255);
+static COLORREF vnt_gui_panel_background = RGB(23, 31, 51);
 static COLORREF vnt_gui_button_background = RGB(40, 120, 208);
 static COLORREF vnt_gui_button_hover = RGB(29, 95, 168);
 static COLORREF vnt_gui_button_text = RGB(255, 255, 255);
 static int vnt_gui_font_size = 16;
+static int vnt_gui_title_font_size = 30;
 static int vnt_gui_button_font_size = 16;
 static int vnt_gui_button_padding = 12;
 static int vnt_gui_button_radius = 8;
@@ -1168,7 +1171,13 @@ static void vnt_gui_apply_css_rule(const char *css, const char *selector) {
                 vnt_gui_parse_color(value, &color)) vnt_gui_text_color = color;
             else if (!strcmp(selector, "label") && !strcmp(key, "font-size")) {
                 int n = atoi(value); if (n >= 8 && n <= 72) vnt_gui_font_size = n;
-            } else if ((!strcmp(selector, "button") || !strcmp(selector, "button:hover")) &&
+            } else if (!strcmp(selector, "title") && !strcmp(key, "color") &&
+                       vnt_gui_parse_color(value, &color)) vnt_gui_title_color = color;
+            else if (!strcmp(selector, "title") && !strcmp(key, "font-size")) {
+                int n = atoi(value); if (n >= 12 && n <= 72) vnt_gui_title_font_size = n;
+            } else if (!strcmp(selector, "panel") && !strcmp(key, "background-color") &&
+                       vnt_gui_parse_color(value, &color)) vnt_gui_panel_background = color;
+            else if ((!strcmp(selector, "button") || !strcmp(selector, "button:hover")) &&
                        !strcmp(key, "background-color") && vnt_gui_parse_color(value, &color)) {
                 if (!strcmp(selector, "button:hover")) vnt_gui_button_hover = color;
                 else vnt_gui_button_background = color;
@@ -1203,6 +1212,8 @@ VntValue *vnt_gui_css(VntValue *path) {
     }
     vnt_gui_apply_css_rule(css, "window");
     vnt_gui_apply_css_rule(css, "label");
+    vnt_gui_apply_css_rule(css, "title");
+    vnt_gui_apply_css_rule(css, "panel");
     vnt_gui_apply_css_rule(css, "button");
     vnt_gui_apply_css_rule(css, "button:hover");
     free(css);
@@ -1256,6 +1267,49 @@ VntValue *vnt_gui_text(VntValue *text) {
     if(old) SelectObject(dc,old);
     if(font) DeleteObject(font);
     ReleaseDC(vnt_gui_hwnd,dc);
+    return vnt_bool(1);
+}
+
+VntValue *vnt_gui_text_at(VntValue *text, VntValue *xv, VntValue *yv) {
+    const char *line = vnt_app_string(text, "gui_text_at()");
+    int x = vnt_gui_require_int(xv, "gui_text_at()");
+    int y = vnt_gui_require_int(yv, "gui_text_at()");
+    if (!vnt_gui_hwnd) return vnt_bool(0);
+    HDC dc = GetDC(vnt_gui_hwnd);
+    if (!dc) return vnt_bool(0);
+    HFONT font = CreateFontA(-vnt_gui_font_size,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,"Segoe UI");
+    HGDIOBJ old = font ? SelectObject(dc,font) : NULL;
+    SetBkMode(dc,TRANSPARENT); SetTextColor(dc,vnt_gui_text_color);
+    TextOutA(dc,x,y,line,(int)strlen(line));
+    if(old) SelectObject(dc,old); if(font) DeleteObject(font); ReleaseDC(vnt_gui_hwnd,dc);
+    return vnt_bool(1);
+}
+VntValue *vnt_gui_title(VntValue *text, VntValue *xv, VntValue *yv) {
+    const char *line = vnt_app_string(text, "gui_title()");
+    int x = vnt_gui_require_int(xv, "gui_title()");
+    int y = vnt_gui_require_int(yv, "gui_title()");
+    if (!vnt_gui_hwnd) return vnt_bool(0);
+    HDC dc = GetDC(vnt_gui_hwnd);
+    if (!dc) return vnt_bool(0);
+    HFONT font = CreateFontA(-vnt_gui_title_font_size,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,"Segoe UI");
+    HGDIOBJ old = font ? SelectObject(dc,font) : NULL;
+    SetBkMode(dc,TRANSPARENT); SetTextColor(dc,vnt_gui_title_color);
+    TextOutA(dc,x,y,line,(int)strlen(line));
+    if(old) SelectObject(dc,old); if(font) DeleteObject(font); ReleaseDC(vnt_gui_hwnd,dc);
+    return vnt_bool(1);
+}
+VntValue *vnt_gui_panel(VntValue *xv, VntValue *yv, VntValue *wv, VntValue *hv) {
+    int x=vnt_gui_require_int(xv,"gui_panel()"), y=vnt_gui_require_int(yv,"gui_panel()");
+    int w=vnt_gui_require_int(wv,"gui_panel()"), h=vnt_gui_require_int(hv,"gui_panel()");
+    if(!vnt_gui_hwnd || w<=0 || h<=0) return vnt_bool(0);
+    HDC dc=GetDC(vnt_gui_hwnd); if(!dc) return vnt_bool(0);
+    RECT r={x,y,x+w,y+h};
+    HBRUSH brush=CreateSolidBrush(vnt_gui_panel_background);
+    HPEN pen=CreatePen(PS_SOLID,1,vnt_gui_panel_background);
+    HGDIOBJ ob=brush?SelectObject(dc,brush):NULL, op=pen?SelectObject(dc,pen):NULL;
+    RoundRect(dc,r.left,r.top,r.right,r.bottom,18,18);
+    if(op) SelectObject(dc,op); if(ob) SelectObject(dc,ob);
+    if(pen) DeleteObject(pen); if(brush) DeleteObject(brush); ReleaseDC(vnt_gui_hwnd,dc);
     return vnt_bool(1);
 }
 
@@ -1336,6 +1390,9 @@ VntValue *vnt_gui_css(VntValue *path) { (void)path;fprintf(stderr,"Runtime error
 VntValue *vnt_gui_size(VntValue *width,VntValue *height) { (void)width;(void)height;fprintf(stderr,"Runtime error: native GUI is currently supported on Windows only.\n");return vnt_bool(0); }
 VntValue *vnt_gui_open(VntValue *title) { (void)title;fprintf(stderr,"Runtime error: native GUI is currently supported on Windows only.\n");return vnt_bool(0); }
 VntValue *vnt_gui_text(VntValue *text) { (void)text;return vnt_bool(0); }
+VntValue *vnt_gui_text_at(VntValue *text,VntValue *x,VntValue *y) { (void)text;(void)x;(void)y;return vnt_bool(0); }
+VntValue *vnt_gui_title(VntValue *text,VntValue *x,VntValue *y) { (void)text;(void)x;(void)y;return vnt_bool(0); }
+VntValue *vnt_gui_panel(VntValue *x,VntValue *y,VntValue *w,VntValue *h) { (void)x;(void)y;(void)w;(void)h;return vnt_bool(0); }
 VntValue *vnt_gui_fill(VntValue *color) { (void)color;return vnt_bool(0); }
 VntValue *vnt_gui_rect(VntValue *color) { (void)color;return vnt_bool(0); }
 VntValue *vnt_gui_button(VntValue *label,VntValue *x,VntValue *y) { (void)label;(void)x;(void)y;return vnt_bool(0); }

@@ -129,7 +129,9 @@ static int builtin_arity(const char *name, int argc) {
     /* Native Windows GUI API. Keep its signatures in sync with the
        runtime dispatch table in x86_backend.c. */
     if (!strcmp(name, "gui_css")) return argc == 1;
-    if (!strcmp(name, "gui_button")) return argc == 3;
+    if (!strcmp(name, "gui_button") || !strcmp(name, "gui_text_at") ||
+        !strcmp(name, "gui_title")) return argc == 3;
+    if (!strcmp(name, "gui_panel")) return argc == 4;
     if (!strcmp(name, "gui_size")) return argc == 2;
     if (!strcmp(name, "gui_open") || !strcmp(name, "gui_text") ||
         !strcmp(name, "gui_fill") || !strcmp(name, "gui_rect")) return argc == 1;
@@ -244,7 +246,10 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
             if (!strcmp(n->function_call.name, "gui_open") ||
                 !strcmp(n->function_call.name, "gui_poll") ||
                 !strcmp(n->function_call.name, "gui_css") ||
-                !strcmp(n->function_call.name, "gui_button")) return TY_BOOL;
+                !strcmp(n->function_call.name, "gui_button") ||
+                !strcmp(n->function_call.name, "gui_text_at") ||
+                !strcmp(n->function_call.name, "gui_title") ||
+                !strcmp(n->function_call.name, "gui_panel")) return TY_BOOL;
             if (!strcmp(n->function_call.name, "gui_key")) return TY_INT;
             if (!strcmp(n->function_call.name, "gui_size") ||
                 !strcmp(n->function_call.name, "gui_text") ||

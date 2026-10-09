@@ -116,13 +116,22 @@ static void emit_user_call(HirGen *g,const VntIrNode*n,size_t i) {
         if(count==32){fail(g,"native functions support at most 32 arguments.");return;}
         args[count++]=c;
     }
-    if(count>4){fail(g,"HIR backend currently supports at most four call arguments.");return;}
     for(int a=0;a<count;a++){emit_expr(g,args[a]);fputs("    pushq %rax\n",g->out);}
     static const char *regs[]={"%rcx","%rdx","%r8","%r9"};
-    for(int a=0;a<count;a++)fprintf(g->out,"    movq %d(%%rsp),%s\n",(count-1-a)*8,regs[a]);
-    if(count)fprintf(g->out,"    addq $%d,%%rsp\n",count*8);
-    fprintf(g->out,"    subq $32,%%rsp\n    call vnt_fn_");
-    cname(g->out,"",n->value.text);fputs("\n    addq $32,%rsp\n",g->out);
+    if(count<=4){
+        for(int a=0;a<count;a++)fprintf(g->out,"    movq %d(%%rsp),%s\n",(count-1-a)*8,regs[a]);
+        if(count)fprintf(g->out,"    addq $%d,%%rsp\n",count*8);
+        fputs("    subq $32,%rsp\n    call vnt_fn_",g->out);
+        cname(g->out,"",n->value.text);fputs("\n    addq $32,%rsp\n",g->out);
+    } else {
+        int stack_count=count-4,area=32+stack_count*8;
+        if(((count*8+area)&15)!=0)area+=8;
+        fprintf(g->out,"    subq $%d,%%rsp\n",area);
+        for(int a=0;a<4;a++)fprintf(g->out,"    movq %d(%%rsp),%s\n",area+(count-1-a)*8,regs[a]);
+        for(int a=4;a<count;a++)fprintf(g->out,"    movq %d(%%rsp),%%r10\n    movq %%r10,%d(%%rsp)\n",area+(count-1-a)*8,32+(a-4)*8);
+        fputs("    call vnt_fn_",g->out);cname(g->out,"",n->value.text);fputc('\n',g->out);
+        fprintf(g->out,"    addq $%d,%%rsp\n",area+count*8);
+    }
     (void)i;
 }
 static const char *builtin(const char *s,int *arity) {
@@ -164,12 +173,21 @@ static void emit_call(HirGen *g,size_t i,const VntIrNode*n) {
     if(is_struct){if(count){fail(g,"struct constructors take no arguments.");return;}fprintf(g->out,"    lea .Lstr%d(%%rip),%%rcx\n",string_label(g,name));call0(g,"vnt_struct_new");return;}
     if(!target){emit_user_call(g,n,i);return;}
     if(arity!=count){fail(g,"native builtin called with wrong argument count.");return;}
-    if(count>4){fail(g,"native builtin currently supports at most four arguments.");return;}
+    if(count>32){fail(g,"native builtin supports at most 32 arguments.");return;}
     for(int a=0;a<count;a++){emit_expr(g,args[a]);fputs("    pushq %rax\n",g->out);}
     static const char *regs[]={"%rcx","%rdx","%r8","%r9"};
-    for(int a=0;a<count;a++)fprintf(g->out,"    movq %d(%%rsp),%s\n",(count-1-a)*8,regs[a]);
-    if(count)fprintf(g->out,"    addq $%d,%%rsp\n",count*8);
-    call0(g,target);
+    if(count<=4){
+        for(int a=0;a<count;a++)fprintf(g->out,"    movq %d(%%rsp),%s\n",(count-1-a)*8,regs[a]);
+        if(count)fprintf(g->out,"    addq $%d,%%rsp\n",count*8);
+        call0(g,target);
+    } else {
+        int stack_count=count-4,area=32+stack_count*8;
+        if(((count*8+area)&15)!=0)area+=8;
+        fprintf(g->out,"    subq $%d,%%rsp\n",area);
+        for(int a=0;a<4;a++)fprintf(g->out,"    movq %d(%%rsp),%s\n",area+(count-1-a)*8,regs[a]);
+        for(int a=4;a<count;a++)fprintf(g->out,"    movq %d(%%rsp),%%r10\n    movq %%r10,%d(%%rsp)\n",area+(count-1-a)*8,32+(a-4)*8);
+        fprintf(g->out,"    call %s\n    addq $%d,%%rsp\n",target,area+count*8);
+    }
 }
 static void emit_expr(HirGen *g,size_t i) {
     const VntIrNode*n=node(g,i);if(g->error)return;if(!n){fail(g,"missing HIR expression.");return;}

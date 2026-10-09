@@ -3,6 +3,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdint.h>
+#include <limits.h>
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -243,20 +244,35 @@ VntValue *vnt_add(VntValue *a, VntValue *b) {
     require_number(a, b);
     if (a->type == VNT_FLOAT || b->type == VNT_FLOAT)
         return vnt_float(number_value(a) + number_value(b));
-    return vnt_int(a->integer + b->integer);
+    int64_t result = (int64_t)a->integer + (int64_t)b->integer;
+    if (result < INT_MIN || result > INT_MAX) {
+        fprintf(stderr, "Runtime error: integer overflow in addition.\\n");
+        exit(1);
+    }
+    return vnt_int((int)result);
 }
 VntValue *vnt_sub(VntValue *a, VntValue *b) {
     require_number(a,b);
     if (a->type == VNT_FLOAT || b->type == VNT_FLOAT)
         return vnt_float(number_value(a) - number_value(b));
-    return vnt_int(a->integer - b->integer);
+    int64_t result = (int64_t)a->integer - (int64_t)b->integer;
+    if (result < INT_MIN || result > INT_MAX) {
+        fprintf(stderr, "Runtime error: integer overflow in subtraction.\\n");
+        exit(1);
+    }
+    return vnt_int((int)result);
 }
 
 VntValue *vnt_mul(VntValue *a, VntValue *b) {
     require_number(a,b);
     if (a->type == VNT_FLOAT || b->type == VNT_FLOAT)
         return vnt_float(number_value(a) * number_value(b));
-    return vnt_int(a->integer * b->integer);
+    int64_t result = (int64_t)a->integer * (int64_t)b->integer;
+    if (result < INT_MIN || result > INT_MAX) {
+        fprintf(stderr, "Runtime error: integer overflow in multiplication.\\n");
+        exit(1);
+    }
+    return vnt_int((int)result);
 }
 
 VntValue *vnt_div(VntValue *a, VntValue *b) {
@@ -267,6 +283,10 @@ VntValue *vnt_div(VntValue *a, VntValue *b) {
     }
     if (a->type == VNT_FLOAT || b->type == VNT_FLOAT)
         return vnt_float(number_value(a) / number_value(b));
+    if (a->integer == INT_MIN && b->integer == -1) {
+        fprintf(stderr, "Runtime error: integer overflow in division.\\n");
+        exit(1);
+    }
     return vnt_int(a->integer / b->integer);
 }
 
@@ -279,6 +299,7 @@ VntValue *vnt_mod(VntValue *a, VntValue *b) {
         fprintf(stderr, "Runtime error: modulo by zero.\n");
         exit(1);
     }
+    if (a->integer == INT_MIN && b->integer == -1) return vnt_int(0);
     return vnt_int(a->integer % b->integer);
 }
 

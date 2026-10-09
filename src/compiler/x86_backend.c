@@ -79,7 +79,7 @@ static int var_offset(X86Gen *g,const char *name) {
 static void collect_vars(X86Gen *g, AstNode *n) {
     for(;n;n=n->next) {
         switch(n->type) {
-            case AST_VARIABLE_DECLARATION: var_add(g,n->variable_declaration.name); { int vi=var_find(g,n->variable_declaration.name); if(vi>=0) g->vars[vi].has_decl=1; } break;
+            case AST_VARIABLE_DECLARATION: var_add(g,n->variable_declaration.name); { int vi=var_find(g,n->variable_declaration.name); if(vi>=0) g->vars[vi].has_decl=1; } collect_vars(g,n->variable_declaration.value); break;
             case AST_VARIABLE: var_add(g,n->variable.name); break;
             case AST_ASSIGNMENT:
                 if(n->assignment.target && n->assignment.target->type==AST_VARIABLE)

@@ -285,6 +285,7 @@ AstNode *ast_create_variable_declaration(
     node->type = AST_VARIABLE_DECLARATION;
     node->variable_declaration.name = copy_string(name);
     node->variable_declaration.value = value;
+    node->variable_declaration.is_reassignment = 0;
     node->next = NULL;
 
     if (node->variable_declaration.name == NULL) {

@@ -200,23 +200,51 @@ VntValue *vnt_string_get(VntValue *s, VntValue *index) {
     return vnt_string(out);
 }
 
+static char *value_to_concat_string(VntValue *v) {
+    char buffer[64];
+    const char *text = NULL;
+    if (!v) return strdup("null");
+    switch (v->type) {
+        case VNT_STRING: text = v->string; break;
+        case VNT_INT: snprintf(buffer, sizeof(buffer), "%d", v->integer); text = buffer; break;
+        case VNT_FLOAT: snprintf(buffer, sizeof(buffer), "%.15g", v->floating); text = buffer; break;
+        case VNT_BOOL: text = v->boolean ? "true" : "false"; break;
+        default: return NULL;
+    }
+    return strdup(text ? text : "");
+}
+
 VntValue *vnt_add(VntValue *a, VntValue *b) {
-    if (a->type == VNT_STRING && b->type == VNT_STRING) {
-        size_t la = strlen(a->string), lb = strlen(b->string);
-        char *s = malloc(la + lb + 1);
-        if (!s) { fprintf(stderr, "Runtime error: out of memory.\n"); exit(1); }
-        memcpy(s, a->string, la);
-        memcpy(s + la, b->string, lb + 1);
-        VntValue *v = vnt_string(s);
-        free(s);
-        return v;
+    if (a && b && (a->type == VNT_STRING || b->type == VNT_STRING)) {
+        char *left = value_to_concat_string(a);
+        char *right = value_to_concat_string(b);
+        if (!left || !right) {
+            free(left);
+            free(right);
+            fprintf(stderr, "Runtime error: string concatenation supports strings, numbers, and booleans.\n");
+            exit(1);
+        }
+        size_t la = strlen(left), lb = strlen(right);
+        char *joined = malloc(la + lb + 1);
+        if (!joined) {
+            free(left);
+            free(right);
+            fprintf(stderr, "Runtime error: out of memory.\n");
+            exit(1);
+        }
+        memcpy(joined, left, la);
+        memcpy(joined + la, right, lb + 1);
+        VntValue *result = vnt_string(joined);
+        free(joined);
+        free(left);
+        free(right);
+        return result;
     }
     require_number(a, b);
     if (a->type == VNT_FLOAT || b->type == VNT_FLOAT)
         return vnt_float(number_value(a) + number_value(b));
     return vnt_int(a->integer + b->integer);
 }
-
 VntValue *vnt_sub(VntValue *a, VntValue *b) {
     require_number(a,b);
     if (a->type == VNT_FLOAT || b->type == VNT_FLOAT)

@@ -1,0 +1,2 @@
+print(ffi_int("kernel32.dll", "GetCurrentProcessId"))
+print("FFI_OK")

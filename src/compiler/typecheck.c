@@ -106,8 +106,17 @@ static void check_call(TypeChecker *tc, AstNode *n) {
         return;
     }
 
+    /* Struct constructors are callable expressions, but are not functions. */
+    if (find_struct(tc, n->function_call.name)) return;
+
     FunctionDef *fn = find_function(tc, n->function_call.name);
-    if (fn && fn->arity != argc)
+    if (!fn) {
+        char message[256];
+        snprintf(message, sizeof(message), "call to undeclared function '%s'.", n->function_call.name);
+        error(tc, message);
+        return;
+    }
+    if (fn->arity != argc)
         error(tc, "function called with the wrong number of arguments.");
 }
 

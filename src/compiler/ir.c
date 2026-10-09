@@ -530,6 +530,165 @@ int vnt_ir_validate(const VntIrProgram *ir) {
     return valid;
 }
 
+
+static size_t hir_child_role(const VntIrProgram *ir, size_t parent, VntIrEdgeRole role) {
+    for (size_t c = ir->nodes[parent].first_child; c != VNT_IR_NO_NODE;
+         c = ir->nodes[c].next_sibling)
+        if (ir->nodes[c].role == role) return c;
+    return VNT_IR_NO_NODE;
+}
+
+static AstNode *hir_materialize_node(const VntIrProgram *ir, size_t index);
+
+static AstNode *hir_materialize_list(const VntIrProgram *ir, size_t parent,
+                                     VntIrEdgeRole role, int *count) {
+    AstNode *list = NULL;
+    *count = 0;
+    for (size_t c = ir->nodes[parent].first_child; c != VNT_IR_NO_NODE;
+         c = ir->nodes[c].next_sibling) {
+        if (ir->nodes[c].role != role) continue;
+        AstNode *item = hir_materialize_node(ir, c);
+        if (!item) { ast_free(list); return NULL; }
+        ast_append(&list, item);
+        ++*count;
+    }
+    return list;
+}
+
+static AstNode *hir_materialize_child(const VntIrProgram *ir, size_t parent,
+                                      VntIrEdgeRole role) {
+    size_t child = hir_child_role(ir, parent, role);
+    return child == VNT_IR_NO_NODE ? NULL : hir_materialize_node(ir, child);
+}
+
+static char **hir_copy_names(const VntIrNode *node) {
+    if (!node->name_count) return NULL;
+    char **names = calloc(node->name_count, sizeof(*names));
+    if (!names) return NULL;
+    for (size_t i = 0; i < node->name_count; ++i) {
+        names[i] = strdup(node->names[i]);
+        if (!names[i]) {
+            for (size_t j = 0; j < i; ++j) free(names[j]);
+            free(names);
+            return NULL;
+        }
+    }
+    return names;
+}
+
+static AstNode *hir_materialize_node(const VntIrProgram *ir, size_t index) {
+    if (!ir || index >= ir->node_count) return NULL;
+    const VntIrNode *n = &ir->nodes[index];
+    AstNode *a = NULL;
+    int count = 0, count2 = 0;
+    AstNode *x = NULL, *y = NULL, *z = NULL;
+    switch (n->opcode) {
+        case VNT_IR_PROGRAM:
+            x = hir_materialize_list(ir, index, VNT_IR_EDGE_STATEMENT, &count);
+            if (n->child_count && !x) return NULL;
+            a = ast_create_program(x); break;
+        case VNT_IR_PRINT:
+            x = hir_materialize_child(ir,index,VNT_IR_EDGE_VALUE);
+            if (hir_child_role(ir,index,VNT_IR_EDGE_VALUE)!=VNT_IR_NO_NODE && !x) return NULL;
+            a = ast_create_print(x); break;
+        case VNT_IR_IF:
+            x = hir_materialize_child(ir,index,VNT_IR_EDGE_CONDITION);
+            y = hir_materialize_list(ir,index,VNT_IR_EDGE_THEN,&count);
+            z = hir_materialize_list(ir,index,VNT_IR_EDGE_ELSE,&count2);
+            if (!x || (role_count(ir,&ir->nodes[index],VNT_IR_EDGE_THEN) && !y) ||
+                (role_count(ir,&ir->nodes[index],VNT_IR_EDGE_ELSE) && !z)) {
+                ast_free(x); ast_free(y); ast_free(z); return NULL;
+            }
+            a = ast_create_if(x,y,z); break;
+        case VNT_IR_WHILE:
+            x = hir_materialize_child(ir,index,VNT_IR_EDGE_CONDITION);
+            y = hir_materialize_list(ir,index,VNT_IR_EDGE_BODY,&count);
+            if (!x || (role_count(ir,&ir->nodes[index],VNT_IR_EDGE_BODY) && !y)) {
+                ast_free(x); ast_free(y); return NULL;
+            }
+            a = ast_create_while(x,y); break;
+        case VNT_IR_FUNCTION: {
+            x = hir_materialize_list(ir,index,VNT_IR_EDGE_BODY,&count);
+            char **names = hir_copy_names(n);
+            if (n->name_count && !names) { ast_free(x); return NULL; }
+            a = ast_create_function_declaration(n->value.text,names,(int)n->name_count,x);
+            if (!a) { for(size_t i=0;i<n->name_count;i++) free(names[i]); free(names); ast_free(x); }
+            break;
+        }
+        case VNT_IR_STRUCT: {
+            char **names = hir_copy_names(n);
+            if (n->name_count && !names) return NULL;
+            a = ast_create_struct_declaration(n->value.text,names,(int)n->name_count);
+            if (!a) { for(size_t i=0;i<n->name_count;i++) free(names[i]); free(names); }
+            break;
+        }
+        case VNT_IR_CALL:
+            x = hir_materialize_list(ir,index,VNT_IR_EDGE_ARGUMENT,&count);
+            if (n->child_count && !x) return NULL;
+            a = ast_create_function_call(n->value.text,x,count); break;
+        case VNT_IR_RETURN:
+            x = hir_materialize_child(ir,index,VNT_IR_EDGE_VALUE);
+            if (hir_child_role(ir,index,VNT_IR_EDGE_VALUE)!=VNT_IR_NO_NODE && !x) return NULL;
+            a = ast_create_return(x); break;
+        case VNT_IR_BREAK: a = ast_create_break(); break;
+        case VNT_IR_CONTINUE: a = ast_create_continue(); break;
+        case VNT_IR_STRING: a = ast_create_string(n->value.text); break;
+        case VNT_IR_INTEGER: a = ast_create_integer(n->value.integer); break;
+        case VNT_IR_FLOAT: a = ast_create_float(n->value.floating); break;
+        case VNT_IR_BOOLEAN: a = ast_create_boolean(n->value.boolean); break;
+        case VNT_IR_ARRAY:
+            x = hir_materialize_list(ir,index,VNT_IR_EDGE_ELEMENT,&count);
+            if (n->child_count && !x) return NULL;
+            a = ast_create_array(x,count); break;
+        case VNT_IR_VARIABLE_DECL:
+        case VNT_IR_REASSIGN:
+            x = hir_materialize_child(ir,index,VNT_IR_EDGE_VALUE);
+            if (hir_child_role(ir,index,VNT_IR_EDGE_VALUE)!=VNT_IR_NO_NODE && !x) return NULL;
+            a = n->type_name
+                ? ast_create_typed_variable_declaration(n->value.text,n->type_name,x)
+                : ast_create_variable_declaration(n->value.text,x);
+            if (a && n->opcode == VNT_IR_REASSIGN)
+                a->variable_declaration.is_reassignment = 1;
+            break;
+        case VNT_IR_VARIABLE: a = ast_create_variable(n->value.text); break;
+        case VNT_IR_INDEX:
+            x = hir_materialize_child(ir,index,VNT_IR_EDGE_OBJECT);
+            y = hir_materialize_child(ir,index,VNT_IR_EDGE_INDEX);
+            if (!x || !y) { ast_free(x); ast_free(y); return NULL; }
+            a = ast_create_index(x,y); break;
+        case VNT_IR_MEMBER:
+            x = hir_materialize_child(ir,index,VNT_IR_EDGE_OBJECT);
+            if (!x) return NULL;
+            a = ast_create_member(x,n->value.text); break;
+        case VNT_IR_ASSIGN:
+            x = hir_materialize_child(ir,index,VNT_IR_EDGE_TARGET);
+            y = hir_materialize_child(ir,index,VNT_IR_EDGE_VALUE);
+            if (!x || !y) { ast_free(x); ast_free(y); return NULL; }
+            a = ast_create_assignment(x,y); break;
+        case VNT_IR_BINARY:
+            x = hir_materialize_child(ir,index,VNT_IR_EDGE_LEFT);
+            y = hir_materialize_child(ir,index,VNT_IR_EDGE_RIGHT);
+            if (!x || !y) { ast_free(x); ast_free(y); return NULL; }
+            a = ast_create_binary(x,y,(BinaryOperator)n->operation); break;
+        case VNT_IR_UNARY:
+            x = hir_materialize_child(ir,index,VNT_IR_EDGE_OPERAND);
+            if (!x) return NULL;
+            a = ast_create_unary(x,(UnaryOperator)n->operation); break;
+        default: return NULL;
+    }
+    if (a && n->type_name && n->opcode != VNT_IR_VARIABLE_DECL &&
+        n->opcode != VNT_IR_REASSIGN) {
+        /* type_name is currently meaningful only for declarations. */
+    }
+    return a;
+}
+
+AstNode *vnt_ir_materialize_program(const VntIrProgram *ir) {
+    if (!ir || !ir->nodes || !ir->node_count || ir->root >= ir->node_count ||
+        ir->nodes[ir->root].opcode != VNT_IR_PROGRAM) return NULL;
+    return hir_materialize_node(ir, ir->root);
+}
+
 static const char *opcode_name(VntIrOpcode opcode) {
     static const char *names[] = {
         "program", "print", "if", "while", "function", "struct",

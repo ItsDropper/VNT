@@ -274,7 +274,8 @@ static int known_int_expr(X86Gen *g, AstNode *n) {
         return n->unary_expression.operator==UNARY_NEGATE && known_int_expr(g,n->unary_expression.operand);
     if (n->type==AST_BINARY_EXPRESSION) {
         BinaryOperator op=n->binary_expression.operator;
-        if(op!=BINARY_ADD && op!=BINARY_SUBTRACT && op!=BINARY_MULTIPLY) return 0;
+        if(op!=BINARY_ADD && op!=BINARY_SUBTRACT && op!=BINARY_MULTIPLY &&
+           op!=BINARY_MODULO) return 0;
         return known_int_expr(g,n->binary_expression.left) && known_int_expr(g,n->binary_expression.right);
     }
     return 0;
@@ -312,25 +313,91 @@ static void emit_int_expr(X86Gen *g, AstNode *n) {
         case BINARY_ADD:fputs("    addl %r10d,%eax\n    jo .Lvnt_int_add_overflow\n",g->out);break;
         case BINARY_SUBTRACT:fputs("    subl %r10d,%eax\n    jo .Lvnt_int_sub_overflow\n",g->out);break;
         case BINARY_MULTIPLY:fputs("    imull %r10d,%eax\n    jo .Lvnt_int_mul_overflow\n",g->out);break;
+        case BINARY_MODULO: {
+            int normal=new_label(g), done=new_label(g);
+            fputs("    testl %r10d,%r10d\n    jz .Lvnt_int_div_zero\n",g->out);
+            fprintf(g->out,"    cmpl $-1,%%r10d\n    jne .L%d\n",normal);
+            fputs("    cmpl $-2147483648,%eax\n",g->out);
+            fprintf(g->out,"    jne .L%d\n    xorl %%eax,%%eax\n    jmp .L%d\n",normal,done);
+            label(g,normal);
+            fputs("    cltd\n    idivl %r10d\n    movl %edx,%eax\n",g->out);
+            label(g,done);
+            break;
+        }
         default:fail(g,"unsupported native integer expression.");break;
     }
 }
-static int emit_int_condition_false(X86Gen *g, AstNode *n, int end) {
-    if(!n || n->type!=AST_BINARY_EXPRESSION ||
-       !known_int_expr(g,n->binary_expression.left) || !known_int_expr(g,n->binary_expression.right)) return 0;
-    const char *j=NULL;
-    switch(n->binary_expression.operator) {
-        case BINARY_EQUAL:j="jne";break; case BINARY_NOT_EQUAL:j="je";break;
-        case BINARY_LESS:j="jge";break; case BINARY_GREATER:j="jle";break;
-        case BINARY_LESS_EQUAL:j="jg";break; case BINARY_GREATER_EQUAL:j="jl";break;
-        default:return 0;
+static int emit_int_condition_true(X86Gen *g, AstNode *n, int target);
+static int emit_int_condition_false(X86Gen *g, AstNode *n, int target) {
+    if (!n) return 0;
+    if (n->type == AST_BINARY_EXPRESSION &&
+        (n->binary_expression.operator == BINARY_AND ||
+         n->binary_expression.operator == BINARY_OR)) {
+        if (n->binary_expression.operator == BINARY_AND) {
+            return emit_int_condition_false(g, n->binary_expression.left, target) &&
+                   emit_int_condition_false(g, n->binary_expression.right, target);
+        }
+        int done = new_label(g);
+        if (!emit_int_condition_true(g, n->binary_expression.left, done)) return 0;
+        if (!emit_int_condition_false(g, n->binary_expression.right, target)) return 0;
+        label(g, done);
+        return 1;
     }
-    emit_int_expr(g,n->binary_expression.left); fputs("    pushq %rax\n",g->out);
+    if (n->type != AST_BINARY_EXPRESSION ||
+        !known_int_expr(g,n->binary_expression.left) ||
+        !known_int_expr(g,n->binary_expression.right)) return 0;
+    const char *j = NULL;
+    switch (n->binary_expression.operator) {
+        case BINARY_EQUAL: j="jne"; break;
+        case BINARY_NOT_EQUAL: j="je"; break;
+        case BINARY_LESS: j="jge"; break;
+        case BINARY_GREATER: j="jle"; break;
+        case BINARY_LESS_EQUAL: j="jg"; break;
+        case BINARY_GREATER_EQUAL: j="jl"; break;
+        default: return 0;
+    }
+    emit_int_expr(g,n->binary_expression.left);
+    fputs("    pushq %rax\n",g->out);
     emit_int_expr(g,n->binary_expression.right);
     fputs("    movl %eax,%r10d\n    popq %rax\n    cmpl %r10d,%eax\n",g->out);
-    fprintf(g->out,"    %s .L%d\n",j,end); return 1;
+    fprintf(g->out,"    %s .L%d\n",j,target);
+    return 1;
 }
-
+static int emit_int_condition_true(X86Gen *g, AstNode *n, int target) {
+    if (!n) return 0;
+    if (n->type == AST_BINARY_EXPRESSION &&
+        (n->binary_expression.operator == BINARY_AND ||
+         n->binary_expression.operator == BINARY_OR)) {
+        if (n->binary_expression.operator == BINARY_OR) {
+            return emit_int_condition_true(g, n->binary_expression.left, target) &&
+                   emit_int_condition_true(g, n->binary_expression.right, target);
+        }
+        int next = new_label(g);
+        if (!emit_int_condition_false(g, n->binary_expression.left, next)) return 0;
+        if (!emit_int_condition_true(g, n->binary_expression.right, target)) return 0;
+        label(g, next);
+        return 1;
+    }
+    if (n->type != AST_BINARY_EXPRESSION ||
+        !known_int_expr(g,n->binary_expression.left) ||
+        !known_int_expr(g,n->binary_expression.right)) return 0;
+    const char *j = NULL;
+    switch (n->binary_expression.operator) {
+        case BINARY_EQUAL: j="je"; break;
+        case BINARY_NOT_EQUAL: j="jne"; break;
+        case BINARY_LESS: j="jl"; break;
+        case BINARY_GREATER: j="jg"; break;
+        case BINARY_LESS_EQUAL: j="jle"; break;
+        case BINARY_GREATER_EQUAL: j="jge"; break;
+        default: return 0;
+    }
+    emit_int_expr(g,n->binary_expression.left);
+    fputs("    pushq %rax\n",g->out);
+    emit_int_expr(g,n->binary_expression.right);
+    fputs("    movl %eax,%r10d\n    popq %rax\n    cmpl %r10d,%eax\n",g->out);
+    fprintf(g->out,"    %s .L%d\n",j,target);
+    return 1;
+}
 static void emit_raw_integer(X86Gen *g, AstNode *n) {
     if (n->type == AST_INTEGER_LITERAL) {
         fprintf(g->out, "    movl $%d,%%eax\n", n->integer_literal.value);
@@ -623,11 +690,19 @@ static void emit_expr(X86Gen *g,AstNode *n) {
             break;
         }
         case AST_INDEX_EXPRESSION:
-            emit_expr(g,n->index_expression.array);
-            fputs("    pushq %rax\n",g->out);
-            emit_expr(g,n->index_expression.index);
-            fputs("    movq %rax,%rdx\n    popq %rcx\n",g->out);
-            call0(g,"vnt_array_get");
+            if (known_int_expr(g,n->index_expression.index)) {
+                emit_expr(g,n->index_expression.array);
+                fputs("    pushq %rax\n",g->out);
+                emit_int_expr(g,n->index_expression.index);
+                fputs("    movl %eax,%edx\n    popq %rcx\n",g->out);
+                call0(g,"vnt_array_get_int");
+            } else {
+                emit_expr(g,n->index_expression.array);
+                fputs("    pushq %rax\n",g->out);
+                emit_expr(g,n->index_expression.index);
+                fputs("    movq %rax,%rdx\n    popq %rcx\n",g->out);
+                call0(g,"vnt_array_get");
+            }
             break;
         case AST_MEMBER_EXPRESSION:
             emit_expr(g,n->member_expression.object);
@@ -722,11 +797,19 @@ static void emit_assignment(X86Gen *g,AstNode *n){
     if(t->type==AST_INDEX_EXPRESSION){
         emit_expr(g,t->index_expression.array);
         fputs("    pushq %rax\n",g->out);
-        emit_expr(g,t->index_expression.index);
-        fputs("    pushq %rax\n",g->out);
-        emit_expr(g,n->assignment.value);
-        fputs("    movq %rax,%r8\n    popq %rdx\n    popq %rcx\n    movq %r8,%r8\n",g->out);
-        fputs("    subq $32,%rsp\n    call vnt_array_set\n    addq $32,%rsp\n",g->out);
+        if (known_int_expr(g,t->index_expression.index)) {
+            emit_int_expr(g,t->index_expression.index);
+            fputs("    pushq %rax\n",g->out);
+            emit_expr(g,n->assignment.value);
+            fputs("    movq %rax,%r8\n    popq %rdx\n    popq %rcx\n",g->out);
+            fputs("    subq $32,%rsp\n    call vnt_array_set_int\n    addq $32,%rsp\n",g->out);
+        } else {
+            emit_expr(g,t->index_expression.index);
+            fputs("    pushq %rax\n",g->out);
+            emit_expr(g,n->assignment.value);
+            fputs("    movq %rax,%r8\n    popq %rdx\n    popq %rcx\n",g->out);
+            fputs("    subq $32,%rsp\n    call vnt_array_set\n    addq $32,%rsp\n",g->out);
+        }
         return;
     }
     if(t->type==AST_UNARY_EXPRESSION && t->unary_expression.operator==UNARY_DEREFERENCE){

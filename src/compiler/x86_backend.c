@@ -79,13 +79,24 @@ static void collect_vars(HirGen *g,size_t i) {
     case VNT_IR_PRINT: case VNT_IR_RETURN: collect_vars(g,child(g,i,VNT_IR_EDGE_VALUE)); break;
     case VNT_IR_IF:
         collect_vars(g,child(g,i,VNT_IR_EDGE_CONDITION));
-        for(size_t c=child(g,i,VNT_IR_EDGE_THEN);c!=VNT_IR_NO_NODE;c=next_role(g,c,VNT_IR_EDGE_THEN))collect_vars(g,c);
-        for(size_t c=child(g,i,VNT_IR_EDGE_ELSE);c!=VNT_IR_NO_NODE;c=next_role(g,c,VNT_IR_EDGE_ELSE))collect_vars(g,c); break;
+        for(size_t c=child(g,i,VNT_IR_EDGE_THEN);c!=VNT_IR_NO_NODE;c=next_role(g,c,VNT_IR_EDGE_THEN)) {
+            collect_vars(g,c);
+        }
+        for(size_t c=child(g,i,VNT_IR_EDGE_ELSE);c!=VNT_IR_NO_NODE;c=next_role(g,c,VNT_IR_EDGE_ELSE)) {
+            collect_vars(g,c);
+        }
+        break;
     case VNT_IR_WHILE:
         collect_vars(g,child(g,i,VNT_IR_EDGE_CONDITION));
-        for(size_t c=child(g,i,VNT_IR_EDGE_BODY);c!=VNT_IR_NO_NODE;c=next_role(g,c,VNT_IR_EDGE_BODY))collect_vars(g,c); break;
+        for(size_t c=child(g,i,VNT_IR_EDGE_BODY);c!=VNT_IR_NO_NODE;c=next_role(g,c,VNT_IR_EDGE_BODY)) {
+            collect_vars(g,c);
+        }
+        break;
     case VNT_IR_CALL: case VNT_IR_ARRAY:
-        for(size_t c=n->first_child;c!=VNT_IR_NO_NODE;c=g->ir->nodes[c].next_sibling)collect_vars(g,c);break;
+        for(size_t c=n->first_child;c!=VNT_IR_NO_NODE;c=g->ir->nodes[c].next_sibling) {
+            collect_vars(g,c);
+        }
+        break;
     case VNT_IR_INDEX: collect_vars(g,child(g,i,VNT_IR_EDGE_OBJECT));collect_vars(g,child(g,i,VNT_IR_EDGE_INDEX));break;
     case VNT_IR_MEMBER: collect_vars(g,child(g,i,VNT_IR_EDGE_OBJECT));break;
     case VNT_IR_BINARY: collect_vars(g,child(g,i,VNT_IR_EDGE_LEFT));collect_vars(g,child(g,i,VNT_IR_EDGE_RIGHT));break;
@@ -275,7 +286,10 @@ static void emit_assignment(HirGen*g,size_t i) {
         emit_expr(g,v);
         if(gi>=0&&(vi<0||g->vars[vi].global)){fputs("    movq %rax,vnt_global_",g->out);cname(g->out,"",tn->value.text);fputs("(%rip)\n",g->out);}
         else if(vi>=0)fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",g->vars[vi].offset);
-        else fail(g,"unknown HIR assignment variable.");return;
+        else {
+            fail(g,"unknown HIR assignment variable.");
+        }
+        return;
     }
     if(tn->opcode==VNT_IR_INDEX){emit_expr(g,child(g,t,VNT_IR_EDGE_OBJECT));fputs("    pushq %rax\n",g->out);emit_expr(g,child(g,t,VNT_IR_EDGE_INDEX));fputs("    pushq %rax\n",g->out);emit_expr(g,v);fputs("    movq %rax,%r8\n    popq %rdx\n    popq %rcx\n",g->out);call0(g,"vnt_array_set");return;}
     if(tn->opcode==VNT_IR_MEMBER){emit_expr(g,child(g,t,VNT_IR_EDGE_OBJECT));fputs("    pushq %rax\n",g->out);emit_expr(g,v);fputs("    movq %rax,%r8\n",g->out);fprintf(g->out,"    lea .Lstr%d(%%rip),%%rdx\n",string_label(g,tn->value.text));fputs("    popq %rcx\n",g->out);call0(g,"vnt_object_set");return;}
@@ -292,7 +306,10 @@ static void emit_stmt(HirGen*g,size_t i) {
         emit_expr(g,child(g,i,VNT_IR_EDGE_VALUE));
         if(gi>=0&&(vi<0||g->vars[vi].global)){fputs("    movq %rax,vnt_global_",g->out);cname(g->out,"",n->value.text);fputs("(%rip)\n",g->out);}
         else if(vi>=0)fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",g->vars[vi].offset);
-        else fail(g,"unknown HIR declaration variable.");break;}
+        else {
+            fail(g,"unknown HIR declaration variable.");
+        }
+        break;}
     case VNT_IR_ASSIGN:emit_assignment(g,i);break;
     case VNT_IR_IF:{
         int els=label_new(g),done=label_new(g);emit_expr(g,child(g,i,VNT_IR_EDGE_CONDITION));fputs("    movq %rax,%rcx\n",g->out);call0(g,"vnt_truth");fprintf(g->out,"    testl %%eax,%%eax\n    jz .L%d\n",els);
@@ -353,8 +370,14 @@ int vnt_emit_x86_64(const VntIrProgram *ir,const char *assembly_path) {
     if(!g.error){fputs(".Lvnt_int_add_overflow:\n    subq $32,%rsp\n    call vnt_int_add_overflow\n    addq $32,%rsp\n.Lvnt_int_sub_overflow:\n    subq $32,%rsp\n    call vnt_int_sub_overflow\n    addq $32,%rsp\n.Lvnt_int_mul_overflow:\n    subq $32,%rsp\n    call vnt_int_mul_overflow\n    addq $32,%rsp\n.Lvnt_int_neg_overflow:\n    subq $32,%rsp\n    call vnt_int_neg_overflow\n    addq $32,%rsp\n.Lvnt_int_div_zero:\n    subq $32,%rsp\n    call vnt_int_div_zero\n    addq $32,%rsp\n",g.out);emit_tables(&g);}
     fclose(g.out);
     free_vars(g.vars,g.var_count);free_vars(g.globals,g.global_count);
-    for(size_t i=0;i<g.string_count;i++)free(g.strings[i].value);free(g.strings);
+    for(size_t i=0;i<g.string_count;i++) {
+        free(g.strings[i].value);
+    }
+    free(g.strings);
     free(g.floats);
-    for(size_t i=0;i<g.struct_count;i++)free(g.structs[i]);free(g.structs);
+    for(size_t i=0;i<g.struct_count;i++) {
+        free(g.structs[i]);
+    }
+    free(g.structs);
     if(g.error){remove(assembly_path);return 0;}return 1;
 }

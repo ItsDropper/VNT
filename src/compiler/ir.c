@@ -484,6 +484,18 @@ int vnt_ir_validate(const VntIrProgram *ir) {
         if ((int)node->opcode < 0 || node->opcode > VNT_IR_REASSIGN ||
             (int)node->role < 0 || node->role > VNT_IR_EDGE_OPERAND ||
             (node->name_count && !node->names) ||
+            ((node->opcode == VNT_IR_STRING ||
+              node->opcode == VNT_IR_VARIABLE_DECL ||
+              node->opcode == VNT_IR_REASSIGN ||
+              node->opcode == VNT_IR_VARIABLE ||
+              node->opcode == VNT_IR_MEMBER ||
+              node->opcode == VNT_IR_CALL ||
+              node->opcode == VNT_IR_FUNCTION ||
+              node->opcode == VNT_IR_STRUCT) && !node->value.text) ||
+            ((node->name_count != 0) &&
+             node->opcode != VNT_IR_FUNCTION && node->opcode != VNT_IR_STRUCT) ||
+            (node->type_name &&
+             node->opcode != VNT_IR_VARIABLE_DECL && node->opcode != VNT_IR_REASSIGN) ||
             (node->opcode == VNT_IR_BINARY &&
              (node->operation < BINARY_ADD || node->operation > BINARY_OR)) ||
             (node->opcode == VNT_IR_UNARY &&

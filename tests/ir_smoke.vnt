@@ -2,6 +2,7 @@
 x = 2 + 3 * 4
 flag = true && false
 print(x)
+x = x + 1
 print(flag)
 if x > 10 {
     print("high")

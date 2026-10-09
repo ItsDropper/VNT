@@ -1,6 +1,7 @@
 #include <vnt/ir.h>
 #include <limits.h>
 #include <math.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -617,18 +618,152 @@ void vnt_ir_free(VntIrProgram *ir) {
     ir->optimized_nodes = 0;
 }
 
+
+typedef struct {
+    int kind; /* 1 = integer, 2 = boolean, 3 = float */
+    union { int integer; int boolean; double floating; } value;
+} HirConstant;
+
+static int hir_constant(const VntIrProgram *ir, size_t index, HirConstant *out) {
+    if (index >= ir->node_count) return 0;
+    const VntIrNode *n = &ir->nodes[index];
+    switch (n->opcode) {
+        case VNT_IR_INTEGER: out->kind = 1; out->value.integer = n->value.integer; return 1;
+        case VNT_IR_BOOLEAN: out->kind = 2; out->value.boolean = n->value.boolean; return 1;
+        case VNT_IR_FLOAT: out->kind = 3; out->value.floating = n->value.floating; return 1;
+        default: return 0;
+    }
+}
+
+static int hir_fold_node(VntIrProgram *ir, size_t index, size_t *changed) {
+    VntIrNode *n = &ir->nodes[index];
+    size_t left = VNT_IR_NO_NODE, right = VNT_IR_NO_NODE;
+    for (size_t c = n->first_child; c != VNT_IR_NO_NODE; c = ir->nodes[c].next_sibling) {
+        VntIrEdgeRole role = ir->nodes[c].role;
+        if (role == VNT_IR_EDGE_LEFT) left = c;
+        else if (role == VNT_IR_EDGE_RIGHT) right = c;
+        if (!hir_fold_node(ir, c, changed)) return 0;
+    }
+    if (n->opcode != VNT_IR_BINARY || left == VNT_IR_NO_NODE || right == VNT_IR_NO_NODE)
+        return 1;
+    HirConstant a, b;
+    if (!hir_constant(ir, left, &a) || !hir_constant(ir, right, &b) || a.kind != b.kind)
+        return 1;
+
+    int result_int = 0, result_bool = 0, folded = 0;
+    double result_float = 0.0;
+    int kind = a.kind;
+    int op = n->operation;
+    if (kind == 1) {
+        int64_t x = a.value.integer, y = b.value.integer, z = 0;
+        switch (op) {
+            case BINARY_ADD: z = x + y; folded = z >= INT_MIN && z <= INT_MAX; break;
+            case BINARY_SUBTRACT: z = x - y; folded = z >= INT_MIN && z <= INT_MAX; break;
+            case BINARY_MULTIPLY: z = x * y; folded = z >= INT_MIN && z <= INT_MAX; break;
+            case BINARY_DIVIDE: if (y && !(x == INT_MIN && y == -1)) { z = x / y; folded = 1; } break;
+            case BINARY_MODULO: if (y && !(x == INT_MIN && y == -1)) { z = x % y; folded = 1; } break;
+            case BINARY_EQUAL: result_bool = x == y; kind = 2; folded = 1; break;
+            case BINARY_NOT_EQUAL: result_bool = x != y; kind = 2; folded = 1; break;
+            case BINARY_GREATER: result_bool = x > y; kind = 2; folded = 1; break;
+            case BINARY_LESS: result_bool = x < y; kind = 2; folded = 1; break;
+            case BINARY_GREATER_EQUAL: result_bool = x >= y; kind = 2; folded = 1; break;
+            case BINARY_LESS_EQUAL: result_bool = x <= y; kind = 2; folded = 1; break;
+            default: break;
+        }
+        result_int = (int)z;
+    } else if (kind == 2) {
+        int x = a.value.boolean, y = b.value.boolean;
+        switch (op) {
+            case BINARY_AND: result_bool = x && y; folded = 1; break;
+            case BINARY_OR: result_bool = x || y; folded = 1; break;
+            case BINARY_EQUAL: result_bool = x == y; folded = 1; break;
+            case BINARY_NOT_EQUAL: result_bool = x != y; folded = 1; break;
+            default: break;
+        }
+    } else if (kind == 3) {
+        double x = a.value.floating, y = b.value.floating;
+        switch (op) {
+            case BINARY_ADD: result_float = x + y; folded = isfinite(result_float); break;
+            case BINARY_SUBTRACT: result_float = x - y; folded = isfinite(result_float); break;
+            case BINARY_MULTIPLY: result_float = x * y; folded = isfinite(result_float); break;
+            case BINARY_DIVIDE: if (y != 0.0) { result_float = x / y; folded = isfinite(result_float); } break;
+            case BINARY_EQUAL: result_bool = x == y; kind = 2; folded = 1; break;
+            case BINARY_NOT_EQUAL: result_bool = x != y; kind = 2; folded = 1; break;
+            case BINARY_GREATER: result_bool = x > y; kind = 2; folded = 1; break;
+            case BINARY_LESS: result_bool = x < y; kind = 2; folded = 1; break;
+            case BINARY_GREATER_EQUAL: result_bool = x >= y; kind = 2; folded = 1; break;
+            case BINARY_LESS_EQUAL: result_bool = x <= y; kind = 2; folded = 1; break;
+            default: break;
+        }
+    }
+    if (!folded) return 1;
+    n->opcode = kind == 1 ? VNT_IR_INTEGER : kind == 2 ? VNT_IR_BOOLEAN : VNT_IR_FLOAT;
+    if (kind == 1) n->value.integer = result_int;
+    else if (kind == 2) n->value.boolean = !!result_bool;
+    else n->value.floating = result_float;
+    n->first_child = n->last_child = n->next_sibling == VNT_IR_NO_NODE
+        ? VNT_IR_NO_NODE : n->first_child;
+    /* Children are discarded by the compaction pass below. */
+    n->first_child = n->last_child = VNT_IR_NO_NODE;
+    n->child_count = 0;
+    ++*changed;
+    return 1;
+}
+
+static int hir_copy_node(const VntIrProgram *old, VntIrProgram *out,
+                         size_t old_index, size_t *new_index) {
+    if (old_index >= old->node_count || !reserve_node(out, new_index)) return 0;
+    const VntIrNode *src = &old->nodes[old_index];
+    VntIrNode *dst = &out->nodes[*new_index];
+    dst->opcode = src->opcode;
+    dst->role = src->role;
+    dst->operation = src->operation;
+    dst->source = src->source;
+    dst->value = src->value;
+    if (src->opcode == VNT_IR_STRING || src->opcode == VNT_IR_VARIABLE_DECL ||
+        src->opcode == VNT_IR_REASSIGN || src->opcode == VNT_IR_VARIABLE ||
+        src->opcode == VNT_IR_MEMBER || src->opcode == VNT_IR_CALL ||
+        src->opcode == VNT_IR_FUNCTION || src->opcode == VNT_IR_STRUCT) {
+        dst->value.text = NULL;
+        if (!copy_text(&dst->value.text, src->value.text)) return 0;
+    }
+    if (src->type_name && !copy_text(&dst->type_name, src->type_name)) return 0;
+    if (src->name_count) {
+        dst->names = calloc(src->name_count, sizeof(*dst->names));
+        if (!dst->names) return 0;
+        dst->name_count = src->name_count;
+        for (size_t i = 0; i < src->name_count; ++i)
+            if (!copy_text(&dst->names[i], src->names[i])) return 0;
+    }
+    for (size_t child = src->first_child; child != VNT_IR_NO_NODE;
+         child = old->nodes[child].next_sibling) {
+        size_t copied;
+        if (!hir_copy_node(old, out, child, &copied) ||
+            !add_child(out, *new_index, copied)) return 0;
+    }
+    return 1;
+}
+
 int vnt_ir_optimize(VntIrProgram *ir) {
-    if (!ir || !ir->program || !vnt_ir_validate(ir)) return 0;
+    if (!ir || !ir->nodes || !ir->node_count || !vnt_ir_validate(ir)) return 0;
 
     size_t changed = 0;
-    for (int pass = 0; pass < 8; ++pass) {
-        size_t pass_changed = 0;
-        fold(ir->program->program.statements, &pass_changed);
-        if (!pass_changed) break;
-        changed += pass_changed;
-    }
+    if (!hir_fold_node(ir, ir->root, &changed)) return 0;
 
-    ir->optimized_nodes = changed;
-    /* Folding changes AST node kinds; rebuild HIR so it cannot go stale. */
-    return build_hir(ir);
+    VntIrProgram compact = {0};
+    compact.root = VNT_IR_NO_NODE;
+    compact.optimized_nodes = ir->optimized_nodes + changed;
+    if (!hir_copy_node(ir, &compact, ir->root, &compact.root)) {
+        vnt_ir_free(&compact);
+        return 0;
+    }
+    /* The old flat array can now be released, including unreachable folded operands. */
+    clear_nodes(ir);
+    ir->nodes = compact.nodes;
+    ir->node_count = compact.node_count;
+    ir->node_capacity = compact.node_capacity;
+    ir->root = compact.root;
+    ir->optimized_nodes = compact.optimized_nodes;
+    ir->program = compact.program;
+    return vnt_ir_validate(ir);
 }

@@ -1197,7 +1197,7 @@ typedef struct {
     COLORREF color,background;
     char text[4096];
 } VntGuiCommand;
-typedef struct { int x,y,width,height,multiline,select_all; char text[4096]; } VntGuiInputState;
+typedef struct { int x,y,width,height,multiline,select_all; HWND edit_hwnd; char text[4096]; } VntGuiInputState;
 static HWND vnt_gui_hwnd;
 static int vnt_gui_width=800, vnt_gui_height=600, vnt_gui_last_key, vnt_gui_text_y=18;
 static COLORREF vnt_gui_background=RGB(11,16,32);
@@ -1338,40 +1338,17 @@ static LRESULT CALLBACK vnt_gui_wndproc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) 
         case WM_ERASEBKGND:return 1;
         case WM_KEYDOWN:
             vnt_gui_last_key=(int)wp;
-            if(wp=='A'&&(GetKeyState(VK_CONTROL)&0x8000)&&vnt_gui_focused_input>=0&&vnt_gui_focused_input<vnt_gui_input_count) vnt_gui_inputs[vnt_gui_focused_input].select_all=1;
-            return 0;
-        case WM_CHAR:
-            if(vnt_gui_focused_input>=0&&vnt_gui_focused_input<vnt_gui_input_count){
-                VntGuiInputState *state=&vnt_gui_inputs[vnt_gui_focused_input];char *s=state->text;size_t n=strlen(s);
-                if(state->select_all){s[0]=0;n=0;state->select_all=0;}
-                if(wp==VK_BACK){if(n)s[n-1]=0;}
-                else if((wp=='\r'||wp=='\n')&&state->multiline){if(n<sizeof(state->text)-1){s[n]='\n';s[n+1]=0;}}
-                else if(wp>=32&&wp!=127&&wp<=255&&n<sizeof(state->text)-1){s[n]=(char)wp;s[n+1]=0;}
-                InvalidateRect(hwnd,NULL,FALSE);
-            }
             return 0;
         case WM_MOUSEMOVE:{int oldx=vnt_gui_mouse_x,oldy=vnt_gui_mouse_y;vnt_gui_mouse_x=(short)LOWORD(lp);vnt_gui_mouse_y=(short)HIWORD(lp);if(oldx!=vnt_gui_mouse_x||oldy!=vnt_gui_mouse_y)InvalidateRect(hwnd,NULL,FALSE);return 0;}
         case WM_LBUTTONDOWN:
             SetFocus(hwnd);
             return 0;
-        case WM_LBUTTONUP: {
+        case WM_LBUTTONUP:
             vnt_gui_click_x=(short)LOWORD(lp);
             vnt_gui_click_y=(short)HIWORD(lp);
             vnt_gui_clicked=1;
-            /* Assign keyboard focus from the actual click coordinates. Do not
-               depend on the app rebuilding its input commands later that frame. */
-            vnt_gui_focused_input=-1;
-            for(int i=0;i<vnt_gui_input_count;i++) {
-                VntGuiInputState *state=&vnt_gui_inputs[i];
-                if(vnt_gui_click_x>=state->x&&vnt_gui_click_x<state->x+state->width&&
-                   vnt_gui_click_y>=state->y&&vnt_gui_click_y<state->y+state->height) {
-                    vnt_gui_focused_input=i;
-                    break;
-                }
-            }
             InvalidateRect(hwnd,NULL,FALSE);
             return 0;
-        }
         case WM_DESTROY:if(hwnd==vnt_gui_hwnd)vnt_gui_hwnd=NULL;PostQuitMessage(0);return 0;
         default:return DefWindowProcA(hwnd,msg,wp,lp);
     }
@@ -1413,10 +1390,38 @@ VntValue *vnt_gui_panel(VntValue *x,VntValue *y,VntValue *w,VntValue *h){
     VntGuiCommand *c=vnt_gui_add(VG_PANEL,xx,yy,ww,hh,NULL);if(!c)return vnt_bool(0);c->background=vnt_gui_panel_background;c->radius=12;return vnt_bool(1);
 }
 static int vnt_gui_input_state(int x,int y,int width,int height,int multiline,int create){
-    for(int i=0;i<vnt_gui_input_count;i++) if(vnt_gui_inputs[i].x==x&&vnt_gui_inputs[i].y==y){vnt_gui_inputs[i].width=width;vnt_gui_inputs[i].height=height;vnt_gui_inputs[i].multiline=multiline;return i;}
+    for(int i=0;i<vnt_gui_input_count;i++) if(vnt_gui_inputs[i].x==x&&vnt_gui_inputs[i].y==y){
+        VntGuiInputState *state=&vnt_gui_inputs[i];
+        state->width=width;state->height=height;state->multiline=multiline;
+        if(state->edit_hwnd&&width>0&&height>0) SetWindowPos(state->edit_hwnd,NULL,x,y,width,height,SWP_NOZORDER|SWP_NOACTIVATE);
+        return i;
+    }
     if(!create||vnt_gui_input_count>=16)return -1;
     int i=vnt_gui_input_count++;memset(&vnt_gui_inputs[i],0,sizeof(vnt_gui_inputs[i]));
     vnt_gui_inputs[i].x=x;vnt_gui_inputs[i].y=y;vnt_gui_inputs[i].width=width;vnt_gui_inputs[i].height=height;vnt_gui_inputs[i].multiline=multiline;return i;
+}
+static int vnt_gui_native_input(int index){
+    if(index<0||index>=vnt_gui_input_count||!vnt_gui_hwnd)return 0;
+    VntGuiInputState *state=&vnt_gui_inputs[index];
+    if(!state->edit_hwnd){
+        DWORD style=WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_LEFT;
+        if(state->multiline) style|=ES_MULTILINE|ES_AUTOVSCROLL|ES_WANTRETURN|WS_VSCROLL;
+        else style|=ES_AUTOHSCROLL;
+        state->edit_hwnd=CreateWindowExA(WS_EX_CLIENTEDGE,"EDIT",state->text,style,
+            state->x,state->y,state->width,state->height,vnt_gui_hwnd,
+            (HMENU)(INT_PTR)(1000+index),GetModuleHandleA(NULL),NULL);
+        if(!state->edit_hwnd)return 0;
+        SendMessageA(state->edit_hwnd,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
+        SendMessageA(state->edit_hwnd,EM_SETLIMITTEXT,(WPARAM)(sizeof(state->text)-1),0);
+    } else SetWindowPos(state->edit_hwnd,NULL,state->x,state->y,state->width,state->height,SWP_NOZORDER|SWP_NOACTIVATE);
+    return 1;
+}
+static void vnt_gui_read_native_input(int index){
+    if(index<0||index>=vnt_gui_input_count)return;
+    VntGuiInputState *state=&vnt_gui_inputs[index];
+    if(!state->edit_hwnd)return;
+    GetWindowTextA(state->edit_hwnd,state->text,(int)sizeof(state->text));
+    state->text[sizeof(state->text)-1]=0;
 }
 static VntValue *vnt_gui_button_draw(const char *text,int xx,int yy,int w,int h){
     if(w<24)w=24;if(h<24)h=24;RECT r={xx,yy,xx+w,yy+h};
@@ -1435,23 +1440,21 @@ VntValue *vnt_gui_button_sized(VntValue *label,VntValue *x,VntValue *y,VntValue 
 VntValue *vnt_gui_input(VntValue *label,VntValue *x,VntValue *y,VntValue *width){
     const char *placeholder=vnt_app_string(label,"gui_input()");int xx=vnt_gui_require_int(x,"gui_input()"),yy=vnt_gui_require_int(y,"gui_input()"),ww=vnt_gui_require_int(width,"gui_input()");
     int index=vnt_gui_input_state(xx,yy,ww,36,0,1);
-    if(index>=0){if(vnt_gui_clicked&&vnt_gui_click_x>=xx&&vnt_gui_click_x<xx+ww&&vnt_gui_click_y>=yy&&vnt_gui_click_y<yy+36)vnt_gui_focused_input=index;
-        int empty=!vnt_gui_inputs[index].text[0];VntGuiCommand *c=vnt_gui_add(VG_INPUT,xx,yy,ww,36,empty?placeholder:vnt_gui_inputs[index].text);if(c){c->font_size=vnt_gui_font_size;c->radius=7;c->placeholder=empty;}
-        return vnt_string(vnt_gui_inputs[index].text);}
+    if(index>=0){vnt_gui_native_input(index);vnt_gui_read_native_input(index);return vnt_string(vnt_gui_inputs[index].text);}
     return vnt_string("");
 }
 VntValue *vnt_gui_textarea(VntValue *label,VntValue *x,VntValue *y,VntValue *width,VntValue *height){
     const char *placeholder=vnt_app_string(label,"gui_textarea()");int xx=vnt_gui_require_int(x,"gui_textarea()"),yy=vnt_gui_require_int(y,"gui_textarea()"),ww=vnt_gui_require_int(width,"gui_textarea()"),hh=vnt_gui_require_int(height,"gui_textarea()");
     int index=vnt_gui_input_state(xx,yy,ww,hh,1,1);
-    if(index>=0){if(vnt_gui_clicked&&vnt_gui_click_x>=xx&&vnt_gui_click_x<xx+ww&&vnt_gui_click_y>=yy&&vnt_gui_click_y<yy+hh)vnt_gui_focused_input=index;
-        int empty=!vnt_gui_inputs[index].text[0];VntGuiCommand *c=vnt_gui_add(VG_TEXTAREA,xx,yy,ww,hh,empty?placeholder:vnt_gui_inputs[index].text);if(c){c->font_size=vnt_gui_font_size;c->radius=8;c->placeholder=empty;}
-        return vnt_string(vnt_gui_inputs[index].text);}
+    if(index>=0){vnt_gui_native_input(index);vnt_gui_read_native_input(index);return vnt_string(vnt_gui_inputs[index].text);}
     return vnt_string("");
 }
 VntValue *vnt_gui_input_set(VntValue *text,VntValue *x,VntValue *y){
     const char *value=vnt_app_string(text,"gui_input_set()");int xx=vnt_gui_require_int(x,"gui_input_set()"),yy=vnt_gui_require_int(y,"gui_input_set()");
     int index=vnt_gui_input_state(xx,yy,0,0,0,1);if(index<0)return vnt_bool(0);
-    snprintf(vnt_gui_inputs[index].text,sizeof(vnt_gui_inputs[index].text),"%s",value);vnt_gui_inputs[index].select_all=0;return vnt_bool(1);
+    snprintf(vnt_gui_inputs[index].text,sizeof(vnt_gui_inputs[index].text),"%s",value);vnt_gui_inputs[index].select_all=0;
+    if(vnt_gui_inputs[index].edit_hwnd)SetWindowTextA(vnt_gui_inputs[index].edit_hwnd,vnt_gui_inputs[index].text);
+    return vnt_bool(1);
 }
 VntValue *vnt_gui_panel_color(VntValue *x,VntValue *y,VntValue *w,VntValue *h,VntValue *color){
     int xx=vnt_gui_require_int(x,"gui_panel_color()"),yy=vnt_gui_require_int(y,"gui_panel_color()"),ww=vnt_gui_require_int(w,"gui_panel_color()"),hh=vnt_gui_require_int(h,"gui_panel_color()");

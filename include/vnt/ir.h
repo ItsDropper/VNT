@@ -39,8 +39,30 @@ typedef enum {
 
 #define VNT_IR_NO_NODE ((size_t)-1)
 
+typedef enum {
+    VNT_IR_EDGE_ROOT,
+    VNT_IR_EDGE_STATEMENT,
+    VNT_IR_EDGE_CONDITION,
+    VNT_IR_EDGE_THEN,
+    VNT_IR_EDGE_ELSE,
+    VNT_IR_EDGE_BODY,
+    VNT_IR_EDGE_VALUE,
+    VNT_IR_EDGE_TARGET,
+    VNT_IR_EDGE_ARGUMENT,
+    VNT_IR_EDGE_ELEMENT,
+    VNT_IR_EDGE_OBJECT,
+    VNT_IR_EDGE_INDEX,
+    VNT_IR_EDGE_LEFT,
+    VNT_IR_EDGE_RIGHT,
+    VNT_IR_EDGE_OPERAND
+} VntIrEdgeRole;
+
 typedef struct {
     VntIrOpcode opcode;
+    VntIrEdgeRole role;
+    int operation;
+    char **names;
+    size_t name_count;
     size_t first_child;
     size_t last_child;
     size_t next_sibling;

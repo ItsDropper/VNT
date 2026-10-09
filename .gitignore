@@ -3,3 +3,4 @@ vnt.exe
 *.obj
 .vscode/
 .idea/
+benchmarks/out/

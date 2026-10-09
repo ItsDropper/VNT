@@ -159,6 +159,30 @@ static const char *builtin(const char *s,int *arity) {
 static void emit_call(HirGen *g,size_t i,const VntIrNode*n) {
     const char *name=n->value.text;size_t args[32];int count=0;
     for(size_t c=n->first_child;c!=VNT_IR_NO_NODE;c=g->ir->nodes[c].next_sibling){if(count==32){fail(g,"too many call arguments.");return;}args[count++]=c;}
+    if(!strcmp(name,"ffi_int")) {
+        if(count<2||count>8){fail(g,"ffi_int() expects a library, symbol, and 0-6 integer arguments.");return;}
+        for(int a=0;a<count;a++){emit_expr(g,args[a]);fputs("    pushq %rax\n",g->out);}
+        fprintf(g->out,"    pushq $%d\n",count-2);
+        int area=72;
+        if((((count+1)*8+area)&15)!=0)area+=8;
+        fprintf(g->out,"    subq $%d,%%rsp\n",area);
+        fprintf(g->out,"    movq %d(%%rsp),%%rcx\n",area+count*8);
+        fprintf(g->out,"    movq %d(%%rsp),%%rdx\n",area+(count-1)*8);
+        for(int reg=2;reg<4;reg++){
+            int arg_index=reg;
+            if(arg_index>=count)fprintf(g->out,"    xorq %s,%s\n",reg==2?"%r8":"%r9",reg==2?"%r8":"%r9");
+            else fprintf(g->out,"    movq %d(%%rsp),%s\n",area+8+(count-1-arg_index)*8,reg==2?"%r8":"%r9");
+        }
+        for(int a=4;a<8;a++){
+            int dest=32+(a-4)*8;
+            if(a>=count)fprintf(g->out,"    movq $0,%d(%%rsp)\n",dest);
+            else fprintf(g->out,"    movq %d(%%rsp),%%r10\n    movq %%r10,%d(%%rsp)\n",area+8+(count-1-a)*8,dest);
+        }
+        fprintf(g->out,"    movq %d(%%rsp),%%r10\n    movq %%r10,64(%%rsp)\n",area);
+        fputs("    call vnt_ffi_int\n",g->out);
+        fprintf(g->out,"    addq $%d,%%rsp\n",area+((count+1)*8));
+        return;
+    }
     int arity=-1;const char *target=builtin(name,&arity);
     if(!strcmp(name,"object")){if(count){fail(g,"object() takes no arguments.");return;}call0(g,"vnt_object_new");return;}
     if(!strcmp(name,"range")) {
@@ -298,6 +322,7 @@ static void emit_function(HirGen*g,size_t i) {
     int frame=(int)(((g->var_count*8+15)/16)*16);if(frame)fprintf(g->out,"    subq $%d,%%rsp\n",frame);
     static const char*regs[]={"%rcx","%rdx","%r8","%r9"};
     for(size_t p=0;p<n->name_count&&p<4;p++){int vi=var_index(g->vars,g->var_count,n->names[p]);if(vi>=0)fprintf(g->out,"    movq %s,-%d(%%rbp)\n",regs[p],g->vars[vi].offset);}
+    for(size_t p=4;p<n->name_count;p++){int vi=var_index(g->vars,g->var_count,n->names[p]);if(vi>=0)fprintf(g->out,"    movq %zu(%%rbp),%%r10\n    movq %%r10,-%d(%%rbp)\n",48+(p-4)*8,g->vars[vi].offset);}
     for(size_t c=child(g,i,VNT_IR_EDGE_BODY);c!=VNT_IR_NO_NODE&&!g->error;c=next_role(g,c,VNT_IR_EDGE_BODY))emit_stmt(g,c);
     if(!g->error)fputs("    xorl %eax,%eax\n    leave\n    ret\n",g->out);
 }

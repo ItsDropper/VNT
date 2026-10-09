@@ -1190,7 +1190,7 @@ static LRESULT CALLBACK vnt_gui_wndproc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) 
                 char *s=vnt_gui_inputs[vnt_gui_focused_input].text;size_t n=strlen(s);
                 if(wp==VK_BACK){if(n)s[n-1]=0;}
                 else if(wp>=32&&wp<127&&n<sizeof(vnt_gui_inputs[0].text)-1){s[n]=(char)wp;s[n+1]=0;}
-                InvalidateRect(hwnd,FALSE?NULL:NULL,FALSE);
+                InvalidateRect(hwnd,NULL,FALSE);
             }
             return 0;
         case WM_MOUSEMOVE:vnt_gui_mouse_x=(short)LOWORD(lp);vnt_gui_mouse_y=(short)HIWORD(lp);return 0;
@@ -1272,8 +1272,9 @@ VntValue *vnt_gui_fill(VntValue *color){vnt_gui_background=vnt_gui_color(vnt_gui
 VntValue *vnt_gui_rect(VntValue *color){VntGuiCommand *c=vnt_gui_add(VG_RECT,32,64,160,80,NULL);if(!c)return vnt_bool(0);c->background=vnt_gui_color(vnt_gui_require_int(color,"gui_rect()"));return vnt_bool(1);}
 VntValue *vnt_gui_poll(void){
     if(!vnt_gui_hwnd)return vnt_bool(0);MSG msg;
+    vnt_gui_clicked=0;
     while(PeekMessageA(&msg,NULL,0,0,PM_REMOVE)){if(msg.message==WM_QUIT){vnt_gui_hwnd=NULL;return vnt_bool(0);}TranslateMessage(&msg);DispatchMessageA(&msg);}
-    vnt_gui_clicked=0;vnt_gui_command_count=0;vnt_gui_text_y=18;
+    vnt_gui_command_count=0;vnt_gui_text_y=18;
     return vnt_bool(vnt_gui_hwnd!=NULL);
 }
 VntValue *vnt_gui_present(void){if(!vnt_gui_hwnd)return vnt_bool(0);InvalidateRect(vnt_gui_hwnd,NULL,FALSE);UpdateWindow(vnt_gui_hwnd);return vnt_bool(1);}

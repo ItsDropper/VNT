@@ -1343,13 +1343,3 @@ VntValue *vnt_gui_poll(void) { return vnt_bool(0); }
 VntValue *vnt_gui_key(void) { return vnt_int(0); }
 VntValue *vnt_gui_close(void) { return vnt_bool(1); }
 #endif
-#else
-VntValue *vnt_gui_size(VntValue *width,VntValue *height) { (void)width;(void)height;fprintf(stderr,"Runtime error: native GUI is currently supported on Windows only.\\n");return vnt_bool(0); }
-VntValue *vnt_gui_open(VntValue *title) { (void)title;fprintf(stderr,"Runtime error: native GUI is currently supported on Windows only.\\n");return vnt_bool(0); }
-VntValue *vnt_gui_text(VntValue *text) { (void)text;return vnt_bool(0); }
-VntValue *vnt_gui_fill(VntValue *color) { (void)color;return vnt_bool(0); }
-VntValue *vnt_gui_rect(VntValue *color) { (void)color;return vnt_bool(0); }
-VntValue *vnt_gui_poll(void) { return vnt_bool(0); }
-VntValue *vnt_gui_key(void) { return vnt_int(0); }
-VntValue *vnt_gui_close(void) { return vnt_bool(1); }
-#endif

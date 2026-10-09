@@ -12,6 +12,7 @@ typedef enum {
     TOKEN_LEFT_PAREN,
     TOKEN_RIGHT_PAREN,
     TOKEN_COMMA,
+    TOKEN_COLON,
     TOKEN_DOT,
     TOKEN_AMPERSAND,
 

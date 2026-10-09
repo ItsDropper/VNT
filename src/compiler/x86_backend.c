@@ -295,15 +295,15 @@ static void infer_integer_variables(X86Gen *g, AstNode *program) {
 static void emit_int_expr(X86Gen *g, AstNode *n) {
     if(n->type==AST_INTEGER_LITERAL) {fprintf(g->out,"    movl $%d,%%eax\n",n->integer_literal.value);return;}
     if(n->type==AST_VARIABLE) {fprintf(g->out,"    movl -%d(%%rbp),%%eax\n",var_offset(g,n->variable.name));return;}
-    if(n->type==AST_UNARY_EXPRESSION) {emit_int_expr(g,n->unary_expression.operand);fputs("    negl %eax\n",g->out);return;}
+    if(n->type==AST_UNARY_EXPRESSION) {emit_int_expr(g,n->unary_expression.operand);fputs("    negl %eax\n    jo .Lvnt_int_neg_overflow\n",g->out);return;}
     emit_int_expr(g,n->binary_expression.left);
     fputs("    pushq %rax\n",g->out);
     emit_int_expr(g,n->binary_expression.right);
     fputs("    movl %eax,%r10d\n    popq %rax\n",g->out);
     switch(n->binary_expression.operator) {
-        case BINARY_ADD:fputs("    addl %r10d,%eax\n",g->out);break;
-        case BINARY_SUBTRACT:fputs("    subl %r10d,%eax\n",g->out);break;
-        case BINARY_MULTIPLY:fputs("    imull %r10d,%eax\n",g->out);break;
+        case BINARY_ADD:fputs("    addl %r10d,%eax\n    jo .Lvnt_int_add_overflow\n",g->out);break;
+        case BINARY_SUBTRACT:fputs("    subl %r10d,%eax\n    jo .Lvnt_int_sub_overflow\n",g->out);break;
+        case BINARY_MULTIPLY:fputs("    imull %r10d,%eax\n    jo .Lvnt_int_mul_overflow\n",g->out);break;
         default:fail(g,"unsupported native integer expression.");break;
     }
 }
@@ -859,6 +859,10 @@ int vnt_emit_x86_64(const VntIrProgram *ir,const char *assembly_path){
         if(!g.error)fputs("    xorl %eax,%eax\n    leave\n    ret\n",g.out);
     }
     if(!g.error){
+        fputs(".Lvnt_int_add_overflow:\n    subq $32,%rsp\n    call vnt_int_add_overflow\n    addq $32,%rsp\n",g.out);
+        fputs(".Lvnt_int_sub_overflow:\n    subq $32,%rsp\n    call vnt_int_sub_overflow\n    addq $32,%rsp\n",g.out);
+        fputs(".Lvnt_int_mul_overflow:\n    subq $32,%rsp\n    call vnt_int_mul_overflow\n    addq $32,%rsp\n",g.out);
+        fputs(".Lvnt_int_neg_overflow:\n    subq $32,%rsp\n    call vnt_int_neg_overflow\n    addq $32,%rsp\n",g.out);
         fputs(".Lvnt_int_div_zero:\n", g.out);
         fputs("    subq $32, %rsp\n    call vnt_int_div_zero\n    addq $32, %rsp\n", g.out);
         if(g.string_count || g.float_count){

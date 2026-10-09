@@ -762,6 +762,11 @@ static void emit_call(X86Gen *g,AstNode *n) {
         else if (!strcmp(name, "process_exit_code")) { arity = 1; runtime_name = "vnt_process_exit_code"; }
         else if (!strcmp(name, "gui_css")) { arity = 1; runtime_name = "vnt_gui_css"; }
         else if (!strcmp(name, "gui_button")) { arity = 3; runtime_name = "vnt_gui_button"; }
+        else if (!strcmp(name, "gui_input")) { arity = 4; runtime_name = "vnt_gui_input"; }
+        else if (!strcmp(name, "gui_checkbox")) { arity = 4; runtime_name = "vnt_gui_checkbox"; }
+        else if (!strcmp(name, "gui_progress")) { arity = 4; runtime_name = "vnt_gui_progress"; }
+        else if (!strcmp(name, "gui_separator")) { arity = 3; runtime_name = "vnt_gui_separator"; }
+        else if (!strcmp(name, "gui_present")) { arity = 0; runtime_name = "vnt_gui_present"; }
         else if (!strcmp(name, "gui_open")) { arity = 1; runtime_name = "vnt_gui_open"; }
         else if (!strcmp(name, "gui_size")) { arity = 2; runtime_name = "vnt_gui_size"; }
         else if (!strcmp(name, "gui_text")) { arity = 1; runtime_name = "vnt_gui_text"; }

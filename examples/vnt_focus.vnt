@@ -1,10 +1,9 @@
+import "../lib/vanta/gui.vnt"
+
 # VNT Focus — a local-first focus timer and lightweight task dashboard.
 # Run from the repository root so the stylesheet path resolves.
 
-gui_size(1000, 720)
-gui_css("examples/vnt_focus.css")
-
-if gui_open("VNT Focus  |  Make room for deep work") {
+if vanta_gui_start("VNT Focus  |  Make room for deep work", 1000, 720, "examples/vnt_focus.css") {
     running = true
     timer_running = false
     remaining_seconds = 1500
@@ -17,7 +16,7 @@ if gui_open("VNT Focus  |  Make room for deep work") {
     log_path = "vnt_focus.log"
 
     while running {
-        running = gui_poll()
+        running = vanta_gui_poll()
 
         if timer_running {
             if time_ms() - last_tick >= 1000 {
@@ -45,12 +44,12 @@ if gui_open("VNT Focus  |  Make room for deep work") {
             seconds_text = "" + seconds_left
         }
 
-        gui_panel(28, 120, 610, 330)
+        vanta_card(28, 120, 610, 330)
         gui_panel(658, 120, 312, 330)
         gui_panel(28, 470, 942, 190)
 
-        gui_title("VNT FOCUS", 34, 26)
-        gui_text_at("YOUR QUIET SPACE FOR GETTING THINGS DONE", 36, 72)
+        vanta_heading("VNT FOCUS", 34, 26)
+        vanta_label("YOUR QUIET SPACE FOR GETTING THINGS DONE", 36, 72)
         gui_text_at("LOCAL FIRST  /  NO ACCOUNTS  /  NO TELEMETRY", 36, 94)
 
         gui_text_at("FOCUS SESSION", 52, 145)
@@ -84,7 +83,7 @@ if gui_open("VNT Focus  |  Make room for deep work") {
         gui_text_at(status_message, 52, 526)
         gui_text_at("Saved sessions this run: " + sessions_saved, 52, 554)
 
-        if gui_button("Start / Resume", 52, 350) {
+        if vanta_button("Start / Resume", 52, 350) {
             if remaining_seconds <= 0 {
                 remaining_seconds = 1500
             }
@@ -140,9 +139,10 @@ if gui_open("VNT Focus  |  Make room for deep work") {
             running = false
         }
 
+        vanta_gui_present()
         sleep_ms(16)
     }
-    gui_close()
+    vanta_gui_close()
 } else {
     print("Could not create the VNT Focus window.")
 }

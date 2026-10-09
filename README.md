@@ -293,6 +293,22 @@ Top-level variable declarations use shared storage and can be read or updated fr
 Regression example: `examples/global_variables.vnt`.
 
 
+## Vanta GUI library (Windows)
+
+VNT now includes an importable GUI library at `lib/vanta/gui.vnt`. Import it from a source file with a relative module import, for example `import "../lib/vanta/gui.vnt"` inside `examples/my_app.vnt`. The module is bundled into the compiled program by VNT's existing module loader; no package download or network access is required.
+
+The renderer uses retained draw commands and a double-buffered Win32 `WM_PAINT` path instead of drawing directly to the visible window for every control. This avoids the repeated background/control erasure that caused the earlier flicker. Call `vanta_gui_present()` once after composing each frame.
+
+Library functions:
+- `vanta_gui_start(title, width, height, stylesheet)`, `vanta_gui_poll()`, `vanta_gui_present()`, `vanta_gui_close()`
+- `vanta_heading(text, x, y)`, `vanta_label(text, x, y)`, `vanta_card(x, y, width, height)`
+- `vanta_button(text, x, y)` — returns true when clicked
+- `vanta_text_input(placeholder, x, y, width)` — returns the current text; supports basic ASCII typing and backspace
+- `vanta_checkbox(label, x, y, checked)` — returns the current checked state
+- `vanta_progress(value, maximum, x, y)`, `vanta_separator(x, y, width)`
+
+The underlying `gui_*` built-ins remain available. The styling engine is still a small CSS subset rather than a browser; this is a foundation for app UIs, not yet a full native widget toolkit. GUI support remains Windows-only.
+
 ## Native GUI, CSS-like styling, and buttons (Windows)
 
 VNT supports decimal and hexadecimal integer literals (for example, `42` and `0x2A`). Its native runtime includes a small Win32 GUI API for desktop prototypes. `gui_css(path)` loads a stylesheet from disk. This is a deliberately limited CSS-like subset, not a browser engine: supported selectors are `window`, `label`, `button`, and `button:hover`; supported properties are `background-color`, `color`, `font-size`, `padding`, and `border-radius`. Colors use `#RRGGBB` notation. Unsupported CSS is ignored.

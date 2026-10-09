@@ -21,6 +21,7 @@ if gui_open("VNT GUI Demo") {
         if gui_button("Exit", 32, 228) {
             running = false
         }
+        gui_present()
         sleep_ms(16)
     }
     gui_close()

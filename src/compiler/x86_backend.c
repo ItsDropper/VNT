@@ -303,6 +303,41 @@ static void emit_expr(HirGen *g,size_t i) {
     default:fail(g,"unsupported HIR expression opcode.");break;
     }
 }
+/* Emit a conditional branch with a guarded integer fast path. */
+static void emit_condition_false_branch(HirGen *g,size_t condition,int false_label) {
+    const VntIrNode *n=node(g,condition);
+    const VntIrNode *left=n&&n->opcode==VNT_IR_BINARY?node(g,child(g,condition,VNT_IR_EDGE_LEFT)):NULL;
+    const VntIrNode *right=n&&n->opcode==VNT_IR_BINARY?node(g,child(g,condition,VNT_IR_EDGE_RIGHT)):NULL;
+    if(n&&n->opcode==VNT_IR_BINARY&&left&&right&&right->opcode==VNT_IR_INTEGER&&
+       n->operation>=BINARY_EQUAL&&n->operation<=BINARY_LESS_EQUAL) {
+        int slow=label_new(g),done=label_new(g);
+        emit_expr(g,child(g,condition,VNT_IR_EDGE_LEFT));
+        fputs("    movq %rax,%r11\n    testq %r11,%r11\n    jz ",g->out);fprintf(g->out,".L%d\n",slow);
+        fputs("    cmpl $1,0(%r11)\n    jne ",g->out);fprintf(g->out,".L%d\n    movl 8(%%r11),%%eax\n",slow);
+        fprintf(g->out,"    cmpl $%d,%%eax\n",right->value.integer);
+        const char *branch=NULL;
+        switch(n->operation) {
+            case BINARY_EQUAL: branch="jne"; break;
+            case BINARY_NOT_EQUAL: branch="je"; break;
+            case BINARY_GREATER: branch="jle"; break;
+            case BINARY_LESS: branch="jge"; break;
+            case BINARY_GREATER_EQUAL: branch="jl"; break;
+            case BINARY_LESS_EQUAL: branch="jg"; break;
+            default: break;
+        }
+        if(branch){fprintf(g->out,"    %s .L%d\n    jmp .L%d\n",branch,false_label,done);}
+        else {fprintf(g->out,"    jmp .L%d\n",slow);}
+        label_emit(g,slow);
+        emit_expr(g,condition);
+        fputs("    movq %rax,%rcx\n",g->out);call0(g,"vnt_truth");
+        fprintf(g->out,"    testl %%eax,%%eax\n    jz .L%d\n",false_label);
+        label_emit(g,done);
+        return;
+    }
+    emit_expr(g,condition);
+    fputs("    movq %rax,%rcx\n",g->out);call0(g,"vnt_truth");
+    fprintf(g->out,"    testl %%eax,%%eax\n    jz .L%d\n",false_label);
+}
 static void emit_assignment(HirGen*g,size_t i) {
     size_t t=child(g,i,VNT_IR_EDGE_TARGET),v=child(g,i,VNT_IR_EDGE_VALUE);const VntIrNode*tn=node(g,t);
     if(!tn){fail(g,"missing HIR assignment target.");return;}
@@ -337,12 +372,12 @@ static void emit_stmt(HirGen*g,size_t i) {
         break;}
     case VNT_IR_ASSIGN:emit_assignment(g,i);break;
     case VNT_IR_IF:{
-        int els=label_new(g),done=label_new(g);emit_expr(g,child(g,i,VNT_IR_EDGE_CONDITION));fputs("    movq %rax,%rcx\n",g->out);call0(g,"vnt_truth");fprintf(g->out,"    testl %%eax,%%eax\n    jz .L%d\n",els);
+        int els=label_new(g),done=label_new(g);emit_condition_false_branch(g,child(g,i,VNT_IR_EDGE_CONDITION),els);
         emit_stmt_role(g,i,VNT_IR_EDGE_THEN);fprintf(g->out,"    jmp .L%d\n",done);label_emit(g,els);emit_stmt_role(g,i,VNT_IR_EDGE_ELSE);label_emit(g,done);break;}
     case VNT_IR_WHILE:{
         int s=label_new(g),e=label_new(g);if(g->loop_depth>=64){fail(g,"loop nesting too deep.");break;}
         g->loop_start[g->loop_depth]=s;g->loop_end[g->loop_depth]=e;g->loop_depth++;label_emit(g,s);
-        emit_expr(g,child(g,i,VNT_IR_EDGE_CONDITION));fputs("    movq %rax,%rcx\n",g->out);call0(g,"vnt_truth");fprintf(g->out,"    testl %%eax,%%eax\n    jz .L%d\n",e);
+        emit_condition_false_branch(g,child(g,i,VNT_IR_EDGE_CONDITION),e);
         emit_stmt_role(g,i,VNT_IR_EDGE_BODY);fprintf(g->out,"    jmp .L%d\n",s);label_emit(g,e);g->loop_depth--;break;}
     case VNT_IR_BREAK:if(!g->loop_depth)fail(g,"break outside loop.");else fprintf(g->out,"    jmp .L%d\n",g->loop_end[g->loop_depth-1]);break;
     case VNT_IR_CONTINUE:if(!g->loop_depth)fail(g,"continue outside loop.");else fprintf(g->out,"    jmp .L%d\n",g->loop_start[g->loop_depth-1]);break;

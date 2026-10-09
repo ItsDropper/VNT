@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdio.h>
+#include <vnt/operators.h>
 
 /*
  * VNT HIR: a flat, index-addressed tree independent of AST allocation.

@@ -252,6 +252,40 @@ int vnt_ir_validate(const VntIrProgram *ir) {
 }
 
 
+
+static const char *opcode_name(VntIrOpcode opcode) {
+    static const char *const names[] = {
+        "program", "print", "if", "while", "function", "struct", "call",
+        "return", "break", "continue", "string", "integer", "float",
+        "boolean", "array", "variable_decl", "variable", "index", "member",
+        "assign", "binary", "unary", "reassign"
+    };
+    return (unsigned)opcode < sizeof(names) / sizeof(names[0]) ? names[opcode] : "invalid";
+}
+
+static const char *edge_role_name(VntIrEdgeRole role) {
+    static const char *const names[] = {
+        "root", "statement", "condition", "then", "else", "body", "value",
+        "target", "argument", "element", "object", "index", "left", "right",
+        "operand"
+    };
+    return (unsigned)role < sizeof(names) / sizeof(names[0]) ? names[role] : "invalid";
+}
+
+static const char *operation_name(const VntIrNode *node) {
+    static const char *const binary[] = {
+        "+", "-", "*", "/", "%", "==", "!=", ">", "<", ">=", "<=", "&&", "||"
+    };
+    static const char *const unary[] = { "!", "-", "&", "*" };
+    if (node->opcode == VNT_IR_BINARY)
+        return node->operation >= BINARY_ADD && node->operation <= BINARY_OR
+            ? binary[node->operation] : "invalid";
+    if (node->opcode == VNT_IR_UNARY)
+        return node->operation >= UNARY_NOT && node->operation <= UNARY_DEREFERENCE
+            ? unary[node->operation] : "invalid";
+    return "invalid";
+}
+
 void vnt_ir_dump(const VntIrProgram *ir, FILE *out) {
     if (!out || !vnt_ir_validate(ir)) {
         if (out) fputs("VNT HIR error: invalid IR graph.\n", out);

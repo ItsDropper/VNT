@@ -8,6 +8,7 @@
 #include <vnt/compiler.h>
 #include <vnt/modules.h>
 #include <vnt/ir.h>
+#include <vnt/ir_lower.h>
 
 static int compile_native(AstNode *program, const char *output_path) {
     size_t length = strlen(output_path);

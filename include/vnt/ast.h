@@ -1,6 +1,8 @@
 #ifndef VNT_AST_H
 #define VNT_AST_H
 
+#include <vnt/operators.h>
+
 typedef enum {
     AST_PROGRAM,
     AST_PRINT_STATEMENT,
@@ -28,31 +30,6 @@ typedef enum {
     AST_BINARY_EXPRESSION,
     AST_UNARY_EXPRESSION
 } AstNodeType;
-
-typedef enum {
-    BINARY_ADD,
-    BINARY_SUBTRACT,
-    BINARY_MULTIPLY,
-    BINARY_DIVIDE,
-    BINARY_MODULO,
-
-    BINARY_EQUAL,
-    BINARY_NOT_EQUAL,
-    BINARY_GREATER,
-    BINARY_LESS,
-    BINARY_GREATER_EQUAL,
-    BINARY_LESS_EQUAL,
-
-    BINARY_AND,
-    BINARY_OR
-} BinaryOperator;
-
-typedef enum {
-    UNARY_NOT,
-    UNARY_NEGATE,
-    UNARY_REFERENCE,
-    UNARY_DEREFERENCE
-} UnaryOperator;
 
 typedef struct AstNode {
     AstNodeType type;

@@ -1160,7 +1160,7 @@ static void vnt_gui_render(HDC dc) {
                 RECT tr={r.left+10,r.top+(c->type==VG_TEXTAREA?8:0),r.right-8,r.bottom-6};
                 if(c->type==VG_TEXTAREA) DrawTextA(dc,c->text,-1,&tr,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
                 else DrawTextA(dc,c->text,-1,&tr,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-                if(c->type==VG_INPUT&&vnt_gui_focused_input>=0&&vnt_gui_inputs[vnt_gui_focused_input].x==c->x&&vnt_gui_inputs[vnt_gui_focused_input].y==c->y&&!c->placeholder) { SIZE sz={0};GetTextExtentPoint32A(dc,c->text,(int)strlen(c->text),&sz);MoveToEx(dc,r.left+10+sz.cx,r.top+7,NULL);LineTo(dc,r.left+10+sz.cx,r.bottom-7); }
+                if(c->type==VG_INPUT&&vnt_gui_focused_input>=0&&vnt_gui_focused_input<vnt_gui_input_count&&vnt_gui_inputs[vnt_gui_focused_input].x==c->x&&vnt_gui_inputs[vnt_gui_focused_input].y==c->y&&!c->placeholder) { SIZE sz={0};GetTextExtentPoint32A(dc,c->text,(int)strlen(c->text),&sz);MoveToEx(dc,r.left+10+sz.cx,r.top+7,NULL);LineTo(dc,r.left+10+sz.cx,r.bottom-7); }
                 if(old)SelectObject(dc,old);if(font)DeleteObject(font);
             }
         } else if(c->type==VG_PROGRESS) {
@@ -1177,13 +1177,28 @@ static void vnt_gui_render(HDC dc) {
 static LRESULT CALLBACK vnt_gui_wndproc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
         case WM_PAINT: {
-            PAINTSTRUCT ps;HDC target=BeginPaint(hwnd,&ps);RECT r;GetClientRect(hwnd,&r);
-            int w=r.right-r.left,h=r.bottom-r.top;
-            if(target&&w>0&&h>0){HDC memory=CreateCompatibleDC(target);HBITMAP bitmap=CreateCompatibleBitmap(target,w,h);
-                if(memory&&bitmap){HGDIOBJ old=SelectObject(memory,bitmap);vnt_gui_render(memory);BitBlt(target,0,0,w,h,memory,0,0,SRCCOPY);SelectObject(memory,old);}
-                if(bitmap)DeleteObject(bitmap);if(memory)DeleteDC(memory);
+            PAINTSTRUCT ps;
+            HDC target=BeginPaint(hwnd,&ps);
+            if(target) {
+                RECT client;
+                if(GetClientRect(hwnd,&client) && client.right>client.left && client.bottom>client.top) {
+                    HDC memory=CreateCompatibleDC(target);
+                    HBITMAP bitmap=memory?CreateCompatibleBitmap(target,client.right-client.left,client.bottom-client.top):NULL;
+                    HGDIOBJ previous=NULL;
+                    if(memory && bitmap) previous=SelectObject(memory,bitmap);
+                    if(memory && bitmap && previous && previous!=HGDI_ERROR) {
+                        vnt_gui_render(memory);
+                        BitBlt(target,0,0,client.right-client.left,client.bottom-client.top,memory,0,0,SRCCOPY);
+                        SelectObject(memory,previous);
+                    } else {
+                        vnt_gui_render(target);
+                    }
+                    if(bitmap) DeleteObject(bitmap);
+                    if(memory) DeleteDC(memory);
+                }
             }
-            EndPaint(hwnd,&ps);return 0;
+            EndPaint(hwnd,&ps);
+            return 0;
         }
         case WM_ERASEBKGND:return 1;
         case WM_KEYDOWN:

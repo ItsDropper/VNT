@@ -1002,9 +1002,15 @@ static void emit_expr(X86Gen *g,AstNode *n) {
                     fail(g, "references currently require a variable.");
                     break;
                 }
-                fprintf(g->out, "    leaq ");
-                mem(g, var_offset(g, operand->variable.name));
-                fputs(",%rcx\n", g->out);
+                if (var_is_global(g, operand->variable.name)) {
+                    fputs("    leaq vnt_global_", g->out);
+                    cname(g->out, "", operand->variable.name);
+                    fputs("(%rip),%rcx\n", g->out);
+                } else {
+                    fprintf(g->out, "    leaq ");
+                    mem(g, var_offset(g, operand->variable.name));
+                    fputs(",%rcx\n", g->out);
+                }
                 call0(g, "vnt_ref");
                 break;
             }

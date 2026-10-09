@@ -21,7 +21,7 @@ Currently implemented:
 * Struct definitions and named struct instances
 * References and dereferencing (`&x`, `*p`)
 * Functions with up to 32 parameters
-* Native integer arithmetic fast path
+* Native integer arithmetic fast path with conservative inference for assignment-only variables
 * Integer, boolean, and finite floating-point constant folding
 * Basic native FFI (`ffi_int`)
 * Math functions (`sqrt`, `sin`, `cos`, `tan`, `abs`, `floor`, `ceil`, `min`, `max`)

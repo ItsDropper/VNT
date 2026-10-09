@@ -23,7 +23,23 @@ try {
         & .\vnt.exe --compile $case -o (Join-Path $OutDir "should_not_exist.exe") 2>&1 | Out-Null
         if ($LASTEXITCODE -eq 0) { throw "Expected type-check failure for $case, but compilation succeeded." }
     }
-    Write-Host "Language checks: PASS"
+
+    $ModuleExe = Join-Path $OutDir "modules.exe"
+    & .\vnt.exe --compile tests\modules\main.vnt -o $ModuleExe
+    if ($LASTEXITCODE -ne 0) { throw "Existing multi-file module project did not compile." }
+    $moduleOutput = & $ModuleExe
+    if ($LASTEXITCODE -ne 0 -or ($moduleOutput -join "|") -ne "Modules:|42|Optimized:|65") {
+        throw "Unexpected multi-file module output: $($moduleOutput -join ' | ')"
+    }
+
+    foreach ($case in @(
+        "tests\modules\circular_a.vnt",
+        "tests\modules\malformed_import.vnt"
+    )) {
+        & .\vnt.exe --compile $case -o (Join-Path $OutDir "invalid_module.exe") 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) { throw "Expected module-loading failure for $case, but compilation succeeded." }
+    }
+    Write-Host "Language and module checks: PASS"
 }
 finally {
     Pop-Location

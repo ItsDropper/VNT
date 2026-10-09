@@ -434,14 +434,36 @@ static void emit_int_expr(X86Gen *g, AstNode *n) {
         case BINARY_SUBTRACT:fputs("    subl %r10d,%eax\n    jo .Lvnt_int_sub_overflow\n",g->out);break;
         case BINARY_MULTIPLY:fputs("    imull %r10d,%eax\n    jo .Lvnt_int_mul_overflow\n",g->out);break;
         case BINARY_MODULO: {
-            int normal=new_label(g), done=new_label(g);
-            fputs("    testl %r10d,%r10d\n    jz .Lvnt_int_div_zero\n",g->out);
-            fprintf(g->out,"    cmpl $-1,%%r10d\n    jne .L%d\n",normal);
-            fputs("    cmpl $-2147483648,%eax\n",g->out);
-            fprintf(g->out,"    jne .L%d\n    xorl %%eax,%%eax\n    jmp .L%d\n",normal,done);
-            label(g,normal);
-            fputs("    cltd\n    idivl %r10d\n    movl %edx,%eax\n",g->out);
-            label(g,done);
+            int divisor = n->binary_expression.right->type == AST_INTEGER_LITERAL
+                ? n->binary_expression.right->integer_literal.value : 0;
+            if (divisor > 0 && (divisor & (divisor - 1)) == 0) {
+                /*
+                 * Signed remainder by a positive power of two can avoid IDIV.
+                 * Bias negative inputs toward zero before masking, then
+                 * subtract the rounded-down multiple to preserve VNT's
+                 * dividend-sign remainder semantics.
+                 */
+                int mask = divisor - 1;
+                fprintf(g->out,
+                    "    movl %%eax,%%r11d\\n"
+                    "    movl %%eax,%%r10d\\n"
+                    "    sarl $31,%%r10d\\n"
+                    "    andl $%d,%%r10d\\n"
+                    "    addl %%r10d,%%eax\\n"
+                    "    andl $-%d,%%eax\\n"
+                    "    subl %%eax,%%r11d\\n"
+                    "    movl %%r11d,%%eax\\n",
+                    mask, divisor);
+            } else {
+                int normal=new_label(g), done=new_label(g);
+                fputs("    testl %r10d,%r10d\\n    jz .Lvnt_int_div_zero\\n",g->out);
+                fprintf(g->out,"    cmpl $-1,%%r10d\\n    jne .L%d\\n",normal);
+                fputs("    cmpl $-2147483648,%eax\\n",g->out);
+                fprintf(g->out,"    jne .L%d\\n    xorl %%eax,%%eax\\n    jmp .L%d\\n",normal,done);
+                label(g,normal);
+                fputs("    cltd\\n    idivl %r10d\\n    movl %edx,%eax\\n",g->out);
+                label(g,done);
+            }
             break;
         }
         default:fail(g,"unsupported native integer expression.");break;

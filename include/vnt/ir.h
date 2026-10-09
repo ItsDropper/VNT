@@ -2,6 +2,7 @@
 #define VNT_IR_H
 
 #include <stddef.h>
+#include <stdio.h>
 #include <vnt/ast.h>
 
 /*
@@ -89,6 +90,7 @@ typedef struct {
 int vnt_ir_lower(VntIrProgram *ir, AstNode *program);
 int vnt_ir_optimize(VntIrProgram *ir);
 int vnt_ir_validate(const VntIrProgram *ir);
+void vnt_ir_dump(const VntIrProgram *ir, FILE *out);
 void vnt_ir_free(VntIrProgram *ir);
 
 #endif

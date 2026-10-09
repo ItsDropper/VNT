@@ -102,6 +102,7 @@ VNT's generated executables include a cross-platform runtime API:
 | `fs_read(path)` | Read a text file; a runtime error is raised on failure. |
 | `fs_write(path, text)` | Replace file contents; returns a success boolean. |
 | `fs_append(path, text)` | Append text; returns a success boolean. |
+| `fs_delete(path)` | Delete a file; returns a success boolean. |
 | `dir_create(path)` | Create one directory level; returns a success boolean. |
 | `cwd()` | Get the current working directory. |
 | `env_get(name)` | Read an environment variable; returns `null` if absent. |

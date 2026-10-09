@@ -1,0 +1,16 @@
+# Assignment-only variables should use native integer storage when every
+# assignment is a statically known integer expression.
+i = 0
+total = 0
+base = 2
+derived = base + 3
+scaled = derived * 4
+
+while i < 100 {
+    total += i
+    i += 1
+}
+
+print(total)
+print(scaled)
+print("NATIVE_INT_INFERENCE_OK")

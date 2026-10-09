@@ -7,7 +7,7 @@
 #include <limits.h>
 #include <stdint.h>
 
-typedef struct { char *name; int offset; } Var;
+typedef struct { char *name; int offset; int is_int; int has_decl; } Var;
 typedef struct { char *value; int label; } StringLit;
 typedef struct { double value; int label; } FloatLit;
 typedef struct { char *name; } StructDef;
@@ -61,7 +61,8 @@ static void var_add(X86Gen *g, const char *name) {
     }
     g->vars[g->var_count].name=strdup(name);
     if(!g->vars[g->var_count].name){fail(g,"out of memory.");return;}
-    g->vars[g->var_count++].offset=0;
+    g->vars[g->var_count].offset=0;
+    g->vars[g->var_count].is_int=0; g->vars[g->var_count].has_decl=0; g->var_count++;
 }
 
 static void free_vars(X86Gen *g) {
@@ -78,7 +79,7 @@ static int var_offset(X86Gen *g,const char *name) {
 static void collect_vars(X86Gen *g, AstNode *n) {
     for(;n;n=n->next) {
         switch(n->type) {
-            case AST_VARIABLE_DECLARATION: var_add(g,n->variable_declaration.name); break;
+            case AST_VARIABLE_DECLARATION: var_add(g,n->variable_declaration.name); { int vi=var_find(g,n->variable_declaration.name); if(vi>=0) g->vars[vi].has_decl=1; } break;
             case AST_VARIABLE: var_add(g,n->variable.name); break;
             case AST_ASSIGNMENT:
                 if(n->assignment.target && n->assignment.target->type==AST_VARIABLE)
@@ -252,6 +253,74 @@ static int static_integer_value(AstNode *n, int64_t *out) {
 static int static_integer_expr(AstNode *n) {
     int64_t value;
     return static_integer_value(n, &value);
+}
+
+
+/* Conservative native-int specialization. Unknown or mixed-type variables
+ * remain boxed VntValue pointers and use the ordinary runtime helpers. */
+static int known_int_expr(X86Gen *g, AstNode *n) {
+    if (!n) return 0;
+    if (n->type==AST_INTEGER_LITERAL) return 1;
+    if (n->type==AST_VARIABLE) { int i=var_find(g,n->variable.name); return i>=0 && g->vars[i].is_int; }
+    if (n->type==AST_UNARY_EXPRESSION)
+        return n->unary_expression.operator==UNARY_NEGATE && known_int_expr(g,n->unary_expression.operand);
+    if (n->type==AST_BINARY_EXPRESSION) {
+        BinaryOperator op=n->binary_expression.operator;
+        if(op!=BINARY_ADD && op!=BINARY_SUBTRACT && op!=BINARY_MULTIPLY) return 0;
+        return known_int_expr(g,n->binary_expression.left) && known_int_expr(g,n->binary_expression.right);
+    }
+    return 0;
+}
+static void infer_int_assignments(X86Gen *g, AstNode *n, int *changed) {
+    for(;n;n=n->next) {
+        if(n->type==AST_VARIABLE_DECLARATION) {
+            int i=var_find(g,n->variable_declaration.name);
+            if(i>=0 && g->vars[i].is_int && !known_int_expr(g,n->variable_declaration.value)) {g->vars[i].is_int=0;*changed=1;}
+        } else if(n->type==AST_ASSIGNMENT && n->assignment.target && n->assignment.target->type==AST_VARIABLE) {
+            int i=var_find(g,n->assignment.target->variable.name);
+            if(i>=0 && g->vars[i].is_int && !known_int_expr(g,n->assignment.value)) {g->vars[i].is_int=0;*changed=1;}
+        }
+        if(n->type==AST_IF_STATEMENT) {
+            infer_int_assignments(g,n->if_statement.then_branch,changed);
+            infer_int_assignments(g,n->if_statement.else_branch,changed);
+        } else if(n->type==AST_WHILE_STATEMENT) infer_int_assignments(g,n->while_statement.body,changed);
+        else if(n->type==AST_FUNCTION_DECLARATION) infer_int_assignments(g,n->function_declaration.body,changed);
+    }
+}
+static void infer_integer_variables(X86Gen *g, AstNode *program) {
+    for(int i=0;i<g->var_count;i++) g->vars[i].is_int=g->vars[i].has_decl;
+    int changed;
+    do { changed=0; infer_int_assignments(g,program,&changed); } while(changed);
+}
+static void emit_int_expr(X86Gen *g, AstNode *n) {
+    if(n->type==AST_INTEGER_LITERAL) {fprintf(g->out,"    movl $%d,%%eax\n",n->integer_literal.value);return;}
+    if(n->type==AST_VARIABLE) {fprintf(g->out,"    movl -%d(%%rbp),%%eax\n",var_offset(g,n->variable.name));return;}
+    if(n->type==AST_UNARY_EXPRESSION) {emit_int_expr(g,n->unary_expression.operand);fputs("    negl %eax\n",g->out);return;}
+    emit_int_expr(g,n->binary_expression.left);
+    fputs("    pushq %rax\n",g->out);
+    emit_int_expr(g,n->binary_expression.right);
+    fputs("    movl %eax,%r10d\n    popq %rax\n",g->out);
+    switch(n->binary_expression.operator) {
+        case BINARY_ADD:fputs("    addl %r10d,%eax\n",g->out);break;
+        case BINARY_SUBTRACT:fputs("    subl %r10d,%eax\n",g->out);break;
+        case BINARY_MULTIPLY:fputs("    imull %r10d,%eax\n",g->out);break;
+        default:fail(g,"unsupported native integer expression.");break;
+    }
+}
+static int emit_int_condition_false(X86Gen *g, AstNode *n, int end) {
+    if(!n || n->type!=AST_BINARY_EXPRESSION ||
+       !known_int_expr(g,n->binary_expression.left) || !known_int_expr(g,n->binary_expression.right)) return 0;
+    const char *j=NULL;
+    switch(n->binary_expression.operator) {
+        case BINARY_EQUAL:j="jne";break; case BINARY_NOT_EQUAL:j="je";break;
+        case BINARY_LESS:j="jge";break; case BINARY_GREATER:j="jle";break;
+        case BINARY_LESS_EQUAL:j="jg";break; case BINARY_GREATER_EQUAL:j="jl";break;
+        default:return 0;
+    }
+    emit_int_expr(g,n->binary_expression.left); fputs("    pushq %rax\n",g->out);
+    emit_int_expr(g,n->binary_expression.right);
+    fputs("    movl %eax,%r10d\n    popq %rax\n    cmpl %r10d,%eax\n",g->out);
+    fprintf(g->out,"    %s .L%d\n",j,end); return 1;
 }
 
 static void emit_raw_integer(X86Gen *g, AstNode *n) {
@@ -529,9 +598,12 @@ static void emit_expr(X86Gen *g,AstNode *n) {
             fprintf(g->out,"    lea .Lstr%d(%%rip),%%rcx\n",string_label(g,n->string_literal.value));
             call0(g,"vnt_string");
             break;
-        case AST_VARIABLE:
-            fprintf(g->out,"    movq "); mem(g,var_offset(g,n->variable.name)); fputs(",%rax\n",g->out);
+        case AST_VARIABLE: {
+            int vi=var_find(g,n->variable.name);
+            if(vi>=0 && g->vars[vi].is_int) {fprintf(g->out,"    movl -%d(%%rbp),%%ecx\n",g->vars[vi].offset);call0(g,"vnt_int");}
+            else {fprintf(g->out,"    movq ");mem(g,var_offset(g,n->variable.name));fputs(",%rax\n",g->out);}
             break;
+        }
         case AST_ARRAY_LITERAL: {
             call0(g,"vnt_array_new");
             for(AstNode *e=n->array_literal.elements;e;e=e->next){
@@ -581,6 +653,7 @@ static void emit_expr(X86Gen *g,AstNode *n) {
             emit_call(g,n); break;
         case AST_BINARY_EXPRESSION: {
             BinaryOperator op=n->binary_expression.operator;
+            if(known_int_expr(g,n)) {emit_int_expr(g,n);fputs("    movl %eax,%ecx\n",g->out);call0(g,"vnt_int");break;}
             if (static_integer_expr(n)) {
                 emit_raw_integer(g, n);
                 fputs("    movl %eax,%ecx\n", g->out);
@@ -633,8 +706,9 @@ static void emit_print(X86Gen *g,AstNode *e){
 static void emit_assignment(X86Gen *g,AstNode *n){
     AstNode *t=n->assignment.target;
     if(t->type==AST_VARIABLE){
-        emit_expr(g,n->assignment.value);
-        fprintf(g->out,"    movq %%rax,");mem(g,var_offset(g,t->variable.name));fputc('\n',g->out);
+        int vi=var_find(g,t->variable.name);
+        if(vi>=0 && g->vars[vi].is_int && known_int_expr(g,n->assignment.value)) {emit_int_expr(g,n->assignment.value);fprintf(g->out,"    movl %%eax,-%d(%%rbp)\n",g->vars[vi].offset);}
+        else {emit_expr(g,n->assignment.value);fprintf(g->out,"    movq %%rax,");mem(g,var_offset(g,t->variable.name));fputc('\n',g->out);}
         return;
     }
     if(t->type==AST_INDEX_EXPRESSION){
@@ -674,14 +748,16 @@ static void emit_stmt(X86Gen *g,AstNode *n){
     if(g->error)return;
     switch(n->type){
         case AST_PRINT_STATEMENT:emit_print(g,n->print_statement.expression);break;
-        case AST_VARIABLE_DECLARATION:
-            emit_expr(g,n->variable_declaration.value);
-            fprintf(g->out,"    movq %%rax,");mem(g,var_offset(g,n->variable_declaration.name));fputc('\n',g->out);break;
+        case AST_VARIABLE_DECLARATION: {
+            int vi=var_find(g,n->variable_declaration.name);
+            if(vi>=0 && g->vars[vi].is_int && known_int_expr(g,n->variable_declaration.value)) {emit_int_expr(g,n->variable_declaration.value);fprintf(g->out,"    movl %%eax,-%d(%%rbp)\n",g->vars[vi].offset);}
+            else {emit_expr(g,n->variable_declaration.value);fprintf(g->out,"    movq %%rax,");mem(g,var_offset(g,n->variable_declaration.name));fputc('\n',g->out);}
+            break;
+        }
         case AST_ASSIGNMENT:emit_assignment(g,n);break;
         case AST_IF_STATEMENT:{
             int els=new_label(g),done=new_label(g);
-            emit_expr(g,n->if_statement.condition);call1(g,"vnt_truth");
-            fprintf(g->out,"    testl %%eax,%%eax\n    jz .L%d\n",els);
+            if(!emit_int_condition_false(g,n->if_statement.condition,els)) {emit_expr(g,n->if_statement.condition);call1(g,"vnt_truth");fprintf(g->out,"    testl %%eax,%%eax\n    jz .L%d\n",els);}
             emit_stmt_list(g,n->if_statement.then_branch);
             fprintf(g->out,"    jmp .L%d\n",done);label(g,els);
             emit_stmt_list(g,n->if_statement.else_branch);label(g,done);break;
@@ -690,8 +766,7 @@ static void emit_stmt(X86Gen *g,AstNode *n){
             int s=new_label(g),e=new_label(g);
             if(g->loop_depth>=64){fail(g,"loop nesting is too deep.");return;}
             g->loop_start[g->loop_depth]=s;g->loop_end[g->loop_depth]=e;g->loop_depth++;
-            label(g,s);emit_expr(g,n->while_statement.condition);call1(g,"vnt_truth");
-            fprintf(g->out,"    testl %%eax,%%eax\n    jz .L%d\n",e);
+            label(g,s);if(!emit_int_condition_false(g,n->while_statement.condition,e)){emit_expr(g,n->while_statement.condition);call1(g,"vnt_truth");fprintf(g->out,"    testl %%eax,%%eax\n    jz .L%d\n",e);}
             emit_stmt_list(g,n->while_statement.body);fprintf(g->out,"    jmp .L%d\n",s);label(g,e);
             g->loop_depth--;break;
         }
@@ -777,7 +852,7 @@ int vnt_emit_x86_64(const VntIrProgram *ir,const char *assembly_path){
     for(AstNode *n=program->program.statements;n;n=n->next)
         if(n->type==AST_FUNCTION_DECLARATION){emit_function(&g,n);if(g.error)break;fputc('\n',g.out);}
     if(!g.error){
-        free_vars(&g);collect_vars(&g,program->program.statements);assign_offsets(&g);
+        free_vars(&g);collect_vars(&g,program->program.statements);infer_integer_variables(&g,program->program.statements);assign_offsets(&g);
         fputs(".globl main\nmain:\n    pushq %rbp\n    movq %rsp,%rbp\n",g.out);
         int frame=((g.var_count*8+15)/16)*16;if(frame)fprintf(g.out,"    subq $%d,%%rsp\n",frame);
         emit_stmt_list(&g,program->program.statements);

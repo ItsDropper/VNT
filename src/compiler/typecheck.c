@@ -8,7 +8,7 @@ typedef enum {
     TY_ARRAY, TY_OBJECT, TY_REFERENCE
 } TypeKind;
 
-typedef struct { char *name; TypeKind type; } Symbol;
+typedef struct { char *name; TypeKind type; int explicit_type; int dynamic; } Symbol;
 typedef struct { char *name; int arity; } FunctionDef;
 typedef struct { char *name; int field_count; } StructDef;
 
@@ -34,17 +34,29 @@ static TypeKind find_symbol(TypeChecker *tc, const char *name) {
     return TY_UNDECLARED;
 }
 
-static void set_symbol(TypeChecker *tc, const char *name, TypeKind type) {
+static void set_symbol(TypeChecker *tc, const char *name, TypeKind type,
+                       int explicit_type) {
     for (int i = tc->count - 1; i >= 0; --i) {
         if (!strcmp(tc->symbols[i].name, name)) {
-            TypeKind old = tc->symbols[i].type;
+            Symbol *symbol = &tc->symbols[i];
+            TypeKind old = symbol->type;
             if (old != TY_UNKNOWN && type != TY_UNKNOWN &&
                 old != type && !(old == TY_INT && type == TY_FLOAT) &&
                 !(old == TY_FLOAT && type == TY_INT)) {
-                error(tc, "variable type changed incompatibly.");
+                if (symbol->explicit_type || explicit_type) {
+                    error(tc, "variable type changed incompatibly.");
+                    return;
+                }
+                /* Inferred variables are dynamically typed. Once assignments
+                   disagree, keep the symbol unknown instead of narrowing it
+                   again on a later assignment. The backend will box it. */
+                symbol->type = TY_UNKNOWN;
+                symbol->dynamic = 1;
                 return;
             }
-            if (old == TY_UNKNOWN) tc->symbols[i].type = type;
+            if (old == TY_UNKNOWN && !symbol->dynamic)
+                symbol->type = type;
+            if (explicit_type) symbol->explicit_type = 1;
             return;
         }
     }
@@ -59,7 +71,10 @@ static void set_symbol(TypeChecker *tc, const char *name, TypeKind type) {
 
     tc->symbols[tc->count].name = strdup(name);
     if (!tc->symbols[tc->count].name) { error(tc, "out of memory."); return; }
-    tc->symbols[tc->count++].type = type;
+    tc->symbols[tc->count].type = type;
+    tc->symbols[tc->count].explicit_type = explicit_type;
+    tc->symbols[tc->count].dynamic = 0;
+    tc->count++;
 }
 
 static int numeric(TypeKind t) { return t == TY_INT || t == TY_FLOAT; }
@@ -332,9 +347,9 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                         error(tc, message);
                         break;
                     }
-                    set_symbol(tc, n->variable_declaration.name, declared_type);
+                    set_symbol(tc, n->variable_declaration.name, declared_type, 1);
                 } else {
-                    set_symbol(tc, n->variable_declaration.name, value_type);
+                    set_symbol(tc, n->variable_declaration.name, value_type, 0);
                 }
                 break;
 
@@ -380,7 +395,7 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
             case AST_FUNCTION_DECLARATION: {
                 int old_count = tc->count;
                 for (int i = 0; i < n->function_declaration.parameter_count; ++i)
-                    set_symbol(tc, n->function_declaration.parameters[i], TY_UNKNOWN);
+                    set_symbol(tc, n->function_declaration.parameters[i], TY_UNKNOWN, 0);
                 check_statements(tc, n->function_declaration.body);
                 while (tc->count > old_count) {
                     free(tc->symbols[tc->count - 1].name);

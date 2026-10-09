@@ -125,6 +125,14 @@ static int builtin_arity(const char *name, int argc) {
     if (!strcmp(name, "process_wait") || !strcmp(name, "process_start")) return argc == 2;
     if (!strcmp(name, "fs_write") || !strcmp(name, "fs_append") ||
         !strcmp(name, "env_set")) return argc == 2;
+
+    /* Native Windows GUI API. Keep its signatures in sync with the
+       runtime dispatch table in x86_backend.c. */
+    if (!strcmp(name, "gui_size")) return argc == 2;
+    if (!strcmp(name, "gui_open") || !strcmp(name, "gui_text") ||
+        !strcmp(name, "gui_fill") || !strcmp(name, "gui_rect")) return argc == 1;
+    if (!strcmp(name, "gui_poll") || !strcmp(name, "gui_key") ||
+        !strcmp(name, "gui_close")) return argc == 0;
     return -1;
 }
 
@@ -231,6 +239,14 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 !strcmp(n->function_call.name, "process_wait") ||
                 !strcmp(n->function_call.name, "process_terminate")) return TY_BOOL;
             if (!strcmp(n->function_call.name, "object")) return TY_OBJECT;
+            if (!strcmp(n->function_call.name, "gui_open") ||
+                !strcmp(n->function_call.name, "gui_poll")) return TY_BOOL;
+            if (!strcmp(n->function_call.name, "gui_key")) return TY_INT;
+            if (!strcmp(n->function_call.name, "gui_size") ||
+                !strcmp(n->function_call.name, "gui_text") ||
+                !strcmp(n->function_call.name, "gui_fill") ||
+                !strcmp(n->function_call.name, "gui_rect") ||
+                !strcmp(n->function_call.name, "gui_close")) return TY_BOOL;
             if (find_struct(tc, n->function_call.name)) return TY_OBJECT;
             return TY_UNKNOWN;
 

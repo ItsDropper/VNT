@@ -164,6 +164,41 @@ int vnt_ir_validate(const VntIrProgram *ir) {
     int valid = parents[ir->root] == 0;
     for (size_t i = 0; valid && i < ir->node_count; ++i)
         if (i != ir->root && parents[i] != 1) valid = 0;
+
+    /*
+     * Parent counts alone do not reject a disconnected cycle. Walk from the
+     * sole root and require every node to be reached exactly once.
+     */
+    unsigned char *visited = calloc(ir->node_count, sizeof(*visited));
+    size_t *stack = malloc(ir->node_count * sizeof(*stack));
+    if (!visited || !stack) {
+        free(visited);
+        free(stack);
+        free(parents);
+        return 0;
+    }
+    size_t top = 0, reached = 0;
+    stack[top++] = ir->root;
+    while (valid && top) {
+        size_t current = stack[--top];
+        if (current >= ir->node_count || visited[current]) {
+            valid = 0;
+            break;
+        }
+        visited[current] = 1;
+        ++reached;
+        for (size_t c = ir->nodes[current].first_child;
+             c != VNT_IR_NO_NODE; c = ir->nodes[c].next_sibling) {
+            if (c >= ir->node_count || visited[c] || top >= ir->node_count) {
+                valid = 0;
+                break;
+            }
+            stack[top++] = c;
+        }
+    }
+    if (reached != ir->node_count) valid = 0;
+    free(visited);
+    free(stack);
     free(parents);
     return valid;
 }

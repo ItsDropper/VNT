@@ -1,6 +1,7 @@
 #include <vnt/ir.h>
 #include <limits.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -152,6 +153,9 @@ static void clear_nodes(VntIrProgram *ir) {
             op == VNT_IR_VARIABLE || op == VNT_IR_MEMBER ||
             op == VNT_IR_CALL || op == VNT_IR_FUNCTION || op == VNT_IR_STRUCT)
             free(ir->nodes[i].value.text);
+        for (size_t j = 0; j < ir->nodes[i].name_count; ++j)
+            free(ir->nodes[i].names[j]);
+        free(ir->nodes[i].names);
     }
     free(ir->nodes);
     ir->nodes = NULL;
@@ -189,18 +193,32 @@ static int add_child(VntIrProgram *ir, size_t parent, size_t child) {
 
 static int lower_node(VntIrProgram *ir, const AstNode *ast, size_t *result);
 
-static int lower_list(VntIrProgram *ir, size_t parent, const AstNode *ast) {
+static int lower_list(VntIrProgram *ir, size_t parent, const AstNode *ast, VntIrEdgeRole role) {
     for (const AstNode *item = ast; item; item = item->next) {
         size_t child;
-        if (!lower_node(ir, item, &child) || !add_child(ir, parent, child)) return 0;
+        if (!lower_node(ir, item, &child)) return 0;
+        ir->nodes[child].role = role;
+        if (!add_child(ir, parent, child)) return 0;
     }
     return 1;
 }
 
-static int lower_one(VntIrProgram *ir, size_t parent, const AstNode *ast) {
+static int lower_one(VntIrProgram *ir, size_t parent, const AstNode *ast, VntIrEdgeRole role) {
     if (!ast) return 1;
     size_t child;
-    return lower_node(ir, ast, &child) && add_child(ir, parent, child);
+    if (!lower_node(ir, ast, &child)) return 0;
+    ir->nodes[child].role = role;
+    return add_child(ir, parent, child);
+}
+
+static int copy_names(VntIrNode *node, char *const *names, int count) {
+    if (count <= 0) return 1;
+    node->names = calloc((size_t)count, sizeof(*node->names));
+    if (!node->names) return 0;
+    node->name_count = (size_t)count;
+    for (int i = 0; i < count; ++i)
+        if (!copy_text(&node->names[i], names[i])) return 0;
+    return 1;
 }
 
 static int copy_text(char **destination, const char *source) {
@@ -219,7 +237,12 @@ static int lower_node(VntIrProgram *ir, const AstNode *ast, size_t *result) {
     if ((int)op < 0 || !reserve_node(ir, result)) return 0;
     VntIrNode *node = &ir->nodes[*result];
     node->opcode = op;
+    node->role = VNT_IR_EDGE_ROOT;
     node->source = ast;
+    if (ast->type == AST_BINARY_EXPRESSION)
+        node->operation = (int)ast->binary_expression.operator;
+    else if (ast->type == AST_UNARY_EXPRESSION)
+        node->operation = (int)ast->unary_expression.operator;
 
     switch (ast->type) {
         case AST_INTEGER_LITERAL: node->value.integer = ast->integer_literal.value; break;
@@ -241,39 +264,43 @@ static int lower_node(VntIrProgram *ir, const AstNode *ast, size_t *result) {
             if (!copy_text(&node->value.text, ast->function_call.name)) return 0;
             break;
         case AST_FUNCTION_DECLARATION:
-            if (!copy_text(&node->value.text, ast->function_declaration.name)) return 0;
+            if (!copy_text(&node->value.text, ast->function_declaration.name) ||
+                !copy_names(node, ast->function_declaration.parameters,
+                            ast->function_declaration.parameter_count)) return 0;
             break;
         case AST_STRUCT_DECLARATION:
-            if (!copy_text(&node->value.text, ast->struct_declaration.name)) return 0;
+            if (!copy_text(&node->value.text, ast->struct_declaration.name) ||
+                !copy_names(node, ast->struct_declaration.fields,
+                            ast->struct_declaration.field_count)) return 0;
             break;
         default: break;
     }
 
     switch (ast->type) {
-        case AST_PROGRAM: return lower_list(ir, *result, ast->program.statements);
-        case AST_PRINT_STATEMENT: return lower_one(ir, *result, ast->print_statement.expression);
+        case AST_PROGRAM: return lower_list(ir, *result, ast->program.statements, VNT_IR_EDGE_STATEMENT);
+        case AST_PRINT_STATEMENT: return lower_one(ir, *result, ast->print_statement.expression, VNT_IR_EDGE_VALUE);
         case AST_IF_STATEMENT:
-            return lower_one(ir, *result, ast->if_statement.condition) &&
-                   lower_list(ir, *result, ast->if_statement.then_branch) &&
-                   lower_list(ir, *result, ast->if_statement.else_branch);
+            return lower_one(ir, *result, ast->if_statement.condition, VNT_IR_EDGE_CONDITION) &&
+                   lower_list(ir, *result, ast->if_statement.then_branch, VNT_IR_EDGE_THEN) &&
+                   lower_list(ir, *result, ast->if_statement.else_branch, VNT_IR_EDGE_ELSE);
         case AST_WHILE_STATEMENT:
-            return lower_one(ir, *result, ast->while_statement.condition) &&
-                   lower_list(ir, *result, ast->while_statement.body);
-        case AST_FUNCTION_DECLARATION: return lower_list(ir, *result, ast->function_declaration.body);
-        case AST_FUNCTION_CALL: return lower_list(ir, *result, ast->function_call.arguments);
-        case AST_RETURN_STATEMENT: return lower_one(ir, *result, ast->return_statement.expression);
-        case AST_ARRAY_LITERAL: return lower_list(ir, *result, ast->array_literal.elements);
+            return lower_one(ir, *result, ast->while_statement.condition, VNT_IR_EDGE_CONDITION) &&
+                   lower_list(ir, *result, ast->while_statement.body, VNT_IR_EDGE_BODY);
+        case AST_FUNCTION_DECLARATION: return lower_list(ir, *result, ast->function_declaration.body, VNT_IR_EDGE_BODY);
+        case AST_FUNCTION_CALL: return lower_list(ir, *result, ast->function_call.arguments, VNT_IR_EDGE_ARGUMENT);
+        case AST_RETURN_STATEMENT: return lower_one(ir, *result, ast->return_statement.expression, VNT_IR_EDGE_VALUE);
+        case AST_ARRAY_LITERAL: return lower_list(ir, *result, ast->array_literal.elements, VNT_IR_EDGE_ELEMENT);
         case AST_INDEX_EXPRESSION:
-            return lower_one(ir, *result, ast->index_expression.array) &&
-                   lower_one(ir, *result, ast->index_expression.index);
-        case AST_MEMBER_EXPRESSION: return lower_one(ir, *result, ast->member_expression.object);
+            return lower_one(ir, *result, ast->index_expression.array, VNT_IR_EDGE_OBJECT) &&
+                   lower_one(ir, *result, ast->index_expression.index, VNT_IR_EDGE_INDEX);
+        case AST_MEMBER_EXPRESSION: return lower_one(ir, *result, ast->member_expression.object, VNT_IR_EDGE_OBJECT);
         case AST_ASSIGNMENT:
-            return lower_one(ir, *result, ast->assignment.target) &&
-                   lower_one(ir, *result, ast->assignment.value);
+            return lower_one(ir, *result, ast->assignment.target, VNT_IR_EDGE_TARGET) &&
+                   lower_one(ir, *result, ast->assignment.value, VNT_IR_EDGE_VALUE);
         case AST_BINARY_EXPRESSION:
-            return lower_one(ir, *result, ast->binary_expression.left) &&
-                   lower_one(ir, *result, ast->binary_expression.right);
-        case AST_UNARY_EXPRESSION: return lower_one(ir, *result, ast->unary_expression.operand);
+            return lower_one(ir, *result, ast->binary_expression.left, VNT_IR_EDGE_LEFT) &&
+                   lower_one(ir, *result, ast->binary_expression.right, VNT_IR_EDGE_RIGHT);
+        case AST_UNARY_EXPRESSION: return lower_one(ir, *result, ast->unary_expression.operand, VNT_IR_EDGE_OPERAND);
         default: return 1;
     }
 }
@@ -310,6 +337,14 @@ int vnt_ir_validate(const VntIrProgram *ir) {
         if (!node->source || (int)node->opcode < 0 ||
             node->opcode > VNT_IR_UNARY ||
             opcode_for(node->source->type) != node->opcode) return 0;
+        if ((int)node->role < 0 || node->role > VNT_IR_EDGE_OPERAND) return 0;
+        if (node->name_count && !node->names) return 0;
+        for (size_t j = 0; j < node->name_count; ++j)
+            if (!node->names[j]) return 0;
+        if (node->opcode == VNT_IR_BINARY &&
+            (node->operation < BINARY_ADD || node->operation > BINARY_OR)) return 0;
+        if (node->opcode == VNT_IR_UNARY &&
+            (node->operation < UNARY_NOT || node->operation > UNARY_DEREFERENCE)) return 0;
         if ((node->first_child == VNT_IR_NO_NODE) != (node->child_count == 0)) return 0;
         size_t child = node->first_child;
         size_t seen = 0, last = VNT_IR_NO_NODE;
@@ -323,6 +358,58 @@ int vnt_ir_validate(const VntIrProgram *ir) {
             ir->nodes[node->last_child].next_sibling != VNT_IR_NO_NODE) return 0;
     }
     return 1;
+}
+
+static const char *opcode_name(VntIrOpcode opcode) {
+    static const char *names[] = {
+        "program", "print", "if", "while", "function", "struct",
+        "call", "return", "break", "continue", "string", "integer",
+        "float", "boolean", "array", "variable-decl", "variable",
+        "index", "member", "assign", "binary", "unary"
+    };
+    return opcode >= VNT_IR_PROGRAM && opcode <= VNT_IR_UNARY
+        ? names[opcode] : "invalid";
+}
+
+void vnt_ir_dump(const VntIrProgram *ir, FILE *out) {
+    if (!out || !vnt_ir_validate(ir)) {
+        if (out) fputs("VNT HIR error: invalid IR graph.\\n", out);
+        return;
+    }
+    fprintf(out, "VNT HIR: %zu nodes; root=%zu; folded=%zu\\n",
+            ir->node_count, ir->root, ir->optimized_nodes);
+    for (size_t i = 0; i < ir->node_count; ++i) {
+        const VntIrNode *node = &ir->nodes[i];
+        fprintf(out, "%04zu %-13s role=%d children=[", i, opcode_name(node->opcode), (int)node->role);
+        size_t child = node->first_child;
+        while (child != VNT_IR_NO_NODE) {
+            fprintf(out, "%s%zu", child == node->first_child ? "" : ",", child);
+            child = ir->nodes[child].next_sibling;
+        }
+        fputc(']', out);
+        switch (node->opcode) {
+            case VNT_IR_INTEGER: fprintf(out, " value=%d", node->value.integer); break;
+            case VNT_IR_BOOLEAN: fprintf(out, " value=%s", node->value.boolean ? "true" : "false"); break;
+            case VNT_IR_FLOAT: fprintf(out, " value=%.17g", node->value.floating); break;
+            case VNT_IR_STRING:
+            case VNT_IR_VARIABLE_DECL:
+            case VNT_IR_VARIABLE:
+            case VNT_IR_MEMBER:
+            case VNT_IR_CALL:
+            case VNT_IR_FUNCTION:
+            case VNT_IR_STRUCT: fprintf(out, " name/text=\\\"%s\\\"", node->value.text); break;
+            case VNT_IR_BINARY:
+            case VNT_IR_UNARY: fprintf(out, " op=%d", node->operation); break;
+            default: break;
+        }
+        if (node->name_count) {
+            fputs(" names=[", out);
+            for (size_t j = 0; j < node->name_count; ++j)
+                fprintf(out, "%s%s", j ? "," : "", node->names[j]);
+            fputc(']', out);
+        }
+        fputc('\\n', out);
+    }
 }
 
 void vnt_ir_free(VntIrProgram *ir) {

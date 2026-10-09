@@ -52,12 +52,33 @@ struct VntValue {
     };
 };
 
+/*
+ * Values currently live for the lifetime of a compiled program. Stable slabs
+ * avoid one heap allocation per integer, boolean, and arithmetic result.
+ */
+#define VNT_VALUE_SLAB_CAPACITY 1024
+typedef struct VntValueSlab {
+    struct VntValueSlab *next;
+    size_t used;
+    VntValue values[VNT_VALUE_SLAB_CAPACITY];
+} VntValueSlab;
+
+static VntValueSlab *value_slabs;
+
 static VntValue *alloc_value(VntType type) {
-    VntValue *v = calloc(1, sizeof(*v));
-    if (!v) {
-        fprintf(stderr, "Runtime error: out of memory.\n");
-        exit(1);
+    VntValueSlab *slab = value_slabs;
+    if (!slab || slab->used == VNT_VALUE_SLAB_CAPACITY) {
+        VntValueSlab *next = calloc(1, sizeof(*next));
+        if (!next) {
+            fprintf(stderr, "Runtime error: out of memory.\\n");
+            exit(1);
+        }
+        next->next = value_slabs;
+        value_slabs = next;
+        slab = next;
     }
+    VntValue *v = &slab->values[slab->used++];
+    memset(v, 0, sizeof(*v));
     v->type = type;
     return v;
 }

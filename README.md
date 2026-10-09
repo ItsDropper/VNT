@@ -136,6 +136,26 @@ print(cwd())
 print(time_ms())
 ```
 
+## Real application example: VNT Desk
+
+VNT Desk is a small interactive developer journal demonstrating that VNT can build a
+native terminal application rather than only print fixed examples. It supports adding
+entries, viewing saved entries, inspecting runtime/environment information, and deleting
+the journal with explicit confirmation. Entries are stored as plain text in
+`vnt_desk.log` in the program's current working directory; nothing is uploaded.
+
+Build and run it from the repository root:
+
+```powershell
+.\vnt.exe --compile examples\vnt_desk.vnt -o examples\vnt_desk.exe
+.\examples\vnt_desk.exe
+```
+
+The journal path is relative to the working directory, so run the executable from the
+directory where you want the data file created. The app uses VNT functions, loops,
+conditionals, string handling, and the native file, environment, clock, and current
+directory APIs.
+
 ## How VNT Works
 
 VNT is compiled to native x86-64 code.

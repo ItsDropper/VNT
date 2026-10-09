@@ -1,0 +1,127 @@
+# VNT Desk
+# A persistent, local-first developer journal built in VNT.
+# Run from the directory where you want vnt_desk.log to live.
+
+journal_path = "vnt_desk.log"
+session_start = time_ms()
+session_entries = 0
+running = true
+
+fun show_header() {
+    print("")
+    print("================================================")
+    print("                  VNT DESK")
+    print("          LOCAL DEVELOPER JOURNAL")
+    print("================================================")
+    print("Journal: " + journal_path)
+    print("Working directory: " + cwd())
+    print("Session entries added: " + session_entries)
+    print("")
+    return 0
+}
+
+fun add_entry() {
+    print("")
+    entry = input("Write an entry (one line): ")
+
+    if entry == "" {
+        print("Empty entry cancelled.")
+        return 0
+    }
+
+    saved = fs_append(journal_path, "- " + entry + "\n")
+
+    if saved {
+        session_entries += 1
+        print("Saved locally.")
+    } else {
+        print("Could not save the entry. Check directory permissions.")
+    }
+
+    return 0
+}
+
+fun show_journal() {
+    print("")
+    print("================ SAVED JOURNAL ================")
+
+    if !fs_exists(journal_path) {
+        print("No journal yet. Add your first entry.")
+        return 0
+    }
+
+    contents = fs_read(journal_path)
+
+    if contents == "" {
+        print("The journal is empty.")
+    } else {
+        print(contents)
+    }
+
+    print("================================================")
+    return 0
+}
+
+fun show_diagnostics() {
+    print("")
+    print("================ SYSTEM REPORT =================")
+    print("Working directory: " + cwd())
+    print("OS environment variable: " + env_get("OS"))
+    print("Home directory variable: " + env_get("HOME"))
+    print("Journal exists: " + fs_exists(journal_path))
+    print("Entries added this session: " + session_entries)
+    print("Session elapsed (ms): " + (time_ms() - session_start))
+    print("================================================")
+    return 0
+}
+
+fun clear_journal() {
+    print("")
+    print("This permanently deletes " + journal_path + ".")
+    confirmation = input("Type DELETE to confirm: ")
+
+    if confirmation != "DELETE" {
+        print("Cancelled. Journal unchanged.")
+        return 0
+    }
+
+    if !fs_exists(journal_path) {
+        print("There is no journal to delete.")
+        return 0
+    }
+
+    if fs_delete(journal_path) {
+        print("Journal deleted.")
+    } else {
+        print("Could not delete the journal.")
+    }
+
+    return 0
+}
+
+while running {
+    show_header()
+    print("1. Write a journal entry")
+    print("2. Read saved journal")
+    print("3. System diagnostics")
+    print("4. Delete journal")
+    print("5. Exit")
+    print("")
+
+    choice = input("vnt-desk> ")
+
+    if choice == "1" {
+        add_entry()
+    } else if choice == "2" {
+        show_journal()
+    } else if choice == "3" {
+        show_diagnostics()
+    } else if choice == "4" {
+        clear_journal()
+    } else if choice == "5" {
+        running = false
+        print("VNT Desk closed. Your journal stays on disk.")
+    } else {
+        print("Unknown command. Choose 1-5.")
+    }
+}

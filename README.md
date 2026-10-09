@@ -91,6 +91,39 @@ true
 false
 ```
 
+
+## Native application API
+
+VNT's generated executables include a cross-platform runtime API:
+
+| Function | Purpose |
+| --- | --- |
+| `fs_exists(path)` | Test whether a file or directory exists. |
+| `fs_read(path)` | Read a text file; a runtime error is raised on failure. |
+| `fs_write(path, text)` | Replace file contents; returns a success boolean. |
+| `fs_append(path, text)` | Append text; returns a success boolean. |
+| `fs_delete(path)` | Delete a file; returns a success boolean. |
+| `dir_create(path)` | Create one directory level; returns a success boolean. |
+| `cwd()` | Get the current working directory. |
+| `env_get(name)` | Read an environment variable; returns `null` if absent. |
+| `env_set(name, value)` | Set an environment variable for the current process. |
+| `time_ms()` | Read a millisecond clock as a floating-point number. |
+| `sleep_ms(milliseconds)` | Block for a non-negative integer duration. |
+
+File operations currently handle text strings, not arbitrary binary data. These
+functions establish a native runtime boundary for future process management,
+windows, and event handling.
+
+```vnt
+settings = "settings.ini"
+if !fs_exists(settings) {
+    fs_write(settings, "theme=dark\n")
+}
+print(fs_read(settings))
+print(cwd())
+print(time_ms())
+```
+
 ## How VNT Works
 
 VNT is compiled to native x86-64 code.

@@ -693,6 +693,44 @@ static void emit_call(X86Gen *g,AstNode *n) {
         return;
     }
 
+
+    /* Native application API: explicit OS/runtime boundary. */
+    {
+        int arity = -1;
+        const char *runtime_name = NULL;
+        if (!strcmp(name, "fs_exists")) { arity = 1; runtime_name = "vnt_fs_exists"; }
+        else if (!strcmp(name, "fs_read")) { arity = 1; runtime_name = "vnt_fs_read"; }
+        else if (!strcmp(name, "fs_write")) { arity = 2; runtime_name = "vnt_fs_write"; }
+        else if (!strcmp(name, "fs_append")) { arity = 2; runtime_name = "vnt_fs_append"; }
+        else if (!strcmp(name, "fs_delete")) { arity = 1; runtime_name = "vnt_fs_delete"; }
+        else if (!strcmp(name, "dir_create")) { arity = 1; runtime_name = "vnt_dir_create"; }
+        else if (!strcmp(name, "cwd")) { arity = 0; runtime_name = "vnt_cwd"; }
+        else if (!strcmp(name, "env_get")) { arity = 1; runtime_name = "vnt_env_get"; }
+        else if (!strcmp(name, "env_set")) { arity = 2; runtime_name = "vnt_env_set"; }
+        else if (!strcmp(name, "time_ms")) { arity = 0; runtime_name = "vnt_time_ms"; }
+        else if (!strcmp(name, "sleep_ms")) { arity = 1; runtime_name = "vnt_sleep_ms"; }
+        if (arity >= 0) {
+            if (count != arity) {
+                fail(g, "native application API function called with the wrong number of arguments.");
+                return;
+            }
+            AstNode *arg = n->function_call.arguments;
+            if (arity == 2) {
+                emit_expr(g, arg);
+                fputs("    pushq %rax\n", g->out);
+                g->temp_depth++;
+                emit_expr(g, arg->next);
+                fputs("    movq %rax,%rdx\n    popq %rcx\n", g->out);
+                g->temp_depth--;
+            } else if (arity == 1) {
+                emit_expr(g, arg);
+                fputs("    movq %rax,%rcx\n", g->out);
+            }
+            call0(g, runtime_name);
+            return;
+        }
+    }
+
     /*
      * The common recursive case has one argument. Avoid pushing it and then
      * reloading it from the stack: evaluate directly into the first Windows

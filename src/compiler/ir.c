@@ -47,6 +47,8 @@ static int replace_bool_binary(AstNode *n, int value) {
 static int replace_float_binary(AstNode *n, double value) {
     ast_free(n->binary_expression.left);
     ast_free(n->binary_expression.right);
+    n->binary_expression.left = NULL;
+    n->binary_expression.right = NULL;
     n->type = AST_FLOAT_LITERAL;
     n->float_literal.value = value;
     return 1;

@@ -124,6 +124,8 @@ typedef struct AstNode {
         struct {
             char *name;
             struct AstNode *value;
+            /* Set by semantic analysis when this assignment updates an existing variable. */
+            int is_reassignment;
         } variable_declaration;
 
         struct {

@@ -30,23 +30,23 @@ All three should print 799980000.
 
 ## Measure execution time
 
-Compilation is deliberately outside the timed region. Run each executable five
-times and compare the median timings:
+Compilation is deliberately outside the timed region. Run this PowerShell block
+from the repository root; it runs each program seven times and prints the median:
 
-    1..5 | ForEach-Object {
-        $t = Measure-Command { .\benchmarks\loop_sum_vnt.exe | Out-Null }
-        "VNT  {0,8:N2} ms" -f $t.TotalMilliseconds
+    function Measure-Program($Name, [scriptblock]$Command) {
+        $times = @()
+        for ($i = 0; $i -lt 7; $i++) {
+            $elapsed = (Measure-Command { & $Command | Out-Null }).TotalMilliseconds
+            $times += $elapsed
+        }
+        $sorted = @($times | Sort-Object)
+        $median = $sorted[[int][math]::Floor($sorted.Count / 2)]
+        "{0,-7} median {1,8:N2} ms | runs: {2}" -f $Name, $median, (($times | ForEach-Object { "{0:N2}" -f $_ }) -join ", ")
     }
 
-    1..5 | ForEach-Object {
-        $t = Measure-Command { .\benchmarks\loop_sum_c.exe | Out-Null }
-        "C    {0,8:N2} ms" -f $t.TotalMilliseconds
-    }
-
-    1..5 | ForEach-Object {
-        $t = Measure-Command { python benchmarks\loop_sum.py | Out-Null }
-        "Python {0,8:N2} ms" -f $t.TotalMilliseconds
-    }
+    Measure-Program "VNT" { .\benchmarks\loop_sum_vnt.exe }
+    Measure-Program "C" { .\benchmarks\loop_sum_c.exe }
+    Measure-Program "Python" { python benchmarks\loop_sum.py }
 
 These timings include launching each process (and the Python interpreter), so
 very short runtimes can be dominated by startup cost. Treat the result as a

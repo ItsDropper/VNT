@@ -34,7 +34,7 @@ static int compile_native(AstNode *program, const char *output_path) {
     }
 
     sprintf(command,
-        "gcc \"%s\" src/compiler/native_runtime.c -o \"%s\"",
+        "gcc \"%s\" src/compiler/native_runtime.c -O2 -o \"%s\"",
         assembly_path, output_path);
 
     int result = system(command);

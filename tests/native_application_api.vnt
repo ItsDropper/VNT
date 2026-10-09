@@ -1,0 +1,11 @@
+# Native application API smoke test.
+test_path = "vnt_runtime_api_test.tmp"
+print(fs_write(test_path, "hello"))
+print(fs_append(test_path, " world"))
+print(fs_exists(test_path))
+print(fs_read(test_path))
+print(env_set("VNT_RUNTIME_API_TEST", "works"))
+print(env_get("VNT_RUNTIME_API_TEST"))
+print(cwd())
+print(time_ms() > 0)
+print("NATIVE_APPLICATION_API_OK")

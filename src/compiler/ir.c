@@ -330,6 +330,92 @@ int vnt_ir_lower(VntIrProgram *ir, AstNode *program) {
     return 1;
 }
 
+static size_t child_for_role(const VntIrProgram *ir, const VntIrNode *node,
+                            VntIrEdgeRole role) {
+    for (size_t child = node->first_child; child != VNT_IR_NO_NODE;
+         child = ir->nodes[child].next_sibling)
+        if (ir->nodes[child].role == role) return child;
+    return VNT_IR_NO_NODE;
+}
+
+static int role_count(const VntIrProgram *ir, const VntIrNode *node,
+                      VntIrEdgeRole role) {
+    int count = 0;
+    for (size_t child = node->first_child; child != VNT_IR_NO_NODE;
+         child = ir->nodes[child].next_sibling)
+        if (ir->nodes[child].role == role) ++count;
+    return count;
+}
+
+static int validate_node_shape(const VntIrProgram *ir, const VntIrNode *node) {
+    int statements = role_count(ir, node, VNT_IR_EDGE_STATEMENT);
+    int conditions = role_count(ir, node, VNT_IR_EDGE_CONDITION);
+    int then_edges = role_count(ir, node, VNT_IR_EDGE_THEN);
+    int else_edges = role_count(ir, node, VNT_IR_EDGE_ELSE);
+    int bodies = role_count(ir, node, VNT_IR_EDGE_BODY);
+    int values = role_count(ir, node, VNT_IR_EDGE_VALUE);
+    int targets = role_count(ir, node, VNT_IR_EDGE_TARGET);
+    int args = role_count(ir, node, VNT_IR_EDGE_ARGUMENT);
+    int elements = role_count(ir, node, VNT_IR_EDGE_ELEMENT);
+    int objects = role_count(ir, node, VNT_IR_EDGE_OBJECT);
+    int indices = role_count(ir, node, VNT_IR_EDGE_INDEX);
+    int lefts = role_count(ir, node, VNT_IR_EDGE_LEFT);
+    int rights = role_count(ir, node, VNT_IR_EDGE_RIGHT);
+    int operands = role_count(ir, node, VNT_IR_EDGE_OPERAND);
+
+    switch (node->opcode) {
+        case VNT_IR_PROGRAM:
+            return statements == (int)node->child_count &&
+                   !conditions && !then_edges && !else_edges && !bodies &&
+                   !values && !targets && !args && !elements && !objects &&
+                   !indices && !lefts && !rights && !operands;
+        case VNT_IR_PRINT:
+        case VNT_IR_RETURN:
+            return values == (int)node->child_count && values <= 1;
+        case VNT_IR_IF:
+            return conditions == 1 && then_edges + else_edges + conditions ==
+                   (int)node->child_count && !statements && !bodies && !values &&
+                   !targets && !args && !elements && !objects && !indices &&
+                   !lefts && !rights && !operands;
+        case VNT_IR_WHILE:
+            return conditions == 1 && bodies + conditions == (int)node->child_count &&
+                   !statements && !then_edges && !else_edges && !values &&
+                   !targets && !args && !elements && !objects && !indices &&
+                   !lefts && !rights && !operands;
+        case VNT_IR_FUNCTION:
+            return bodies == (int)node->child_count && !conditions && !then_edges &&
+                   !else_edges && !values && !targets && !args && !elements &&
+                   !objects && !indices && !lefts && !rights && !operands;
+        case VNT_IR_STRUCT:
+        case VNT_IR_BREAK:
+        case VNT_IR_CONTINUE:
+        case VNT_IR_STRING:
+        case VNT_IR_INTEGER:
+        case VNT_IR_FLOAT:
+        case VNT_IR_BOOLEAN:
+        case VNT_IR_VARIABLE:
+            return node->child_count == 0;
+        case VNT_IR_CALL:
+            return args == (int)node->child_count;
+        case VNT_IR_ARRAY:
+            return elements == (int)node->child_count;
+        case VNT_IR_VARIABLE_DECL:
+            return values == (int)node->child_count && values <= 1;
+        case VNT_IR_INDEX:
+            return objects == 1 && indices == 1 && node->child_count == 2;
+        case VNT_IR_MEMBER:
+            return objects == 1 && node->child_count == 1;
+        case VNT_IR_ASSIGN:
+            return targets == 1 && values == 1 && node->child_count == 2;
+        case VNT_IR_BINARY:
+            return lefts == 1 && rights == 1 && node->child_count == 2;
+        case VNT_IR_UNARY:
+            return operands == 1 && node->child_count == 1;
+        default:
+            return 0;
+    }
+}
+
 int vnt_ir_validate(const VntIrProgram *ir) {
     if (!ir || !ir->program || ir->program->type != AST_PROGRAM ||
         !ir->nodes || !ir->node_count || ir->root >= ir->node_count ||
@@ -375,25 +461,63 @@ int vnt_ir_validate(const VntIrProgram *ir) {
             last = child;
             child = ir->nodes[child].next_sibling;
         }
-        if (seen != node->child_count || last != node->last_child) {
+        if (seen != node->child_count || last != node->last_child ||
+            (node->last_child != VNT_IR_NO_NODE &&
+             ir->nodes[node->last_child].next_sibling != VNT_IR_NO_NODE) ||
+            !validate_node_shape(ir, node)) {
             free(parents);
             return 0;
         }
-        /* A declaration has zero children without an initializer, or exactly
-           one value child when its source declaration has an initializer. */
-        if (node->opcode == VNT_IR_VARIABLE_DECL) {
-            size_t expected = node->source->variable_declaration.value ? 1u : 0u;
-            if (node->child_count != expected ||
-                (expected && ir->nodes[node->first_child].role != VNT_IR_EDGE_VALUE)) {
-                free(parents);
-                return 0;
-            }
+
+        /* Metadata is owned by HIR and must match the source node at lowering time. */
+        switch (node->opcode) {
+            case VNT_IR_VARIABLE_DECL:
+                if (!node->value.text ||
+                    strcmp(node->value.text, node->source->variable_declaration.name) ||
+                    node->name_count != 0) goto invalid;
+                break;
+            case VNT_IR_VARIABLE:
+                if (!node->value.text ||
+                    strcmp(node->value.text, node->source->variable.name) ||
+                    node->name_count != 0) goto invalid;
+                break;
+            case VNT_IR_STRING:
+                if (!node->value.text ||
+                    strcmp(node->value.text, node->source->string_literal.value) ||
+                    node->name_count != 0) goto invalid;
+                break;
+            case VNT_IR_CALL:
+                if (!node->value.text ||
+                    strcmp(node->value.text, node->source->function_call.name) ||
+                    node->name_count != 0 ||
+                    node->child_count != (size_t)node->source->function_call.argument_count)
+                    goto invalid;
+                break;
+            case VNT_IR_FUNCTION:
+                if (!node->value.text ||
+                    strcmp(node->value.text, node->source->function_declaration.name) ||
+                    node->name_count != (size_t)node->source->function_declaration.parameter_count)
+                    goto invalid;
+                for (size_t j = 0; j < node->name_count; ++j)
+                    if (strcmp(node->names[j], node->source->function_declaration.parameters[j]))
+                        goto invalid;
+                break;
+            case VNT_IR_STRUCT:
+                if (!node->value.text ||
+                    strcmp(node->value.text, node->source->struct_declaration.name) ||
+                    node->name_count != (size_t)node->source->struct_declaration.field_count)
+                    goto invalid;
+                for (size_t j = 0; j < node->name_count; ++j)
+                    if (strcmp(node->names[j], node->source->struct_declaration.fields[j]))
+                        goto invalid;
+                break;
+            default:
+                break;
         }
-        if (node->last_child != VNT_IR_NO_NODE &&
-            ir->nodes[node->last_child].next_sibling != VNT_IR_NO_NODE) {
-            free(parents);
-            return 0;
-        }
+        continue;
+invalid:
+        free(parents);
+        return 0;
     }
     int valid = parents[ir->root] == 0;
     for (size_t i = 0; valid && i < ir->node_count; ++i)

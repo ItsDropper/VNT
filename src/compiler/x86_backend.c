@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <limits.h>
+#include <stdint.h>
 
 typedef struct { char *name; int offset; } Var;
 typedef struct { char *value; int label; } StringLit;
@@ -215,21 +217,41 @@ static void free_structs(X86Gen *g) {
     g->struct_count = g->struct_capacity = 0;
 }
 
-static int static_integer_expr(AstNode *n) {
-    if (!n) return 0;
-    if (n->type == AST_INTEGER_LITERAL) return 1;
-    if (n->type != AST_BINARY_EXPRESSION) return 0;
-    switch (n->binary_expression.operator) {
-        case BINARY_ADD:
-        case BINARY_SUBTRACT:
-        case BINARY_MULTIPLY:
-        case BINARY_DIVIDE:
-        case BINARY_MODULO:
-            return static_integer_expr(n->binary_expression.left) &&
-                   static_integer_expr(n->binary_expression.right);
-        default:
-            return 0;
+static int static_integer_value(AstNode *n, int64_t *out) {
+    if (!n || !out) return 0;
+    if (n->type == AST_INTEGER_LITERAL) {
+        *out = n->integer_literal.value;
+        return 1;
     }
+    if (n->type != AST_BINARY_EXPRESSION) return 0;
+
+    int64_t left, right, result;
+    if (!static_integer_value(n->binary_expression.left, &left) ||
+        !static_integer_value(n->binary_expression.right, &right)) return 0;
+
+    switch (n->binary_expression.operator) {
+        case BINARY_ADD: result = left + right; break;
+        case BINARY_SUBTRACT: result = left - right; break;
+        case BINARY_MULTIPLY: result = left * right; break;
+        case BINARY_DIVIDE:
+            if (!right || (left == INT_MIN && right == -1)) return 0;
+            result = left / right;
+            break;
+        case BINARY_MODULO:
+            if (!right || (left == INT_MIN && right == -1)) return 0;
+            result = left % right;
+            break;
+        default: return 0;
+    }
+
+    if (result < INT_MIN || result > INT_MAX) return 0;
+    *out = result;
+    return 1;
+}
+
+static int static_integer_expr(AstNode *n) {
+    int64_t value;
+    return static_integer_value(n, &value);
 }
 
 static void emit_raw_integer(X86Gen *g, AstNode *n) {

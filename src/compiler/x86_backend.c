@@ -328,8 +328,9 @@ static void emit_condition_false_branch(HirGen *g,size_t condition,int false_lab
     const VntIrNode *n=node(g,condition);
     const VntIrNode *left=n&&n->opcode==VNT_IR_BINARY?node(g,child(g,condition,VNT_IR_EDGE_LEFT)):NULL;
     const VntIrNode *right=n&&n->opcode==VNT_IR_BINARY?node(g,child(g,condition,VNT_IR_EDGE_RIGHT)):NULL;
-    if(n&&n->opcode==VNT_IR_BINARY&&left&&right&&right->opcode==VNT_IR_INTEGER&&
-       n->operation>=BINARY_EQUAL&&n->operation<=BINARY_LESS_EQUAL) {
+    if(n&&n->opcode==VNT_IR_BINARY&&left&&left->opcode==VNT_IR_VARIABLE&&right&&
+       right->opcode==VNT_IR_INTEGER&&n->operation>=BINARY_EQUAL&&
+       n->operation<=BINARY_LESS_EQUAL) {
         int slow=label_new(g),done=label_new(g);
         emit_expr(g,child(g,condition,VNT_IR_EDGE_LEFT));
         fputs("    movq %rax,%r11\n    testq %r11,%r11\n    jz ",g->out);fprintf(g->out,".L%d\n",slow);

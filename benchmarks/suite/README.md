@@ -1,8 +1,8 @@
 # VNT benchmark suite
 
 The suite times separate runtime workloads rather than treating one loop as a
-complete language ranking. It compiles workloads before timing, checks a stable
-output marker, performs warmups, then reports median/min/max across process launches.
+complete language ranking. It compiles workloads before timing, validates
+expected output where stable, performs warmups, then reports median/min/max.
 
 ## Coverage
 
@@ -15,12 +15,15 @@ output marker, performs warmups, then reports median/min/max across process laun
 | strings | String concatenation and len |
 | arrays | Array literals, indexing, indexed mutation, len |
 | floats-math | Floating-point arithmetic and math builtins |
-| structs-refs-ffi | Structs, member access, references, eight arguments, Windows FFI |
+| references | Address-of, dereference, reference assignment |
+| structs | Struct creation and member reads/writes |
+| many-arguments | Eight-parameter function call |
+| ffi | Windows kernel32.dll FFI call |
 | multi-file | Two imported VNT modules and cross-file function calls |
 
-This is broad coverage of currently implemented features, not proof that every
-edge case is tested. The FFI workload calls Windows kernel32.dll, so the suite
-targets Windows. Run on an idle machine for more stable timings.
+References, structs, argument passing, and FFI are separate on purpose. If one
+feature crashes or fails, the runner now identifies that exact workload rather
+than hiding the cause inside a combined program. The FFI test targets Windows.
 
 ## Run in PowerShell
 

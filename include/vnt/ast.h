@@ -123,6 +123,7 @@ typedef struct AstNode {
 
         struct {
             char *name;
+            char *declared_type; /* NULL for inferred declarations */
             struct AstNode *value;
             /* Set by semantic analysis when this assignment updates an existing variable. */
             int is_reassignment;
@@ -178,6 +179,7 @@ AstNode *ast_create_float(double value);
 AstNode *ast_create_boolean(int value);
 AstNode *ast_create_array(AstNode *elements, int element_count);
 AstNode *ast_create_variable_declaration(const char *name, AstNode *value);
+AstNode *ast_create_typed_variable_declaration(const char *name, const char *type, AstNode *value);
 AstNode *ast_create_variable(const char *name);
 AstNode *ast_create_index(AstNode *array, AstNode *index);
 AstNode *ast_create_member(AstNode *object, const char *member);

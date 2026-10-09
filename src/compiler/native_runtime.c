@@ -926,7 +926,7 @@ VntValue *vnt_process_start(VntValue *executable, VntValue *arguments) {
         if (found == 0 || found >= MAX_PATH) {
             DWORD error = found == 0 ? GetLastError() : ERROR_INSUFFICIENT_BUFFER;
             free(p);
-            fprintf(stderr, "Runtime error: process_start() could not find executable '%s' (Windows error %lu).\\n",
+            fprintf(stderr, "Runtime error: process_start() could not find executable '%s' (Windows error %lu).\n",
                     exe, (unsigned long)error);
             exit(1);
         }

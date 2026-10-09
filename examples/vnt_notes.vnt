@@ -30,6 +30,7 @@ if vanta_gui_start("VNT Notes  |  Private by default", 1120, 760, "examples/vnt_
     vanta_input_set(saved_title, 290, 186)
     vanta_input_set(saved_body, 290, 254)
     status = "Ready. Your notes stay on this device."
+    dirty = false
     running = true
 
     while running {

@@ -344,4 +344,4 @@ The Windows GUI foundation includes these additional APIs:
 - `gui_panel_color(x, y, width, height, color)` — rounded surface with a custom `0xRRGGBB` color.
 - `gui_text_style(text, x, y, color, size)` — draw text with a custom color and font size.
 
-Text inputs support basic ASCII typing, Backspace, and Ctrl+A replacement. GUI state is retained across frames while draw commands are rebuilt. This is a foundational toolkit, not a complete accessibility-ready GUI framework; caret navigation, IME input, and platform-independent backends remain future work.
+Text inputs support basic single-byte character input, Backspace, and Ctrl+A replacement. The current editor buffer is limited to 4095 bytes per field. GUI state is retained across frames while draw commands are rebuilt. This is a foundational toolkit, not a complete accessibility-ready GUI framework; caret navigation, IME input, and platform-independent backends remain future work.

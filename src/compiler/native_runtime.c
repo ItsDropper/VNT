@@ -1060,7 +1060,7 @@ enum { VG_TEXT=1, VG_TITLE, VG_PANEL, VG_BUTTON, VG_INPUT, VG_TEXTAREA, VG_CHECK
 typedef struct {
     int type,x,y,w,h,font_size,radius,hovered,checked,value,maximum,placeholder;
     COLORREF color,background;
-    char text[512];
+    char text[4096];
 } VntGuiCommand;
 typedef struct { int x,y,width,height,multiline,select_all; char text[512]; } VntGuiInputState;
 static HWND vnt_gui_hwnd;
@@ -1074,7 +1074,7 @@ static COLORREF vnt_gui_button_hover=RGB(80,120,255), vnt_gui_button_text=RGB(25
 static COLORREF vnt_gui_input_background=RGB(10,15,29), vnt_gui_accent=RGB(49,92,232);
 static int vnt_gui_font_size=16, vnt_gui_title_font_size=30, vnt_gui_button_font_size=15;
 static int vnt_gui_button_padding=10, vnt_gui_button_radius=9;
-static VntGuiCommand vnt_gui_commands[4096];
+static VntGuiCommand vnt_gui_commands[2048];
 static int vnt_gui_command_count;
 static VntGuiInputState vnt_gui_inputs[16];
 static int vnt_gui_input_count, vnt_gui_focused_input=-1;
@@ -1122,7 +1122,7 @@ static void vnt_gui_apply_css_rule(const char *css,const char *selector) {
     }
 }
 static VntGuiCommand *vnt_gui_add(int type,int x,int y,int w,int h,const char *text) {
-    if(vnt_gui_command_count>=4096) return NULL;
+    if(vnt_gui_command_count>=2048) return NULL;
     VntGuiCommand *c=&vnt_gui_commands[vnt_gui_command_count++]; memset(c,0,sizeof(*c));
     c->type=type;c->x=x;c->y=y;c->w=w;c->h=h;
     if(text) snprintf(c->text,sizeof(c->text),"%s",text);
@@ -1196,7 +1196,7 @@ static LRESULT CALLBACK vnt_gui_wndproc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) 
                 if(state->select_all){s[0]=0;n=0;state->select_all=0;}
                 if(wp==VK_BACK){if(n)s[n-1]=0;}
                 else if((wp=='\r'||wp=='\n')&&state->multiline){if(n<sizeof(state->text)-1){s[n]='\n';s[n+1]=0;}}
-                else if(wp>=32&&wp<127&&n<sizeof(state->text)-1){s[n]=(char)wp;s[n+1]=0;}
+                else if(wp>=32&&wp!=127&&wp<=255&&n<sizeof(state->text)-1){s[n]=(char)wp;s[n+1]=0;}
                 InvalidateRect(hwnd,NULL,FALSE);
             }
             return 0;

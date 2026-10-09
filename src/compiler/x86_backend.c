@@ -256,7 +256,7 @@ static void emit_expr(HirGen *g,size_t i) {
             else if(vi>=0)fprintf(g->out,"    leaq -%d(%%rbp),%%rcx\n",g->vars[vi].offset);
             else {fail(g,"unknown reference variable.");break;}
             call0(g,"vnt_ref");
-        } else if(n->operation==UNARY_DEREFERENCE){emit_expr(g,a);call0(g,"vnt_deref");}
+        } else if(n->operation==UNARY_DEREFERENCE){emit_expr(g,a);fputs("    movq %rax,%rcx\n",g->out);call0(g,"vnt_deref");}
         else {emit_expr(g,a);fputs("    movq %rax,%rcx\n",g->out);call0(g,n->operation==UNARY_NEGATE?"vnt_neg":"vnt_not");}
         break;}
     case VNT_IR_CALL:emit_call(g,i,n);break;

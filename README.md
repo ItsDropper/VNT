@@ -119,8 +119,12 @@ VNT's generated executables include a cross-platform runtime API:
 | `process_exit_code(process)` | Return exit code, or `-1` while still running. |
 
 File operations currently handle text strings, not arbitrary binary data. These
-functions establish a native runtime boundary for future process management,
-windows, and event handling.
+functions provide the runtime boundary for native applications and process management.
+Process launching uses an executable path plus a string argument array; VNT does not
+interpret arguments as shell commands. Output is captured separately from standard
+output and standard error. A zero timeout polls immediately, positive timeouts are in
+milliseconds, and `-1` waits indefinitely. POSIX termination sends SIGTERM; Windows
+uses TerminateProcess.
 
 ```vnt
 settings = "settings.ini"

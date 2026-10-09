@@ -1,0 +1,69 @@
+param([int]$Runs = 7, [int]$Warmups = 1)
+$ErrorActionPreference = "Stop"
+$Root = Split-Path -Parent $PSScriptRoot
+$Vnt = Join-Path $Root "vnt.exe"
+$OutDir = Join-Path $PSScriptRoot "out"
+if (-not (Test-Path $Vnt)) { throw "Missing vnt.exe. Build with .\build.ps1 first." }
+if ($Runs -lt 3) { throw "Use at least 3 measured runs; recommended: -Runs 7." }
+New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
+
+$Cases = @(
+    @{ Name = "integer-loop"; Source = "benchmarks\loop_sum.vnt"; Marker = "799980000" },
+    @{ Name = "branches-logic"; Source = "benchmarks\suite\branches_logic.vnt"; Marker = "BRANCHES_LOGIC_OK" },
+    @{ Name = "function-calls"; Source = "benchmarks\suite\function_calls.vnt"; Marker = "FUNCTION_CALLS_OK" },
+    @{ Name = "recursion"; Source = "benchmarks\suite\recursion.vnt"; Marker = "RECURSION_OK" },
+    @{ Name = "strings"; Source = "benchmarks\suite\strings.vnt"; Marker = "STRINGS_OK" },
+    @{ Name = "arrays"; Source = "benchmarks\suite\arrays.vnt"; Marker = "ARRAYS_OK" },
+    @{ Name = "floats-math"; Source = "benchmarks\suite\floats_math.vnt"; Marker = "FLOAT_MATH_OK" },
+    @{ Name = "structs-refs-ffi"; Source = "benchmarks\suite\objects_structs_refs.vnt"; Marker = "OBJECTS_STRUCTS_REFS_OK" },
+    @{ Name = "multi-file"; Source = "benchmarks\suite\multifile\main.vnt"; Marker = "MULTIFILE_OK" }
+)
+function Invoke-VntCompile([string]$Source, [string]$Exe) {
+    & $Vnt --compile $Source -o $Exe
+    if ($LASTEXITCODE -ne 0) { throw "Compile failed for $Source (exit code $LASTEXITCODE)." }
+}
+function Get-ProgramOutput([string]$Exe) {
+    $output = @(& $Exe 2>&1 | ForEach-Object { "$_" })
+    if ($LASTEXITCODE -ne 0) { throw "Program failed: $Exe. Output: $($output -join ' | ')" }
+    return ,$output
+}
+Push-Location $Root
+try {
+    $Results = @()
+    foreach ($case in $Cases) {
+        $exe = Join-Path $OutDir ($case.Name + ".exe")
+        Write-Host ""
+        Write-Host ("=== {0} ===" -f $case.Name)
+        Invoke-VntCompile $case.Source $exe
+        $output = Get-ProgramOutput $exe
+        if (-not ($output -contains $case.Marker)) {
+            throw ("Correctness failed for {0}; expected line {1}; actual output: {2}" -f $case.Name, $case.Marker, ($output -join ' | '))
+        }
+        Write-Host "Correctness: PASS"
+        for ($i = 0; $i -lt $Warmups; $i++) {
+            & $exe > $null
+            if ($LASTEXITCODE -ne 0) { throw "Warmup failed for $($case.Name)." }
+        }
+        $times = @()
+        for ($i = 0; $i -lt $Runs; $i++) {
+            $elapsed = (Measure-Command { & $exe > $null }).TotalMilliseconds
+            if ($LASTEXITCODE -ne 0) { throw "Timed run failed for $($case.Name)." }
+            $times += [double]$elapsed
+        }
+        $sorted = @($times | Sort-Object)
+        $median = $sorted[[int][math]::Floor($sorted.Count / 2)]
+        $minimum = $sorted[0]
+        $maximum = $sorted[$sorted.Count - 1]
+        $formattedRuns = ($times | ForEach-Object { "{0:N2}" -f $_ }) -join ", "
+        Write-Host ("Median {0,8:N2} ms | min {1,8:N2} ms | max {2,8:N2} ms" -f $median, $minimum, $maximum)
+        Write-Host ("Runs: {0}" -f $formattedRuns)
+        $Results += [pscustomobject]@{ Benchmark = $case.Name; MedianMs = [math]::Round($median, 2); MinMs = [math]::Round($minimum, 2); MaxMs = [math]::Round($maximum, 2); RunsMs = $formattedRuns; Correct = "PASS" }
+    }
+    Write-Host ""
+    Write-Host "=== SUMMARY (milliseconds; lower is faster) ==="
+    $Results | Format-Table -AutoSize
+    $csv = Join-Path $OutDir "results.csv"
+    $Results | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $csv
+    Write-Host ("CSV written to: {0}" -f $csv)
+}
+finally { Pop-Location }

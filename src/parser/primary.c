@@ -35,7 +35,8 @@ static AstNode *parse_primary(Parser *parser) {
 
         errno = 0;
         char *end = NULL;
-        long value = strtol(buffer, &end, 10);
+        int base = (buffer[0] == '0' && (buffer[1] == 'x' || buffer[1] == 'X')) ? 16 : 10;
+        long value = strtol(buffer, &end, base);
         if (errno == ERANGE || end == buffer || *end != '\0' ||
             value < INT_MIN || value > INT_MAX) {
             printf("Parser error: integer literal is outside the supported range.\n");

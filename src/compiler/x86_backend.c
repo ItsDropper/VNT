@@ -1110,7 +1110,19 @@ static void emit_function(X86Gen *g,AstNode *fn){
     if(count>32){fail(g,"native functions currently support at most 32 parameters.");return;}
     free_vars(g);collect_vars(g,fn->function_declaration.body);
     for(int i=0;i<count;i++){var_add(g,fn->function_declaration.parameters[i]);int pi=var_find(g,fn->function_declaration.parameters[i]);if(pi>=0)g->vars[pi].has_decl=1;}
-    for(int i=0;i<g->var_count;i++) if(var_is_global(g,g->vars[i].name) && !g->vars[i].has_decl) g->vars[i].is_global=1;
+    for(int i=0;i<g->var_count;i++) {
+        if (!var_is_global(g, g->vars[i].name)) continue;
+        int is_parameter = 0;
+        for (int p = 0; p < count; p++) {
+            if (!strcmp(g->vars[i].name, fn->function_declaration.parameters[p])) {
+                is_parameter = 1;
+                break;
+            }
+        }
+        /* Inferred declarations are also used for reassignment syntax. A
+         * matching top-level name must therefore resolve to global storage. */
+        if (!is_parameter) g->vars[i].is_global = 1;
+    }
     assign_offsets(g);
     fputs(".globl vnt_fn_",g->out);cname(g->out,"",fn->function_declaration.name);fputc('\n',g->out);
     fputs("vnt_fn_",g->out);cname(g->out,"",fn->function_declaration.name);fputs(":\n    pushq %rbp\n    movq %rsp,%rbp\n",g->out);

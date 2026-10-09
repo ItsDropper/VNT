@@ -230,7 +230,7 @@ x = 10 / 0
 * [x] References / dereferencing
 * [x] Basic native library FFI
 * [~] Basic source-file imports (currently expanded before parsing; not yet a full module namespace system)
-* [ ] Graphics and windowing
+* [~] Native Windows GUI/windowing foundation (basic drawing API; widget toolkit and Linux/macOS backends remain)
 * [ ] Game-oriented standard library
 * [x] Integer/boolean constant folding with overflow-safe folding rules
 * [ ] HIR-native code generation and typed-value optimization
@@ -268,14 +268,14 @@ VNT's licensing terms have not been finalized yet.
 
 ## Global variables
 
-Top-level variable declarations use shared storage and can be read or updated from functions. Function-local declarations and parameters remain local.
+Top-level variable declarations use shared storage and can be read or updated from functions. Parameters remain local; assignments to a name declared at top level update that global.
 
 Regression example: `examples/global_variables.vnt`.
 
 
 ## Native GUI and graphics (Windows)
 
-VNT's native runtime includes a small immediate-mode Win32 GUI API. It is suitable for simple desktop tools and prototypes; it is not yet a full widget toolkit.
+VNT supports decimal and hexadecimal integer literals (for example, `42` and `0x2A`). Its native runtime includes a small immediate-mode Win32 GUI API. It is suitable for simple desktop tools and prototypes; it is not yet a full widget toolkit.
 
 - `gui_size(width, height)` — choose window client dimensions before opening.
 - `gui_open(title)` — create and show a native window.

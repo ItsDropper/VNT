@@ -81,6 +81,15 @@ static Token number(
     Lexer *lexer,
     const char *start
 ) {
+    /* Hexadecimal integers are useful for bit masks and GUI colors. */
+    if (start[0] == '0' && (peek(lexer) == 'x' || peek(lexer) == 'X')) {
+        advance(lexer);
+        while (isxdigit((unsigned char)peek(lexer))) {
+            advance(lexer);
+        }
+        return make_token(lexer, TOKEN_INTEGER, start);
+    }
+
     while (isdigit((unsigned char)peek(lexer))) {
         advance(lexer);
     }

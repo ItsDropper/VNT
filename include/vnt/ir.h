@@ -35,7 +35,8 @@ typedef enum {
     VNT_IR_MEMBER,
     VNT_IR_ASSIGN,
     VNT_IR_BINARY,
-    VNT_IR_UNARY
+    VNT_IR_UNARY,
+    VNT_IR_REASSIGN
 } VntIrOpcode;
 
 #define VNT_IR_NO_NODE ((size_t)-1)

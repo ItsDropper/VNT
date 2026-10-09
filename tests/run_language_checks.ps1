@@ -4,6 +4,10 @@ Push-Location $Root
 try {
     & .\build.ps1
     if ($LASTEXITCODE -ne 0) { throw "VNT build failed." }
+    & .\tests\run_hir_invariants.ps1
+    if ($LASTEXITCODE -ne 0) { throw "HIR invariant suite failed." }
+    & .\tests\run_hir_ast_free_native.ps1
+    if ($LASTEXITCODE -ne 0) { throw "AST-free HIR pipeline suite failed." }
     $OutDir = Join-Path $Root "tests\out"
     New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
     $Exe = Join-Path $OutDir "typed_functions.exe"

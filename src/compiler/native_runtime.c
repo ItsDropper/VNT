@@ -921,7 +921,7 @@ VntValue *vnt_process_start(VntValue *executable, VntValue *arguments) {
        Resolve bare executable names first (e.g. "cmd.exe" -> System32\cmd.exe). */
     char resolved_exe[MAX_PATH];
     const char *launch_exe = exe;
-    if (!strchr(exe, '\\\\') && !strchr(exe, '/') && !strchr(exe, ':')) {
+    if (!strchr(exe, '\\') && !strchr(exe, '/') && !strchr(exe, ':')) {
         DWORD found = SearchPathA(NULL, exe, NULL, MAX_PATH, resolved_exe, NULL);
         if (found == 0 || found >= MAX_PATH) {
             DWORD error = found == 0 ? GetLastError() : ERROR_INSUFFICIENT_BUFFER;

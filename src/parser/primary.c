@@ -3,6 +3,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <limits.h>
 #include <string.h>
 
 static AstNode *parse_primary(Parser *parser) {
@@ -31,11 +33,21 @@ static AstNode *parse_primary(Parser *parser) {
 
         buffer[token.length] = '\0';
 
+        errno = 0;
+        char *end = NULL;
+        long value = strtol(buffer, &end, 10);
+        if (errno == ERANGE || end == buffer || *end != '\\0' ||
+            value < INT_MIN || value > INT_MAX) {
+            printf("Parser error: integer literal is outside the supported range.\\n");
+            return NULL;
+        }
+
         parser_advance(parser);
 
-        return ast_create_integer(
-            atoi(buffer)
-        );
+        AstNode *node = ast_create_integer((int)value);
+        if (!node)
+            printf("Parser error: out of memory.\\n");
+        return node;
     }
 
     if (

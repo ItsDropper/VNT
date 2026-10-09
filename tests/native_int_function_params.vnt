@@ -1,0 +1,10 @@
+# Function parameters are dynamically typed and must remain boxed.
+fun identity(value) {
+    return value
+}
+
+main_value = 10
+print(identity("parameter"))
+print(identity(42))
+print(main_value)
+print("NATIVE_INT_FUNCTION_PARAMS_OK")

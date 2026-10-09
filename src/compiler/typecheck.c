@@ -115,13 +115,6 @@ static int builtin_arity(const char *name, int argc) {
         !strcmp(name, "mod")) return argc == 2;
     if (!strcmp(name, "object")) return argc == 0;
     if (!strcmp(name, "ffi_int")) return argc >= 2 && argc <= 8;
-    if (!strcmp(name, "cwd") || !strcmp(name, "time_ms")) return argc == 0;
-    if (!strcmp(name, "fs_exists") || !strcmp(name, "fs_read") ||
-        !strcmp(name, "fs_delete") || !strcmp(name, "dir_create") ||
-        !strcmp(name, "env_get") || !strcmp(name, "sleep_ms") ||
-        !strcmp(name, "process_run")) return argc == 1;
-    if (!strcmp(name, "fs_write") || !strcmp(name, "fs_append") ||
-        !strcmp(name, "env_set")) return argc == 2;
     return -1;
 }
 
@@ -209,17 +202,7 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 !strcmp(n->function_call.name, "floor") ||
                 !strcmp(n->function_call.name, "ceil"))
                 return TY_FLOAT;
-            if (!strcmp(n->function_call.name, "input") ||
-                !strcmp(n->function_call.name, "fs_read") ||
-                !strcmp(n->function_call.name, "cwd")) return TY_STRING;
-            if (!strcmp(n->function_call.name, "fs_exists") ||
-                !strcmp(n->function_call.name, "fs_write") ||
-                !strcmp(n->function_call.name, "fs_append") ||
-                !strcmp(n->function_call.name, "fs_delete") ||
-                !strcmp(n->function_call.name, "dir_create") ||
-                !strcmp(n->function_call.name, "env_set")) return TY_BOOL;
-            if (!strcmp(n->function_call.name, "process_run")) return TY_INT;
-            if (!strcmp(n->function_call.name, "time_ms")) return TY_FLOAT;
+            if (!strcmp(n->function_call.name, "input")) return TY_STRING;
             if (!strcmp(n->function_call.name, "object")) return TY_OBJECT;
             if (find_struct(tc, n->function_call.name)) return TY_OBJECT;
             return TY_UNKNOWN;

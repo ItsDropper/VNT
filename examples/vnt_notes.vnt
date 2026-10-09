@@ -23,6 +23,8 @@ saved_title = "Untitled note"
 saved_body = ""
 if fs_exists(title_path) { saved_title = fs_read(title_path) }
 if fs_exists(body_path) { saved_body = fs_read(body_path) }
+original_title = saved_title
+original_body = saved_body
 
 if vanta_gui_start("VNT Notes  |  Private by default", 1120, 760, "examples/vnt_notes.css") {
     vanta_input_set(saved_title, 290, 186)
@@ -49,6 +51,9 @@ if vanta_gui_start("VNT Notes  |  Private by default", 1120, 760, "examples/vnt_
             vanta_surface(24, 211, 200, 42, 0x263A60)
         }
         if vanta_button_sized("01   Quick note", 30, 213, 188, 38) {
+            if dirty {
+                status = "Unsaved changes. Save this note before switching slots."
+            } else {
             current_note = 1
             title_path = note_title_path(current_note)
             body_path = note_body_path(current_note)
@@ -59,9 +64,13 @@ if vanta_gui_start("VNT Notes  |  Private by default", 1120, 760, "examples/vnt_
             vanta_input_set(saved_title, 290, 186)
             vanta_input_set(saved_body, 290, 254)
             status = "Opened note 1."
-        }
+        
+            }}
         if current_note == 2 { vanta_surface(24, 257, 200, 42, 0x263A60) }
         if vanta_button_sized("02   Project ideas", 30, 259, 188, 38) {
+            if dirty {
+                status = "Unsaved changes. Save this note before switching slots."
+            } else {
             current_note = 2
             title_path = note_title_path(current_note)
             body_path = note_body_path(current_note)
@@ -72,9 +81,13 @@ if vanta_gui_start("VNT Notes  |  Private by default", 1120, 760, "examples/vnt_
             vanta_input_set(saved_title, 290, 186)
             vanta_input_set(saved_body, 290, 254)
             status = "Opened note 2."
-        }
+        
+            }}
         if current_note == 3 { vanta_surface(24, 303, 200, 42, 0x263A60) }
         if vanta_button_sized("03   To remember", 30, 305, 188, 38) {
+            if dirty {
+                status = "Unsaved changes. Save this note before switching slots."
+            } else {
             current_note = 3
             title_path = note_title_path(current_note)
             body_path = note_body_path(current_note)
@@ -85,9 +98,13 @@ if vanta_gui_start("VNT Notes  |  Private by default", 1120, 760, "examples/vnt_
             vanta_input_set(saved_title, 290, 186)
             vanta_input_set(saved_body, 290, 254)
             status = "Opened note 3."
-        }
+        
+            }}
         if current_note == 4 { vanta_surface(24, 349, 200, 42, 0x263A60) }
         if vanta_button_sized("04   Scratch space", 30, 351, 188, 38) {
+            if dirty {
+                status = "Unsaved changes. Save this note before switching slots."
+            } else {
             current_note = 4
             title_path = note_title_path(current_note)
             body_path = note_body_path(current_note)
@@ -98,7 +115,8 @@ if vanta_gui_start("VNT Notes  |  Private by default", 1120, 760, "examples/vnt_
             vanta_input_set(saved_title, 290, 186)
             vanta_input_set(saved_body, 290, 254)
             status = "Opened note 4."
-        }
+        
+            }}
 
         vanta_separator(24, 414, 200)
         vanta_text_style("STORAGE", 30, 438, 0x7F96C4, 11)
@@ -116,6 +134,7 @@ if vanta_gui_start("VNT Notes  |  Private by default", 1120, 760, "examples/vnt_
         title_text = vanta_text_input("Give this note a title", 290, 186, 790)
         vanta_text_style("NOTE CONTENT", 302, 229, 0x7F96C4, 11)
         body_text = vanta_textarea("Start writing here... Enter creates a new line.", 290, 254, 790, 330)
+        dirty = title_text != original_title || body_text != original_body
         vanta_separator(302, 604, 770)
         vanta_text_style(status, 302, 620, 0xAAB6D3, 12)
         vanta_text_style("Slot " + current_note + "  /  Plain text  /  Local-first", 302, 651, 0x7F96C4, 11)
@@ -124,6 +143,8 @@ if vanta_gui_start("VNT Notes  |  Private by default", 1120, 760, "examples/vnt_
             title_ok = fs_write(title_path, title_text)
             body_ok = fs_write(body_path, body_text)
             if title_ok && body_ok {
+                original_title = title_text
+                original_body = body_text
                 status = "Saved note " + current_note + ". Both files are up to date."
             } else {
                 status = "Save failed. Check write permissions for this folder."
@@ -143,6 +164,8 @@ if vanta_gui_start("VNT Notes  |  Private by default", 1120, 760, "examples/vnt_
             if fs_exists(body_path) { saved_body = fs_read(body_path) }
             vanta_input_set(saved_title, 290, 186)
             vanta_input_set(saved_body, 290, 254)
+            original_title = saved_title
+            original_body = saved_body
             status = "Reloaded note " + current_note + " from disk."
         }
         vanta_gui_present()

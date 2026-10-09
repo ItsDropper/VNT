@@ -702,6 +702,7 @@ static VntValue *vnt_fs_write_mode(VntValue *path, VntValue *contents, const cha
 }
 VntValue *vnt_fs_write(VntValue *p, VntValue *s) { return vnt_fs_write_mode(p, s, "wb", "fs_write()"); }
 VntValue *vnt_fs_append(VntValue *p, VntValue *s) { return vnt_fs_write_mode(p, s, "ab", "fs_append()"); }
+VntValue *vnt_fs_delete(VntValue *path) { return vnt_bool(remove(vnt_app_string(path, "fs_delete()")) == 0); }
 VntValue *vnt_dir_create(VntValue *path) {
     const char *p = vnt_app_string(path, "dir_create()");
 #ifdef _WIN32

@@ -37,52 +37,52 @@ static LONG WINAPI vnt_unhandled_exception(EXCEPTION_POINTERS *info) {
             code = info->ExceptionRecord->ExceptionCode;
             address = info->ExceptionRecord->ExceptionAddress;
         }
-        fprintf(f, "VNT native crash report\\n");
-        fprintf(f, "Process ID: %lu\\nThread ID: %lu\\n",
+        fprintf(f, "VNT native crash report\n");
+        fprintf(f, "Process ID: %lu\nThread ID: %lu\n",
                 (unsigned long)GetCurrentProcessId(),
                 (unsigned long)GetCurrentThreadId());
-        fprintf(f, "Exception code: 0x%08lX\\nException address: %p\\n",
+        fprintf(f, "Exception code: 0x%08lX\nException address: %p\n",
                 (unsigned long)code, address);
         char module[MAX_PATH] = {0};
         if (GetModuleFileNameA(NULL, module, MAX_PATH))
-            fprintf(f, "Executable: %s\\n", module);
+            fprintf(f, "Executable: %s\n", module);
 #if defined(_M_X64) || defined(__x86_64__)
         if (info && info->ContextRecord) {
             CONTEXT *x = info->ContextRecord;
-            fprintf(f, "RIP=%016llX RSP=%016llX RBP=%016llX\\n",
+            fprintf(f, "RIP=%016llX RSP=%016llX RBP=%016llX\n",
                     (unsigned long long)x->Rip, (unsigned long long)x->Rsp,
                     (unsigned long long)x->Rbp);
-            fprintf(f, "RAX=%016llX RBX=%016llX RCX=%016llX RDX=%016llX\\n",
+            fprintf(f, "RAX=%016llX RBX=%016llX RCX=%016llX RDX=%016llX\n",
                     (unsigned long long)x->Rax, (unsigned long long)x->Rbx,
                     (unsigned long long)x->Rcx, (unsigned long long)x->Rdx);
-            fprintf(f, "RSI=%016llX RDI=%016llX R8 =%016llX R9 =%016llX\\n",
+            fprintf(f, "RSI=%016llX RDI=%016llX R8 =%016llX R9 =%016llX\n",
                     (unsigned long long)x->Rsi, (unsigned long long)x->Rdi,
                     (unsigned long long)x->R8, (unsigned long long)x->R9);
-            fprintf(f, "R10=%016llX R11=%016llX R12=%016llX R13=%016llX\\n",
+            fprintf(f, "R10=%016llX R11=%016llX R12=%016llX R13=%016llX\n",
                     (unsigned long long)x->R10, (unsigned long long)x->R11,
                     (unsigned long long)x->R12, (unsigned long long)x->R13);
-            fprintf(f, "R14=%016llX R15=%016llX\\n",
+            fprintf(f, "R14=%016llX R15=%016llX\n",
                     (unsigned long long)x->R14, (unsigned long long)x->R15);
         }
 #elif defined(_M_IX86) || defined(__i386__)
         if (info && info->ContextRecord) {
             CONTEXT *x = info->ContextRecord;
-            fprintf(f, "EIP=%08lX ESP=%08lX EBP=%08lX\\n",
+            fprintf(f, "EIP=%08lX ESP=%08lX EBP=%08lX\n",
                     (unsigned long)x->Eip, (unsigned long)x->Esp,
                     (unsigned long)x->Ebp);
-            fprintf(f, "EAX=%08lX EBX=%08lX ECX=%08lX EDX=%08lX\\n",
+            fprintf(f, "EAX=%08lX EBX=%08lX ECX=%08lX EDX=%08lX\n",
                     (unsigned long)x->Eax, (unsigned long)x->Ebx,
                     (unsigned long)x->Ecx, (unsigned long)x->Edx);
         }
 #endif
         if (info && info->ExceptionRecord) {
-            fprintf(f, "Exception flags: 0x%08lX\\n",
+            fprintf(f, "Exception flags: 0x%08lX\n",
                     (unsigned long)info->ExceptionRecord->ExceptionFlags);
             if (info->ExceptionRecord->NumberParameters > 0)
-                fprintf(f, "Exception detail[0]: 0x%llX\\n",
+                fprintf(f, "Exception detail[0]: 0x%llX\n",
                         (unsigned long long)info->ExceptionRecord->ExceptionInformation[0]);
             if (info->ExceptionRecord->NumberParameters > 1)
-                fprintf(f, "Exception detail[1]: 0x%llX\\n",
+                fprintf(f, "Exception detail[1]: 0x%llX\n",
                         (unsigned long long)info->ExceptionRecord->ExceptionInformation[1]);
         }
         fflush(f);

@@ -78,7 +78,7 @@ static VntValue *alloc_value(VntType type) {
         slab = next;
     }
     VntValue *v = &slab->values[slab->used++];
-    memset(v, 0, sizeof(*v));
+    /* Slabs are calloc-initialized and each slot is used only once. */
     v->type = type;
     return v;
 }

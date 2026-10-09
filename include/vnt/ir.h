@@ -65,6 +65,7 @@ typedef struct {
     int operation;
     char **names;
     size_t name_count;
+    char *type_name; /* Explicit source-level type annotation, if any. */
     size_t first_child;
     size_t last_child;
     size_t next_sibling;

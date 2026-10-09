@@ -959,7 +959,7 @@ VntValue *vnt_process_start(VntValue *executable, VntValue *arguments) {
         DWORD error = GetLastError();
         CloseHandle(p->stdout_read); CloseHandle(p->stderr_read); free(p);
         fprintf(stderr, "Runtime error: process_start() failed to launch '%s' (Windows error %lu).\n", exe, (unsigned long)error);
-        return vnt_null();
+        exit(1);
     }
     p->handle = pi.hProcess; p->thread = pi.hThread; p->pid = pi.dwProcessId;
 #else

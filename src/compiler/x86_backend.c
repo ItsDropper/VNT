@@ -798,24 +798,24 @@ static void emit_call(X86Gen *g,AstNode *n) {
                  */
                 for (AstNode *a = arg; a; a = a->next) {
                     emit_expr(g, a);
-                    fputs("    pushq %rax\\n", g->out);
+                    fputs("    pushq %rax\n", g->out);
                     g->temp_depth++;
                 }
-                fputs("    movq 32(%rsp),%rcx\\n"
-                      "    movq 24(%rsp),%rdx\\n"
-                      "    movq 16(%rsp),%r8\\n"
-                      "    movq 8(%rsp),%r9\\n"
-                      "    movq 0(%rsp),%r10\\n", g->out);
-                fputs("    addq $40,%rsp\\n", g->out);
+                fputs("    movq 32(%rsp),%rcx\n"
+                      "    movq 24(%rsp),%rdx\n"
+                      "    movq 16(%rsp),%r8\n"
+                      "    movq 8(%rsp),%r9\n"
+                      "    movq 0(%rsp),%r10\n", g->out);
+                fputs("    addq $40,%rsp\n", g->out);
                 g->temp_depth -= 5;
                 int call_area = 40;
                 int alignment = (g->temp_depth * 8 + call_area) % 16;
                 if (alignment) call_area += 16 - alignment;
-                fprintf(g->out, "    subq $%d,%%rsp\\n", call_area);
-                fputs("    movq %r10,32(%rsp)\\n    call ", g->out);
+                fprintf(g->out, "    subq $%d,%%rsp\n", call_area);
+                fputs("    movq %r10,32(%rsp)\n    call ", g->out);
                 fputs(runtime_name, g->out);
-                fputc('\\n', g->out);
-                fprintf(g->out, "    addq $%d,%%rsp\\n", call_area);
+                fputc('\n', g->out);
+                fprintf(g->out, "    addq $%d,%%rsp\n", call_area);
             } else if (arity == 4) {
                 for (AstNode *a = arg; a; a = a->next) {
                     emit_expr(g, a);

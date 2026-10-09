@@ -44,8 +44,13 @@ static LONG WINAPI vnt_unhandled_exception(EXCEPTION_POINTERS *info) {
         fprintf(f, "Exception code: 0x%08lX\nException address: %p\n",
                 (unsigned long)code, address);
         char module[MAX_PATH] = {0};
+        HMODULE image_base = GetModuleHandleA(NULL);
         if (GetModuleFileNameA(NULL, module, MAX_PATH))
             fprintf(f, "Executable: %s\n", module);
+        fprintf(f, "Module base: %p\n", (void *)image_base);
+        if (image_base && address)
+            fprintf(f, "Fault RVA: 0x%llX\n",
+                    (unsigned long long)((uintptr_t)address - (uintptr_t)image_base));
 #if defined(_M_X64) || defined(__x86_64__)
         if (info && info->ContextRecord) {
             CONTEXT *x = info->ContextRecord;

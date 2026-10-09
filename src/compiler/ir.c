@@ -150,8 +150,9 @@ static void clear_nodes(VntIrProgram *ir) {
     for (size_t i = 0; i < ir->node_count; ++i) {
         VntIrOpcode op = ir->nodes[i].opcode;
         if (op == VNT_IR_STRING || op == VNT_IR_VARIABLE_DECL ||
-            op == VNT_IR_VARIABLE || op == VNT_IR_MEMBER ||
-            op == VNT_IR_CALL || op == VNT_IR_FUNCTION || op == VNT_IR_STRUCT)
+            op == VNT_IR_REASSIGN || op == VNT_IR_VARIABLE ||
+            op == VNT_IR_MEMBER || op == VNT_IR_CALL ||
+            op == VNT_IR_FUNCTION || op == VNT_IR_STRUCT)
             free(ir->nodes[i].value.text);
         for (size_t j = 0; j < ir->nodes[i].name_count; ++j)
             free(ir->nodes[i].names[j]);
@@ -236,6 +237,9 @@ static int copy_text(char **destination, const char *source) {
 static int lower_node(VntIrProgram *ir, const AstNode *ast, size_t *result) {
     if (!ast || !result) return 0;
     VntIrOpcode op = opcode_for(ast->type);
+    if (ast->type == AST_VARIABLE_DECLARATION &&
+        ast->variable_declaration.is_reassignment)
+        op = VNT_IR_REASSIGN;
     if ((int)op < 0 || !reserve_node(ir, result)) return 0;
     VntIrNode *node = &ir->nodes[*result];
     node->opcode = op;
@@ -347,6 +351,15 @@ static int role_count(const VntIrProgram *ir, const VntIrNode *node,
     return count;
 }
 
+static int source_opcode_matches(const VntIrNode *node) {
+    if (node->source->type == AST_VARIABLE_DECLARATION) {
+        return node->source->variable_declaration.is_reassignment
+            ? node->opcode == VNT_IR_REASSIGN
+            : node->opcode == VNT_IR_VARIABLE_DECL;
+    }
+    return opcode_for(node->source->type) == node->opcode;
+}
+
 static int validate_node_shape(const VntIrProgram *ir, const VntIrNode *node) {
     int statements = role_count(ir, node, VNT_IR_EDGE_STATEMENT);
     int conditions = role_count(ir, node, VNT_IR_EDGE_CONDITION);
@@ -401,6 +414,8 @@ static int validate_node_shape(const VntIrProgram *ir, const VntIrNode *node) {
             return elements == (int)node->child_count;
         case VNT_IR_VARIABLE_DECL:
             return values == (int)node->child_count && values <= 1;
+        case VNT_IR_REASSIGN:
+            return values == 1 && node->child_count == 1;
         case VNT_IR_INDEX:
             return objects == 1 && indices == 1 && node->child_count == 2;
         case VNT_IR_MEMBER:
@@ -430,7 +445,7 @@ int vnt_ir_validate(const VntIrProgram *ir) {
         const VntIrNode *node = &ir->nodes[i];
         if (!node->source || (int)node->opcode < 0 ||
             node->opcode > VNT_IR_UNARY ||
-            opcode_for(node->source->type) != node->opcode ||
+            !source_opcode_matches(node) ||
             (int)node->role < 0 || node->role > VNT_IR_EDGE_OPERAND ||
             (node->name_count && !node->names) ||
             (node->opcode == VNT_IR_BINARY &&
@@ -472,6 +487,7 @@ int vnt_ir_validate(const VntIrProgram *ir) {
         /* Metadata is owned by HIR and must match the source node at lowering time. */
         switch (node->opcode) {
             case VNT_IR_VARIABLE_DECL:
+            case VNT_IR_REASSIGN:
                 if (!node->value.text ||
                     strcmp(node->value.text, node->source->variable_declaration.name) ||
                     node->name_count != 0) goto invalid;
@@ -531,9 +547,9 @@ static const char *opcode_name(VntIrOpcode opcode) {
         "program", "print", "if", "while", "function", "struct",
         "call", "return", "break", "continue", "string", "integer",
         "float", "boolean", "array", "variable-decl", "variable",
-        "index", "member", "assign", "binary", "unary"
+        "index", "member", "assign", "binary", "unary", "reassign"
     };
-    return opcode >= VNT_IR_PROGRAM && opcode <= VNT_IR_UNARY
+    return opcode >= VNT_IR_PROGRAM && opcode <= VNT_IR_REASSIGN
         ? names[opcode] : "invalid";
 }
 
@@ -585,6 +601,7 @@ void vnt_ir_dump(const VntIrProgram *ir, FILE *out) {
             case VNT_IR_FLOAT: fprintf(out, " value=%.17g", node->value.floating); break;
             case VNT_IR_STRING:
             case VNT_IR_VARIABLE_DECL:
+            case VNT_IR_REASSIGN:
             case VNT_IR_VARIABLE:
             case VNT_IR_MEMBER:
             case VNT_IR_CALL:

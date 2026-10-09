@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
         if (!vnt_ir_lower(&ir, program) ||
             !vnt_ir_optimize(&ir) ||
             !vnt_ir_validate(&ir)) {
-            fprintf(stderr, "VNT HIR lowering/validation failed.\\n");
+            fprintf(stderr, "VNT HIR lowering/validation failed.\n");
             result = 1;
         } else {
             vnt_ir_dump(&ir, stdout);

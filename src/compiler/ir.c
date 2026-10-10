@@ -657,6 +657,12 @@ static void hir_substitute_expression(VntIrProgram *ir, size_t index,
             hir_constant_invalidate(env, ir->nodes[target].value.text);
         return;
     }
+    /*
+     * The operand of & is an lvalue, not a value read. Replacing &x with
+     * &10 destroys the addressable-variable invariant required by codegen.
+     */
+    if (node->opcode == VNT_IR_UNARY && node->operation == UNARY_REFERENCE)
+        return;
     for (size_t child = node->first_child; child != VNT_IR_NO_NODE;
          child = ir->nodes[child].next_sibling)
         hir_substitute_expression(ir, child, env, changed);

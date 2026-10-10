@@ -274,43 +274,70 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
         if page == "Modrinth" {
             ui_call_69 = gui.vanta_surface(282, 150, 826, 144, 0x142138)
             ui_call_70 = gui.vanta_surface(282, 310, 826, 422, 0x142138)
-            ui_call_71 = gui.vanta_text_style("MODRINTH PROJECT LOOKUP", 304, 170, 0x7E93B8, 11)
-            ui_call_72 = gui.vanta_text_style("Enter a project slug, e.g. sodium, fabric-api, or lithium.", 304, 196, 0xAAB9D2, 12)
-            project_slug_input = gui.vanta_text_input("Project slug", 304, 220, 420)
-            if gui.vanta_button_sized("Lookup project", 742, 218, 154, 40) {
+            ui_call_71 = gui.vanta_text_style("MODRINTH DISCOVERY", 304, 170, 0x7E93B8, 11)
+            ui_call_72 = gui.vanta_text_style("Search by words, inspect a project slug, or view its latest versions.", 304, 196, 0xAAB9D2, 12)
+            project_slug_input = gui.vanta_text_input("Search words or project slug", 304, 220, 390)
+            if gui.vanta_button_sized("Search mods", 706, 218, 120, 40) {
+                if project_slug_input == "" {
+                    status_message = "Enter a mod name first."
+                } else {
+                    project_response = net.search_mods(project_slug_input)
+                    request_count = request_count + 1
+                    if project_response == "" {
+                        project_response = "No response received. Check that curl.exe is installed and internet access is available."
+                        status_message = "Modrinth search failed: empty response."
+                    } else {
+                        status_message = "Modrinth search results loaded for: " + project_slug_input
+                        activity_message = "Searched Modrinth mods: " + project_slug_input
+                    }
+                    ui_call_73 = gui.vanta_textarea_set(project_response, 304, 354)
+                    ui_call_74 = log.info("Modrinth mod search completed for " + project_slug_input)
+                }
+            }
+            if gui.vanta_button_sized("Project info", 836, 218, 120, 40) {
                 if project_slug_input == "" {
                     status_message = "Enter a project slug first."
                 } else {
                     project_url = "https://api.modrinth.com/v2/project/" + project_slug_input
                     project_response = net.get_json(project_url)
-                    project_status = net.status(project_url)
-                    request_count = request_count + 2
-                    status_message = "Modrinth returned HTTP " + project_status
-                    activity_message = "Looked up Modrinth project: " + project_slug_input
-                    ui_call_73 = log.info("Modrinth lookup for " + project_slug_input + " returned HTTP " + project_status)
+                    request_count = request_count + 1
+                    if project_response == "" {
+                        project_response = "No response received. Check the project slug, curl.exe, and internet access."
+                        status_message = "Project lookup failed: empty response."
+                    } else {
+                        status_message = "Project metadata loaded for: " + project_slug_input
+                        activity_message = "Loaded Modrinth project: " + project_slug_input
+                    }
+                    ui_call_75 = gui.vanta_textarea_set(project_response, 304, 354)
+                    ui_call_76 = log.info("Modrinth project info loaded for " + project_slug_input)
                 }
             }
-            if gui.vanta_button_sized("Latest versions", 906, 218, 174, 40) {
+            if gui.vanta_button_sized("Versions", 966, 218, 114, 40) {
                 if project_slug_input == "" {
                     status_message = "Enter a project slug first."
                 } else {
                     project_url = "https://api.modrinth.com/v2/project/" + project_slug_input + "/version"
                     project_response = net.get_json(project_url)
-                    project_status = net.status(project_url)
-                    request_count = request_count + 2
-                    status_message = "Version endpoint returned HTTP " + project_status
-                    activity_message = "Fetched version metadata for " + project_slug_input
-                    ui_call_74 = log.info("Modrinth versions for " + project_slug_input + " returned HTTP " + project_status)
+                    request_count = request_count + 1
+                    if project_response == "" {
+                        project_response = "No response received. Check the project slug, curl.exe, and internet access."
+                        status_message = "Version lookup failed: empty response."
+                    } else {
+                        status_message = "Latest version metadata loaded for: " + project_slug_input
+                        activity_message = "Fetched Modrinth versions: " + project_slug_input
+                    }
+                    ui_call_77 = gui.vanta_textarea_set(project_response, 304, 354)
+                    ui_call_78 = log.info("Modrinth version metadata loaded for " + project_slug_input)
                 }
             }
-            ui_call_75 = gui.vanta_text_style("API RESPONSE  /  RAW JSON", 304, 330, 0x7E93B8, 11)
-            response_text = gui.vanta_textarea("The response body appears here after a lookup.", 304, 354, 776, 286)
+            ui_call_79 = gui.vanta_text_style("LIVE RESULTS  /  JSON DETAILS", 304, 330, 0x7E93B8, 11)
+            response_text = gui.vanta_textarea("Search results and project details appear here.", 304, 354, 776, 286)
             if gui.vanta_button_sized("Show last response", 304, 658, 174, 40) {
-                ui_call_76 = gui.vanta_input_set(project_response, 304, 354)
-                status_message = "Restored the most recent response into the text area."
+                ui_call_80 = gui.vanta_textarea_set(project_response, 304, 354)
+                status_message = "Restored the most recent response into the results panel."
             }
-            ui_call_77 = gui.vanta_text_style("This screen displays raw JSON. Structured result cards require a JSON parser.", 494, 670, 0xAAB9D2, 11)
-            ui_call_78 = gui.vanta_text_style("Only public metadata endpoints are called here; no account token is stored.", 304, 710, 0x66D9BE, 11)
+            ui_call_81 = gui.vanta_text_style("Search is filtered to Modrinth projects of type mod. Requests run only on click.", 494, 670, 0xAAB9D2, 11)
+            ui_call_82 = gui.vanta_text_style("Public metadata only; no account token is sent or stored.", 304, 710, 0x66D9BE, 11)
         }
 
         if page == "Downloads" {

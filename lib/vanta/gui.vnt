@@ -71,3 +71,52 @@ export fun vanta_surface(x, y, width, height, color) {
 export fun vanta_text_style(text, x, y, color, size) {
     return gui_text_style(text, x, y, color, size)
 }
+
+# Reusable layout primitives. These compose existing native drawing commands;
+# they do not add an external GUI dependency or hidden background behavior.
+
+export fun vanta_metric_card(label, value, detail, x, y, width, height, color) {
+    gui_panel_color(x, y, width, height, color)
+    gui_text_style(label, x + 18, y + 18, 0x7E93B8, 11)
+    gui_title(value, x + 18, y + 48)
+    gui_text_style(detail, x + 18, y + height - 34, 0xAAB9D2, 11)
+    return true
+}
+
+export fun vanta_status_badge(text, x, y, width, color) {
+    gui_panel_color(x, y, width, 28, color)
+    gui_text_style(text, x + 10, y + 7, 0xFFFFFF, 10)
+    return true
+}
+
+export fun vanta_section_header(title, subtitle, x, y, width) {
+    gui_text_style(title, x, y, 0x7E93B8, 11)
+    gui_text_style(subtitle, x, y + 24, 0xAAB9D2, 12)
+    gui_separator(x, y + 50, width)
+    return true
+}
+
+export fun vanta_callout(title, body, x, y, width, height, accent) {
+    gui_panel_color(x, y, width, height, 0x142138)
+    gui_panel_color(x, y, 3, height, accent)
+    gui_text_style(title, x + 16, y + 12, accent, 11)
+    gui_text_style(body, x + 16, y + 38, 0xDCE7FF, 12)
+    return true
+}
+
+export fun vanta_action_button(text, x, y, width, height) {
+    return gui_button_sized(text, x, y, width, height)
+}
+
+export fun vanta_stat_line(label, value, x, y, value_color) {
+    gui_text_style(label, x, y, 0xAAB9D2, 12)
+    gui_text_style(value, x + 190, y, value_color, 12)
+    return true
+}
+
+export fun vanta_empty_state(title, detail, x, y, width) {
+    gui_text_style(title, x, y, 0xDCE7FF, 16)
+    gui_text_style(detail, x, y + 32, 0xAAB9D2, 12)
+    gui_separator(x, y + 60, width)
+    return true
+}

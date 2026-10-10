@@ -456,19 +456,18 @@ int vnt_cfg_check_definite_assignment(const VntIrProgram *ir, const VntCfg *cfg,
                     changed = 1;
                 }
             } else {
-                int has_predecessor = 0;
-                for (size_t v = 0; v < vars; ++v) bin[v] = 1;
-                for (size_t p = 0; p < blocks; ++p) {
-                    if (!block_has_predecessor(cfg, p, b)) continue;
-                    const unsigned char *pout = out + p * vars;
-                    if (!has_predecessor) {
-                        if (vars) memcpy(bin, pout, vars);
+                for (size_t v = 0; v < vars; ++v) {
+                    unsigned char value = 1;
+                    int has_predecessor = 0;
+                    for (size_t p = 0; p < blocks; ++p) {
+                        if (!block_has_predecessor(cfg, p, b)) continue;
+                        value &= out[p * vars + v];
                         has_predecessor = 1;
-                    } else {
-                        for (size_t v = 0; v < vars; ++v) bin[v] &= pout[v];
                     }
+                    if (!has_predecessor) value = 0;
+                    if (bin[v] != value) changed = 1;
+                    bin[v] = value;
                 }
-                if (!has_predecessor && vars) memset(bin, 0, vars);
             }
             for (size_t v = 0; v < vars; ++v) {
                 unsigned char value = (unsigned char)(bin[v] || defs[b * vars + v]);

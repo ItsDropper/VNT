@@ -209,7 +209,7 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                     log.warn("Launch rejected: empty script path.")
                 } else {
                     if fs.exists(profile_path_input) {
-                        active_process = process.start("cmd.exe", ["/c", profile_path_input])
+                        active_process = process.start("cmd.exe", ["/c", "\"" + profile_path_input + "\""])
                         active_pid = process.pid(active_process)
                         launch_count = launch_count + 1
                         status_message = "Launch script started. PID " + active_pid

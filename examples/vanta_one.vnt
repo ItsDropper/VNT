@@ -45,6 +45,7 @@ running = true
 current_dir = os.current_dir()
 config_text = config.load_or_create("vanta_one.settings", "theme=midnight\nnetwork=manual\n")
 ui_call_1 = log.info("Vanta One started.")
+io.write_line("DIAG: startup state initialized")
 if fs.exists("vanta_one_profile1_name.txt") { profile_one_name = fs.read_text("vanta_one_profile1_name.txt") }
 if fs.exists("vanta_one_profile2_name.txt") { profile_two_name = fs.read_text("vanta_one_profile2_name.txt") }
 if fs.exists("vanta_one_profile3_name.txt") { profile_three_name = fs.read_text("vanta_one_profile3_name.txt") }
@@ -53,10 +54,14 @@ if fs.exists("vanta_one_profile1_path.txt") { profile_one_path = fs.read_text("v
 if fs.exists("vanta_one_profile2_path.txt") { profile_two_path = fs.read_text("vanta_one_profile2_path.txt") }
 if fs.exists("vanta_one_profile3_path.txt") { profile_three_path = fs.read_text("vanta_one_profile3_path.txt") }
 if fs.exists("vanta_one_profile4_path.txt") { profile_four_path = fs.read_text("vanta_one_profile4_path.txt") }
+io.write_line("DIAG: profile files checked")
 
+io.write_line("DIAG: entering GUI startup")
 if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "examples/vanta_one.css") {
+    io.write_line("DIAG: GUI startup returned true")
     while running {
         running = gui.vanta_gui_poll()
+        io.write_line("DIAG: GUI poll returned")
         elapsed_seconds = math.clamp(time.elapsed_ms(session_start) / 1000, 0, 999999)
         ui_call_2 = gui.vanta_surface(0, 0, 236, 790, 0x0B1322)
         ui_call_3 = gui.vanta_surface(18, 18, 200, 76, 0x14223A)
@@ -427,6 +432,7 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
             ui_call_135 = log.info("Vanta One closed.")
         }
         ui_call_136 = gui.vanta_gui_present()
+        io.write_line("DIAG: GUI present returned")
         ui_call_137 = time.sleep_ms(16)
     }
     ui_call_138 = gui.vanta_gui_close()

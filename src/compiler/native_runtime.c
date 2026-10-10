@@ -1650,7 +1650,7 @@ static void vnt_json_copy_string(const char *p, char *out, size_t cap) {
     }
     out[n]=0;
 }
-static void vnt_json_value_at(const char *json,const char *key,int wanted,char *out,size_t cap) {
+static void vnt_json_extract_value(const char *json,const char *key,int wanted,char *out,size_t cap) {
     int found=0;
     out[0]=0;
     if(!json||!key||wanted<0||cap<2)return;
@@ -1694,7 +1694,7 @@ VntValue *vnt_json_value_at(VntValue *json_value,VntValue *key_value,VntValue *i
         exit(1);
     }
     char out[2048];
-    vnt_json_value_at(json,key,index_value->integer,out,sizeof(out));
+    vnt_json_extract_value(json,key,index_value->integer,out,sizeof(out));
     return vnt_string(out);
 }
 VntValue *vnt_gui_poll(void){

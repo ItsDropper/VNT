@@ -167,7 +167,7 @@ static const char *builtin(const char *s,int *arity) {
       {"process_poll","vnt_process_poll",1},{"process_wait","vnt_process_wait",2},{"process_pid","vnt_process_pid",1},
       {"process_terminate","vnt_process_terminate",1},{"process_stdout","vnt_process_stdout",1},{"process_stderr","vnt_process_stderr",1},
       {"process_exit_code","vnt_process_exit_code",1},{"gui_css","vnt_gui_css",1},{"gui_button","vnt_gui_button",3},
-      {"gui_button_sized","vnt_gui_button_sized",5},{"gui_textarea","vnt_gui_textarea",5},{"gui_input_set","vnt_gui_input_set",3},{"gui_textarea_set","vnt_gui_textarea_set",3},
+      {"gui_button_sized","vnt_gui_button_sized",5},{"gui_textarea","vnt_gui_textarea",5},{"gui_input_set","vnt_gui_input_set",3},{"gui_textarea_set","vnt_gui_textarea_set",3},{"json_value_at","vnt_json_value_at",3},
       {"gui_panel_color","vnt_gui_panel_color",5},{"gui_text_style","vnt_gui_text_style",5},{"gui_input","vnt_gui_input",4},
       {"gui_checkbox","vnt_gui_checkbox",4},{"gui_progress","vnt_gui_progress",4},{"gui_separator","vnt_gui_separator",3},
       {"gui_present","vnt_gui_present",0},{"gui_open","vnt_gui_open",1},{"gui_size","vnt_gui_size",2},{"gui_text","vnt_gui_text",1},

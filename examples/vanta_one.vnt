@@ -306,7 +306,7 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                     status_message = "Enter a project slug first."
                 } else {
                     project_url = "https://api.modrinth.com/v2/project/" + project_slug_input
-                    project_response = net.get_json(project_url)
+                    project_response = net.get_with_header(project_url, "User-Agent: ItsDropper/Vanta-One/0.1.0 (https://github.com/ItsDropper/VNT)")
                     project_mode = "details"
                     request_count = request_count + 1
                     if project_response == "" {
@@ -325,7 +325,7 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                     status_message = "Enter a project slug first."
                 } else {
                     project_url = "https://api.modrinth.com/v2/project/" + project_slug_input + "/version"
-                    project_response = net.get_json(project_url)
+                    project_response = net.get_with_header(project_url, "User-Agent: ItsDropper/Vanta-One/0.1.0 (https://github.com/ItsDropper/VNT)")
                     project_mode = "versions"
                     request_count = request_count + 1
                     if project_response == "" {

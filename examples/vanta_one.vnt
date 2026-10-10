@@ -94,7 +94,7 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
 
         gui.vanta_heading("VANTA ONE", 282, 34)
         gui.vanta_text_style("A native game hub that stays out of your way.", 284, 75, 0xAAB9D2, 13)
-        gui.vanta_text_style("LOCAL  •  MANUAL NETWORK  •  WINDOWS", 860, 44, 0x66D9BE, 10)
+        gui.vanta_status_badge("LOCAL / MANUAL NETWORK", 880, 36, 220, 0x1A3D42)
         gui.vanta_text_style(status_message, 282, 91, 0xDCE7FF, 11)
 
         if page == "Home" {
@@ -108,9 +108,7 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
             gui.vanta_text_style("to contact an external service.", 306, 270, 0xAAB9D2, 12)
             gui.vanta_text_style("Active profile", 304, 308, 0x7E93B8, 11)
             gui.vanta_text_style(profile_name, 410, 308, 0x66D9BE, 12)
-            gui.vanta_text_style("THIS SESSION", 866, 174, 0x7E93B8, 11)
-            gui.vanta_heading("" + launch_count, 866, 202)
-            gui.vanta_text_style("launch actions", 866, 246, 0xAAB9D2, 12)
+            gui.vanta_metric_card("THIS SESSION", "" + launch_count, "launch actions", 844, 150, 264, 192, 0x142138)
             gui.vanta_text_style("" + math.floor(elapsed_seconds) + " seconds open", 866, 286, 0x7E93B8, 11)
             gui.vanta_text_style("QUICK ACTIONS", 304, 378, 0x7E93B8, 11)
             gui.vanta_text_style("Jump directly into profile management or look up a Modrinth project.", 304, 406, 0xDCE7FF, 12)
@@ -305,7 +303,8 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
             gui.vanta_text_style("DOWNLOAD STATUS", 304, 382, 0x7E93B8, 11)
             gui.vanta_heading("Manual. Explicit. Visible.", 304, 410)
             gui.vanta_text_style(download_status, 304, 460, 0xDCE7FF, 13)
-            gui.vanta_text_style("Vanta One does not auto-install a file or execute it after download.", 304, 506, 0x66D9BE, 12)
+            gui.vanta_callout("SAFETY", "Downloads are never executed automatically.", 304, 500, 760, 62, 0x66D9BE)
+            gui.vanta_text_style("Vanta One does not auto-install a file or execute it after download.", 304, 574, 0x66D9BE, 12)
             gui.vanta_text_style("For mods, confirm the Minecraft version and loader compatibility yourself.", 304, 534, 0xAAB9D2, 12)
             gui.vanta_text_style("Files are saved to the path you specify, relative to:", 304, 592, 0x7E93B8, 11)
             gui.vanta_text_style(current_dir, 304, 616, 0xAAB9D2, 11)

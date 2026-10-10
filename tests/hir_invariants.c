@@ -188,6 +188,115 @@ static void check_cfg_control_flow(void) {
     ast_free(program);
 }
 
+
+static int replace_node_text(char **slot, const char *value) {
+    size_t length = strlen(value);
+    char *copy = malloc(length + 1);
+    if (!copy) return 0;
+    memcpy(copy, value, length + 1);
+    free(*slot);
+    *slot = copy;
+    return 1;
+}
+
+static int make_assignment_to_symbol(VntIrNode *node, const char *symbol) {
+    node->opcode = VNT_IR_REASSIGN;
+    return replace_node_text(&node->value.text, symbol);
+}
+
+static void check_cfg_definite_assignment(void) {
+    /* A value assigned on only one incoming branch must not count as
+       definitely initialized after the merge. */
+    AstNode *statements = NULL;
+    ast_append(&statements, ast_create_variable_declaration("x", ast_create_integer(1)));
+    ast_append(&statements,
+        ast_create_if(ast_create_boolean(1),
+                      ast_create_variable_declaration("x", ast_create_integer(2)),
+                      ast_create_print(ast_create_integer(3))));
+    ast_append(&statements, ast_create_print(ast_create_variable("x")));
+    AstNode *program = ast_create_program(statements);
+    VntIrProgram ir = {0};
+    CHECK(program != NULL, "definite-assignment AST allocated");
+    if (!program) return;
+    CHECK(vnt_ir_lower(&ir, program), "definite-assignment HIR lowering succeeds");
+    if (ir.nodes) {
+        size_t root_decl = find_role(&ir, ir.root, VNT_IR_EDGE_STATEMENT);
+        size_t if_node = root_decl == VNT_IR_NO_NODE
+            ? VNT_IR_NO_NODE : ir.nodes[root_decl].next_sibling;
+        size_t then_decl = if_node == VNT_IR_NO_NODE ? VNT_IR_NO_NODE
+            : find_role(&ir, if_node, VNT_IR_EDGE_THEN);
+        const char *key = root_decl == VNT_IR_NO_NODE ? NULL : ir.nodes[root_decl].value.text;
+        CHECK(root_decl != VNT_IR_NO_NODE && if_node != VNT_IR_NO_NODE &&
+              then_decl != VNT_IR_NO_NODE && key != NULL,
+              "one-branch assignment HIR nodes located");
+        if (key && then_decl != VNT_IR_NO_NODE &&
+            make_assignment_to_symbol(&ir.nodes[root_decl], key) &&
+            make_assignment_to_symbol(&ir.nodes[then_decl], key)) {
+            VntCfg cfg = {0};
+            char diagnostic[256];
+            CHECK(vnt_cfg_build(&ir, &cfg), "one-branch CFG builds");
+            if (cfg.blocks) {
+                CHECK(!vnt_cfg_check_definite_assignment(&ir, &cfg, diagnostic,
+                                                         sizeof(diagnostic)),
+                      "one-branch initialization is rejected at the merge");
+                CHECK(strstr(diagnostic, "x") != NULL,
+                      "definite-assignment diagnostic names the variable");
+                vnt_cfg_free(&cfg);
+            }
+        } else {
+            CHECK(0, "one-branch assignments receive stable symbol identity");
+        }
+    }
+    vnt_ir_free(&ir);
+    ast_free(program);
+
+    /* When both branches assign the same outer binding, the merge is safe. */
+    statements = NULL;
+    ast_append(&statements, ast_create_variable_declaration("x", ast_create_integer(1)));
+    ast_append(&statements,
+        ast_create_if(ast_create_boolean(1),
+                      ast_create_variable_declaration("x", ast_create_integer(2)),
+                      ast_create_variable_declaration("x", ast_create_integer(3))));
+    ast_append(&statements, ast_create_print(ast_create_variable("x")));
+    program = ast_create_program(statements);
+    memset(&ir, 0, sizeof(ir));
+    CHECK(program != NULL, "all-paths-initialize AST allocated");
+    if (!program) return;
+    CHECK(vnt_ir_lower(&ir, program), "all-paths-initialize HIR lowering succeeds");
+    if (ir.nodes) {
+        size_t root_decl = find_role(&ir, ir.root, VNT_IR_EDGE_STATEMENT);
+        size_t if_node = root_decl == VNT_IR_NO_NODE
+            ? VNT_IR_NO_NODE : ir.nodes[root_decl].next_sibling;
+        size_t then_decl = if_node == VNT_IR_NO_NODE ? VNT_IR_NO_NODE
+            : find_role(&ir, if_node, VNT_IR_EDGE_THEN);
+        size_t else_decl = if_node == VNT_IR_NO_NODE ? VNT_IR_NO_NODE
+            : find_role(&ir, if_node, VNT_IR_EDGE_ELSE);
+        const char *key = root_decl == VNT_IR_NO_NODE ? NULL : ir.nodes[root_decl].value.text;
+        CHECK(root_decl != VNT_IR_NO_NODE && then_decl != VNT_IR_NO_NODE &&
+              else_decl != VNT_IR_NO_NODE && key != NULL,
+              "both-branch assignment HIR nodes located");
+        if (key && then_decl != VNT_IR_NO_NODE && else_decl != VNT_IR_NO_NODE &&
+            make_assignment_to_symbol(&ir.nodes[root_decl], key) &&
+            make_assignment_to_symbol(&ir.nodes[then_decl], key) &&
+            make_assignment_to_symbol(&ir.nodes[else_decl], key)) {
+            VntCfg cfg = {0};
+            char diagnostic[256];
+            CHECK(vnt_cfg_build(&ir, &cfg), "all-paths CFG builds");
+            if (cfg.blocks) {
+                CHECK(vnt_cfg_check_definite_assignment(&ir, &cfg, diagnostic,
+                                                        sizeof(diagnostic)),
+                      "assignment on every branch passes definite-assignment analysis");
+                vnt_cfg_free(&cfg);
+            }
+        } else {
+            CHECK(0, "both-branch assignments receive stable symbol identity");
+        }
+    }
+    vnt_ir_free(&ir);
+    ast_free(program);
+}
+
+
 int main(void) {
     check_fold_case(binary(2, 3, BINARY_ADD), VNT_IR_INTEGER, 5,
                     "safe integer addition folds");
@@ -207,6 +316,7 @@ int main(void) {
     check_rejects_disconnected_cycle();
     check_cfg_control_flow();
     check_cfg_prunes_unreachable_statements();
+    check_cfg_definite_assignment();
 
     if (failures) {
         fprintf(stderr, "%d HIR invariant test(s) failed.\n", failures);

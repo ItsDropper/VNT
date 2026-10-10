@@ -1,0 +1,4 @@
+if true {
+    hidden_if_value = 1
+}
+print(hidden_if_value)

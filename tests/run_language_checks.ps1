@@ -199,6 +199,17 @@ try {
     }
     Write-Host "Standard math/time/OS/process libraries: PASS"
 
+    # Compile-only checks keep networking tests offline and avoid contacting real APIs.
+    $StdNetworkExe = Join-Path $OutDir "std_network_compile.exe"
+    & .\vnt.exe --compile tests\std_network_compile.vnt -o $StdNetworkExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard networking library did not compile." }
+    Write-Host "Standard HTTPS/API library compile: PASS"
+
+    $StdLogConfigExe = Join-Path $OutDir "std_log_config_compile.exe"
+    & .\vnt.exe --compile tests\std_log_config_compile.vnt -o $StdLogConfigExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard logging/configuration libraries did not compile." }
+    Write-Host "Standard logging/configuration library compile: PASS"
+
     Write-Host "Language and module checks: PASS"
 }
 finally {

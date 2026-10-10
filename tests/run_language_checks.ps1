@@ -28,7 +28,8 @@ try {
         "tests\typecheck_invalid_boolean_order.vnt",
         "tests\typecheck_invalid_void_return.vnt",
         "tests\typecheck_scope_if_leak.vnt",
-        "tests\typecheck_scope_while_leak.vnt"
+        "tests\typecheck_scope_while_leak.vnt",
+        "tests\typecheck_read_before_assignment.vnt"
     )) {
         $previousPreference = $ErrorActionPreference
         $ErrorActionPreference = "Continue"

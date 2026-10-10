@@ -67,6 +67,29 @@ try {
         }
         if ($compileExitCode -eq 0) { throw "Expected module-loading failure for $case, but compilation succeeded." }
     }
+    $UltimateExe = Join-Path $OutDir "ultimate_stress.exe"
+    & .\\vnt.exe --compile tests\\ultimate_stress.vnt -o $UltimateExe
+    if ($LASTEXITCODE -ne 0) { throw "Ultimate stress-test program did not compile." }
+    $ultimateOutput = & $UltimateExe
+    if ($LASTEXITCODE -ne 0) { throw "Ultimate stress-test program exited unsuccessfully." }
+    $ultimateExpected = @(
+        "factorial=3628800",
+        "fibonacci=144",
+        "sum=5050",
+        "precedence=14",
+        "parentheses=20",
+        "classify=negative,zero,positive",
+        "logic=true",
+        "comparison=true",
+        "float=6.25",
+        "global=41,42",
+        "ULTIMATE_STRESS_OK"
+    )
+    if (($ultimateOutput -join "|") -ne ($ultimateExpected -join "|")) {
+        throw "Unexpected ultimate stress-test output: $($ultimateOutput -join ' | ')"
+    }
+    Write-Host "Ultimate stress test: PASS"
+
     Write-Host "Language and module checks: PASS"
 }
 finally {

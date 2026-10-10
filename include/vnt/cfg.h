@@ -31,6 +31,9 @@ typedef struct {
 
 int vnt_cfg_build(const VntIrProgram *ir, VntCfg *cfg);
 int vnt_cfg_validate(const VntCfg *cfg);
+/* Forward must-analysis: rejects reads not initialized on every incoming path. */
+int vnt_cfg_check_definite_assignment(const VntIrProgram *ir, const VntCfg *cfg,
+                                      char *diagnostic, size_t diagnostic_capacity);
 void vnt_cfg_free(VntCfg *cfg);
 
 #endif

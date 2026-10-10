@@ -162,7 +162,7 @@ static const char *builtin(const char *s,int *arity) {
       {"fs_read","vnt_fs_read",1},{"fs_write","vnt_fs_write",2},{"fs_append","vnt_fs_append",2},{"fs_delete","vnt_fs_delete",1},
       {"fs_rename","vnt_fs_rename",2},{"fs_is_file","vnt_fs_is_file",1},{"fs_is_dir","vnt_fs_is_dir",1},{"fs_list","vnt_fs_list",1},
       {"io_write","vnt_io_write",1},{"io_write_error","vnt_io_write_error",1},
-      {"dir_create","vnt_dir_create",1},{"cwd","vnt_cwd",0},{"env_get","vnt_env_get",1},{"env_set","vnt_env_set",2},
+      {"dir_create","vnt_dir_create",1},{"cwd","vnt_cwd",0},{"env_get","vnt_env_get",1},{"env_has","vnt_env_has",1},{"env_set","vnt_env_set",2},
       {"time_ms","vnt_time_ms",0},{"sleep_ms","vnt_sleep_ms",1},{"process_start","vnt_process_start",2},
       {"process_poll","vnt_process_poll",1},{"process_wait","vnt_process_wait",2},{"process_pid","vnt_process_pid",1},
       {"process_terminate","vnt_process_terminate",1},{"process_stdout","vnt_process_stdout",1},{"process_stderr","vnt_process_stderr",1},

@@ -202,10 +202,290 @@ static int lower_node(VntIrProgram *ir, const AstNode *ast, size_t *result) {
     }
 }
 
+
+
+/* Resolve every variable occurrence to a unique HIR storage key before
+   optimization. The source spelling remains in the symbol table; the HIR
+   payload is rewritten to an identity-bearing internal name so backend slot
+   allocation can never merge shadowed declarations by source name alone. */
+typedef struct {
+    char *source_name;
+    char *storage_key;
+    size_t depth;
+} HirSymbol;
+
+typedef struct {
+    VntIrProgram *ir;
+    HirSymbol *symbols;
+    size_t count, capacity, next_id, depth;
+    int error;
+} HirResolver;
+
+static size_t hir_child_role(const VntIrProgram *ir, size_t index,
+                             VntIrEdgeRole role) {
+    if (index >= ir->node_count) return VNT_IR_NO_NODE;
+    for (size_t c = ir->nodes[index].first_child; c != VNT_IR_NO_NODE;
+         c = ir->nodes[c].next_sibling)
+        if (ir->nodes[c].role == role) return c;
+    return VNT_IR_NO_NODE;
+}
+
+static size_t hir_next_role(const VntIrProgram *ir, size_t index,
+                            VntIrEdgeRole role) {
+    if (index >= ir->node_count) return VNT_IR_NO_NODE;
+    for (size_t c = ir->nodes[index].next_sibling; c != VNT_IR_NO_NODE;
+         c = ir->nodes[c].next_sibling)
+        if (ir->nodes[c].role == role) return c;
+    return VNT_IR_NO_NODE;
+}
+
+static void resolver_error(HirResolver *resolver) {
+    resolver->error = 1;
+}
+
+static int resolver_reserve(HirResolver *resolver) {
+    if (resolver->count < resolver->capacity) return 1;
+    size_t cap = resolver->capacity ? resolver->capacity * 2 : 32;
+    if (cap < resolver->capacity || cap > SIZE_MAX / sizeof(*resolver->symbols))
+        return 0;
+    HirSymbol *symbols = realloc(resolver->symbols, cap * sizeof(*symbols));
+    if (!symbols) return 0;
+    resolver->symbols = symbols;
+    resolver->capacity = cap;
+    return 1;
+}
+
+static HirSymbol *resolver_find(HirResolver *resolver, const char *name) {
+    for (size_t i = resolver->count; i > 0; --i)
+        if (!strcmp(resolver->symbols[i - 1].source_name, name))
+            return &resolver->symbols[i - 1];
+    return NULL;
+}
+
+static HirSymbol *resolver_declare(HirResolver *resolver, const char *name) {
+    if (!resolver_reserve(resolver)) {
+        resolver_error(resolver);
+        return NULL;
+    }
+    size_t length = strlen(name);
+    char suffix[48];
+    int suffix_length = snprintf(suffix, sizeof(suffix), "__vnt_symbol_%zu_", resolver->next_id++);
+    if (suffix_length < 0 || (size_t)suffix_length >= sizeof(suffix) ||
+        length > SIZE_MAX - (size_t)suffix_length - 1) {
+        resolver_error(resolver);
+        return NULL;
+    }
+    char *source = malloc(length + 1);
+    char *key = malloc((size_t)suffix_length + length + 1);
+    if (!source || !key) {
+        free(source);
+        free(key);
+        resolver_error(resolver);
+        return NULL;
+    }
+    memcpy(source, name, length + 1);
+    memcpy(key, suffix, (size_t)suffix_length);
+    memcpy(key + suffix_length, name, length + 1);
+    HirSymbol *symbol = &resolver->symbols[resolver->count++];
+    symbol->source_name = source;
+    symbol->storage_key = key;
+    symbol->depth = resolver->depth;
+    return symbol;
+}
+
+static int resolver_rename(char **payload, const char *key) {
+    char *copy = strdup(key);
+    if (!copy) return 0;
+    free(*payload);
+    *payload = copy;
+    return 1;
+}
+
+static void resolver_bind_expr(HirResolver *resolver, size_t index);
+
+static void resolver_bind_role(HirResolver *resolver, size_t index,
+                               VntIrEdgeRole role) {
+    for (size_t c = hir_child_role(resolver->ir, index, role);
+         c != VNT_IR_NO_NODE && !resolver->error;
+         c = hir_next_role(resolver->ir, c, role))
+        resolver_bind_expr(resolver, c);
+}
+
+static void resolver_bind_expr(HirResolver *resolver, size_t index) {
+    if (resolver->error || index == VNT_IR_NO_NODE ||
+        index >= resolver->ir->node_count) return;
+    VntIrNode *node = &resolver->ir->nodes[index];
+    switch (node->opcode) {
+        case VNT_IR_VARIABLE: {
+            HirSymbol *symbol = resolver_find(resolver, node->value.text);
+            if (!symbol || !resolver_rename(&node->value.text, symbol->storage_key))
+                resolver_error(resolver);
+            break;
+        }
+        case VNT_IR_VARIABLE_DECL:
+        case VNT_IR_REASSIGN:
+            resolver_bind_expr(resolver,
+                hir_child_role(resolver->ir, index, VNT_IR_EDGE_VALUE));
+            if (resolver->error) return;
+            if (node->opcode == VNT_IR_REASSIGN) {
+                HirSymbol *symbol = resolver_find(resolver, node->value.text);
+                if (!symbol || !resolver_rename(&node->value.text, symbol->storage_key))
+                    resolver_error(resolver);
+            } else {
+                HirSymbol *symbol = resolver_declare(resolver, node->value.text);
+                if (!symbol || !resolver_rename(&node->value.text, symbol->storage_key))
+                    resolver_error(resolver);
+            }
+            break;
+        case VNT_IR_PROGRAM:
+            resolver_bind_role(resolver, index, VNT_IR_EDGE_STATEMENT);
+            break;
+        case VNT_IR_PRINT:
+        case VNT_IR_RETURN:
+            resolver_bind_expr(resolver,
+                hir_child_role(resolver->ir, index, VNT_IR_EDGE_VALUE));
+            break;
+        case VNT_IR_IF:
+            resolver_bind_expr(resolver,
+                hir_child_role(resolver->ir, index, VNT_IR_EDGE_CONDITION));
+            if (resolver->error) return;
+            resolver->depth++;
+            resolver_bind_role(resolver, index, VNT_IR_EDGE_THEN);
+            resolver->count = resolver->count; /* Keep outer symbols alive. */
+            if (resolver->error) return;
+            /* Remove declarations from the then branch before resolving else. */
+            while (resolver->count &&
+                   resolver->symbols[resolver->count - 1].depth >= resolver->depth) {
+                free(resolver->symbols[resolver->count - 1].source_name);
+                free(resolver->symbols[resolver->count - 1].storage_key);
+                resolver->count--;
+            }
+            resolver_bind_role(resolver, index, VNT_IR_EDGE_ELSE);
+            while (resolver->count &&
+                   resolver->symbols[resolver->count - 1].depth >= resolver->depth) {
+                free(resolver->symbols[resolver->count - 1].source_name);
+                free(resolver->symbols[resolver->count - 1].storage_key);
+                resolver->count--;
+            }
+            resolver->depth--;
+            break;
+        case VNT_IR_WHILE:
+            resolver_bind_expr(resolver,
+                hir_child_role(resolver->ir, index, VNT_IR_EDGE_CONDITION));
+            if (resolver->error) return;
+            resolver->depth++;
+            resolver_bind_role(resolver, index, VNT_IR_EDGE_BODY);
+            while (resolver->count &&
+                   resolver->symbols[resolver->count - 1].depth >= resolver->depth) {
+                free(resolver->symbols[resolver->count - 1].source_name);
+                free(resolver->symbols[resolver->count - 1].storage_key);
+                resolver->count--;
+            }
+            resolver->depth--;
+            break;
+        case VNT_IR_ASSIGN:
+            resolver_bind_expr(resolver,
+                hir_child_role(resolver->ir, index, VNT_IR_EDGE_TARGET));
+            resolver_bind_expr(resolver,
+                hir_child_role(resolver->ir, index, VNT_IR_EDGE_VALUE));
+            break;
+        case VNT_IR_CALL:
+        case VNT_IR_ARRAY:
+            for (size_t c = node->first_child; c != VNT_IR_NO_NODE && !resolver->error;
+                 c = resolver->ir->nodes[c].next_sibling)
+                resolver_bind_expr(resolver, c);
+            break;
+        case VNT_IR_INDEX:
+            resolver_bind_expr(resolver, hir_child_role(resolver->ir, index, VNT_IR_EDGE_OBJECT));
+            resolver_bind_expr(resolver, hir_child_role(resolver->ir, index, VNT_IR_EDGE_INDEX));
+            break;
+        case VNT_IR_MEMBER:
+            resolver_bind_expr(resolver, hir_child_role(resolver->ir, index, VNT_IR_EDGE_OBJECT));
+            break;
+        case VNT_IR_BINARY:
+            resolver_bind_expr(resolver, hir_child_role(resolver->ir, index, VNT_IR_EDGE_LEFT));
+            resolver_bind_expr(resolver, hir_child_role(resolver->ir, index, VNT_IR_EDGE_RIGHT));
+            break;
+        case VNT_IR_UNARY:
+            resolver_bind_expr(resolver, hir_child_role(resolver->ir, index, VNT_IR_EDGE_OPERAND));
+            break;
+        default:
+            break;
+    }
+}
+
+static int resolve_hir_symbols(VntIrProgram *ir) {
+    HirResolver resolver = {0};
+    resolver.ir = ir;
+    const size_t root = ir->root;
+    const VntIrNode *root_node = &ir->nodes[root];
+
+    /* Predeclare top-level globals so functions can bind references to the
+       same storage identity even when the function appears later in source. */
+    for (size_t c = root_node->first_child; c != VNT_IR_NO_NODE;
+         c = ir->nodes[c].next_sibling) {
+        const VntIrNode *node = &ir->nodes[c];
+        if (node->opcode == VNT_IR_VARIABLE_DECL) {
+            if (!resolver_declare(&resolver, node->value.text)) {
+                resolver.error = 1;
+                break;
+            }
+        }
+    }
+    const size_t global_count = resolver.count;
+
+    for (size_t c = root_node->first_child; c != VNT_IR_NO_NODE && !resolver.error;
+         c = ir->nodes[c].next_sibling) {
+        VntIrNode *node = &ir->nodes[c];
+        if (node->opcode == VNT_IR_FUNCTION) {
+            size_t function_base = resolver.count;
+            resolver.depth = 1;
+            for (size_t p = 0; p < node->name_count && !resolver.error; ++p) {
+                HirSymbol *parameter = resolver_declare(&resolver, node->names[p]);
+                if (!parameter || !resolver_rename(&node->names[p], parameter->storage_key))
+                    resolver_error(&resolver);
+            }
+            resolver_bind_role(&resolver, c, VNT_IR_EDGE_BODY);
+            while (resolver.count > function_base) {
+                free(resolver.symbols[resolver.count - 1].source_name);
+                free(resolver.symbols[resolver.count - 1].storage_key);
+                resolver.count--;
+            }
+            resolver.depth = 0;
+        } else if (node->opcode == VNT_IR_VARIABLE_DECL) {
+            HirSymbol *global = NULL;
+            /* Globals occupy the first global_count entries in source order. */
+            for (size_t g = 0; g < global_count; ++g) {
+                if (!strcmp(resolver.symbols[g].source_name, node->value.text)) {
+                    global = &resolver.symbols[g];
+                    break;
+                }
+            }
+            if (!global || !resolver_rename(&node->value.text, global->storage_key))
+                resolver_error(&resolver);
+            resolver_bind_expr(&resolver,
+                hir_child_role(ir, c, VNT_IR_EDGE_VALUE));
+        } else {
+            resolver_bind_expr(&resolver, c);
+        }
+    }
+
+    for (size_t i = 0; i < resolver.count; ++i) {
+        free(resolver.symbols[i].source_name);
+        free(resolver.symbols[i].storage_key);
+    }
+    free(resolver.symbols);
+    return !resolver.error;
+}
+
 static int build_hir(VntIrProgram *ir, AstNode *program) {
     clear_nodes(ir);
     if (!program || program->type != AST_PROGRAM) return 0;
     if (!lower_node(ir, program, &ir->root)) {
+        clear_nodes(ir);
+        return 0;
+    }
+    if (!resolve_hir_symbols(ir)) {
         clear_nodes(ir);
         return 0;
     }

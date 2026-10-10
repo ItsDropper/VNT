@@ -29,7 +29,8 @@ try {
         "tests\typecheck_invalid_void_return.vnt",
         "tests\typecheck_scope_if_leak.vnt",
         "tests\typecheck_scope_while_leak.vnt",
-        "tests\typecheck_read_before_assignment.vnt"
+        "tests\typecheck_read_before_assignment.vnt",
+        "tests\typecheck_shadow_same_scope.vnt"
     )) {
         $previousPreference = $ErrorActionPreference
         $ErrorActionPreference = "Continue"
@@ -128,6 +129,17 @@ try {
         throw "Unexpected lexical-scope output: $($scopeOutput -join ' | ')"
     }
     Write-Host "Lexical scope checks: PASS"
+
+    $ShadowExe = Join-Path $OutDir "typecheck_shadowing.exe"
+    & .\vnt.exe --compile tests\typecheck_shadowing.vnt -o $ShadowExe
+    if ($LASTEXITCODE -ne 0) { throw "Valid lexical-shadowing program did not compile." }
+    $shadowOutput = & $ShadowExe
+    if ($LASTEXITCODE -ne 0) { throw "Lexical-shadowing program exited unsuccessfully." }
+    $shadowExpected = @("15", "10", "99", "10", "11", "10", "SYMBOL_SHADOW_OK")
+    if (($shadowOutput -join "|") -ne ($shadowExpected -join "|")) {
+        throw "Unexpected lexical-shadowing output: $($shadowOutput -join ' | ')"
+    }
+    Write-Host "Stable symbol identity and shadowing: PASS"
 
     $BranchExe = Join-Path $OutDir "typecheck_branch_merge.exe"
     & .\vnt.exe --compile tests\typecheck_branch_merge.vnt -o $BranchExe

@@ -195,6 +195,7 @@ print(fs.list_dir("."))
 Paths are relative to the process working directory unless absolute. `read_text` raises a runtime error when a file cannot be read; write, append, rename, create, and remove operations return booleans. The underlying runtime uses native platform APIs. The modules are source wrappers over these runtime primitives, so they do not duplicate file handling in VNT code.
 
 Run `.\tests\run_language_checks.ps1` to build VNT and run the language, module, I/O, and filesystem checks.
+
 ## Real application example: VNT Desk
 
 VNT Desk is a small interactive developer journal demonstrating that VNT can build a

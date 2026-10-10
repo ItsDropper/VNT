@@ -112,33 +112,28 @@ static Token string(
     Lexer *lexer,
     const char *start
 ) {
-    while (
-        peek(lexer) != '"' &&
-        peek(lexer) != '\0'
-    ) {
+    while (peek(lexer) != '"' && peek(lexer) != '\0') {
+        /*
+         * Escaped quotes are part of the string, not its terminator.
+         * Keep escape sequences in the token; the parser decodes them.
+         */
+        if (peek(lexer) == '\\\\') {
+            advance(lexer);
+            if (peek(lexer) == '\0') break;
+            advance(lexer);
+            continue;
+        }
         advance(lexer);
     }
 
     if (peek(lexer) == '\0') {
-        return make_token(
-            lexer,
-            TOKEN_UNKNOWN,
-            start
-        );
+        return make_token(lexer, TOKEN_UNKNOWN, start);
     }
 
     advance(lexer);
-
-    Token token =
-        make_token(
-            lexer,
-            TOKEN_STRING,
-            start
-        );
-
+    Token token = make_token(lexer, TOKEN_STRING, start);
     token.start++;
     token.length -= 2;
-
     return token;
 }
 

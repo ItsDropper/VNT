@@ -146,28 +146,36 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
             ui_call_44 = gui.vanta_surface(282, 592, 826, 140, 0x142138)
             ui_call_45 = gui.vanta_text_style("GAME PROFILES", 304, 170, 0x7E93B8, 11)
             ui_call_46 = gui.vanta_text_style("Four configurable launch targets. Each points to a script you control.", 304, 196, 0xAAB9D2, 12)
-            if selected_profile == 1 { gui.vanta_surface(304, 218, 174, 30, 0x315CE8) }
+            if selected_profile == 1 {
+                ui_call_profile_highlight_1 = gui.vanta_surface(304, 218, 174, 30, 0x315CE8)
+            }
             if gui.vanta_button_sized("01  Main Minecraft", 304, 216, 174, 34) {
                 selected_profile = 1
                 profile_name = profile_one_name
                 profile_path = profile_one_path
                 status_message = "Editing profile 1."
             }
-            if selected_profile == 2 { gui.vanta_surface(488, 218, 174, 30, 0x315CE8) }
+            if selected_profile == 2 {
+                ui_call_profile_highlight_2 = gui.vanta_surface(488, 218, 174, 30, 0x315CE8)
+            }
             if gui.vanta_button_sized("02  Modded Survival", 488, 216, 174, 34) {
                 selected_profile = 2
                 profile_name = profile_two_name
                 profile_path = profile_two_path
                 status_message = "Editing profile 2."
             }
-            if selected_profile == 3 { gui.vanta_surface(672, 218, 144, 30, 0x315CE8) }
+            if selected_profile == 3 {
+                ui_call_profile_highlight_3 = gui.vanta_surface(672, 218, 144, 30, 0x315CE8)
+            }
             if gui.vanta_button_sized("03  Testing", 672, 216, 144, 34) {
                 selected_profile = 3
                 profile_name = profile_three_name
                 profile_path = profile_three_path
                 status_message = "Editing profile 3."
             }
-            if selected_profile == 4 { gui.vanta_surface(826, 218, 166, 30, 0x315CE8) }
+            if selected_profile == 4 {
+                ui_call_profile_highlight_4 = gui.vanta_surface(826, 218, 166, 30, 0x315CE8)
+            }
             if gui.vanta_button_sized("04  Custom Game", 826, 216, 166, 34) {
                 selected_profile = 4
                 profile_name = profile_four_name

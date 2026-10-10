@@ -293,7 +293,6 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                         status_message = "Modrinth search results loaded for: " + project_slug_input
                         activity_message = "Searched Modrinth mods: " + project_slug_input
                     }
-                    ui_call_73 = gui.vanta_textarea_set(project_response, 304, 354)
                     ui_call_74 = log.info("Modrinth mod search completed for " + project_slug_input)
                 }
             }

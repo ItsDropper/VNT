@@ -70,32 +70,42 @@ static AstNode *parse_primary(Parser *parser) {
         token.type ==
         TOKEN_STRING
     ) {
-        char *value =
-            malloc(token.length + 1);
-
+        char *value = malloc(token.length + 1);
         if (value == NULL) {
-            printf(
-                "Parser error: out of memory.\n"
-            );
-
+            printf("Parser error: out of memory.\n");
             return NULL;
         }
 
-        memcpy(
-            value,
-            token.start,
-            token.length
-        );
-
-        value[token.length] = '\0';
+        /*
+         * Decode common string escapes here so the AST and all backends
+         * receive actual characters rather than two-character sequences.
+         */
+        int source_index = 0;
+        int target_index = 0;
+        while (source_index < token.length) {
+            char c = token.start[source_index++];
+            if (c == '\\\\' && source_index < token.length) {
+                char escaped = token.start[source_index++];
+                switch (escaped) {
+                    case 'n': c = '\\n'; break;
+                    case 'r': c = '\\r'; break;
+                    case 't': c = '\\t'; break;
+                    case '\\\\': c = '\\\\'; break;
+                    case '"': c = '"'; break;
+                    default:
+                        /* Preserve unknown escapes literally for compatibility. */
+                        value[target_index++] = '\\\\';
+                        c = escaped;
+                        break;
+                }
+            }
+            value[target_index++] = c;
+        }
+        value[target_index] = '\0';
 
         parser_advance(parser);
-
-        AstNode *node =
-            ast_create_string(value);
-
+        AstNode *node = ast_create_string(value);
         free(value);
-
         return node;
     }
 

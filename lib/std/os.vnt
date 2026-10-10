@@ -1,0 +1,18 @@
+# VNT standard operating-system utilities.
+# Environment changes affect only the current process and its children.
+
+export fun current_dir() {
+    return cwd()
+}
+
+export fun env_get(name) {
+    return env_get(name)
+}
+
+export fun env_set(name, value) {
+    return env_set(name, value)
+}
+
+export fun env_has(name) {
+    return env_get(name) != null
+}

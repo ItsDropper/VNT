@@ -1,0 +1,89 @@
+# VNT standard networking helpers.
+# Requires curl (curl.exe on Windows, curl on Unix-like systems) on PATH.
+# TLS certificate verification stays enabled. No shell is used to pass arguments.
+
+fun curl_executable() {
+    if env_get("OS") != null {
+        return "curl.exe"
+    } else {
+        return "curl"
+    }
+}
+
+fun run_curl(args) {
+    process = process_start(curl_executable(), args)
+    process_wait(process, -1)
+    return process
+}
+
+export fun get(url) {
+    args = ["--silent", "--show-error", "--location", "--max-time", "30", url]
+    process = run_curl(args)
+    if process_exit_code(process) == 0 {
+        return process_stdout(process)
+    } else {
+        return ""
+    }
+}
+
+export fun get_with_header(url, header) {
+    args = ["--silent", "--show-error", "--location", "--max-time", "30", "--header", header, url]
+    process = run_curl(args)
+    if process_exit_code(process) == 0 {
+        return process_stdout(process)
+    } else {
+        return ""
+    }
+}
+
+export fun get_bearer(url, token) {
+    return get_with_header(url, "Authorization: Bearer " + token)
+}
+
+export fun post_json(url, json_body) {
+    args = ["--silent", "--show-error", "--location", "--max-time", "30",
+            "--request", "POST", "--header", "Content-Type: application/json",
+            "--data-binary", json_body, url]
+    process = run_curl(args)
+    if process_exit_code(process) == 0 {
+        return process_stdout(process)
+    } else {
+        return ""
+    }
+}
+
+export fun post_json_bearer(url, token, json_body) {
+    args = ["--silent", "--show-error", "--location", "--max-time", "30",
+            "--request", "POST", "--header", "Content-Type: application/json",
+            "--header", "Authorization: Bearer " + token,
+            "--data-binary", json_body, url]
+    process = run_curl(args)
+    if process_exit_code(process) == 0 {
+        return process_stdout(process)
+    } else {
+        return ""
+    }
+}
+
+export fun status(url) {
+    if env_get("OS") != null {
+        sink = "NUL"
+    } else {
+        sink = "/dev/null"
+    }
+    args = ["--silent", "--show-error", "--location", "--max-time", "30",
+            "--output", sink, "--write-out", "%{http_code}", url]
+    process = run_curl(args)
+    if process_exit_code(process) == 0 {
+        return process_stdout(process)
+    } else {
+        return "000"
+    }
+}
+
+export fun download(url, destination) {
+    args = ["--silent", "--show-error", "--location", "--fail",
+            "--max-time", "120", "--output", destination, url]
+    process = run_curl(args)
+    return process_exit_code(process) == 0
+}

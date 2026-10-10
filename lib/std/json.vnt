@@ -1,0 +1,6 @@
+# Small JSON field accessor backed by VNT's native runtime.
+# value_at(json_text, key, occurrence) returns a string or scalar value.
+# It is intended for simple API response display; it is not a full JSON DOM.
+export fun value_at(json_text, key, occurrence) {
+    return json_value_at(json_text, key, occurrence)
+}

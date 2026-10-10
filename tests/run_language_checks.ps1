@@ -68,7 +68,7 @@ try {
         if ($compileExitCode -eq 0) { throw "Expected module-loading failure for $case, but compilation succeeded." }
     }
     $UltimateExe = Join-Path $OutDir "ultimate_stress.exe"
-    & .\\vnt.exe --compile tests\\ultimate_stress.vnt -o $UltimateExe
+    & .\vnt.exe --compile tests\ultimate_stress.vnt -o $UltimateExe
     if ($LASTEXITCODE -ne 0) { throw "Ultimate stress-test program did not compile." }
     $ultimateOutput = & $UltimateExe
     if ($LASTEXITCODE -ne 0) { throw "Ultimate stress-test program exited unsuccessfully." }

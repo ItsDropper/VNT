@@ -2,72 +2,72 @@
 # Import this module with: import "../lib/vanta/gui.vnt"
 # Drawing calls are collected into a frame. Call vanta_gui_present() once per frame.
 
-fun vanta_gui_start(title, width, height, stylesheet) {
+export fun vanta_gui_start(title, width, height, stylesheet) {
     gui_size(width, height)
     gui_css(stylesheet)
     return gui_open(title)
 }
 
-fun vanta_gui_poll() {
+export fun vanta_gui_poll() {
     return gui_poll()
 }
 
-fun vanta_gui_present() {
+export fun vanta_gui_present() {
     return gui_present()
 }
 
-fun vanta_gui_close() {
+export fun vanta_gui_close() {
     return gui_close()
 }
 
-fun vanta_label(text, x, y) {
+export fun vanta_label(text, x, y) {
     return gui_text_at(text, x, y)
 }
 
-fun vanta_heading(text, x, y) {
+export fun vanta_heading(text, x, y) {
     return gui_title(text, x, y)
 }
 
-fun vanta_card(x, y, width, height) {
+export fun vanta_card(x, y, width, height) {
     return gui_panel(x, y, width, height)
 }
 
-fun vanta_button(text, x, y) {
+export fun vanta_button(text, x, y) {
     return gui_button(text, x, y)
 }
 
-fun vanta_text_input(placeholder, x, y, width) {
+export fun vanta_text_input(placeholder, x, y, width) {
     return gui_input(placeholder, x, y, width)
 }
 
-fun vanta_checkbox(label, x, y, checked) {
+export fun vanta_checkbox(label, x, y, checked) {
     return gui_checkbox(label, x, y, checked)
 }
 
-fun vanta_progress(value, maximum, x, y) {
+export fun vanta_progress(value, maximum, x, y) {
     return gui_progress(value, maximum, x, y)
 }
 
-fun vanta_separator(x, y, width) {
+export fun vanta_separator(x, y, width) {
     return gui_separator(x, y, width)
 }
 
-fun vanta_button_sized(text, x, y, width, height) {
+export fun vanta_button_sized(text, x, y, width, height) {
     return gui_button_sized(text, x, y, width, height)
 }
 
-fun vanta_textarea(placeholder, x, y, width, height) {
+export fun vanta_textarea(placeholder, x, y, width, height) {
     return gui_textarea(placeholder, x, y, width, height)
 }
 
-fun vanta_input_set(text, x, y) {
+export fun vanta_input_set(text, x, y) {
     return gui_input_set(text, x, y)
 }
 
-fun vanta_surface(x, y, width, height, color) {
+export fun vanta_surface(x, y, width, height, color) {
     return gui_panel_color(x, y, width, height, color)
 }
 
-fun vanta_text_style(text, x, y, color, size) {
+export fun vanta_text_style(text, x, y, color, size) {
     return gui_text_style(text, x, y, color, size)
 }

@@ -4,9 +4,9 @@ directory = "tests/out/std_fs_tmp"
 first_path = directory + "/sample.txt"
 renamed_path = directory + "/renamed.txt"
 
-fs.create_dir(directory)
-fs.remove_file(first_path)
-fs.remove_file(renamed_path)
+created_dir = fs.create_dir(directory)
+removed_first = fs.remove_file(first_path)
+removed_renamed = fs.remove_file(renamed_path)
 
 if !fs.is_dir(directory) {
     print("FS_FAIL_DIR")
@@ -14,7 +14,7 @@ if !fs.is_dir(directory) {
     if !fs.write_text(first_path, "hello") {
         print("FS_FAIL_WRITE")
     } else {
-        fs.append_text(first_path, " world")
+        appended = fs.append_text(first_path, " world")
         if fs.read_text(first_path) != "hello world" {
             print("FS_FAIL_READ_APPEND")
         } else {

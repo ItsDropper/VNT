@@ -69,17 +69,35 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
         ui_call_9 = gui.vanta_text_style("YOUR LIBRARY", 28, 126, 0x7E93B8, 11)
 
         if page == "Home" { ui_call_nav_home = gui.vanta_surface(20, 145, 196, 42, 0x243B60) }
-        if gui.vanta_button_sized("Overview", 28, 147, 180, 38) { page = "Home"; status_message = "Overview selected." }
+        if gui.vanta_button_sized("Overview", 28, 147, 180, 38) {
+            page = "Home"
+            status_message = "Overview selected."
+        }
         if page == "Instances" { ui_call_nav_instances = gui.vanta_surface(20, 191, 196, 42, 0x243B60) }
-        if gui.vanta_button_sized("Game profiles", 28, 193, 180, 38) { page = "Instances"; status_message = "Select a profile and configure its launch script." }
+        if gui.vanta_button_sized("Game profiles", 28, 193, 180, 38) {
+            page = "Instances"
+            status_message = "Select a profile and configure its launch script."
+        }
         if page == "Modrinth" { ui_call_nav_modrinth = gui.vanta_surface(20, 237, 196, 42, 0x243B60) }
-        if gui.vanta_button_sized("Modrinth lookup", 28, 239, 180, 38) { page = "Modrinth"; status_message = "Project lookup is manual; no request is made until you press Lookup." }
+        if gui.vanta_button_sized("Modrinth lookup", 28, 239, 180, 38) {
+            page = "Modrinth"
+            status_message = "Project lookup is manual; no request is made until you press Lookup."
+        }
         if page == "Downloads" { ui_call_nav_downloads = gui.vanta_surface(20, 283, 196, 42, 0x243B60) }
-        if gui.vanta_button_sized("Downloads", 28, 285, 180, 38) { page = "Downloads"; status_message = "Paste a direct file URL and choose a destination." }
+        if gui.vanta_button_sized("Downloads", 28, 285, 180, 38) {
+            page = "Downloads"
+            status_message = "Paste a direct file URL and choose a destination."
+        }
         if page == "Settings" { ui_call_nav_settings = gui.vanta_surface(20, 329, 196, 42, 0x243B60) }
-        if gui.vanta_button_sized("Settings", 28, 331, 180, 38) { page = "Settings"; status_message = "Local settings and diagnostics." }
+        if gui.vanta_button_sized("Settings", 28, 331, 180, 38) {
+            page = "Settings"
+            status_message = "Local settings and diagnostics."
+        }
         if page == "Activity" { ui_call_nav_activity = gui.vanta_surface(20, 375, 196, 42, 0x243B60) }
-        if gui.vanta_button_sized("Activity log", 28, 377, 180, 38) { page = "Activity"; status_message = "Activity is stored in vnt.log." }
+        if gui.vanta_button_sized("Activity log", 28, 377, 180, 38) {
+            page = "Activity"
+            status_message = "Activity is stored in vnt.log."
+        }
 
         ui_call_separator = gui.vanta_separator(24, 444, 188)
         ui_call_10 = gui.vanta_text_style("SESSION", 30, 462, 0x7E93B8, 11)
@@ -163,10 +181,22 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
             ui_call_49 = gui.vanta_text_style("Use a script you trust. Launch scripts can run arbitrary commands.", 306, 438, 0xE6B86B, 11)
             ui_call_50 = gui.vanta_text_style("The app passes the path as a process argument; it does not evaluate the file contents.", 306, 460, 0xAAB9D2, 11)
             if gui.vanta_button_sized("Load selected profile", 304, 500, 184, 40) {
-                if selected_profile == 1 { profile_name_input = profile_one_name; profile_path_input = profile_one_path }
-                if selected_profile == 2 { profile_name_input = profile_two_name; profile_path_input = profile_two_path }
-                if selected_profile == 3 { profile_name_input = profile_three_name; profile_path_input = profile_three_path }
-                if selected_profile == 4 { profile_name_input = profile_four_name; profile_path_input = profile_four_path }
+                if selected_profile == 1 {
+                    profile_name_input = profile_one_name
+                    profile_path_input = profile_one_path
+                }
+                if selected_profile == 2 {
+                    profile_name_input = profile_two_name
+                    profile_path_input = profile_two_path
+                }
+                if selected_profile == 3 {
+                    profile_name_input = profile_three_name
+                    profile_path_input = profile_three_path
+                }
+                if selected_profile == 4 {
+                    profile_name_input = profile_four_name
+                    profile_path_input = profile_four_path
+                }
                 ui_call_51 = gui.vanta_input_set(profile_name_input, 304, 322)
                 ui_call_52 = gui.vanta_input_set(profile_path_input, 304, 394)
                 status_message = "Loaded profile fields."

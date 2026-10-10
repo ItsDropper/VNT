@@ -1,0 +1,22 @@
+# VNT standard time utilities.
+# Durations passed to sleep_ms are milliseconds.
+
+export fun now_ms() {
+    return time_ms()
+}
+
+export fun sleep_ms(milliseconds) {
+    return sleep_ms(milliseconds)
+}
+
+export fun elapsed_ms(start_ms) {
+    return time_ms() - start_ms
+}
+
+export fun seconds_to_ms(seconds) {
+    return seconds * 1000
+}
+
+export fun ms_to_seconds(milliseconds) {
+    return milliseconds / 1000
+}

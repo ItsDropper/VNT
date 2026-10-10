@@ -8,6 +8,7 @@ import "../lib/std/process.vnt" as process
 import "../lib/std/time.vnt" as time
 import "../lib/std/math.vnt" as math
 import "../lib/std/os.vnt" as os
+import "../lib/std/json.vnt" as json
 
 # Vanta One: local-first native gaming hub.
 # Run from the repository root: vnt.exe --compile examples/vanta_one.vnt -o examples/vanta_one.exe
@@ -29,7 +30,8 @@ selected_profile = 1
 page = "Home"
 status_message = "Ready. Your profiles and logs stay on this PC."
 activity_message = "No activity yet this session."
-project_response = "Look up a Modrinth project by its slug. Example: sodium"
+project_response = "Search for a mod to see matching projects here."
+project_mode = "none"
 project_slug = ""
 project_url = ""
 download_url_value = ""
@@ -282,6 +284,7 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                     status_message = "Enter a mod name first."
                 } else {
                     project_response = net.search_mods(project_slug_input)
+                    project_mode = "search"
                     request_count = request_count + 1
                     if project_response == "" {
                         project_response = "No response received. Check that curl.exe is installed and internet access is available."
@@ -300,6 +303,7 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                 } else {
                     project_url = "https://api.modrinth.com/v2/project/" + project_slug_input
                     project_response = net.get_json(project_url)
+                    project_mode = "details"
                     request_count = request_count + 1
                     if project_response == "" {
                         project_response = "No response received. Check the project slug, curl.exe, and internet access."
@@ -318,6 +322,7 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                 } else {
                     project_url = "https://api.modrinth.com/v2/project/" + project_slug_input + "/version"
                     project_response = net.get_json(project_url)
+                    project_mode = "versions"
                     request_count = request_count + 1
                     if project_response == "" {
                         project_response = "No response received. Check the project slug, curl.exe, and internet access."
@@ -330,14 +335,61 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                     ui_call_78 = log.info("Modrinth version metadata loaded for " + project_slug_input)
                 }
             }
-            ui_call_79 = gui.vanta_text_style("LIVE RESULTS  /  JSON DETAILS", 304, 330, 0x7E93B8, 11)
-            response_text = gui.vanta_textarea("Search results and project details appear here.", 304, 354, 776, 286)
-            if gui.vanta_button_sized("Show last response", 304, 658, 174, 40) {
-                ui_call_80 = gui.vanta_textarea_set(project_response, 304, 354)
-                status_message = "Restored the most recent response into the results panel."
+            ui_call_79 = gui.vanta_text_style("MOD RESULTS  /  PROJECT DETAILS", 304, 330, 0x7E93B8, 11)
+            if project_mode == "search" {
+                mod_title_0 = json.value_at(project_response, "title", 0)
+                mod_slug_0 = json.value_at(project_response, "slug", 0)
+                mod_downloads_0 = json.value_at(project_response, "downloads", 0)
+                mod_title_1 = json.value_at(project_response, "title", 1)
+                mod_slug_1 = json.value_at(project_response, "slug", 1)
+                mod_downloads_1 = json.value_at(project_response, "downloads", 1)
+                mod_title_2 = json.value_at(project_response, "title", 2)
+                mod_slug_2 = json.value_at(project_response, "slug", 2)
+                mod_downloads_2 = json.value_at(project_response, "downloads", 2)
+                mod_title_3 = json.value_at(project_response, "title", 3)
+                mod_slug_3 = json.value_at(project_response, "slug", 3)
+                mod_downloads_3 = json.value_at(project_response, "downloads", 3)
+                mod_title_4 = json.value_at(project_response, "title", 4)
+                mod_slug_4 = json.value_at(project_response, "slug", 4)
+                mod_downloads_4 = json.value_at(project_response, "downloads", 4)
+                if mod_title_0 != "" {
+                    ui_result_0 = gui.vanta_surface(304, 354, 776, 48, 0x182943)
+                    ui_result_0a = gui.vanta_text_style(mod_title_0, 320, 360, 0xF4F7FF, 13)
+                    ui_result_0b = gui.vanta_text_style(mod_slug_0 + "  /  " + mod_downloads_0 + " downloads", 320, 380, 0x66D9BE, 10)
+                }
+                if mod_title_1 != "" {
+                    ui_result_1 = gui.vanta_surface(304, 410, 776, 48, 0x182943)
+                    ui_result_1a = gui.vanta_text_style(mod_title_1, 320, 416, 0xF4F7FF, 13)
+                    ui_result_1b = gui.vanta_text_style(mod_slug_1 + "  /  " + mod_downloads_1 + " downloads", 320, 436, 0x66D9BE, 10)
+                }
+                if mod_title_2 != "" {
+                    ui_result_2 = gui.vanta_surface(304, 466, 776, 48, 0x182943)
+                    ui_result_2a = gui.vanta_text_style(mod_title_2, 320, 472, 0xF4F7FF, 13)
+                    ui_result_2b = gui.vanta_text_style(mod_slug_2 + "  /  " + mod_downloads_2 + " downloads", 320, 492, 0x66D9BE, 10)
+                }
+                if mod_title_3 != "" {
+                    ui_result_3 = gui.vanta_surface(304, 522, 776, 48, 0x182943)
+                    ui_result_3a = gui.vanta_text_style(mod_title_3, 320, 528, 0xF4F7FF, 13)
+                    ui_result_3b = gui.vanta_text_style(mod_slug_3 + "  /  " + mod_downloads_3 + " downloads", 320, 548, 0x66D9BE, 10)
+                }
+                if mod_title_4 != "" {
+                    ui_result_4 = gui.vanta_surface(304, 578, 776, 48, 0x182943)
+                    ui_result_4a = gui.vanta_text_style(mod_title_4, 320, 584, 0xF4F7FF, 13)
+                    ui_result_4b = gui.vanta_text_style(mod_slug_4 + "  /  " + mod_downloads_4 + " downloads", 320, 604, 0x66D9BE, 10)
+                }
+                if mod_title_0 == "" {
+                    ui_empty_results = gui.vanta_text_style("No matching mods found, or the API returned an unreadable response.", 320, 390, 0xAAB9D2, 12)
+                }
+            } else {
+                response_text = gui.vanta_textarea("Project metadata or versions appear here.", 304, 354, 776, 286)
             }
-            ui_call_81 = gui.vanta_text_style("Search is filtered to Modrinth projects of type mod. Requests run only on click.", 494, 670, 0xAAB9D2, 11)
-            ui_call_82 = gui.vanta_text_style("Public metadata only; no account token is sent or stored.", 304, 710, 0x66D9BE, 11)
+            if gui.vanta_button_sized("Show raw JSON", 304, 658, 174, 40) {
+                project_mode = "raw"
+                ui_call_80 = gui.vanta_textarea_set(project_response, 304, 354)
+                status_message = "Showing the raw Modrinth API response."
+            }
+            ui_call_81 = gui.vanta_text_style("Search shows five mod cards; project info and versions show the full API response.", 494, 670, 0xAAB9D2, 11)
+            ui_call_82 = gui.vanta_text_style("Public metadata only; requests run on click, with no account token.", 304, 710, 0x66D9BE, 11)
         }
 
         if page == "Downloads" {

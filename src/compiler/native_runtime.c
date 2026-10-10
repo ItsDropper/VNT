@@ -1537,6 +1537,7 @@ static int vnt_gui_native_input(int index,const char *placeholder){
                 SetWindowPos(state->edit_hwnd,NULL,state->x,state->y,state->width,state->height,SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOREDRAW);
         }
     }
+    ShowWindow(state->edit_hwnd,SW_SHOW);
     return 1;
 }
 static void vnt_gui_read_native_input(int index){
@@ -1579,6 +1580,21 @@ VntValue *vnt_gui_input_set(VntValue *text,VntValue *x,VntValue *y){
     if(vnt_gui_inputs[index].edit_hwnd)SetWindowTextA(vnt_gui_inputs[index].edit_hwnd,vnt_gui_inputs[index].text);
     return vnt_bool(1);
 }
+VntValue *vnt_gui_textarea_set(VntValue *text,VntValue *x,VntValue *y){
+    const char *value=vnt_app_string(text,"gui_textarea_set()");
+    int xx=vnt_gui_require_int(x,"gui_textarea_set()"),yy=vnt_gui_require_int(y,"gui_textarea_set()");
+    int index=-1;
+    for(int i=0;i<vnt_gui_input_count;i++)
+        if(vnt_gui_inputs[i].x==xx&&vnt_gui_inputs[i].y==yy){index=i;break;}
+    if(index<0)index=vnt_gui_input_state(xx,yy,1,1,1,1);
+    if(index<0)return vnt_bool(0);
+    VntGuiInputState *state=&vnt_gui_inputs[index];
+    state->multiline=1;
+    snprintf(state->text,sizeof(state->text),"%s",value);
+    state->select_all=0;
+    if(state->edit_hwnd)SetWindowTextA(state->edit_hwnd,state->text);
+    return vnt_bool(1);
+}
 VntValue *vnt_gui_panel_color(VntValue *x,VntValue *y,VntValue *w,VntValue *h,VntValue *color){
     int xx=vnt_gui_require_int(x,"gui_panel_color()"),yy=vnt_gui_require_int(y,"gui_panel_color()"),ww=vnt_gui_require_int(w,"gui_panel_color()"),hh=vnt_gui_require_int(h,"gui_panel_color()");
     VntGuiCommand *c=vnt_gui_add(VG_PANEL,xx,yy,ww,hh,NULL);if(!c)return vnt_bool(0);c->background=vnt_gui_color(vnt_gui_require_int(color,"gui_panel_color()"));c->radius=12;return vnt_bool(1);
@@ -1608,6 +1624,10 @@ VntValue *vnt_gui_rect(VntValue *color){VntGuiCommand *c=vnt_gui_add(VG_RECT,32,
 VntValue *vnt_gui_poll(void){
     if(!vnt_gui_hwnd)return vnt_bool(0);MSG msg;
     vnt_gui_clicked=0;
+    /* Inputs are child windows: hide stale controls at each frame, then the
+       controls actually used by the current page are shown during rendering. */
+    for(int i=0;i<vnt_gui_input_count;i++)
+        if(vnt_gui_inputs[i].edit_hwnd)ShowWindow(vnt_gui_inputs[i].edit_hwnd,SW_HIDE);
     while(PeekMessageA(&msg,NULL,0,0,PM_REMOVE)){if(msg.message==WM_QUIT){vnt_gui_hwnd=NULL;return vnt_bool(0);}TranslateMessage(&msg);DispatchMessageA(&msg);}
     vnt_gui_command_count=0;vnt_gui_text_y=18;
     return vnt_bool(vnt_gui_hwnd!=NULL);

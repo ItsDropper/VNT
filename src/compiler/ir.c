@@ -554,12 +554,226 @@ static void hir_simplify_control_flow(VntIrProgram *ir, size_t index,
     hir_prune_sequence(ir, index, changed);
 }
 
+
+
+typedef struct {
+    char *name;
+    HirConstant constant;
+} HirKnownConstant;
+
+typedef struct {
+    HirKnownConstant *items;
+    size_t count;
+    size_t capacity;
+} HirConstantEnvironment;
+
+static void hir_constants_clear(HirConstantEnvironment *env) {
+    for (size_t i = 0; i < env->count; ++i) free(env->items[i].name);
+    env->count = 0;
+}
+
+static void hir_constants_free(HirConstantEnvironment *env) {
+    hir_constants_clear(env);
+    free(env->items);
+    memset(env, 0, sizeof(*env));
+}
+
+static size_t hir_constant_find(const HirConstantEnvironment *env, const char *name) {
+    for (size_t i = 0; i < env->count; ++i)
+        if (!strcmp(env->items[i].name, name)) return i;
+    return VNT_IR_NO_NODE;
+}
+
+static void hir_constant_invalidate(HirConstantEnvironment *env, const char *name) {
+    size_t index = hir_constant_find(env, name);
+    if (index == VNT_IR_NO_NODE) return;
+    free(env->items[index].name);
+    env->items[index] = env->items[--env->count];
+}
+
+static int hir_constant_remember(HirConstantEnvironment *env, const char *name,
+                                 HirConstant constant) {
+    if (!name) return 1;
+    size_t index = hir_constant_find(env, name);
+    if (index == VNT_IR_NO_NODE) {
+        if (env->count == env->capacity) {
+            size_t cap = env->capacity ? env->capacity * 2 : 16;
+            if (cap < env->capacity || cap > SIZE_MAX / sizeof(*env->items)) return 0;
+            HirKnownConstant *items = realloc(env->items, cap * sizeof(*items));
+            if (!items) return 0;
+            env->items = items;
+            env->capacity = cap;
+        }
+        index = env->count++;
+        env->items[index].name = NULL;
+        size_t length = strlen(name);
+        env->items[index].name = malloc(length + 1);
+        if (!env->items[index].name) {
+            --env->count;
+            return 0;
+        }
+        memcpy(env->items[index].name, name, length + 1);
+    }
+    env->items[index].constant = constant;
+    return 1;
+}
+
+static void hir_replace_variable_with_constant(VntIrNode *node, HirConstant constant,
+                                                size_t *changed) {
+    free(node->value.text);
+    node->opcode = constant.kind == 1 ? VNT_IR_INTEGER
+        : constant.kind == 2 ? VNT_IR_BOOLEAN : VNT_IR_FLOAT;
+    if (constant.kind == 1) node->value.integer = constant.value.integer;
+    else if (constant.kind == 2) node->value.boolean = !!constant.value.boolean;
+    else node->value.floating = constant.value.floating;
+    ++*changed;
+}
+
+static int hir_contains_call(const VntIrProgram *ir, size_t index) {
+    if (index == VNT_IR_NO_NODE || index >= ir->node_count) return 0;
+    const VntIrNode *node = &ir->nodes[index];
+    if (node->opcode == VNT_IR_CALL) return 1;
+    for (size_t child = node->first_child; child != VNT_IR_NO_NODE;
+         child = ir->nodes[child].next_sibling)
+        if (hir_contains_call(ir, child)) return 1;
+    return 0;
+}
+
+static void hir_substitute_expression(VntIrProgram *ir, size_t index,
+                                      HirConstantEnvironment *env, size_t *changed) {
+    if (index == VNT_IR_NO_NODE || index >= ir->node_count) return;
+    VntIrNode *node = &ir->nodes[index];
+    if (node->opcode == VNT_IR_VARIABLE) {
+        size_t known = hir_constant_find(env, node->value.text);
+        if (known != VNT_IR_NO_NODE)
+            hir_replace_variable_with_constant(node, env->items[known].constant, changed);
+        return;
+    }
+    /* Assignment expressions have ordering and aliasing effects; leave their
+       complete subtree untouched rather than substituting across a write. */
+    if (node->opcode == VNT_IR_ASSIGN) {
+        size_t target = hir_child_role(ir, index, VNT_IR_EDGE_TARGET);
+        if (target != VNT_IR_NO_NODE && ir->nodes[target].opcode == VNT_IR_VARIABLE)
+            hir_constant_invalidate(env, ir->nodes[target].value.text);
+        return;
+    }
+    for (size_t child = node->first_child; child != VNT_IR_NO_NODE;
+         child = ir->nodes[child].next_sibling)
+        hir_substitute_expression(ir, child, env, changed);
+}
+
+static int hir_propagate_sequence(VntIrProgram *ir, size_t parent,
+                                  VntIrEdgeRole role,
+                                  HirConstantEnvironment *env, size_t *changed);
+
+static int hir_propagate_statement(VntIrProgram *ir, size_t index,
+                                   HirConstantEnvironment *env, size_t *changed) {
+    VntIrNode *node = &ir->nodes[index];
+    if (node->opcode == VNT_IR_IF) {
+        size_t condition = hir_child_role(ir, index, VNT_IR_EDGE_CONDITION);
+        hir_substitute_expression(ir, condition, env, changed);
+        for (size_t child = node->first_child; child != VNT_IR_NO_NODE;) {
+            size_t next = ir->nodes[child].next_sibling;
+            if (ir->nodes[child].role == VNT_IR_EDGE_THEN ||
+                ir->nodes[child].role == VNT_IR_EDGE_ELSE) {
+                HirConstantEnvironment branch = {0};
+                if (ir->nodes[child].opcode == VNT_IR_PROGRAM &&
+                    !hir_propagate_sequence(ir, child, VNT_IR_EDGE_STATEMENT,
+                                            &branch, changed)) {
+                    hir_constants_free(&branch);
+                    return 0;
+                }
+                hir_constants_free(&branch);
+            }
+            child = next;
+        }
+        hir_constants_clear(env);
+    } else if (node->opcode == VNT_IR_WHILE) {
+        size_t condition = hir_child_role(ir, index, VNT_IR_EDGE_CONDITION);
+        hir_substitute_expression(ir, condition, env, changed);
+        size_t body = hir_child_role(ir, index, VNT_IR_EDGE_BODY);
+        if (body != VNT_IR_NO_NODE && ir->nodes[body].opcode == VNT_IR_PROGRAM) {
+            HirConstantEnvironment loop = {0};
+            int ok = hir_propagate_sequence(ir, body, VNT_IR_EDGE_STATEMENT,
+                                            &loop, changed);
+            hir_constants_free(&loop);
+            if (!ok) return 0;
+        }
+        hir_constants_clear(env);
+    } else if (node->opcode == VNT_IR_FUNCTION) {
+        size_t body = hir_child_role(ir, index, VNT_IR_EDGE_BODY);
+        if (body != VNT_IR_NO_NODE && ir->nodes[body].opcode == VNT_IR_PROGRAM) {
+            HirConstantEnvironment function = {0};
+            int ok = hir_propagate_sequence(ir, body, VNT_IR_EDGE_STATEMENT,
+                                            &function, changed);
+            hir_constants_free(&function);
+            if (!ok) return 0;
+        }
+    } else if (node->opcode == VNT_IR_PROGRAM) {
+        if (!hir_propagate_sequence(ir, index, VNT_IR_EDGE_STATEMENT, env, changed))
+            return 0;
+    } else if (node->opcode == VNT_IR_VARIABLE_DECL ||
+               node->opcode == VNT_IR_REASSIGN) {
+        size_t value = hir_child_role(ir, index, VNT_IR_EDGE_VALUE);
+        if (value != VNT_IR_NO_NODE)
+            hir_substitute_expression(ir, value, env, changed);
+        HirConstant constant;
+        if (value != VNT_IR_NO_NODE && hir_constant(ir, value, &constant)) {
+            if (!hir_constant_remember(env, node->value.text, constant)) return 0;
+        } else {
+            hir_constant_invalidate(env, node->value.text);
+        }
+    } else if (node->opcode == VNT_IR_ASSIGN) {
+        size_t target = hir_child_role(ir, index, VNT_IR_EDGE_TARGET);
+        if (target != VNT_IR_NO_NODE && ir->nodes[target].opcode == VNT_IR_VARIABLE)
+            hir_constant_invalidate(env, ir->nodes[target].value.text);
+    } else {
+        for (size_t child = node->first_child; child != VNT_IR_NO_NODE;
+             child = ir->nodes[child].next_sibling)
+            hir_substitute_expression(ir, child, env, changed);
+    }
+
+    /* Calls may mutate globals or values reachable through references. */
+    if (hir_contains_call(ir, index)) hir_constants_clear(env);
+    return 1;
+}
+
+static int hir_propagate_sequence(VntIrProgram *ir, size_t parent,
+                                  VntIrEdgeRole role,
+                                  HirConstantEnvironment *env, size_t *changed) {
+    if (parent >= ir->node_count) return 0;
+    for (size_t child = ir->nodes[parent].first_child; child != VNT_IR_NO_NODE;) {
+        size_t next = ir->nodes[child].next_sibling;
+        if (ir->nodes[child].role == role &&
+            !hir_propagate_statement(ir, child, env, changed)) return 0;
+        child = next;
+    }
+    return 1;
+}
+
 int vnt_ir_optimize(VntIrProgram *ir) {
     if (!ir || !ir->nodes || !ir->node_count || !vnt_ir_validate(ir)) return 0;
 
     size_t changed = 0;
-    if (!hir_fold_node(ir, ir->root, &changed)) return 0;
-    hir_simplify_control_flow(ir, ir->root, &changed);
+    /*
+     * Iterate to a small fixed point: propagation can expose foldable
+     * expressions, and folding can expose constant branches. Every pass is
+     * conservative across loops, branches, calls, and assignment expressions.
+     */
+    for (unsigned iteration = 0; iteration < 8; ++iteration) {
+        size_t round_changed = 0;
+        if (!hir_fold_node(ir, ir->root, &round_changed)) return 0;
+        HirConstantEnvironment env = {0};
+        int propagated = hir_propagate_sequence(ir, ir->root,
+                                                VNT_IR_EDGE_STATEMENT,
+                                                &env, &round_changed);
+        hir_constants_free(&env);
+        if (!propagated || !hir_fold_node(ir, ir->root, &round_changed)) return 0;
+        hir_simplify_control_flow(ir, ir->root, &round_changed);
+        changed += round_changed;
+        if (!round_changed) break;
+        if (!vnt_ir_validate(ir)) return 0;
+    }
 
     VntIrProgram compact = {0};
     compact.root = VNT_IR_NO_NODE;

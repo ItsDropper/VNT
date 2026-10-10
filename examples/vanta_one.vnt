@@ -124,11 +124,13 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
         ui_call_21 = gui.vanta_status_badge("LOCAL / MANUAL NETWORK", 880, 36, 220, 0x1A3D42)
         diag_badge = io.write_line("DIAG: status badge completed")
         ui_call_22 = gui.vanta_text_style(status_message, 282, 91, 0xDCE7FF, 11)
+        diag_status_text = io.write_line("DIAG: status text completed")
 
         if page == "Home" {
             ui_call_23 = gui.vanta_surface(282, 150, 548, 192, 0x142138)
             ui_call_24 = gui.vanta_surface(844, 150, 264, 192, 0x142138)
             ui_call_25 = gui.vanta_surface(282, 358, 826, 142, 0x142138)
+            diag_home_surfaces = io.write_line("DIAG: home surfaces completed")
             ui_call_26 = gui.vanta_surface(282, 516, 826, 216, 0x142138)
             ui_call_27 = gui.vanta_text_style("WELCOME BACK", 304, 172, 0x7E93B8, 11)
             ui_call_28 = gui.vanta_heading("Your games. Your rules.", 304, 200)
@@ -136,6 +138,8 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
             ui_call_30 = gui.vanta_text_style("to contact an external service.", 306, 270, 0xAAB9D2, 12)
             ui_call_31 = gui.vanta_text_style("Active profile", 304, 308, 0x7E93B8, 11)
             ui_call_32 = gui.vanta_text_style(profile_name, 410, 308, 0x66D9BE, 12)
+            diag_home_text = io.write_line("DIAG: home text completed")
+            diag_metric_before = io.write_line("DIAG: entering metric card")
             ui_call_33 = gui.vanta_metric_card("THIS SESSION", "" + launch_count, "launch actions", 844, 150, 264, 192, 0x142138)
             diag_metric = io.write_line("DIAG: metric card completed")
             ui_call_34 = gui.vanta_text_style("" + math.floor(elapsed_seconds) + " seconds open", 866, 286, 0x7E93B8, 11)

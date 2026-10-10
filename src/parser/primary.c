@@ -84,17 +84,17 @@ static AstNode *parse_primary(Parser *parser) {
         int target_index = 0;
         while (source_index < token.length) {
             char c = token.start[source_index++];
-            if (c == '\\\\' && source_index < token.length) {
+            if (c == '\\' && source_index < token.length) {
                 char escaped = token.start[source_index++];
                 switch (escaped) {
                     case 'n': c = '\\n'; break;
                     case 'r': c = '\\r'; break;
                     case 't': c = '\\t'; break;
-                    case '\\\\': c = '\\\\'; break;
+                    case '\\': c = '\\'; break;
                     case '"': c = '"'; break;
                     default:
                         /* Preserve unknown escapes literally for compatibility. */
-                        value[target_index++] = '\\\\';
+                        value[target_index++] = '\\';
                         c = escaped;
                         break;
                 }

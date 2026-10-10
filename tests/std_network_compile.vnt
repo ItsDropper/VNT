@@ -1,0 +1,9 @@
+import "../lib/std/net.vnt" as net
+
+body = net.get("https://example.com/")
+status_code = net.status("https://example.com/")
+authenticated = net.get_bearer("https://example.com/api", "test-token")
+created = net.post_json("https://example.com/api", "{\"ready\":true}")
+created_auth = net.post_json_bearer("https://example.com/api", "test-token", "{\"ready\":true}")
+downloaded = net.download("https://example.com/file", "tests/out/network-download.bin")
+print("STD_NETWORK_COMPILE_OK")

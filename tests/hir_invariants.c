@@ -1,4 +1,5 @@
 #include <vnt/ir.h>
+#include <vnt/cfg.h>
 #include <vnt/ir_lower.h>
 
 #include <float.h>
@@ -66,6 +67,10 @@ static int check_fold_case(AstNode *expression, VntIrOpcode expected_opcode,
     }
 
     CHECK(vnt_ir_validate(&ir), "HIR validates after AST is freed");
+    VntCfg cfg = {0};
+    CHECK(vnt_cfg_build(&ir, &cfg), "CFG builds from optimized HIR");
+    CHECK(vnt_cfg_validate(&cfg), "CFG validates after HIR optimization");
+    vnt_cfg_free(&cfg);
 
     FILE *dump = tmpfile();
     CHECK(dump != NULL, "HIR dump stream can be created after AST destruction");
@@ -132,6 +137,34 @@ static void check_rejects_disconnected_cycle(void) {
     ast_free(program);
 }
 
+
+static void check_cfg_control_flow(void) {
+    AstNode *statements = NULL;
+    ast_append(&statements,
+        ast_create_if(ast_create_boolean(1),
+                      ast_create_print(ast_create_integer(10)),
+                      ast_create_print(ast_create_integer(20))));
+    ast_append(&statements,
+        ast_create_while(ast_create_boolean(1), ast_create_break()));
+    ast_append(&statements,
+        ast_create_function_declaration("cfg_function", NULL, 0,
+                                        ast_create_return(ast_create_integer(7))));
+    AstNode *program = ast_create_program(statements);
+    VntIrProgram ir = {0};
+    CHECK(program != NULL, "CFG control-flow AST allocated");
+    if (!program) return;
+    CHECK(vnt_ir_lower(&ir, program), "CFG control-flow HIR lowering succeeds");
+    if (ir.nodes) {
+        VntCfg cfg = {0};
+        CHECK(vnt_cfg_build(&ir, &cfg), "CFG handles if, while, break, and function bodies");
+        CHECK(vnt_cfg_validate(&cfg), "control-flow graph has valid edges");
+        CHECK(cfg.entry_count == 2, "main and function have separate CFG entries");
+        vnt_cfg_free(&cfg);
+    }
+    vnt_ir_free(&ir);
+    ast_free(program);
+}
+
 int main(void) {
     check_fold_case(binary(2, 3, BINARY_ADD), VNT_IR_INTEGER, 5,
                     "safe integer addition folds");
@@ -149,6 +182,7 @@ int main(void) {
                     VNT_IR_BINARY, 0, "non-finite floating result is not folded");
     check_rejects_missing_text_payload();
     check_rejects_disconnected_cycle();
+    check_cfg_control_flow();
 
     if (failures) {
         fprintf(stderr, "%d HIR invariant test(s) failed.\n", failures);

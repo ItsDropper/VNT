@@ -1,0 +1,19 @@
+/* Vanta One — deep navy, electric blue and mint; native Windows controls. */
+window { background-color: #080D18; }
+label { color: #A9B8D4; font-size: 14; }
+title { color: #F4F7FF; font-size: 30; }
+panel { background-color: #111B2D; }
+button { background-color: #17263D; color: #DCE7FF; font-size: 13; padding: 9; border-radius: 10; }
+button:hover { background-color: #2855C8; }
+input {
+    background-color: #0A1220;
+    color: #E5EDFF;
+    border-color: #315CE8;
+    font-size: 14;
+}
+textarea {
+    background-color: #0A1220;
+    color: #DCE7FF;
+    border-color: #315CE8;
+    font-size: 13;
+}

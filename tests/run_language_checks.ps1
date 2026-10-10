@@ -25,7 +25,8 @@ try {
         "tests\typed_function_missing_return.vnt",
         "tests\typecheck_invalid_ordered_comparison.vnt",
         "tests\typecheck_invalid_equality.vnt",
-        "tests\typecheck_invalid_boolean_order.vnt"
+        "tests\typecheck_invalid_boolean_order.vnt",
+        "tests\typecheck_invalid_void_return.vnt"
     )) {
         $previousPreference = $ErrorActionPreference
         $ErrorActionPreference = "Continue"
@@ -103,6 +104,16 @@ try {
         throw "Unexpected comparison output: $($comparisonOutput -join ' | ')"
     }
     Write-Host "Comparison type checks: PASS"
+
+    $NumericExe = Join-Path $OutDir "typecheck_numeric_compatibility.exe"
+    & .\vnt.exe --compile tests\typecheck_numeric_compatibility.vnt -o $NumericExe
+    if ($LASTEXITCODE -ne 0) { throw "Numeric-compatible typed functions did not compile." }
+    $numericOutput = & $NumericExe
+    if ($LASTEXITCODE -ne 0) { throw "Numeric-compatible typed functions exited unsuccessfully." }
+    if ($numericOutput[-1] -ne "NUMERIC_COMPATIBILITY_OK") {
+        throw "Numeric compatibility program failed: $($numericOutput -join ' | ')"
+    }
+    Write-Host "Consistent numeric type compatibility: PASS"
 
     Write-Host "Language and module checks: PASS"
 }

@@ -10,6 +10,7 @@
 #else
 #include <dlfcn.h>
 #include <sys/stat.h>
+#include <dirent.h>
 #include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
@@ -870,6 +871,75 @@ static VntValue *vnt_fs_write_mode(VntValue *path, VntValue *contents, const cha
 VntValue *vnt_fs_write(VntValue *p, VntValue *s) { return vnt_fs_write_mode(p, s, "wb", "fs_write()"); }
 VntValue *vnt_fs_append(VntValue *p, VntValue *s) { return vnt_fs_write_mode(p, s, "ab", "fs_append()"); }
 VntValue *vnt_fs_delete(VntValue *path) { return vnt_bool(remove(vnt_app_string(path, "fs_delete()")) == 0); }
+VntValue *vnt_fs_rename(VntValue *from, VntValue *to) {
+    return vnt_bool(rename(vnt_app_string(from, "fs_rename()"),
+                           vnt_app_string(to, "fs_rename()")) == 0);
+}
+VntValue *vnt_fs_is_file(VntValue *path) {
+    const char *p = vnt_app_string(path, "fs_is_file()");
+#ifdef _WIN32
+    DWORD a = GetFileAttributesA(p);
+    return vnt_bool(a != INVALID_FILE_ATTRIBUTES && !(a & FILE_ATTRIBUTE_DIRECTORY));
+#else
+    struct stat st;
+    return vnt_bool(stat(p, &st) == 0 && S_ISREG(st.st_mode));
+#endif
+}
+VntValue *vnt_fs_is_dir(VntValue *path) {
+    const char *p = vnt_app_string(path, "fs_is_dir()");
+#ifdef _WIN32
+    DWORD a = GetFileAttributesA(p);
+    return vnt_bool(a != INVALID_FILE_ATTRIBUTES && (a & FILE_ATTRIBUTE_DIRECTORY));
+#else
+    struct stat st;
+    return vnt_bool(stat(p, &st) == 0 && S_ISDIR(st.st_mode));
+#endif
+}
+VntValue *vnt_fs_list(VntValue *path) {
+    const char *p = vnt_app_string(path, "fs_list()");
+    VntValue *result = vnt_array_new();
+#ifdef _WIN32
+    size_t n = strlen(p);
+    char *pattern = malloc(n + 3);
+    if (!pattern) { fprintf(stderr, "Runtime error: out of memory in fs_list().\\n"); exit(1); }
+    snprintf(pattern, n + 3, "%s%s*", p, n && (p[n-1] == '/' || p[n-1] == '\\\\') ? "" : "\\\\");
+    WIN32_FIND_DATAA data;
+    HANDLE h = FindFirstFileA(pattern, &data);
+    free(pattern);
+    if (h == INVALID_HANDLE_VALUE) {
+        fprintf(stderr, "Runtime error: fs_list() could not list '%s'.\\n", p);
+        exit(1);
+    }
+    do {
+        if (strcmp(data.cFileName, ".") && strcmp(data.cFileName, ".."))
+            vnt_array_push(result, vnt_string(data.cFileName));
+    } while (FindNextFileA(h, &data));
+    FindClose(h);
+#else
+    DIR *dir = opendir(p);
+    if (!dir) {
+        fprintf(stderr, "Runtime error: fs_list() could not list '%s'.\\n", p);
+        exit(1);
+    }
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (strcmp(entry->d_name, ".") && strcmp(entry->d_name, ".."))
+            vnt_array_push(result, vnt_string(entry->d_name));
+    }
+    closedir(dir);
+#endif
+    return result;
+}
+VntValue *vnt_io_write(VntValue *value) {
+    const char *s = vnt_app_string(value, "io_write()");
+    size_t n = strlen(s);
+    return vnt_bool(fwrite(s, 1, n, stdout) == n && fflush(stdout) == 0);
+}
+VntValue *vnt_io_write_error(VntValue *value) {
+    const char *s = vnt_app_string(value, "io_write_error()");
+    size_t n = strlen(s);
+    return vnt_bool(fwrite(s, 1, n, stderr) == n && fflush(stderr) == 0);
+}
 VntValue *vnt_dir_create(VntValue *path) {
     const char *p = vnt_app_string(path, "dir_create()");
 #ifdef _WIN32

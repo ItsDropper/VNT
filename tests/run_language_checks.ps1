@@ -210,6 +210,15 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Standard logging/configuration libraries did not compile." }
     Write-Host "Standard logging/configuration library compile: PASS"
 
+    $JsonExe = Join-Path $OutDir "json_value_at.exe"
+    & .\vnt.exe --compile tests\json_value_at.vnt -o $JsonExe
+    if ($LASTEXITCODE -ne 0) { throw "JSON field accessor test did not compile." }
+    $jsonOutput = & $JsonExe
+    if ($LASTEXITCODE -ne 0 -or ($jsonOutput -join "|") -ne "Sodium|lithium|100|JSON_VALUE_AT_OK") {
+        throw "Unexpected JSON field accessor output: $($jsonOutput -join ' | ')"
+    }
+    Write-Host "Standard JSON field accessor: PASS"
+
 
     $VantaOneExe = Join-Path $OutDir "vanta_one.exe"
     & .\vnt.exe --compile examples\vanta_one.vnt -o $VantaOneExe

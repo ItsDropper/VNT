@@ -128,6 +128,78 @@ static size_t build_sequence(Builder *b, size_t parent, VntIrEdgeRole role,
     return b->failed ? VNT_IR_NO_NODE : entry;
 }
 
+/* Remove blocks that cannot be reached from main or any function entry.
+   This also removes CFG nodes after unconditional return/break/continue. */
+static int prune_unreachable_blocks(VntCfg *cfg) {
+    size_t count = cfg->block_count;
+    unsigned char *reachable = calloc(count, sizeof(*reachable));
+    size_t *stack = malloc(count * sizeof(*stack));
+    size_t *map = malloc(count * sizeof(*map));
+    if (!reachable || !stack || !map) {
+        free(reachable); free(stack); free(map);
+        return 0;
+    }
+
+    size_t top = 0;
+    for (size_t i = 0; i < cfg->entry_count; ++i) {
+        size_t entry = cfg->entries[i];
+        if (entry >= count) { free(reachable); free(stack); free(map); return 0; }
+        if (!reachable[entry]) {
+            reachable[entry] = 1;
+            stack[top++] = entry;
+        }
+    }
+    while (top) {
+        size_t at = stack[--top];
+        const VntCfgBlock *block = &cfg->blocks[at];
+        size_t successors[2] = {block->true_successor, block->false_successor};
+        for (size_t i = 0; i < 2; ++i) {
+            size_t next = successors[i];
+            if (next == VNT_IR_NO_NODE) continue;
+            if (next >= count) {
+                free(reachable); free(stack); free(map);
+                return 0;
+            }
+            if (!reachable[next]) {
+                reachable[next] = 1;
+                stack[top++] = next;
+            }
+        }
+    }
+
+    size_t kept = 0;
+    for (size_t i = 0; i < count; ++i) {
+        map[i] = reachable[i] ? kept++ : VNT_IR_NO_NODE;
+    }
+    if (!kept || map[cfg->exit_block] == VNT_IR_NO_NODE) {
+        free(reachable); free(stack); free(map);
+        return 0;
+    }
+    VntCfgBlock *blocks = malloc(kept * sizeof(*blocks));
+    if (!blocks) {
+        free(reachable); free(stack); free(map);
+        return 0;
+    }
+    for (size_t old = 0; old < count; ++old) {
+        if (!reachable[old]) continue;
+        VntCfgBlock block = cfg->blocks[old];
+        if (block.true_successor != VNT_IR_NO_NODE)
+            block.true_successor = map[block.true_successor];
+        if (block.false_successor != VNT_IR_NO_NODE)
+            block.false_successor = map[block.false_successor];
+        blocks[map[old]] = block;
+    }
+    for (size_t i = 0; i < cfg->entry_count; ++i)
+        cfg->entries[i] = map[cfg->entries[i]];
+    cfg->exit_block = map[cfg->exit_block];
+    free(cfg->blocks);
+    cfg->blocks = blocks;
+    cfg->block_count = cfg->block_capacity = kept;
+
+    free(reachable); free(stack); free(map);
+    return 1;
+}
+
 int vnt_cfg_build(const VntIrProgram *ir, VntCfg *cfg) {
     if (!ir || !cfg || !vnt_ir_validate(ir)) return 0;
     memset(cfg, 0, sizeof(*cfg));
@@ -147,7 +219,7 @@ int vnt_cfg_build(const VntIrProgram *ir, VntCfg *cfg) {
                                       VNT_IR_NO_NODE, VNT_IR_NO_NODE, 0);
         if (b.failed || !add_entry(cfg, entry)) goto fail;
     }
-    if (!vnt_cfg_validate(cfg)) goto fail;
+    if (!prune_unreachable_blocks(cfg) || !vnt_cfg_validate(cfg)) goto fail;
     return 1;
 
 fail:

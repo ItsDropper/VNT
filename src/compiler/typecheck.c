@@ -197,6 +197,7 @@ static int builtin_arity(const char *name, int argc) {
         !strcmp(name, "fs_delete") || !strcmp(name, "fs_is_file") ||
         !strcmp(name, "fs_is_dir") || !strcmp(name, "fs_list") ||
         !strcmp(name, "dir_create") || !strcmp(name, "env_get") ||
+        !strcmp(name, "env_has") ||
         !strcmp(name, "sleep_ms") || !strcmp(name, "process_poll") ||
         !strcmp(name, "process_pid") || !strcmp(name, "process_terminate") ||
         !strcmp(name, "process_stdout") || !strcmp(name, "process_stderr") ||
@@ -332,6 +333,7 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 !strcmp(n->function_call.name, "io_write") ||
                 !strcmp(n->function_call.name, "io_write_error") ||
                 !strcmp(n->function_call.name, "dir_create") ||
+                !strcmp(n->function_call.name, "env_has") ||
                 !strcmp(n->function_call.name, "env_set")) return TY_BOOL;
             if (!strcmp(n->function_call.name, "fs_list")) return TY_ARRAY;
             if (!strcmp(n->function_call.name, "time_ms")) return TY_FLOAT;

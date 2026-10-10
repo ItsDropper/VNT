@@ -1,0 +1,23 @@
+# VNT standard configuration helpers.
+# Stores configuration as plain text; parsing formats such as TOML/JSON are separate.
+
+export fun load_or_create(path, defaults) {
+    if fs_exists(path) {
+        return fs_read(path)
+    } else {
+        fs_write(path, defaults)
+        return defaults
+    }
+}
+
+export fun save(path, contents) {
+    return fs_write(path, contents)
+}
+
+export fun append(path, contents) {
+    return fs_append(path, contents)
+}
+
+export fun exists(path) {
+    return fs_exists(path)
+}

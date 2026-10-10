@@ -159,6 +159,17 @@ try {
     }
     Write-Host "Control-flow optimization: PASS"
 
+    $ConstantPropagationExe = Join-Path $OutDir "optimizer_constant_propagation.exe"
+    & .\vnt.exe --compile tests\optimizer_constant_propagation.vnt -o $ConstantPropagationExe
+    if ($LASTEXITCODE -ne 0) { throw "Constant-propagation program did not compile." }
+    $constantPropagationOutput = & $ConstantPropagationExe
+    if ($LASTEXITCODE -ne 0) { throw "Constant-propagation program exited unsuccessfully." }
+    $constantPropagationExpected = @("7", "9", "CONSTANT_BRANCH", "2", "CONSTANT_PROPAGATION_OK")
+    if (($constantPropagationOutput -join "|") -ne ($constantPropagationExpected -join "|")) {
+        throw "Unexpected constant-propagation output: $($constantPropagationOutput -join ' | ')"
+    }
+    Write-Host "HIR constant propagation: PASS"
+
     Write-Host "Language and module checks: PASS"
 }
 finally {

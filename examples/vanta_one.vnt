@@ -45,14 +45,14 @@ running = true
 current_dir = os.current_dir()
 config_text = config.load_or_create("vanta_one.settings", "theme=midnight\nnetwork=manual\n")
 ui_call_1 = log.info("Vanta One started.")
-if fs.exists("vanta_one_profile1_name.txt") { profile_one_name = fs.read("vanta_one_profile1_name.txt") }
-if fs.exists("vanta_one_profile2_name.txt") { profile_two_name = fs.read("vanta_one_profile2_name.txt") }
-if fs.exists("vanta_one_profile3_name.txt") { profile_three_name = fs.read("vanta_one_profile3_name.txt") }
-if fs.exists("vanta_one_profile4_name.txt") { profile_four_name = fs.read("vanta_one_profile4_name.txt") }
-if fs.exists("vanta_one_profile1_path.txt") { profile_one_path = fs.read("vanta_one_profile1_path.txt") }
-if fs.exists("vanta_one_profile2_path.txt") { profile_two_path = fs.read("vanta_one_profile2_path.txt") }
-if fs.exists("vanta_one_profile3_path.txt") { profile_three_path = fs.read("vanta_one_profile3_path.txt") }
-if fs.exists("vanta_one_profile4_path.txt") { profile_four_path = fs.read("vanta_one_profile4_path.txt") }
+if fs.exists("vanta_one_profile1_name.txt") { profile_one_name = fs.read_text("vanta_one_profile1_name.txt") }
+if fs.exists("vanta_one_profile2_name.txt") { profile_two_name = fs.read_text("vanta_one_profile2_name.txt") }
+if fs.exists("vanta_one_profile3_name.txt") { profile_three_name = fs.read_text("vanta_one_profile3_name.txt") }
+if fs.exists("vanta_one_profile4_name.txt") { profile_four_name = fs.read_text("vanta_one_profile4_name.txt") }
+if fs.exists("vanta_one_profile1_path.txt") { profile_one_path = fs.read_text("vanta_one_profile1_path.txt") }
+if fs.exists("vanta_one_profile2_path.txt") { profile_two_path = fs.read_text("vanta_one_profile2_path.txt") }
+if fs.exists("vanta_one_profile3_path.txt") { profile_three_path = fs.read_text("vanta_one_profile3_path.txt") }
+if fs.exists("vanta_one_profile4_path.txt") { profile_four_path = fs.read_text("vanta_one_profile4_path.txt") }
 
 if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "examples/vanta_one.css") {
     while running {

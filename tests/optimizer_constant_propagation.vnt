@@ -1,0 +1,21 @@
+base = 4
+copy = base + 3
+base = 9
+print(copy)
+print(base)
+
+flag = true
+if flag {
+    print("CONSTANT_BRANCH")
+} else {
+    print("UNREACHABLE_BRANCH")
+}
+
+value = 1
+if true {
+    value = 2
+} else {
+    value = 3
+}
+print(value)
+print("CONSTANT_PROPAGATION_OK")

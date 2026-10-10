@@ -63,14 +63,18 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
         running = gui.vanta_gui_poll()
         diag_5 = io.write_line("DIAG: GUI poll returned")
         elapsed_seconds = math.clamp(time.elapsed_ms(session_start) / 1000, 0, 999999)
+        diag_elapsed = io.write_line("DIAG: elapsed time calculated")
         ui_call_2 = gui.vanta_surface(0, 0, 236, 790, 0x0B1322)
+        diag_surface_1 = io.write_line("DIAG: first surface drawn")
         ui_call_3 = gui.vanta_surface(18, 18, 200, 76, 0x14223A)
         ui_call_4 = gui.vanta_surface(254, 18, 904, 86, 0x111B2D)
         ui_call_5 = gui.vanta_surface(254, 118, 904, 636, 0x0F1828)
         ui_call_6 = gui.vanta_surface(270, 132, 872, 3, 0x315CE8)
+        diag_surface_5 = io.write_line("DIAG: five surfaces drawn")
 
         ui_call_7 = gui.vanta_heading("VANTA", 34, 32)
         ui_call_8 = gui.vanta_text_style("ONE  /  GAME HUB", 36, 70, 0x66D9BE, 11)
+        diag_text = io.write_line("DIAG: first text calls completed")
         ui_call_9 = gui.vanta_text_style("YOUR LIBRARY", 28, 126, 0x7E93B8, 11)
 
         if page == "Home" { ui_call_nav_home = gui.vanta_surface(20, 145, 196, 42, 0x243B60) }
@@ -118,6 +122,7 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
         ui_call_19 = gui.vanta_heading("VANTA ONE", 282, 34)
         ui_call_20 = gui.vanta_text_style("A native game hub that stays out of your way.", 284, 75, 0xAAB9D2, 13)
         ui_call_21 = gui.vanta_status_badge("LOCAL / MANUAL NETWORK", 880, 36, 220, 0x1A3D42)
+        diag_badge = io.write_line("DIAG: status badge completed")
         ui_call_22 = gui.vanta_text_style(status_message, 282, 91, 0xDCE7FF, 11)
 
         if page == "Home" {
@@ -132,6 +137,7 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
             ui_call_31 = gui.vanta_text_style("Active profile", 304, 308, 0x7E93B8, 11)
             ui_call_32 = gui.vanta_text_style(profile_name, 410, 308, 0x66D9BE, 12)
             ui_call_33 = gui.vanta_metric_card("THIS SESSION", "" + launch_count, "launch actions", 844, 150, 264, 192, 0x142138)
+            diag_metric = io.write_line("DIAG: metric card completed")
             ui_call_34 = gui.vanta_text_style("" + math.floor(elapsed_seconds) + " seconds open", 866, 286, 0x7E93B8, 11)
             ui_call_35 = gui.vanta_text_style("QUICK ACTIONS", 304, 378, 0x7E93B8, 11)
             ui_call_36 = gui.vanta_text_style("Jump directly into profile management or look up a Modrinth project.", 304, 406, 0xDCE7FF, 12)

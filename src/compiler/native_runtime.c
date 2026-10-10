@@ -1621,6 +1621,82 @@ VntValue *vnt_gui_separator(VntValue *x,VntValue *y,VntValue *width){
 }
 VntValue *vnt_gui_fill(VntValue *color){vnt_gui_background=vnt_gui_color(vnt_gui_require_int(color,"gui_fill()"));return vnt_bool(1);}
 VntValue *vnt_gui_rect(VntValue *color){VntGuiCommand *c=vnt_gui_add(VG_RECT,32,64,160,80,NULL);if(!c)return vnt_bool(0);c->background=vnt_gui_color(vnt_gui_require_int(color,"gui_rect()"));return vnt_bool(1);}
+/* Read a scalar field from the Nth JSON object/key occurrence. This is a
+   deliberately small accessor for API responses, not a full JSON DOM. */
+static void vnt_json_copy_string(const char *p, char *out, size_t cap) {
+    size_t n=0;
+    if(*p=='"')p++;
+    while(*p && *p!='"' && n+1<cap) {
+        unsigned char ch=(unsigned char)*p++;
+        if(ch=='\\' && *p) {
+            ch=(unsigned char)*p++;
+            switch(ch) {
+                case '"': case '\\': case '/': break;
+                case 'n': ch='\n'; break;
+                case 'r': ch='\r'; break;
+                case 't': ch='\t'; break;
+                case 'b': ch=' '; break;
+                case 'f': ch=' '; break;
+                case 'u':
+                    /* Preserve parsing alignment; ASCII keys and ordinary
+                       Latin text decode directly, other code points use '?'. */
+                    for(int i=0;i<4 && *p;i++)p++;
+                    ch='?';
+                    break;
+                default: break;
+            }
+        }
+        out[n++]=(char)ch;
+    }
+    out[n]=0;
+}
+static void vnt_json_value_at(const char *json,const char *key,int wanted,char *out,size_t cap) {
+    int found=0;
+    out[0]=0;
+    if(!json||!key||wanted<0||cap<2)return;
+    const char *p=json;
+    while(*p) {
+        if(*p!='"'){p++;continue;}
+        const char *start=++p;
+        int escaped=0;
+        while(*p) {
+            if(escaped){escaped=0;p++;continue;}
+            if(*p=='\\'){escaped=1;p++;continue;}
+            if(*p=='"')break;
+            p++;
+        }
+        if(!*p)break;
+        size_t key_len=(size_t)(p-start);
+        const char *after=p+1;
+        while(*after==' '||*after=='\t'||*after=='\r'||*after=='\n')after++;
+        if(*after==':' && key_len==strlen(key) && memcmp(start,key,key_len)==0) {
+            if(found++==wanted) {
+                after++;
+                while(*after==' '||*after=='\t'||*after=='\r'||*after=='\n')after++;
+                if(*after=='"')vnt_json_copy_string(after,out,cap);
+                else {
+                    size_t n=0;
+                    while(after[n] && after[n]!=',' && after[n]!='}' && after[n]!=']' && n+1<cap)n++;
+                    while(n>0 && (after[n-1]==' '||after[n-1]=='\t'||after[n-1]=='\r'||after[n-1]=='\n'))n--;
+                    memcpy(out,after,n);out[n]=0;
+                }
+                return;
+            }
+        }
+        p++;
+    }
+}
+VntValue *vnt_json_value_at(VntValue *json_value,VntValue *key_value,VntValue *index_value) {
+    const char *json=vnt_app_string(json_value,"json_value_at()");
+    const char *key=vnt_app_string(key_value,"json_value_at()");
+    if(!index_value || index_value->type!=VNT_INT) {
+        fprintf(stderr,"Runtime error: json_value_at() expects an integer occurrence index.\n");
+        exit(1);
+    }
+    char out[2048];
+    vnt_json_value_at(json,key,index_value->integer,out,sizeof(out));
+    return vnt_string(out);
+}
 VntValue *vnt_gui_poll(void){
     if(!vnt_gui_hwnd)return vnt_bool(0);MSG msg;
     vnt_gui_clicked=0;

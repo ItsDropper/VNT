@@ -210,6 +210,12 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Standard logging/configuration libraries did not compile." }
     Write-Host "Standard logging/configuration library compile: PASS"
 
+
+    $VantaOneExe = Join-Path $OutDir "vanta_one.exe"
+    & .\vnt.exe --compile examples\vanta_one.vnt -o $VantaOneExe
+    if ($LASTEXITCODE -ne 0) { throw "Vanta One desktop app did not compile." }
+    Write-Host "Vanta One desktop app compile: PASS"
+
     Write-Host "Language and module checks: PASS"
 }
 finally {

@@ -137,6 +137,15 @@ try {
     }
     Write-Host "Branch type merging: PASS"
 
+    $ControlFlowExe = Join-Path $OutDir "optimizer_control_flow.exe"
+    & .\vnt.exe --compile tests\optimizer_control_flow.vnt -o $ControlFlowExe
+    if ($LASTEXITCODE -ne 0) { throw "Control-flow optimization program did not compile." }
+    $controlFlowOutput = & $ControlFlowExe
+    if ($LASTEXITCODE -ne 0 -or ($controlFlowOutput -join "|") -ne "CFG_OPT_OK") {
+        throw "Unexpected control-flow optimization output: $($controlFlowOutput -join ' | ')"
+    }
+    Write-Host "Control-flow optimization: PASS"
+
     Write-Host "Language and module checks: PASS"
 }
 finally {

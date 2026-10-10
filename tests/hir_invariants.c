@@ -204,6 +204,13 @@ static int make_assignment_to_symbol(VntIrNode *node, const char *symbol) {
     return replace_node_text(&node->value.text, symbol);
 }
 
+static int remove_initialization(VntIrNode *node) {
+    free(node->value.text);
+    node->value.text = NULL;
+    node->opcode = VNT_IR_PRINT;
+    return 1;
+}
+
 static void check_cfg_definite_assignment(void) {
     /* A value assigned on only one incoming branch must not count as
        definitely initialized after the merge. */
@@ -225,12 +232,17 @@ static void check_cfg_definite_assignment(void) {
             ? VNT_IR_NO_NODE : ir.nodes[root_decl].next_sibling;
         size_t then_decl = if_node == VNT_IR_NO_NODE ? VNT_IR_NO_NODE
             : find_role(&ir, if_node, VNT_IR_EDGE_THEN);
-        const char *key = root_decl == VNT_IR_NO_NODE ? NULL : ir.nodes[root_decl].value.text;
+        char *key = NULL;
+        if (root_decl != VNT_IR_NO_NODE && ir.nodes[root_decl].value.text) {
+            size_t length = strlen(ir.nodes[root_decl].value.text);
+            key = malloc(length + 1);
+            if (key) memcpy(key, ir.nodes[root_decl].value.text, length + 1);
+        }
         CHECK(root_decl != VNT_IR_NO_NODE && if_node != VNT_IR_NO_NODE &&
               then_decl != VNT_IR_NO_NODE && key != NULL,
               "one-branch assignment HIR nodes located");
         if (key && then_decl != VNT_IR_NO_NODE &&
-            make_assignment_to_symbol(&ir.nodes[root_decl], key) &&
+            remove_initialization(&ir.nodes[root_decl]) &&
             make_assignment_to_symbol(&ir.nodes[then_decl], key)) {
             VntCfg cfg = {0};
             char diagnostic[256];
@@ -246,6 +258,7 @@ static void check_cfg_definite_assignment(void) {
         } else {
             CHECK(0, "one-branch assignments receive stable symbol identity");
         }
+        free(key);
     }
     vnt_ir_free(&ir);
     ast_free(program);
@@ -276,7 +289,7 @@ static void check_cfg_definite_assignment(void) {
               else_decl != VNT_IR_NO_NODE && key != NULL,
               "both-branch assignment HIR nodes located");
         if (key && then_decl != VNT_IR_NO_NODE && else_decl != VNT_IR_NO_NODE &&
-            make_assignment_to_symbol(&ir.nodes[root_decl], key) &&
+            remove_initialization(&ir.nodes[root_decl]) &&
             make_assignment_to_symbol(&ir.nodes[then_decl], key) &&
             make_assignment_to_symbol(&ir.nodes[else_decl], key)) {
             VntCfg cfg = {0};
@@ -291,6 +304,7 @@ static void check_cfg_definite_assignment(void) {
         } else {
             CHECK(0, "both-branch assignments receive stable symbol identity");
         }
+        free(key);
     }
     vnt_ir_free(&ir);
     ast_free(program);

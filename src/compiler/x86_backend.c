@@ -70,6 +70,14 @@ static int global_add(HirGen *g,const char *name) {
 static void collect_vars(HirGen *g,size_t i) {
     const VntIrNode *n=node(g,i); if(!n||g->error)return;
     switch(n->opcode) {
+    case VNT_IR_PROGRAM:
+        /* Constant-branch folding can leave a nested statement container.
+           Its declarations must be collected before frame layout, just like
+           statements directly under the root or a control-flow body. */
+        for(size_t c=child(g,i,VNT_IR_EDGE_STATEMENT);c!=VNT_IR_NO_NODE;
+            c=next_role(g,c,VNT_IR_EDGE_STATEMENT))
+            collect_vars(g,c);
+        break;
     case VNT_IR_VARIABLE_DECL: case VNT_IR_REASSIGN:
         var_add(g,n->value.text);
         collect_vars(g,child(g,i,VNT_IR_EDGE_VALUE)); break;

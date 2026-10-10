@@ -218,7 +218,7 @@ print(time.elapsed_ms(start))
 print(os.current_dir())
 ```
 
-These are source-level wrappers around existing native runtime primitives; they do not add fake or in-memory substitutes. The GUI module remains Windows-only, while the standard OS/process/time runtime has Windows and POSIX implementations. Run ` .\tests\run_language_checks.ps1` (without the leading space) to test the standard modules.
+These are source-level wrappers around existing native runtime primitives; they do not add fake or in-memory substitutes. The GUI module remains Windows-only, while the standard OS/process/time runtime has Windows and POSIX implementations. Run `.\tests\run_language_checks.ps1` to test the standard modules.
 
 ## Real application example: VNT Desk
 

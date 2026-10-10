@@ -22,7 +22,10 @@ try {
     foreach ($case in @(
         "tests\typed_function_argument_error.vnt",
         "tests\typed_function_return_error.vnt",
-        "tests\typed_function_missing_return.vnt"
+        "tests\typed_function_missing_return.vnt",
+        "tests\typecheck_invalid_ordered_comparison.vnt",
+        "tests\typecheck_invalid_equality.vnt",
+        "tests\typecheck_invalid_boolean_order.vnt"
     )) {
         $previousPreference = $ErrorActionPreference
         $ErrorActionPreference = "Continue"
@@ -89,6 +92,17 @@ try {
         throw "Unexpected ultimate stress-test output: $($ultimateOutput -join ' | ')"
     }
     Write-Host "Ultimate stress test: PASS"
+
+    $ComparisonExe = Join-Path $OutDir "typecheck_comparisons.exe"
+    & .\vnt.exe --compile tests\typecheck_comparisons.vnt -o $ComparisonExe
+    if ($LASTEXITCODE -ne 0) { throw "Valid comparison program did not compile." }
+    $comparisonOutput = & $ComparisonExe
+    if ($LASTEXITCODE -ne 0) { throw "Valid comparison program exited unsuccessfully." }
+    $comparisonExpected = @("true", "true", "true", "true", "true", "TYPECHECK_COMPARISONS_OK")
+    if (($comparisonOutput -join "|") -ne ($comparisonExpected -join "|")) {
+        throw "Unexpected comparison output: $($comparisonOutput -join ' | ')"
+    }
+    Write-Host "Comparison type checks: PASS"
 
     Write-Host "Language and module checks: PASS"
 }

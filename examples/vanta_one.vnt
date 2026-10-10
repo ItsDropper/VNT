@@ -68,17 +68,17 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
         ui_call_8 = gui.vanta_text_style("ONE  /  GAME HUB", 36, 70, 0x66D9BE, 11)
         ui_call_9 = gui.vanta_text_style("YOUR LIBRARY", 28, 126, 0x7E93B8, 11)
 
-        if page == "Home" { gui.vanta_surface(20, 145, 196, 42, 0x243B60) }
+        if page == "Home" { ui_call_nav_home = gui.vanta_surface(20, 145, 196, 42, 0x243B60) }
         if gui.vanta_button_sized("Overview", 28, 147, 180, 38) { page = "Home"; status_message = "Overview selected." }
-        if page == "Instances" { gui.vanta_surface(20, 191, 196, 42, 0x243B60) }
+        if page == "Instances" { ui_call_nav_instances = gui.vanta_surface(20, 191, 196, 42, 0x243B60) }
         if gui.vanta_button_sized("Game profiles", 28, 193, 180, 38) { page = "Instances"; status_message = "Select a profile and configure its launch script." }
-        if page == "Modrinth" { gui.vanta_surface(20, 237, 196, 42, 0x243B60) }
+        if page == "Modrinth" { ui_call_nav_modrinth = gui.vanta_surface(20, 237, 196, 42, 0x243B60) }
         if gui.vanta_button_sized("Modrinth lookup", 28, 239, 180, 38) { page = "Modrinth"; status_message = "Project lookup is manual; no request is made until you press Lookup." }
-        if page == "Downloads" { gui.vanta_surface(20, 283, 196, 42, 0x243B60) }
+        if page == "Downloads" { ui_call_nav_downloads = gui.vanta_surface(20, 283, 196, 42, 0x243B60) }
         if gui.vanta_button_sized("Downloads", 28, 285, 180, 38) { page = "Downloads"; status_message = "Paste a direct file URL and choose a destination." }
-        if page == "Settings" { gui.vanta_surface(20, 329, 196, 42, 0x243B60) }
+        if page == "Settings" { ui_call_nav_settings = gui.vanta_surface(20, 329, 196, 42, 0x243B60) }
         if gui.vanta_button_sized("Settings", 28, 331, 180, 38) { page = "Settings"; status_message = "Local settings and diagnostics." }
-        if page == "Activity" { gui.vanta_surface(20, 375, 196, 42, 0x243B60) }
+        if page == "Activity" { ui_call_nav_activity = gui.vanta_surface(20, 375, 196, 42, 0x243B60) }
         if gui.vanta_button_sized("Activity log", 28, 377, 180, 38) { page = "Activity"; status_message = "Activity is stored in vnt.log." }
 
         ui_call_separator = gui.vanta_separator(24, 444, 188)

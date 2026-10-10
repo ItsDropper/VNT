@@ -79,6 +79,15 @@ static void set_symbol(TypeChecker *tc, const char *name, TypeKind type,
     tc->count++;
 }
 
+/* Remove declarations introduced by a lexical block. Updates to symbols that
+   existed before the block stay attached to those outer symbols. */
+static void discard_symbols_to(TypeChecker *tc, int count) {
+    while (tc->count > count) {
+        free(tc->symbols[tc->count - 1].name);
+        tc->count--;
+    }
+}
+
 static int numeric(TypeKind t) { return t == TY_INT || t == TY_FLOAT; }
 
 static TypeKind type_from_name(const char *name) {
@@ -480,8 +489,15 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                 TypeKind condition = expr_type(tc, n->if_statement.condition);
                 if (condition != TY_BOOL && condition != TY_UNKNOWN)
                     error(tc, "if condition must be boolean.");
-                check_statements(tc, n->if_statement.then_branch);
-                check_statements(tc, n->if_statement.else_branch);
+                {
+                    int outer_count = tc->count;
+                    check_statements(tc, n->if_statement.then_branch);
+                    discard_symbols_to(tc, outer_count);
+                    if (!tc->error) {
+                        check_statements(tc, n->if_statement.else_branch);
+                        discard_symbols_to(tc, outer_count);
+                    }
+                }
                 break;
             }
 
@@ -489,7 +505,11 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                 TypeKind condition = expr_type(tc, n->while_statement.condition);
                 if (condition != TY_BOOL && condition != TY_UNKNOWN)
                     error(tc, "while condition must be boolean.");
-                check_statements(tc, n->while_statement.body);
+                {
+                    int outer_count = tc->count;
+                    check_statements(tc, n->while_statement.body);
+                    discard_symbols_to(tc, outer_count);
+                }
                 break;
             }
 

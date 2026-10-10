@@ -252,12 +252,17 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                     ui_call_63 = log.warn("Launch rejected: empty script path.")
                 } else {
                     if fs.exists(profile_path_input) {
-                        active_process = process.start("cmd.exe", ["/c", "\"" + profile_path_input + "\""])
-                        active_pid = process.pid(active_process)
-                        launch_count = launch_count + 1
-                        status_message = "Launch script started. PID " + active_pid
-                        activity_message = "Started " + profile_name_input + " (PID " + active_pid + ")"
-                        ui_call_64 = log.info("Started profile " + profile_name_input + " with PID " + active_pid)
+                        launch_ok = process.launch(profile_path_input)
+                        if launch_ok {
+                            active_pid = 0
+                            launch_count = launch_count + 1
+                            status_message = "Launched " + profile_name_input + "."
+                            activity_message = "Launched profile: " + profile_name_input
+                            ui_call_64 = log.info("Launched profile " + profile_name_input + " from " + profile_path_input)
+                        } else {
+                            status_message = "Windows could not launch this file. Check its extension and permissions."
+                            ui_call_64 = log.warn("Launch failed for " + profile_path_input)
+                        }
                     } else {
                         status_message = "Script not found. Check the path and save the profile."
                         ui_call_65 = log.warn("Launch script does not exist: " + profile_path_input)
@@ -270,7 +275,7 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
             }
             ui_call_66 = gui.vanta_text_style("Current selection: " + selected_profile + "  /  " + profile_name, 306, 614, 0x66D9BE, 12)
             ui_call_67 = gui.vanta_text_style("Configured path: " + profile_path, 306, 642, 0xAAB9D2, 11)
-            ui_call_68 = gui.vanta_text_style("Launches use Windows cmd.exe to run your chosen .bat/.cmd script.", 306, 682, 0x7E93B8, 11)
+            ui_call_68 = gui.vanta_text_style("Launch supports .exe, .bat, and .cmd files in a separate visible process window.", 306, 682, 0x7E93B8, 11)
         }
 
         if page == "Modrinth" {

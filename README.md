@@ -431,3 +431,48 @@ The Windows GUI foundation includes these additional APIs:
 - `gui_text_style(text, x, y, color, size)` — draw text with a custom color and font size.
 
 Text inputs support basic single-byte character input, Backspace, and Ctrl+A replacement. The current editor buffer is limited to 4095 bytes per field. GUI state is retained across frames while draw commands are rebuilt. This is a foundational toolkit, not a complete accessibility-ready GUI framework; caret navigation, IME input, and platform-independent backends remain future work.
+
+
+## Networking, logging, and configuration
+
+### HTTPS and API requests
+
+`lib/std/net.vnt` wraps the system `curl` executable through VNT's native child-process API. It supports HTTPS GET requests, one custom request header, bearer-token GET requests, JSON POST requests, HTTP status retrieval, and file downloads.
+
+```vnt
+import "../lib/std/net.vnt" as net
+
+response = net.get("https://api.example.com/status")
+status = net.status("https://api.example.com/status")
+private_response = net.get_bearer(
+    "https://api.example.com/me",
+    "YOUR_TOKEN"
+)
+created = net.post_json(
+    "https://api.example.com/items",
+    "{\"name\":\"example\"}"
+)
+downloaded = net.download(
+    "https://example.com/archive.zip",
+    "archive.zip"
+)
+print(status)
+print(response)
+print(downloaded)
+```
+
+The networking module requires `curl.exe` on Windows or `curl` on Unix-like systems to be available on `PATH`. TLS certificate verification remains enabled, redirects are followed, and requests have bounded timeouts. Arguments are passed directly to the child process rather than through a shell. The helpers return the response body, an HTTP status string, or a success boolean; a transport failure in body-returning helpers produces an empty string. HTTP status codes such as 404 are not treated as transport failures by `get`, so inspect `status(url)` when status matters. `download` uses curl's fail-on-HTTP-error behavior.
+
+This is a pragmatic standard-library bridge, not a native HTTP implementation. JSON response bodies are returned as strings; a JSON parser/serializer and richer arbitrary-header request API remain future work. The compile check is offline and does not call external services.
+
+### Logging and configuration
+
+`lib/std/log.vnt` provides `info(message)`, `warn(message)`, and `error(message)`. It appends records to `vnt.log` in the current working directory and writes them to stdout or stderr.
+
+`lib/std/config.vnt` provides `load_or_create(path, defaults)`, `save(path, contents)`, `append(path, contents)`, and `exists(path)`. These helpers persist plain-text configuration files; they do not parse TOML, JSON, or INI syntax for you.
+
+The full offline check suite compiles these modules with:
+
+```powershell
+.\tests\run_language_checks.ps1
+```

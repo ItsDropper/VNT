@@ -171,7 +171,7 @@ try {
     Write-Host "HIR constant propagation: PASS"
 
     $StdIoExe = Join-Path $OutDir "std_io.exe"
-    & .\\vnt.exe --compile tests\\std_io.vnt -o $StdIoExe
+    & .\vnt.exe --compile tests\std_io.vnt -o $StdIoExe
     if ($LASTEXITCODE -ne 0) { throw "Standard I/O library program did not compile." }
     $ioOutput = @("library input") | & $StdIoExe
     if ($LASTEXITCODE -ne 0 -or ($ioOutput -join "|") -ne "IO_OK|library input") {
@@ -180,7 +180,7 @@ try {
     Write-Host "Standard I/O library: PASS"
 
     $StdFsExe = Join-Path $OutDir "std_fs.exe"
-    & .\\vnt.exe --compile tests\\std_fs.vnt -o $StdFsExe
+    & .\vnt.exe --compile tests\std_fs.vnt -o $StdFsExe
     if ($LASTEXITCODE -ne 0) { throw "Standard filesystem library program did not compile." }
     $fsOutput = & $StdFsExe
     if ($LASTEXITCODE -ne 0 -or ($fsOutput -join "|") -ne "FS_OK|STANDARD_FS_OK") {

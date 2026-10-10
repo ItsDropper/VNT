@@ -26,7 +26,9 @@ try {
         "tests\typecheck_invalid_ordered_comparison.vnt",
         "tests\typecheck_invalid_equality.vnt",
         "tests\typecheck_invalid_boolean_order.vnt",
-        "tests\typecheck_invalid_void_return.vnt"
+        "tests\typecheck_invalid_void_return.vnt",
+        "tests\typecheck_scope_if_leak.vnt",
+        "tests\typecheck_scope_while_leak.vnt"
     )) {
         $previousPreference = $ErrorActionPreference
         $ErrorActionPreference = "Continue"
@@ -114,6 +116,17 @@ try {
         throw "Numeric compatibility program failed: $($numericOutput -join ' | ')"
     }
     Write-Host "Consistent numeric type compatibility: PASS"
+
+    $ScopeExe = Join-Path $OutDir "typecheck_scopes.exe"
+    & .\vnt.exe --compile tests\typecheck_scopes.vnt -o $ScopeExe
+    if ($LASTEXITCODE -ne 0) { throw "Valid lexical-scope program did not compile." }
+    $scopeOutput = & $ScopeExe
+    if ($LASTEXITCODE -ne 0) { throw "Lexical-scope program exited unsuccessfully." }
+    $scopeExpected = @("3", "2", "4", "SCOPE_CHECKS_OK")
+    if (($scopeOutput -join "|") -ne ($scopeExpected -join "|")) {
+        throw "Unexpected lexical-scope output: $($scopeOutput -join ' | ')"
+    }
+    Write-Host "Lexical scope checks: PASS"
 
     Write-Host "Language and module checks: PASS"
 }

@@ -46,7 +46,7 @@ export fun get_json(url) {
 # Search public Modrinth projects by words, returning the API's result JSON.
 # curl performs query encoding so spaces and punctuation do not corrupt the URL.
 export fun search_mods(query) {
-    args = ["--silent", "--show-error", "--location", "--max-time", "30", "--header", "Accept: application/json", "--get", "--data-urlencode", "query=" + query, "--data-urlencode", "facets=[[\"project_type:mod\"]]", "--data-urlencode", "limit=10", "https://api.modrinth.com/v2/search"]
+    args = ["--silent", "--show-error", "--location", "--max-time", "30", "--header", "Accept: application/json", "--header", "User-Agent: ItsDropper/Vanta-One/0.1.0 (https://github.com/ItsDropper/VNT)", "--get", "--data-urlencode", "query=" + query, "--data-urlencode", "facets=[[\"project_type:mod\"]]", "--data-urlencode", "limit=10", "https://api.modrinth.com/v2/search"]
     executable = "curl"
     if env_has("OS") { executable = "curl.exe" }
     process = process_start(executable, args)

@@ -44,7 +44,7 @@ session_start = time.now_ms()
 running = true
 current_dir = os.current_dir()
 config_text = config.load_or_create("vanta_one.settings", "theme=midnight\nnetwork=manual\n")
-log.info("Vanta One started.")
+ui_call_1 = log.info("Vanta One started.")
 if fs.exists("vanta_one_profile1_name.txt") { profile_one_name = fs.read("vanta_one_profile1_name.txt") }
 if fs.exists("vanta_one_profile2_name.txt") { profile_two_name = fs.read("vanta_one_profile2_name.txt") }
 if fs.exists("vanta_one_profile3_name.txt") { profile_three_name = fs.read("vanta_one_profile3_name.txt") }
@@ -58,15 +58,15 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
     while running {
         running = gui.vanta_gui_poll()
         elapsed_seconds = math.clamp(time.elapsed_ms(session_start) / 1000, 0, 999999)
-        gui.vanta_surface(0, 0, 236, 790, 0x0B1322)
-        gui.vanta_surface(18, 18, 200, 76, 0x14223A)
-        gui.vanta_surface(254, 18, 904, 86, 0x111B2D)
-        gui.vanta_surface(254, 118, 904, 636, 0x0F1828)
-        gui.vanta_surface(270, 132, 872, 3, 0x315CE8)
+        ui_call_2 = gui.vanta_surface(0, 0, 236, 790, 0x0B1322)
+        ui_call_3 = gui.vanta_surface(18, 18, 200, 76, 0x14223A)
+        ui_call_4 = gui.vanta_surface(254, 18, 904, 86, 0x111B2D)
+        ui_call_5 = gui.vanta_surface(254, 118, 904, 636, 0x0F1828)
+        ui_call_6 = gui.vanta_surface(270, 132, 872, 3, 0x315CE8)
 
-        gui.vanta_heading("VANTA", 34, 32)
-        gui.vanta_text_style("ONE  /  GAME HUB", 36, 70, 0x66D9BE, 11)
-        gui.vanta_text_style("YOUR LIBRARY", 28, 126, 0x7E93B8, 11)
+        ui_call_7 = gui.vanta_heading("VANTA", 34, 32)
+        ui_call_8 = gui.vanta_text_style("ONE  /  GAME HUB", 36, 70, 0x66D9BE, 11)
+        ui_call_9 = gui.vanta_text_style("YOUR LIBRARY", 28, 126, 0x7E93B8, 11)
 
         if page == "Home" { gui.vanta_surface(20, 145, 196, 42, 0x243B60) }
         if gui.vanta_button_sized("Overview", 28, 147, 180, 38) { page = "Home"; status_message = "Overview selected." }
@@ -82,52 +82,52 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
         if gui.vanta_button_sized("Activity log", 28, 377, 180, 38) { page = "Activity"; status_message = "Activity is stored in vnt.log." }
 
         vanta_separator(24, 444, 188)
-        gui.vanta_text_style("SESSION", 30, 462, 0x7E93B8, 11)
-        gui.vanta_text_style("Actions", 30, 490, 0xAAB9D2, 12)
-        gui.vanta_text_style("Requests  " + request_count, 30, 516, 0xDCE7FF, 12)
-        gui.vanta_text_style("Downloads  " + download_count, 30, 542, 0xDCE7FF, 12)
-        gui.vanta_text_style("Launches  " + launch_count, 30, 568, 0xDCE7FF, 12)
-        gui.vanta_surface(22, 630, 192, 86, 0x13243A)
-        gui.vanta_text_style("LOCAL FIRST", 36, 646, 0x66D9BE, 11)
-        gui.vanta_text_style("No accounts. No telemetry.", 36, 672, 0xAAB9D2, 10)
-        gui.vanta_text_style("Build  /  VNT native", 36, 693, 0x7E93B8, 10)
+        ui_call_10 = gui.vanta_text_style("SESSION", 30, 462, 0x7E93B8, 11)
+        ui_call_11 = gui.vanta_text_style("Actions", 30, 490, 0xAAB9D2, 12)
+        ui_call_12 = gui.vanta_text_style("Requests  " + request_count, 30, 516, 0xDCE7FF, 12)
+        ui_call_13 = gui.vanta_text_style("Downloads  " + download_count, 30, 542, 0xDCE7FF, 12)
+        ui_call_14 = gui.vanta_text_style("Launches  " + launch_count, 30, 568, 0xDCE7FF, 12)
+        ui_call_15 = gui.vanta_surface(22, 630, 192, 86, 0x13243A)
+        ui_call_16 = gui.vanta_text_style("LOCAL FIRST", 36, 646, 0x66D9BE, 11)
+        ui_call_17 = gui.vanta_text_style("No accounts. No telemetry.", 36, 672, 0xAAB9D2, 10)
+        ui_call_18 = gui.vanta_text_style("Build  /  VNT native", 36, 693, 0x7E93B8, 10)
 
-        gui.vanta_heading("VANTA ONE", 282, 34)
-        gui.vanta_text_style("A native game hub that stays out of your way.", 284, 75, 0xAAB9D2, 13)
-        gui.vanta_status_badge("LOCAL / MANUAL NETWORK", 880, 36, 220, 0x1A3D42)
-        gui.vanta_text_style(status_message, 282, 91, 0xDCE7FF, 11)
+        ui_call_19 = gui.vanta_heading("VANTA ONE", 282, 34)
+        ui_call_20 = gui.vanta_text_style("A native game hub that stays out of your way.", 284, 75, 0xAAB9D2, 13)
+        ui_call_21 = gui.vanta_status_badge("LOCAL / MANUAL NETWORK", 880, 36, 220, 0x1A3D42)
+        ui_call_22 = gui.vanta_text_style(status_message, 282, 91, 0xDCE7FF, 11)
 
         if page == "Home" {
-            gui.vanta_surface(282, 150, 548, 192, 0x142138)
-            gui.vanta_surface(844, 150, 264, 192, 0x142138)
-            gui.vanta_surface(282, 358, 826, 142, 0x142138)
-            gui.vanta_surface(282, 516, 826, 216, 0x142138)
-            gui.vanta_text_style("WELCOME BACK", 304, 172, 0x7E93B8, 11)
-            gui.vanta_heading("Your games. Your rules.", 304, 200)
-            gui.vanta_text_style("Keep your own launch scripts and choose exactly when", 306, 248, 0xAAB9D2, 12)
-            gui.vanta_text_style("to contact an external service.", 306, 270, 0xAAB9D2, 12)
-            gui.vanta_text_style("Active profile", 304, 308, 0x7E93B8, 11)
-            gui.vanta_text_style(profile_name, 410, 308, 0x66D9BE, 12)
-            gui.vanta_metric_card("THIS SESSION", "" + launch_count, "launch actions", 844, 150, 264, 192, 0x142138)
-            gui.vanta_text_style("" + math.floor(elapsed_seconds) + " seconds open", 866, 286, 0x7E93B8, 11)
-            gui.vanta_text_style("QUICK ACTIONS", 304, 378, 0x7E93B8, 11)
-            gui.vanta_text_style("Jump directly into profile management or look up a Modrinth project.", 304, 406, 0xDCE7FF, 12)
+            ui_call_23 = gui.vanta_surface(282, 150, 548, 192, 0x142138)
+            ui_call_24 = gui.vanta_surface(844, 150, 264, 192, 0x142138)
+            ui_call_25 = gui.vanta_surface(282, 358, 826, 142, 0x142138)
+            ui_call_26 = gui.vanta_surface(282, 516, 826, 216, 0x142138)
+            ui_call_27 = gui.vanta_text_style("WELCOME BACK", 304, 172, 0x7E93B8, 11)
+            ui_call_28 = gui.vanta_heading("Your games. Your rules.", 304, 200)
+            ui_call_29 = gui.vanta_text_style("Keep your own launch scripts and choose exactly when", 306, 248, 0xAAB9D2, 12)
+            ui_call_30 = gui.vanta_text_style("to contact an external service.", 306, 270, 0xAAB9D2, 12)
+            ui_call_31 = gui.vanta_text_style("Active profile", 304, 308, 0x7E93B8, 11)
+            ui_call_32 = gui.vanta_text_style(profile_name, 410, 308, 0x66D9BE, 12)
+            ui_call_33 = gui.vanta_metric_card("THIS SESSION", "" + launch_count, "launch actions", 844, 150, 264, 192, 0x142138)
+            ui_call_34 = gui.vanta_text_style("" + math.floor(elapsed_seconds) + " seconds open", 866, 286, 0x7E93B8, 11)
+            ui_call_35 = gui.vanta_text_style("QUICK ACTIONS", 304, 378, 0x7E93B8, 11)
+            ui_call_36 = gui.vanta_text_style("Jump directly into profile management or look up a Modrinth project.", 304, 406, 0xDCE7FF, 12)
             if gui.vanta_button_sized("Manage profiles", 304, 442, 174, 40) { page = "Instances" }
             if gui.vanta_button_sized("Open Modrinth lookup", 492, 442, 196, 40) { page = "Modrinth" }
             if gui.vanta_button_sized("Download a file", 702, 442, 150, 40) { page = "Downloads" }
-            gui.vanta_text_style("RECENT ACTIVITY", 304, 536, 0x7E93B8, 11)
-            gui.vanta_text_style(activity_message, 304, 568, 0xDCE7FF, 13)
-            gui.vanta_text_style("Working directory", 304, 610, 0x7E93B8, 11)
-            gui.vanta_text_style(current_dir, 304, 634, 0xAAB9D2, 11)
-            gui.vanta_text_style("Vanta One stores profile settings as readable local text files.", 304, 688, 0x7E93B8, 11)
+            ui_call_37 = gui.vanta_text_style("RECENT ACTIVITY", 304, 536, 0x7E93B8, 11)
+            ui_call_38 = gui.vanta_text_style(activity_message, 304, 568, 0xDCE7FF, 13)
+            ui_call_39 = gui.vanta_text_style("Working directory", 304, 610, 0x7E93B8, 11)
+            ui_call_40 = gui.vanta_text_style(current_dir, 304, 634, 0xAAB9D2, 11)
+            ui_call_41 = gui.vanta_text_style("Vanta One stores profile settings as readable local text files.", 304, 688, 0x7E93B8, 11)
         }
 
         if page == "Instances" {
-            gui.vanta_surface(282, 150, 826, 110, 0x142138)
-            gui.vanta_surface(282, 276, 826, 300, 0x142138)
-            gui.vanta_surface(282, 592, 826, 140, 0x142138)
-            gui.vanta_text_style("GAME PROFILES", 304, 170, 0x7E93B8, 11)
-            gui.vanta_text_style("Four configurable launch targets. Each points to a script you control.", 304, 196, 0xAAB9D2, 12)
+            ui_call_42 = gui.vanta_surface(282, 150, 826, 110, 0x142138)
+            ui_call_43 = gui.vanta_surface(282, 276, 826, 300, 0x142138)
+            ui_call_44 = gui.vanta_surface(282, 592, 826, 140, 0x142138)
+            ui_call_45 = gui.vanta_text_style("GAME PROFILES", 304, 170, 0x7E93B8, 11)
+            ui_call_46 = gui.vanta_text_style("Four configurable launch targets. Each points to a script you control.", 304, 196, 0xAAB9D2, 12)
             if selected_profile == 1 { gui.vanta_surface(304, 218, 174, 30, 0x315CE8) }
             if gui.vanta_button_sized("01  Main Minecraft", 304, 216, 174, 34) {
                 selected_profile = 1
@@ -156,57 +156,57 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                 profile_path = profile_four_path
                 status_message = "Editing profile 4."
             }
-            gui.vanta_text_style("PROFILE NAME", 306, 300, 0x7E93B8, 11)
+            ui_call_47 = gui.vanta_text_style("PROFILE NAME", 306, 300, 0x7E93B8, 11)
             profile_name_input = gui.vanta_text_input("Name this profile", 304, 322, 760)
-            gui.vanta_text_style("LAUNCH SCRIPT PATH", 306, 372, 0x7E93B8, 11)
+            ui_call_48 = gui.vanta_text_style("LAUNCH SCRIPT PATH", 306, 372, 0x7E93B8, 11)
             profile_path_input = gui.vanta_text_input("Absolute path to a .bat or .cmd file", 304, 394, 760)
-            gui.vanta_text_style("Use a script you trust. Launch scripts can run arbitrary commands.", 306, 438, 0xE6B86B, 11)
-            gui.vanta_text_style("The app passes the path as a process argument; it does not evaluate the file contents.", 306, 460, 0xAAB9D2, 11)
+            ui_call_49 = gui.vanta_text_style("Use a script you trust. Launch scripts can run arbitrary commands.", 306, 438, 0xE6B86B, 11)
+            ui_call_50 = gui.vanta_text_style("The app passes the path as a process argument; it does not evaluate the file contents.", 306, 460, 0xAAB9D2, 11)
             if gui.vanta_button_sized("Load selected profile", 304, 500, 184, 40) {
                 if selected_profile == 1 { profile_name_input = profile_one_name; profile_path_input = profile_one_path }
                 if selected_profile == 2 { profile_name_input = profile_two_name; profile_path_input = profile_two_path }
                 if selected_profile == 3 { profile_name_input = profile_three_name; profile_path_input = profile_three_path }
                 if selected_profile == 4 { profile_name_input = profile_four_name; profile_path_input = profile_four_path }
-                gui.vanta_input_set(profile_name_input, 304, 322)
-                gui.vanta_input_set(profile_path_input, 304, 394)
+                ui_call_51 = gui.vanta_input_set(profile_name_input, 304, 322)
+                ui_call_52 = gui.vanta_input_set(profile_path_input, 304, 394)
                 status_message = "Loaded profile fields."
             }
             if gui.vanta_button_sized("Save profile", 500, 500, 142, 40) {
                 if selected_profile == 1 {
                     profile_one_name = profile_name_input
                     profile_one_path = profile_path_input
-                    fs.write_text("vanta_one_profile1_name.txt", profile_one_name)
-                    fs.write_text("vanta_one_profile1_path.txt", profile_one_path)
+                    ui_call_53 = fs.write_text("vanta_one_profile1_name.txt", profile_one_name)
+                    ui_call_54 = fs.write_text("vanta_one_profile1_path.txt", profile_one_path)
                 }
                 if selected_profile == 2 {
                     profile_two_name = profile_name_input
                     profile_two_path = profile_path_input
-                    fs.write_text("vanta_one_profile2_name.txt", profile_two_name)
-                    fs.write_text("vanta_one_profile2_path.txt", profile_two_path)
+                    ui_call_55 = fs.write_text("vanta_one_profile2_name.txt", profile_two_name)
+                    ui_call_56 = fs.write_text("vanta_one_profile2_path.txt", profile_two_path)
                 }
                 if selected_profile == 3 {
                     profile_three_name = profile_name_input
                     profile_three_path = profile_path_input
-                    fs.write_text("vanta_one_profile3_name.txt", profile_three_name)
-                    fs.write_text("vanta_one_profile3_path.txt", profile_three_path)
+                    ui_call_57 = fs.write_text("vanta_one_profile3_name.txt", profile_three_name)
+                    ui_call_58 = fs.write_text("vanta_one_profile3_path.txt", profile_three_path)
                 }
                 if selected_profile == 4 {
                     profile_four_name = profile_name_input
                     profile_four_path = profile_path_input
-                    fs.write_text("vanta_one_profile4_name.txt", profile_four_name)
-                    fs.write_text("vanta_one_profile4_path.txt", profile_four_path)
+                    ui_call_59 = fs.write_text("vanta_one_profile4_name.txt", profile_four_name)
+                    ui_call_60 = fs.write_text("vanta_one_profile4_path.txt", profile_four_path)
                 }
                 profile_name = profile_name_input
                 profile_path = profile_path_input
-                config.save("vanta_one.settings", "theme=midnight\nlast_profile=" + selected_profile + "\n")
-                log.info("Saved profile " + selected_profile + ": " + profile_name)
+                ui_call_61 = config.save("vanta_one.settings", "theme=midnight\nlast_profile=" + selected_profile + "\n")
+                ui_call_62 = log.info("Saved profile " + selected_profile + ": " + profile_name)
                 status_message = "Profile saved locally."
                 activity_message = "Saved profile: " + profile_name
             }
             if gui.vanta_button_sized("Launch profile", 654, 500, 150, 40) {
                 if profile_path_input == "" {
                     status_message = "Set a launch script path before launching."
-                    log.warn("Launch rejected: empty script path.")
+                    ui_call_63 = log.warn("Launch rejected: empty script path.")
                 } else {
                     if fs.exists(profile_path_input) {
                         active_process = process.start("cmd.exe", ["/c", "\"" + profile_path_input + "\""])
@@ -214,10 +214,10 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                         launch_count = launch_count + 1
                         status_message = "Launch script started. PID " + active_pid
                         activity_message = "Started " + profile_name_input + " (PID " + active_pid + ")"
-                        log.info("Started profile " + profile_name_input + " with PID " + active_pid)
+                        ui_call_64 = log.info("Started profile " + profile_name_input + " with PID " + active_pid)
                     } else {
                         status_message = "Script not found. Check the path and save the profile."
-                        log.warn("Launch script does not exist: " + profile_path_input)
+                        ui_call_65 = log.warn("Launch script does not exist: " + profile_path_input)
                     }
                 }
             }
@@ -225,16 +225,16 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                 active_pid = 0
                 status_message = "Cleared the displayed process ID. This does not terminate the game."
             }
-            gui.vanta_text_style("Current selection: " + selected_profile + "  /  " + profile_name, 306, 614, 0x66D9BE, 12)
-            gui.vanta_text_style("Configured path: " + profile_path, 306, 642, 0xAAB9D2, 11)
-            gui.vanta_text_style("Launches use Windows cmd.exe to run your chosen .bat/.cmd script.", 306, 682, 0x7E93B8, 11)
+            ui_call_66 = gui.vanta_text_style("Current selection: " + selected_profile + "  /  " + profile_name, 306, 614, 0x66D9BE, 12)
+            ui_call_67 = gui.vanta_text_style("Configured path: " + profile_path, 306, 642, 0xAAB9D2, 11)
+            ui_call_68 = gui.vanta_text_style("Launches use Windows cmd.exe to run your chosen .bat/.cmd script.", 306, 682, 0x7E93B8, 11)
         }
 
         if page == "Modrinth" {
-            gui.vanta_surface(282, 150, 826, 144, 0x142138)
-            gui.vanta_surface(282, 310, 826, 422, 0x142138)
-            gui.vanta_text_style("MODRINTH PROJECT LOOKUP", 304, 170, 0x7E93B8, 11)
-            gui.vanta_text_style("Enter a project slug, e.g. sodium, fabric-api, or lithium.", 304, 196, 0xAAB9D2, 12)
+            ui_call_69 = gui.vanta_surface(282, 150, 826, 144, 0x142138)
+            ui_call_70 = gui.vanta_surface(282, 310, 826, 422, 0x142138)
+            ui_call_71 = gui.vanta_text_style("MODRINTH PROJECT LOOKUP", 304, 170, 0x7E93B8, 11)
+            ui_call_72 = gui.vanta_text_style("Enter a project slug, e.g. sodium, fabric-api, or lithium.", 304, 196, 0xAAB9D2, 12)
             project_slug_input = gui.vanta_text_input("Project slug", 304, 220, 420)
             if gui.vanta_button_sized("Lookup project", 742, 218, 154, 40) {
                 if project_slug_input == "" {
@@ -246,7 +246,7 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                     request_count = request_count + 2
                     status_message = "Modrinth returned HTTP " + project_status
                     activity_message = "Looked up Modrinth project: " + project_slug_input
-                    log.info("Modrinth lookup for " + project_slug_input + " returned HTTP " + project_status)
+                    ui_call_73 = log.info("Modrinth lookup for " + project_slug_input + " returned HTTP " + project_status)
                 }
             }
             if gui.vanta_button_sized("Latest versions", 906, 218, 174, 40) {
@@ -259,26 +259,26 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                     request_count = request_count + 2
                     status_message = "Version endpoint returned HTTP " + project_status
                     activity_message = "Fetched version metadata for " + project_slug_input
-                    log.info("Modrinth versions for " + project_slug_input + " returned HTTP " + project_status)
+                    ui_call_74 = log.info("Modrinth versions for " + project_slug_input + " returned HTTP " + project_status)
                 }
             }
-            gui.vanta_text_style("API RESPONSE  /  RAW JSON", 304, 330, 0x7E93B8, 11)
+            ui_call_75 = gui.vanta_text_style("API RESPONSE  /  RAW JSON", 304, 330, 0x7E93B8, 11)
             response_text = gui.vanta_textarea("The response body appears here after a lookup.", 304, 354, 776, 286)
             if gui.vanta_button_sized("Show last response", 304, 658, 174, 40) {
-                gui.vanta_input_set(project_response, 304, 354)
+                ui_call_76 = gui.vanta_input_set(project_response, 304, 354)
                 status_message = "Restored the most recent response into the text area."
             }
-            gui.vanta_text_style("This screen displays raw JSON. Structured result cards require a JSON parser.", 494, 670, 0xAAB9D2, 11)
-            gui.vanta_text_style("Only public metadata endpoints are called here; no account token is stored.", 304, 710, 0x66D9BE, 11)
+            ui_call_77 = gui.vanta_text_style("This screen displays raw JSON. Structured result cards require a JSON parser.", 494, 670, 0xAAB9D2, 11)
+            ui_call_78 = gui.vanta_text_style("Only public metadata endpoints are called here; no account token is stored.", 304, 710, 0x66D9BE, 11)
         }
 
         if page == "Downloads" {
-            gui.vanta_surface(282, 150, 826, 190, 0x142138)
-            gui.vanta_surface(282, 356, 826, 376, 0x142138)
-            gui.vanta_text_style("DIRECT DOWNLOAD", 304, 170, 0x7E93B8, 11)
-            gui.vanta_text_style("Paste a direct HTTPS file URL. TLS verification remains enabled by curl.", 304, 198, 0xAAB9D2, 12)
+            ui_call_79 = gui.vanta_surface(282, 150, 826, 190, 0x142138)
+            ui_call_80 = gui.vanta_surface(282, 356, 826, 376, 0x142138)
+            ui_call_81 = gui.vanta_text_style("DIRECT DOWNLOAD", 304, 170, 0x7E93B8, 11)
+            ui_call_82 = gui.vanta_text_style("Paste a direct HTTPS file URL. TLS verification remains enabled by curl.", 304, 198, 0xAAB9D2, 12)
             download_url_input = gui.vanta_text_input("https://example.com/file.jar", 304, 222, 776)
-            gui.vanta_text_style("DESTINATION PATH", 304, 270, 0x7E93B8, 11)
+            ui_call_83 = gui.vanta_text_style("DESTINATION PATH", 304, 270, 0x7E93B8, 11)
             download_path_input = gui.vanta_text_input("downloaded-file.jar", 304, 292, 530)
             if gui.vanta_button_sized("Download file", 850, 290, 154, 40) {
                 if download_url_input == "" || download_path_input == "" {
@@ -292,80 +292,80 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                         download_status = "Download completed: " + download_path_input
                         status_message = download_status
                         activity_message = "Downloaded file to " + download_path_input
-                        log.info("Download completed: " + download_path_input)
+                        ui_call_84 = log.info("Download completed: " + download_path_input)
                     } else {
                         download_status = "Download failed. Check URL, path, permissions, and curl availability."
                         status_message = download_status
-                        log.warn("Download failed: " + download_url_input)
+                        ui_call_85 = log.warn("Download failed: " + download_url_input)
                     }
                 }
             }
-            gui.vanta_text_style("DOWNLOAD STATUS", 304, 382, 0x7E93B8, 11)
-            gui.vanta_heading("Manual. Explicit. Visible.", 304, 410)
-            gui.vanta_text_style(download_status, 304, 460, 0xDCE7FF, 13)
-            gui.vanta_callout("SAFETY", "Downloads are never executed automatically.", 304, 500, 760, 62, 0x66D9BE)
-            gui.vanta_text_style("Vanta One does not auto-install a file or execute it after download.", 304, 574, 0x66D9BE, 12)
-            gui.vanta_text_style("For mods, confirm the Minecraft version and loader compatibility yourself.", 304, 598, 0xAAB9D2, 12)
-            gui.vanta_text_style("Files are saved to the path you specify, relative to:", 304, 624, 0x7E93B8, 11)
-            gui.vanta_text_style(current_dir, 304, 646, 0xAAB9D2, 11)
+            ui_call_86 = gui.vanta_text_style("DOWNLOAD STATUS", 304, 382, 0x7E93B8, 11)
+            ui_call_87 = gui.vanta_heading("Manual. Explicit. Visible.", 304, 410)
+            ui_call_88 = gui.vanta_text_style(download_status, 304, 460, 0xDCE7FF, 13)
+            ui_call_89 = gui.vanta_callout("SAFETY", "Downloads are never executed automatically.", 304, 500, 760, 62, 0x66D9BE)
+            ui_call_90 = gui.vanta_text_style("Vanta One does not auto-install a file or execute it after download.", 304, 574, 0x66D9BE, 12)
+            ui_call_91 = gui.vanta_text_style("For mods, confirm the Minecraft version and loader compatibility yourself.", 304, 598, 0xAAB9D2, 12)
+            ui_call_92 = gui.vanta_text_style("Files are saved to the path you specify, relative to:", 304, 624, 0x7E93B8, 11)
+            ui_call_93 = gui.vanta_text_style(current_dir, 304, 646, 0xAAB9D2, 11)
             if gui.vanta_button_sized("Check URL status", 304, 678, 166, 40) {
                 if download_url_input != "" {
                     download_status = "HTTP " + net.status(download_url_input)
                     request_count = request_count + 1
                     status_message = download_status
-                    log.info("Checked download URL status: " + download_status)
+                    ui_call_94 = log.info("Checked download URL status: " + download_status)
                 }
             }
             if gui.vanta_button_sized("Open Modrinth lookup", 482, 678, 198, 40) { page = "Modrinth" }
         }
 
         if page == "Settings" {
-            gui.vanta_surface(282, 150, 826, 176, 0x142138)
-            gui.vanta_surface(282, 342, 826, 390, 0x142138)
-            gui.vanta_text_style("LOCAL CONFIGURATION", 304, 170, 0x7E93B8, 11)
-            gui.vanta_heading("Privacy by default.", 304, 200)
-            gui.vanta_text_style("No sign-in, analytics, or background requests are implemented.", 304, 248, 0xAAB9D2, 12)
-            gui.vanta_text_style("Network access happens only after an explicit button click.", 304, 274, 0x66D9BE, 12)
-            gui.vanta_text_style("DIAGNOSTICS", 304, 364, 0x7E93B8, 11)
-            gui.vanta_text_style("Operating system", 304, 396, 0xAAB9D2, 12)
-            gui.vanta_text_style("Windows native GUI", 494, 396, 0xDCE7FF, 12)
-            gui.vanta_text_style("Working directory", 304, 428, 0xAAB9D2, 12)
-            gui.vanta_text_style(current_dir, 494, 428, 0xDCE7FF, 11)
-            gui.vanta_text_style("Configuration file", 304, 462, 0xAAB9D2, 12)
-            gui.vanta_text_style("vanta_one.settings", 494, 462, 0xDCE7FF, 12)
-            gui.vanta_text_style("Config loaded", 304, 496, 0xAAB9D2, 12)
-            gui.vanta_text_style(config_text, 494, 496, 0xDCE7FF, 11)
-            gui.vanta_text_style("Session duration", 304, 530, 0xAAB9D2, 12)
-            gui.vanta_text_style("" + math.floor(elapsed_seconds) + " seconds", 494, 530, 0xDCE7FF, 12)
-            gui.vanta_text_style("OS home", 304, 564, 0xAAB9D2, 12)
-            gui.vanta_text_style(os.env_get("USERPROFILE"), 494, 564, 0xDCE7FF, 11)
-            gui.vanta_text_style("Log file", 304, 598, 0xAAB9D2, 12)
-            gui.vanta_text_style("vnt.log", 494, 598, 0xDCE7FF, 12)
+            ui_call_95 = gui.vanta_surface(282, 150, 826, 176, 0x142138)
+            ui_call_96 = gui.vanta_surface(282, 342, 826, 390, 0x142138)
+            ui_call_97 = gui.vanta_text_style("LOCAL CONFIGURATION", 304, 170, 0x7E93B8, 11)
+            ui_call_98 = gui.vanta_heading("Privacy by default.", 304, 200)
+            ui_call_99 = gui.vanta_text_style("No sign-in, analytics, or background requests are implemented.", 304, 248, 0xAAB9D2, 12)
+            ui_call_100 = gui.vanta_text_style("Network access happens only after an explicit button click.", 304, 274, 0x66D9BE, 12)
+            ui_call_101 = gui.vanta_text_style("DIAGNOSTICS", 304, 364, 0x7E93B8, 11)
+            ui_call_102 = gui.vanta_text_style("Operating system", 304, 396, 0xAAB9D2, 12)
+            ui_call_103 = gui.vanta_text_style("Windows native GUI", 494, 396, 0xDCE7FF, 12)
+            ui_call_104 = gui.vanta_text_style("Working directory", 304, 428, 0xAAB9D2, 12)
+            ui_call_105 = gui.vanta_text_style(current_dir, 494, 428, 0xDCE7FF, 11)
+            ui_call_106 = gui.vanta_text_style("Configuration file", 304, 462, 0xAAB9D2, 12)
+            ui_call_107 = gui.vanta_text_style("vanta_one.settings", 494, 462, 0xDCE7FF, 12)
+            ui_call_108 = gui.vanta_text_style("Config loaded", 304, 496, 0xAAB9D2, 12)
+            ui_call_109 = gui.vanta_text_style(config_text, 494, 496, 0xDCE7FF, 11)
+            ui_call_110 = gui.vanta_text_style("Session duration", 304, 530, 0xAAB9D2, 12)
+            ui_call_111 = gui.vanta_text_style("" + math.floor(elapsed_seconds) + " seconds", 494, 530, 0xDCE7FF, 12)
+            ui_call_112 = gui.vanta_text_style("OS home", 304, 564, 0xAAB9D2, 12)
+            ui_call_113 = gui.vanta_text_style(os.env_get("USERPROFILE"), 494, 564, 0xDCE7FF, 11)
+            ui_call_114 = gui.vanta_text_style("Log file", 304, 598, 0xAAB9D2, 12)
+            ui_call_115 = gui.vanta_text_style("vnt.log", 494, 598, 0xDCE7FF, 12)
             if gui.vanta_button_sized("Save settings", 304, 646, 152, 40) {
-                config.save("vanta_one.settings", "theme=midnight\nnetwork=manual\nlast_profile=" + selected_profile + "\n")
+                ui_call_116 = config.save("vanta_one.settings", "theme=midnight\nnetwork=manual\nlast_profile=" + selected_profile + "\n")
                 status_message = "Settings saved."
-                log.info("Settings saved.")
+                ui_call_117 = log.info("Settings saved.")
             }
             if gui.vanta_button_sized("Write diagnostic", 468, 646, 176, 40) {
-                fs.write_text("vanta_one_diagnostics.txt", "Vanta One diagnostic\nWorking directory: " + current_dir + "\nElapsed seconds: " + elapsed_seconds + "\nRequests: " + request_count + "\nDownloads: " + download_count + "\nLaunches: " + launch_count + "\n")
+                ui_call_118 = fs.write_text("vanta_one_diagnostics.txt", "Vanta One diagnostic\nWorking directory: " + current_dir + "\nElapsed seconds: " + elapsed_seconds + "\nRequests: " + request_count + "\nDownloads: " + download_count + "\nLaunches: " + launch_count + "\n")
                 status_message = "Wrote vanta_one_diagnostics.txt."
-                log.info("Diagnostic report written.")
+                ui_call_119 = log.info("Diagnostic report written.")
             }
             if gui.vanta_button_sized("Open activity", 656, 646, 146, 40) { page = "Activity" }
         }
 
         if page == "Activity" {
-            gui.vanta_surface(282, 150, 826, 582, 0x142138)
-            gui.vanta_text_style("LOCAL ACTIVITY", 304, 170, 0x7E93B8, 11)
-            gui.vanta_heading("What this session did", 304, 200)
-            gui.vanta_text_style(activity_message, 304, 250, 0xDCE7FF, 13)
-            gui.vanta_text_style("The logger appends to vnt.log in the current working directory.", 304, 284, 0xAAB9D2, 12)
-            gui.vanta_text_style("SESSION COUNTERS", 304, 328, 0x7E93B8, 11)
-            gui.vanta_text_style("Launch actions: " + launch_count, 304, 358, 0xDCE7FF, 13)
-            gui.vanta_text_style("HTTP requests: " + request_count, 304, 390, 0xDCE7FF, 13)
-            gui.vanta_text_style("Successful downloads: " + download_count, 304, 422, 0xDCE7FF, 13)
-            gui.vanta_text_style("Elapsed seconds: " + math.floor(elapsed_seconds), 304, 454, 0xDCE7FF, 13)
-            gui.vanta_text_style("RECENT LOG CONTENT", 304, 502, 0x7E93B8, 11)
+            ui_call_120 = gui.vanta_surface(282, 150, 826, 582, 0x142138)
+            ui_call_121 = gui.vanta_text_style("LOCAL ACTIVITY", 304, 170, 0x7E93B8, 11)
+            ui_call_122 = gui.vanta_heading("What this session did", 304, 200)
+            ui_call_123 = gui.vanta_text_style(activity_message, 304, 250, 0xDCE7FF, 13)
+            ui_call_124 = gui.vanta_text_style("The logger appends to vnt.log in the current working directory.", 304, 284, 0xAAB9D2, 12)
+            ui_call_125 = gui.vanta_text_style("SESSION COUNTERS", 304, 328, 0x7E93B8, 11)
+            ui_call_126 = gui.vanta_text_style("Launch actions: " + launch_count, 304, 358, 0xDCE7FF, 13)
+            ui_call_127 = gui.vanta_text_style("HTTP requests: " + request_count, 304, 390, 0xDCE7FF, 13)
+            ui_call_128 = gui.vanta_text_style("Successful downloads: " + download_count, 304, 422, 0xDCE7FF, 13)
+            ui_call_129 = gui.vanta_text_style("Elapsed seconds: " + math.floor(elapsed_seconds), 304, 454, 0xDCE7FF, 13)
+            ui_call_130 = gui.vanta_text_style("RECENT LOG CONTENT", 304, 502, 0x7E93B8, 11)
             if gui.vanta_button_sized("Refresh log", 304, 532, 140, 40) {
                 if fs.exists("vnt.log") {
                     log_content = fs.read_text("vnt.log")
@@ -375,23 +375,23 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                     status_message = "vnt.log does not exist yet."
                 }
             }
-            gui.vanta_text_style("Full logs remain ordinary text. No log upload exists.", 304, 590, 0x66D9BE, 12)
-            gui.vanta_text_style("The activity page intentionally avoids dumping large logs into the frame.", 304, 620, 0xAAB9D2, 11)
+            ui_call_131 = gui.vanta_text_style("Full logs remain ordinary text. No log upload exists.", 304, 590, 0x66D9BE, 12)
+            ui_call_132 = gui.vanta_text_style("The activity page intentionally avoids dumping large logs into the frame.", 304, 620, 0xAAB9D2, 11)
             if gui.vanta_button_sized("Export counters", 304, 670, 170, 40) {
-                fs.write_text("vanta_one_session.txt", "Vanta One session\nLaunches: " + launch_count + "\nRequests: " + request_count + "\nDownloads: " + download_count + "\nElapsed seconds: " + elapsed_seconds + "\nLast activity: " + activity_message + "\n")
+                ui_call_133 = fs.write_text("vanta_one_session.txt", "Vanta One session\nLaunches: " + launch_count + "\nRequests: " + request_count + "\nDownloads: " + download_count + "\nElapsed seconds: " + elapsed_seconds + "\nLast activity: " + activity_message + "\n")
                 status_message = "Exported vanta_one_session.txt."
-                log.info("Session counters exported.")
+                ui_call_134 = log.info("Session counters exported.")
             }
         }
 
         if gui.vanta_button_sized("Quit Vanta One", 970, 746, 160, 32) {
             running = false
-            log.info("Vanta One closed.")
+            ui_call_135 = log.info("Vanta One closed.")
         }
-        gui.vanta_gui_present()
-        time.sleep_ms(16)
+        ui_call_136 = gui.vanta_gui_present()
+        ui_call_137 = time.sleep_ms(16)
     }
-    gui.vanta_gui_close()
+    ui_call_138 = gui.vanta_gui_close()
 } else {
-    io.write_line("Could not create the Vanta One window. This GUI currently requires Windows.")
+    ui_call_139 = io.write_line("Could not create the Vanta One window. This GUI currently requires Windows.")
 }

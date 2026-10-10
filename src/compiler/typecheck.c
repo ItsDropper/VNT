@@ -88,6 +88,59 @@ static void discard_symbols_to(TypeChecker *tc, int count) {
     }
 }
 
+/* Branch analysis must not make the else branch depend on the then branch's
+   inferred types. Merge only symbols that existed before either branch. */
+typedef struct {
+    TypeKind type;
+    int dynamic;
+} SymbolState;
+
+static SymbolState *snapshot_symbols(TypeChecker *tc, int count) {
+    if (count <= 0) return NULL;
+    SymbolState *states = malloc(sizeof(*states) * (size_t)count);
+    if (!states) {
+        error(tc, "out of memory.");
+        return NULL;
+    }
+    for (int i = 0; i < count; ++i) {
+        states[i].type = tc->symbols[i].type;
+        states[i].dynamic = tc->symbols[i].dynamic;
+    }
+    return states;
+}
+
+static void restore_symbols(TypeChecker *tc, const SymbolState *states,
+                            int count) {
+    for (int i = 0; i < count; ++i) {
+        tc->symbols[i].type = states[i].type;
+        tc->symbols[i].dynamic = states[i].dynamic;
+    }
+}
+
+static void merge_branch_symbols(TypeChecker *tc, const SymbolState *before,
+                                 const SymbolState *then_state, int count) {
+    for (int i = 0; i < count; ++i) {
+        TypeKind a = then_state[i].type;
+        TypeKind b = tc->symbols[i].type;
+        if (then_state[i].dynamic || tc->symbols[i].dynamic ||
+            (a != b && a != TY_UNKNOWN && b != TY_UNKNOWN)) {
+            if (tc->symbols[i].explicit_type) {
+                /* Explicit declarations are validated at each assignment. */
+                tc->symbols[i].type = before[i].type;
+                tc->symbols[i].dynamic = before[i].dynamic;
+            } else {
+                tc->symbols[i].type = TY_UNKNOWN;
+                tc->symbols[i].dynamic = 1;
+            }
+        } else if (a == TY_UNKNOWN || b == TY_UNKNOWN) {
+            tc->symbols[i].type = TY_UNKNOWN;
+            tc->symbols[i].dynamic = then_state[i].dynamic || tc->symbols[i].dynamic;
+        } else {
+            tc->symbols[i].type = a;
+        }
+    }
+}
+
 static int numeric(TypeKind t) { return t == TY_INT || t == TY_FLOAT; }
 
 static TypeKind type_from_name(const char *name) {
@@ -491,12 +544,22 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                     error(tc, "if condition must be boolean.");
                 {
                     int outer_count = tc->count;
+                    SymbolState *before = snapshot_symbols(tc, outer_count);
+                    if (outer_count && !before) break;
+
                     check_statements(tc, n->if_statement.then_branch);
+                    SymbolState *then_state = snapshot_symbols(tc, outer_count);
                     discard_symbols_to(tc, outer_count);
+
+                    restore_symbols(tc, before, outer_count);
                     if (!tc->error) {
                         check_statements(tc, n->if_statement.else_branch);
                         discard_symbols_to(tc, outer_count);
+                        if (then_state)
+                            merge_branch_symbols(tc, before, then_state, outer_count);
                     }
+                    free(then_state);
+                    free(before);
                 }
                 break;
             }

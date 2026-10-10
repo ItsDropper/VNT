@@ -31,6 +31,14 @@ int compiler_compile(AstNode *program, const char *assembly_path) {
         vnt_ir_free(&ir);
         return 0;
     }
+    char dataflow_diagnostic[256];
+    if (!vnt_cfg_check_definite_assignment(&ir, &cfg, dataflow_diagnostic,
+                                           sizeof(dataflow_diagnostic))) {
+        fprintf(stderr, "Native compiler: %s.\n", dataflow_diagnostic);
+        vnt_cfg_free(&cfg);
+        vnt_ir_free(&ir);
+        return 0;
+    }
     vnt_cfg_free(&cfg);
 
     if (!vnt_emit_x86_64(&ir, assembly_path)) {

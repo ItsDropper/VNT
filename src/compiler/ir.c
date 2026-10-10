@@ -459,11 +459,107 @@ static int hir_copy_node(const VntIrProgram *old, VntIrProgram *out,
     return 1;
 }
 
+
+static size_t hir_child_role(const VntIrProgram *ir, size_t parent,
+                             VntIrEdgeRole role) {
+    for (size_t c = ir->nodes[parent].first_child; c != VNT_IR_NO_NODE;
+         c = ir->nodes[c].next_sibling)
+        if (ir->nodes[c].role == role) return c;
+    return VNT_IR_NO_NODE;
+}
+
+static int statement_role(VntIrEdgeRole role) {
+    return role == VNT_IR_EDGE_STATEMENT || role == VNT_IR_EDGE_THEN ||
+           role == VNT_IR_EDGE_ELSE || role == VNT_IR_EDGE_BODY;
+}
+
+/* Drop statements after unconditional terminators within the same sequence.
+   Child links are rebuilt so the compaction pass only copies reachable nodes. */
+static void hir_prune_sequence(VntIrProgram *ir, size_t parent, size_t *changed) {
+    unsigned char terminated[VNT_IR_EDGE_OPERAND + 1] = {0};
+    VntIrNode *p = &ir->nodes[parent];
+    size_t old = p->first_child, first = VNT_IR_NO_NODE, last = VNT_IR_NO_NODE;
+    size_t kept = 0;
+    while (old != VNT_IR_NO_NODE) {
+        size_t current = old;
+        old = ir->nodes[current].next_sibling;
+        VntIrNode *child = &ir->nodes[current];
+        int drop = statement_role(child->role) && terminated[child->role];
+        if (drop) {
+            ++*changed;
+            continue;
+        }
+        if (first == VNT_IR_NO_NODE) first = current;
+        else ir->nodes[last].next_sibling = current;
+        last = current;
+        ++kept;
+        if (statement_role(child->role) &&
+            (child->opcode == VNT_IR_RETURN || child->opcode == VNT_IR_BREAK ||
+             child->opcode == VNT_IR_CONTINUE))
+            terminated[child->role] = 1;
+    }
+    if (last != VNT_IR_NO_NODE) ir->nodes[last].next_sibling = VNT_IR_NO_NODE;
+    p->first_child = first;
+    p->last_child = last;
+    p->child_count = kept;
+}
+
+/* Control simplification only removes code that is statically unreachable:
+   constant if/while conditions and statements following unconditional exits. */
+static void hir_simplify_control_flow(VntIrProgram *ir, size_t index,
+                                      size_t *changed) {
+    VntIrNode *n = &ir->nodes[index];
+    for (size_t c = n->first_child; c != VNT_IR_NO_NODE;) {
+        size_t next = ir->nodes[c].next_sibling;
+        hir_simplify_control_flow(ir, c, changed);
+        c = next;
+    }
+
+    if (n->opcode == VNT_IR_IF) {
+        size_t cond = hir_child_role(ir, index, VNT_IR_EDGE_CONDITION);
+        if (cond != VNT_IR_NO_NODE && ir->nodes[cond].opcode == VNT_IR_BOOLEAN) {
+            VntIrEdgeRole chosen = ir->nodes[cond].value.boolean
+                ? VNT_IR_EDGE_THEN : VNT_IR_EDGE_ELSE;
+            size_t first = VNT_IR_NO_NODE, last = VNT_IR_NO_NODE, count = 0;
+            for (size_t c = n->first_child; c != VNT_IR_NO_NODE;
+                 c = ir->nodes[c].next_sibling) {
+                if (ir->nodes[c].role != chosen) continue;
+                if (first == VNT_IR_NO_NODE) first = c;
+                last = c;
+                ++count;
+            }
+            if (last != VNT_IR_NO_NODE) {
+                ir->nodes[last].next_sibling = VNT_IR_NO_NODE;
+                for (size_t c = first; c != VNT_IR_NO_NODE;
+                     c = ir->nodes[c].next_sibling)
+                    ir->nodes[c].role = VNT_IR_EDGE_STATEMENT;
+            }
+            n->opcode = VNT_IR_PROGRAM;
+            n->first_child = first;
+            n->last_child = last;
+            n->child_count = count;
+            ++*changed;
+        }
+    } else if (n->opcode == VNT_IR_WHILE) {
+        size_t cond = hir_child_role(ir, index, VNT_IR_EDGE_CONDITION);
+        if (cond != VNT_IR_NO_NODE && ir->nodes[cond].opcode == VNT_IR_BOOLEAN &&
+            !ir->nodes[cond].value.boolean) {
+            n->opcode = VNT_IR_PROGRAM;
+            n->first_child = n->last_child = VNT_IR_NO_NODE;
+            n->child_count = 0;
+            ++*changed;
+        }
+    }
+
+    hir_prune_sequence(ir, index, changed);
+}
+
 int vnt_ir_optimize(VntIrProgram *ir) {
     if (!ir || !ir->nodes || !ir->node_count || !vnt_ir_validate(ir)) return 0;
 
     size_t changed = 0;
     if (!hir_fold_node(ir, ir->root, &changed)) return 0;
+    hir_simplify_control_flow(ir, ir->root, &changed);
 
     VntIrProgram compact = {0};
     compact.root = VNT_IR_NO_NODE;

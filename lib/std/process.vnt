@@ -1,0 +1,35 @@
+# VNT standard child-process utilities.
+# args must be an array of strings; arguments are not interpreted by a shell.
+# A process handle is an opaque runtime value.
+
+export fun start(executable, args) {
+    return process_start(executable, args)
+}
+
+export fun poll(process) {
+    return process_poll(process)
+}
+
+export fun wait(process, timeout_ms) {
+    return process_wait(process, timeout_ms)
+}
+
+export fun pid(process) {
+    return process_pid(process)
+}
+
+export fun terminate(process) {
+    return process_terminate(process)
+}
+
+export fun stdout(process) {
+    return process_stdout(process)
+}
+
+export fun stderr(process) {
+    return process_stderr(process)
+}
+
+export fun exit_code(process) {
+    return process_exit_code(process)
+}

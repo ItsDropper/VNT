@@ -64,6 +64,10 @@ export fun vanta_input_set(text, x, y) {
     return gui_input_set(text, x, y)
 }
 
+export fun vanta_textarea_set(text, x, y) {
+    return gui_textarea_set(text, x, y)
+}
+
 export fun vanta_surface(x, y, width, height, color) {
     return gui_panel_color(x, y, width, height, color)
 }

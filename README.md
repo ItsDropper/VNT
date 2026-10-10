@@ -157,6 +157,44 @@ print(cwd())
 print(time_ms())
 ```
 
+## Standard library: I/O and filesystem
+
+VNT ships source-level standard modules in `lib/std/`. Import them with the existing module system; no package download or network access is required.
+
+```vnt
+import "../lib/std/io.vnt" as io
+import "../lib/std/fs.vnt" as fs
+
+io.write_line("Hello from VNT")
+io.write_error("Diagnostic message\n")
+
+path = "notes.txt"
+if !fs.exists(path) {
+    fs.write_text(path, "first line\n")
+}
+fs.append_text(path, "second line\n")
+print(fs.read_text(path))
+print(fs.is_file(path))
+print(fs.list_dir("."))
+```
+
+### `std.io`
+
+- `io.read_line(prompt)` — read one line from standard input.
+- `io.write(text)` / `io.write_line(text)` — write to standard output, with or without a newline.
+- `io.write_error(text)` — write to standard error.
+
+### `std.fs`
+
+- `fs.exists(path)`, `fs.is_file(path)`, `fs.is_dir(path)` — inspect a path.
+- `fs.read_text(path)`, `fs.write_text(path, contents)`, `fs.append_text(path, contents)` — text file I/O.
+- `fs.create_dir(path)` — create one directory level.
+- `fs.list_dir(path)` — return an array of entry names in a directory; an invalid or inaccessible directory raises a runtime error.
+- `fs.rename_path(old_path, new_path)` and `fs.remove_file(path)` — rename and remove a file.
+
+Paths are relative to the process working directory unless absolute. `read_text` raises a runtime error when a file cannot be read; write, append, rename, create, and remove operations return booleans. The underlying runtime uses native platform APIs. The modules are source wrappers over these runtime primitives, so they do not duplicate file handling in VNT code.
+
+Run `.\tests\run_language_checks.ps1` to build VNT and run the language, module, I/O, and filesystem checks.
 ## Real application example: VNT Desk
 
 VNT Desk is a small interactive developer journal demonstrating that VNT can build a

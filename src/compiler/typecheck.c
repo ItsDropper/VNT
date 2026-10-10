@@ -317,10 +317,27 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 return TY_BOOL;
             }
 
-            if (op == BINARY_EQUAL || op == BINARY_NOT_EQUAL ||
-                op == BINARY_GREATER || op == BINARY_LESS ||
-                op == BINARY_GREATER_EQUAL || op == BINARY_LESS_EQUAL)
+            if (op == BINARY_EQUAL || op == BINARY_NOT_EQUAL) {
+                /*
+                 * Equality is defined for values of the same static type and
+                 * for mixed numeric values. Unknown values remain permitted
+                 * because inferred variables can intentionally be dynamic.
+                 */
+                if (left != TY_UNKNOWN && right != TY_UNKNOWN &&
+                    left != right && !(numeric(left) && numeric(right))) {
+                    error(tc, "equality operands must have compatible types.");
+                }
                 return TY_BOOL;
+            }
+
+            if (op == BINARY_GREATER || op == BINARY_LESS ||
+                op == BINARY_GREATER_EQUAL || op == BINARY_LESS_EQUAL) {
+                if ((!numeric(left) && left != TY_UNKNOWN) ||
+                    (!numeric(right) && right != TY_UNKNOWN)) {
+                    error(tc, "ordered comparisons require numeric operands.");
+                }
+                return TY_BOOL;
+            }
 
             if (op == BINARY_ADD &&
                 (left == TY_STRING || right == TY_STRING)) {

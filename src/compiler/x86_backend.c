@@ -160,6 +160,8 @@ static const char *builtin(const char *s,int *arity) {
       {"abs","vnt_abs",1},{"floor","vnt_floor",1},{"ceil","vnt_ceil",1},{"min","vnt_min",2},{"max","vnt_max",2},
       {"mod","vnt_mod",2},{"len","vnt_len",1},{"input","vnt_input",1},{"fs_exists","vnt_fs_exists",1},
       {"fs_read","vnt_fs_read",1},{"fs_write","vnt_fs_write",2},{"fs_append","vnt_fs_append",2},{"fs_delete","vnt_fs_delete",1},
+      {"fs_rename","vnt_fs_rename",2},{"fs_is_file","vnt_fs_is_file",1},{"fs_is_dir","vnt_fs_is_dir",1},{"fs_list","vnt_fs_list",1},
+      {"io_write","vnt_io_write",1},{"io_write_error","vnt_io_write_error",1},
       {"dir_create","vnt_dir_create",1},{"cwd","vnt_cwd",0},{"env_get","vnt_env_get",1},{"env_set","vnt_env_set",2},
       {"time_ms","vnt_time_ms",0},{"sleep_ms","vnt_sleep_ms",1},{"process_start","vnt_process_start",2},
       {"process_poll","vnt_process_poll",1},{"process_wait","vnt_process_wait",2},{"process_pid","vnt_process_pid",1},

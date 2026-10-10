@@ -1,6 +1,7 @@
 #include <vnt/ir_lower.h>
 #include <limits.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -351,7 +352,6 @@ static void resolver_bind_expr(HirResolver *resolver, size_t index) {
             if (resolver->error) return;
             resolver->depth++;
             resolver_bind_role(resolver, index, VNT_IR_EDGE_THEN);
-            resolver->count = resolver->count; /* Keep outer symbols alive. */
             if (resolver->error) return;
             /* Remove declarations from the then branch before resolving else. */
             while (resolver->count &&

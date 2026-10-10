@@ -386,6 +386,18 @@ int vnt_cfg_check_definite_assignment(const VntIrProgram *ir, const VntCfg *cfg,
             snprintf(diagnostic, diagnostic_capacity, "invalid HIR or CFG for dataflow analysis");
         return 0;
     }
+    for (size_t b = 0; b < cfg->block_count; ++b) {
+        const VntCfgBlock *block = &cfg->blocks[b];
+        if ((block->instruction != VNT_IR_NO_NODE &&
+             block->instruction >= ir->node_count) ||
+            (block->condition != VNT_IR_NO_NODE &&
+             block->condition >= ir->node_count)) {
+            if (diagnostic && diagnostic_capacity)
+                snprintf(diagnostic, diagnostic_capacity,
+                         "CFG block references an invalid HIR node");
+            return 0;
+        }
+    }
 
     VariableSet variables = {0};
     if (!collect_variables(ir, &variables)) goto allocation_failure;

@@ -2,6 +2,8 @@
 # Exercises typed calls, recursion, loops, branches, precedence, booleans,
 # string concatenation, floating-point arithmetic, and global mutation.
 
+test_global = 40
+
 fun factorial(n: int) -> int {
     if n <= 1 {
         return 1
@@ -42,8 +44,6 @@ fun global_increment() -> int {
     test_global = test_global + 1
     return test_global
 }
-
-test_global = 40
 
 print("factorial=" + factorial(10))
 print("fibonacci=" + fibonacci(12))

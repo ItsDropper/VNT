@@ -689,8 +689,12 @@ static int hir_propagate_statement(VntIrProgram *ir, size_t index,
         }
         hir_constants_clear(env);
     } else if (node->opcode == VNT_IR_WHILE) {
-        size_t condition = hir_child_role(ir, index, VNT_IR_EDGE_CONDITION);
-        hir_substitute_expression(ir, condition, env, changed);
+        /*
+         * A loop condition may depend on variables changed by the loop body.
+         * Never propagate pre-loop constants into it: doing so can turn
+         * "while i < limit" into a permanently true/false condition.
+         */
+        hir_constants_clear(env);
         size_t body = hir_child_role(ir, index, VNT_IR_EDGE_BODY);
         if (body != VNT_IR_NO_NODE && ir->nodes[body].opcode == VNT_IR_PROGRAM) {
             HirConstantEnvironment loop = {0};

@@ -437,7 +437,7 @@ Text inputs support basic single-byte character input, Backspace, and Ctrl+A rep
 
 ### HTTPS and API requests
 
-`lib/std/net.vnt` wraps the system `curl` executable through VNT's native child-process API. It supports HTTPS GET requests, one custom request header, bearer-token GET requests, JSON POST requests, HTTP status retrieval, and file downloads.
+`lib/std/net.vnt` wraps the system `curl` executable through VNT's native child-process API. It supports GET with custom headers or bearer tokens, JSON GET/POST/PUT/PATCH, URL-encoded form POST, DELETE, HTTP status and HEAD checks, and file downloads with optional headers or bearer tokens.
 
 ```vnt
 import "../lib/std/net.vnt" as net
@@ -461,7 +461,7 @@ print(response)
 print(downloaded)
 ```
 
-The networking module requires `curl.exe` on Windows or `curl` on Unix-like systems to be available on `PATH`. TLS certificate verification remains enabled, redirects are followed, and requests have bounded timeouts. Arguments are passed directly to the child process rather than through a shell. The helpers return the response body, an HTTP status string, or a success boolean; a transport failure in body-returning helpers produces an empty string. HTTP status codes such as 404 are not treated as transport failures by `get`, so inspect `status(url)` when status matters. `download` uses curl's fail-on-HTTP-error behavior.
+The networking module requires `curl.exe` on Windows or `curl` on Unix-like systems to be available on `PATH`. TLS certificate verification remains enabled, redirects are followed, and requests have bounded timeouts. Arguments are passed directly to the child process rather than through a shell. Body helpers return the response body, or an empty string on transport failure. Status helpers return a three-digit HTTP status string (or `"000"` on transport failure); `head_status` performs a HEAD request. HTTP status codes such as 404 are not transport failures for ordinary body helpers, so inspect `status(url)` when status matters. Download helpers return a boolean and use curl's fail-on-HTTP-error behavior. Form POST accepts an already URL-encoded body (for example, `name=Jane%20Doe&active=true`).
 
 This is a pragmatic standard-library bridge, not a native HTTP implementation. JSON response bodies are returned as strings; a JSON parser/serializer and richer arbitrary-header request API remain future work. The compile check is offline and does not call external services.
 

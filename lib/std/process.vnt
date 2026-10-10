@@ -33,3 +33,8 @@ export fun stderr(process) {
 export fun exit_code(process) {
     return process_exit_code(process)
 }
+
+# Launch an app or script visibly without capturing its output.
+export fun launch(path) {
+    return process_launch(path)
+}

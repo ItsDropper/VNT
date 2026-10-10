@@ -87,9 +87,9 @@ static AstNode *parse_primary(Parser *parser) {
             if (c == '\\' && source_index < token.length) {
                 char escaped = token.start[source_index++];
                 switch (escaped) {
-                    case 'n': c = '\\n'; break;
-                    case 'r': c = '\\r'; break;
-                    case 't': c = '\\t'; break;
+                    case 'n': c = '\n'; break;
+                    case 'r': c = '\r'; break;
+                    case 't': c = '\t'; break;
                     case '\\': c = '\\'; break;
                     case '"': c = '"'; break;
                     default:

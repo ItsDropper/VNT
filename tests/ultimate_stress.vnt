@@ -1,0 +1,58 @@
+# VNT Ultimate Stress Test
+# Exercises typed calls, recursion, loops, branches, precedence, booleans,
+# string concatenation, floating-point arithmetic, and global mutation.
+
+fun factorial(n: int) -> int {
+    if n <= 1 {
+        return 1
+    } else {
+        return n * factorial(n - 1)
+    }
+}
+
+fun fibonacci(n: int) -> int {
+    if n <= 1 {
+        return n
+    } else {
+        return fibonacci(n - 1) + fibonacci(n - 2)
+    }
+}
+
+fun sum_to(limit: int) -> int {
+    total = 0
+    i = 1
+    while i <= limit {
+        total = total + i
+        i = i + 1
+    }
+    return total
+}
+
+fun classify(value: int) -> string {
+    if value < 0 {
+        return "negative"
+    } else if value == 0 {
+        return "zero"
+    } else {
+        return "positive"
+    }
+}
+
+fun global_increment() -> int {
+    test_global = test_global + 1
+    return test_global
+}
+
+test_global = 40
+
+print("factorial=" + factorial(10))
+print("fibonacci=" + fibonacci(12))
+print("sum=" + sum_to(100))
+print("precedence=" + (2 + 3 * 4))
+print("parentheses=" + ((2 + 3) * 4))
+print("classify=" + classify(-7) + "," + classify(0) + "," + classify(9))
+print("logic=" + (true && !false))
+print("comparison=" + (5 < 8 && 8 >= 8 && 3 != 4))
+print("float=" + (1.5 * 4.0 + 0.25))
+print("global=" + global_increment() + "," + global_increment())
+print("ULTIMATE_STRESS_OK")

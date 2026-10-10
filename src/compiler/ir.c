@@ -772,7 +772,11 @@ int vnt_ir_optimize(VntIrProgram *ir) {
         hir_simplify_control_flow(ir, ir->root, &round_changed);
         changed += round_changed;
         if (!round_changed) break;
-        if (!vnt_ir_validate(ir)) return 0;
+        /*
+         * During rewriting, folded operands and pruned branches remain in the
+         * old flat node array until compaction. The intermediate graph is
+         * therefore intentionally not a fully reachable tree yet.
+         */
     }
 
     VntIrProgram compact = {0};

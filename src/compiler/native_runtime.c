@@ -1262,6 +1262,43 @@ VntValue *vnt_process_exit_code(VntValue *value) {
     return vnt_int(p->done ? p->exit_code : -1);
 }
 
+/* Visible launcher for interactive desktop applications and scripts. */
+VntValue *vnt_process_launch(VntValue *path_value) {
+    const char *path = vnt_app_string(path_value, "process_launch()");
+#ifdef _WIN32
+    DWORD attrs = GetFileAttributesA(path);
+    if (attrs == INVALID_FILE_ATTRIBUTES || (attrs & FILE_ATTRIBUTE_DIRECTORY)) return vnt_bool(0);
+    const char *ext = strrchr(path, '.');
+    int is_script = ext && (!_stricmp(ext, ".bat") || !_stricmp(ext, ".cmd"));
+    STARTUPINFOA si; PROCESS_INFORMATION pi;
+    memset(&si, 0, sizeof(si)); memset(&pi, 0, sizeof(pi)); si.cb = sizeof(si);
+    char *command = NULL; const char *application = path;
+    if (is_script) {
+        char system_dir[MAX_PATH]; UINT n = GetSystemDirectoryA(system_dir, MAX_PATH);
+        if (!n || n >= MAX_PATH) return vnt_bool(0);
+        size_t exe_len = strlen(system_dir) + sizeof("\\cmd.exe");
+        char *cmd_exe = malloc(exe_len); if (!cmd_exe) return vnt_bool(0);
+        snprintf(cmd_exe, exe_len, "%s\\cmd.exe", system_dir);
+        size_t cap = strlen(cmd_exe) + strlen(path) * 2 + 32;
+        command = malloc(cap); if (!command) { free(cmd_exe); return vnt_bool(0); }
+        snprintf(command, cap, "\"%s\" /c \"\"%s\"\"", cmd_exe, path);
+        application = cmd_exe;
+    } else {
+        size_t cap = strlen(path) * 2 + 4; command = malloc(cap);
+        if (!command) return vnt_bool(0); snprintf(command, cap, "\"%s\"", path);
+    }
+    BOOL ok = CreateProcessA(application, command, NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi);
+    free(command); if (is_script) free((void *)application);
+    if (!ok) return vnt_bool(0);
+    CloseHandle(pi.hThread); CloseHandle(pi.hProcess); return vnt_bool(1);
+#else
+    struct stat st; if (stat(path, &st) != 0 || S_ISDIR(st.st_mode)) return vnt_bool(0);
+    pid_t pid = fork(); if (pid < 0) return vnt_bool(0);
+    if (pid == 0) { setsid(); execl(path, path, (char *)NULL); _exit(127); }
+    return vnt_bool(1);
+#endif
+}
+
 
 /* Read a scalar field from the Nth JSON object/key occurrence. This is a
    deliberately small accessor for API responses, not a full JSON DOM. */

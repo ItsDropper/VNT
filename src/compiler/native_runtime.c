@@ -1348,7 +1348,7 @@ typedef struct {
     COLORREF color,background;
     char text[4096];
 } VntGuiCommand;
-typedef struct { int x,y,width,height,multiline,select_all; HWND edit_hwnd; char text[4096]; } VntGuiInputState;
+typedef struct { int x,y,width,height,multiline,select_all,seen_this_frame; HWND edit_hwnd; char text[4096]; } VntGuiInputState;
 static HWND vnt_gui_hwnd;
 static int vnt_gui_width=800, vnt_gui_height=600, vnt_gui_last_key, vnt_gui_text_y=18;
 static COLORREF vnt_gui_background=RGB(11,16,32);
@@ -1572,6 +1572,7 @@ VntValue *vnt_gui_panel(VntValue *x,VntValue *y,VntValue *w,VntValue *h){
 static int vnt_gui_input_state(int x,int y,int width,int height,int multiline,int create){
     for(int i=0;i<vnt_gui_input_count;i++) if(vnt_gui_inputs[i].x==x&&vnt_gui_inputs[i].y==y){
         VntGuiInputState *state=&vnt_gui_inputs[i];
+        state->seen_this_frame=1;
         state->width=width;state->height=height;state->multiline=multiline;
         if(state->edit_hwnd&&width>0&&height>0) {
             RECT r;
@@ -1585,7 +1586,7 @@ static int vnt_gui_input_state(int x,int y,int width,int height,int multiline,in
     }
     if(!create||vnt_gui_input_count>=16)return -1;
     int i=vnt_gui_input_count++;memset(&vnt_gui_inputs[i],0,sizeof(vnt_gui_inputs[i]));
-    vnt_gui_inputs[i].x=x;vnt_gui_inputs[i].y=y;vnt_gui_inputs[i].width=width;vnt_gui_inputs[i].height=height;vnt_gui_inputs[i].multiline=multiline;return i;
+    vnt_gui_inputs[i].x=x;vnt_gui_inputs[i].y=y;vnt_gui_inputs[i].width=width;vnt_gui_inputs[i].height=height;vnt_gui_inputs[i].multiline=multiline;vnt_gui_inputs[i].seen_this_frame=1;return i;
 }
 static int vnt_gui_native_input(int index,const char *placeholder){
     if(index<0||index>=vnt_gui_input_count||!vnt_gui_hwnd)return 0;
@@ -1614,7 +1615,7 @@ static int vnt_gui_native_input(int index,const char *placeholder){
                 SetWindowPos(state->edit_hwnd,NULL,state->x,state->y,state->width,state->height,SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOREDRAW);
         }
     }
-    ShowWindow(state->edit_hwnd,SW_SHOW);
+    if(!IsWindowVisible(state->edit_hwnd))ShowWindow(state->edit_hwnd,SW_SHOW);
     return 1;
 }
 static void vnt_gui_read_native_input(int index){
@@ -1701,15 +1702,25 @@ VntValue *vnt_gui_rect(VntValue *color){VntGuiCommand *c=vnt_gui_add(VG_RECT,32,
 VntValue *vnt_gui_poll(void){
     if(!vnt_gui_hwnd)return vnt_bool(0);MSG msg;
     vnt_gui_clicked=0;
-    /* Inputs are child windows: hide stale controls at each frame, then the
-       controls actually used by the current page are shown during rendering. */
-    for(int i=0;i<vnt_gui_input_count;i++)
-        if(vnt_gui_inputs[i].edit_hwnd)ShowWindow(vnt_gui_inputs[i].edit_hwnd,SW_HIDE);
+    /* Keep native edit controls visible between frames to avoid flashing.
+       The frame marks active controls; present() hides only controls not used. */
+    for(int i=0;i<vnt_gui_input_count;i++)vnt_gui_inputs[i].seen_this_frame=0;
     while(PeekMessageA(&msg,NULL,0,0,PM_REMOVE)){if(msg.message==WM_QUIT){vnt_gui_hwnd=NULL;return vnt_bool(0);}TranslateMessage(&msg);DispatchMessageA(&msg);}
     vnt_gui_command_count=0;vnt_gui_text_y=18;
     return vnt_bool(vnt_gui_hwnd!=NULL);
 }
-VntValue *vnt_gui_present(void){if(!vnt_gui_hwnd)return vnt_bool(0);RedrawWindow(vnt_gui_hwnd,NULL,NULL,RDW_INVALIDATE|RDW_UPDATENOW|RDW_NOCHILDREN);return vnt_bool(1);}
+VntValue *vnt_gui_present(void){
+    if(!vnt_gui_hwnd)return vnt_bool(0);
+    for(int i=0;i<vnt_gui_input_count;i++) {
+        VntGuiInputState *state=&vnt_gui_inputs[i];
+        if(state->edit_hwnd && !state->seen_this_frame && IsWindowVisible(state->edit_hwnd)) {
+            if(GetFocus()==state->edit_hwnd)SetFocus(vnt_gui_hwnd);
+            ShowWindow(state->edit_hwnd,SW_HIDE);
+        }
+    }
+    RedrawWindow(vnt_gui_hwnd,NULL,NULL,RDW_INVALIDATE|RDW_UPDATENOW|RDW_NOCHILDREN);
+    return vnt_bool(1);
+}
 VntValue *vnt_gui_key(void){int key=vnt_gui_last_key;vnt_gui_last_key=0;return vnt_int(key);}
 VntValue *vnt_gui_close(void){if(vnt_gui_hwnd)DestroyWindow(vnt_gui_hwnd);vnt_gui_hwnd=NULL;vnt_gui_command_count=0;return vnt_bool(1);}
 #else

@@ -690,20 +690,17 @@ static int hir_propagate_statement(VntIrProgram *ir, size_t index,
         hir_constants_clear(env);
     } else if (node->opcode == VNT_IR_WHILE) {
         /*
-         * A loop condition may depend on variables changed by the loop body.
-         * Never propagate pre-loop constants into it: doing so can turn
-         * "while i < limit" into a permanently true/false condition.
+         * Do not propagate constants into a loop condition or through its
+         * body. Both execute repeatedly and may mutate values that were
+         * constant before the loop. Rewriting even one read in this region
+         * can turn a terminating loop into an infinite loop.
+         *
+         * The independent constant-folding pass still optimizes expressions
+         * whose operands are literal constants, without relying on dataflow
+         * facts that are invalid across iterations.
          */
         hir_constants_clear(env);
-        size_t body = hir_child_role(ir, index, VNT_IR_EDGE_BODY);
-        if (body != VNT_IR_NO_NODE && ir->nodes[body].opcode == VNT_IR_PROGRAM) {
-            HirConstantEnvironment loop = {0};
-            int ok = hir_propagate_sequence(ir, body, VNT_IR_EDGE_STATEMENT,
-                                            &loop, changed);
-            hir_constants_free(&loop);
-            if (!ok) return 0;
-        }
-        hir_constants_clear(env);
+        return 1;
     } else if (node->opcode == VNT_IR_FUNCTION) {
         size_t body = hir_child_role(ir, index, VNT_IR_EDGE_BODY);
         if (body != VNT_IR_NO_NODE && ir->nodes[body].opcode == VNT_IR_PROGRAM) {

@@ -1,0 +1,17 @@
+outer = 1
+if true {
+    outer = 2
+    branch_value = 3
+    print(branch_value)
+} else {
+    other_value = 4
+    print(other_value)
+}
+print(outer)
+if false {
+    sibling_value = 4
+} else {
+    sibling_value = 5
+    print(sibling_value)
+}
+print("SCOPE_CHECKS_OK")

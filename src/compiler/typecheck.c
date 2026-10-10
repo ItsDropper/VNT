@@ -201,7 +201,7 @@ static int builtin_arity(const char *name, int argc) {
         !strcmp(name, "sleep_ms") || !strcmp(name, "process_poll") ||
         !strcmp(name, "process_pid") || !strcmp(name, "process_terminate") ||
         !strcmp(name, "process_stdout") || !strcmp(name, "process_stderr") ||
-        !strcmp(name, "process_exit_code") || !strcmp(name, "io_write") ||
+        !strcmp(name, "process_exit_code") || !strcmp(name, "process_launch") || !strcmp(name, "io_write") ||
         !strcmp(name, "io_write_error")) return argc == 1;
     if (!strcmp(name, "process_wait") || !strcmp(name, "process_start")) return argc == 2;
     if (!strcmp(name, "fs_write") || !strcmp(name, "fs_append") ||
@@ -319,6 +319,7 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 !strcmp(n->function_call.name, "ceil"))
                 return TY_FLOAT;
             if (!strcmp(n->function_call.name, "process_start")) return TY_OBJECT;
+            if (!strcmp(n->function_call.name, "process_launch")) return TY_BOOL;
             if (!strcmp(n->function_call.name, "process_stdout") ||
                 !strcmp(n->function_call.name, "process_stderr")) return TY_STRING;
             if (!strcmp(n->function_call.name, "input") ||

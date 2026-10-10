@@ -655,6 +655,9 @@ static void hir_substitute_expression(VntIrProgram *ir, size_t index,
         size_t target = hir_child_role(ir, index, VNT_IR_EDGE_TARGET);
         if (target != VNT_IR_NO_NODE && ir->nodes[target].opcode == VNT_IR_VARIABLE)
             hir_constant_invalidate(env, ir->nodes[target].value.text);
+        else
+            /* An indirect write may alias any value currently known as constant. */
+            hir_constants_clear(env);
         return;
     }
     /*
@@ -734,6 +737,9 @@ static int hir_propagate_statement(VntIrProgram *ir, size_t index,
         size_t target = hir_child_role(ir, index, VNT_IR_EDGE_TARGET);
         if (target != VNT_IR_NO_NODE && ir->nodes[target].opcode == VNT_IR_VARIABLE)
             hir_constant_invalidate(env, ir->nodes[target].value.text);
+        else
+            /* Indirect writes can mutate variables through references or aliases. */
+            hir_constants_clear(env);
     } else {
         for (size_t child = node->first_child; child != VNT_IR_NO_NODE;
              child = ir->nodes[child].next_sibling)

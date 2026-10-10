@@ -128,6 +128,15 @@ try {
     }
     Write-Host "Lexical scope checks: PASS"
 
+    $BranchExe = Join-Path $OutDir "typecheck_branch_merge.exe"
+    & .\vnt.exe --compile tests\typecheck_branch_merge.vnt -o $BranchExe
+    if ($LASTEXITCODE -ne 0) { throw "Branch type-merge program did not compile." }
+    $branchOutput = & $BranchExe
+    if ($LASTEXITCODE -ne 0 -or ($branchOutput -join "|") -ne "text|BRANCH_MERGE_OK") {
+        throw "Unexpected branch type-merge output: $($branchOutput -join ' | ')"
+    }
+    Write-Host "Branch type merging: PASS"
+
     Write-Host "Language and module checks: PASS"
 }
 finally {

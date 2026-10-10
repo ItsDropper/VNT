@@ -14,5 +14,5 @@ export fun env_set(name, value) {
 }
 
 export fun env_has(name) {
-    return env_get(name) != null
+    return env_has(name)
 }

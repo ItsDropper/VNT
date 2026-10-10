@@ -164,6 +164,7 @@ static const char *builtin(const char *s,int *arity) {
       {"io_write","vnt_io_write",1},{"io_write_error","vnt_io_write_error",1},
       {"dir_create","vnt_dir_create",1},{"cwd","vnt_cwd",0},{"env_get","vnt_env_get",1},{"env_has","vnt_env_has",1},{"env_set","vnt_env_set",2},
       {"time_ms","vnt_time_ms",0},{"sleep_ms","vnt_sleep_ms",1},{"process_start","vnt_process_start",2},
+      {"process_launch","vnt_process_launch",1},
       {"process_poll","vnt_process_poll",1},{"process_wait","vnt_process_wait",2},{"process_pid","vnt_process_pid",1},
       {"process_terminate","vnt_process_terminate",1},{"process_stdout","vnt_process_stdout",1},{"process_stderr","vnt_process_stderr",1},
       {"process_exit_code","vnt_process_exit_code",1},{"gui_css","vnt_gui_css",1},{"gui_button","vnt_gui_button",3},

@@ -1,9 +1,11 @@
-# VNT standard networking helpers.
-# Requires curl (curl.exe on Windows, curl on Unix-like systems) on PATH.
-# TLS certificate verification stays enabled. No shell is used to pass arguments.
+# VNT standard HTTPS and API helpers.
+# Requires curl.exe on Windows or curl on Unix-like systems to be on PATH.
+# TLS verification stays enabled. Arguments are passed without a shell.
+# Body helpers return "" on transport failure; inspect status() for HTTP status.
+# JSON helpers accept a JSON string; VNT does not parse/serialize JSON yet.
 
 fun curl_executable() {
-    if env_get("OS") != null {
+    if env_has("OS") {
         return "curl.exe"
     } else {
         return "curl"
@@ -16,9 +18,7 @@ fun run_curl(args) {
     return process
 }
 
-export fun get(url) {
-    args = ["--silent", "--show-error", "--location", "--max-time", "30", url]
-    process = run_curl(args)
+fun body_or_empty(process) {
     if process_exit_code(process) == 0 {
         return process_stdout(process)
     } else {
@@ -26,30 +26,40 @@ export fun get(url) {
     }
 }
 
+fun request_args(method, url, body, content_type) {
+    return ["--silent", "--show-error", "--location", "--max-time", "30",
+            "--request", method, "--header", "Content-Type: " + content_type,
+            "--data-binary", body, url]
+}
+
+export fun get(url) {
+    args = ["--silent", "--show-error", "--location", "--max-time", "30", url]
+    return body_or_empty(run_curl(args))
+}
+
 export fun get_with_header(url, header) {
-    args = ["--silent", "--show-error", "--location", "--max-time", "30", "--header", header, url]
-    process = run_curl(args)
-    if process_exit_code(process) == 0 {
-        return process_stdout(process)
-    } else {
-        return ""
-    }
+    args = ["--silent", "--show-error", "--location", "--max-time", "30",
+            "--header", header, url]
+    return body_or_empty(run_curl(args))
 }
 
 export fun get_bearer(url, token) {
     return get_with_header(url, "Authorization: Bearer " + token)
 }
 
-export fun post_json(url, json_body) {
+export fun get_json(url) {
+    return get_with_header(url, "Accept: application/json")
+}
+
+export fun get_json_bearer(url, token) {
     args = ["--silent", "--show-error", "--location", "--max-time", "30",
-            "--request", "POST", "--header", "Content-Type: application/json",
-            "--data-binary", json_body, url]
-    process = run_curl(args)
-    if process_exit_code(process) == 0 {
-        return process_stdout(process)
-    } else {
-        return ""
-    }
+            "--header", "Accept: application/json",
+            "--header", "Authorization: Bearer " + token, url]
+    return body_or_empty(run_curl(args))
+}
+
+export fun post_json(url, json_body) {
+    return body_or_empty(run_curl(request_args("POST", url, json_body, "application/json")))
 }
 
 export fun post_json_bearer(url, token, json_body) {
@@ -57,16 +67,51 @@ export fun post_json_bearer(url, token, json_body) {
             "--request", "POST", "--header", "Content-Type: application/json",
             "--header", "Authorization: Bearer " + token,
             "--data-binary", json_body, url]
-    process = run_curl(args)
-    if process_exit_code(process) == 0 {
-        return process_stdout(process)
-    } else {
-        return ""
-    }
+    return body_or_empty(run_curl(args))
+}
+
+export fun put_json(url, json_body) {
+    return body_or_empty(run_curl(request_args("PUT", url, json_body, "application/json")))
+}
+
+export fun put_json_bearer(url, token, json_body) {
+    args = ["--silent", "--show-error", "--location", "--max-time", "30",
+            "--request", "PUT", "--header", "Content-Type: application/json",
+            "--header", "Authorization: Bearer " + token,
+            "--data-binary", json_body, url]
+    return body_or_empty(run_curl(args))
+}
+
+export fun patch_json(url, json_body) {
+    return body_or_empty(run_curl(request_args("PATCH", url, json_body, "application/json")))
+}
+
+export fun patch_json_bearer(url, token, json_body) {
+    args = ["--silent", "--show-error", "--location", "--max-time", "30",
+            "--request", "PATCH", "--header", "Content-Type: application/json",
+            "--header", "Authorization: Bearer " + token,
+            "--data-binary", json_body, url]
+    return body_or_empty(run_curl(args))
+}
+
+export fun post_form(url, encoded_form_body) {
+    return body_or_empty(run_curl(request_args("POST", url, encoded_form_body, "application/x-www-form-urlencoded")))
+}
+
+export fun delete_request(url) {
+    args = ["--silent", "--show-error", "--location", "--max-time", "30",
+            "--request", "DELETE", url]
+    return body_or_empty(run_curl(args))
+}
+
+export fun delete_bearer(url, token) {
+    args = ["--silent", "--show-error", "--location", "--max-time", "30",
+            "--request", "DELETE", "--header", "Authorization: Bearer " + token, url]
+    return body_or_empty(run_curl(args))
 }
 
 export fun status(url) {
-    if env_get("OS") != null {
+    if env_has("OS") {
         sink = "NUL"
     } else {
         sink = "/dev/null"
@@ -81,9 +126,58 @@ export fun status(url) {
     }
 }
 
+export fun status_with_header(url, header) {
+    if env_has("OS") {
+        sink = "NUL"
+    } else {
+        sink = "/dev/null"
+    }
+    args = ["--silent", "--show-error", "--location", "--max-time", "30",
+            "--output", sink, "--write-out", "%{http_code}",
+            "--header", header, url]
+    process = run_curl(args)
+    if process_exit_code(process) == 0 {
+        return process_stdout(process)
+    } else {
+        return "000"
+    }
+}
+
+export fun status_bearer(url, token) {
+    return status_with_header(url, "Authorization: Bearer " + token)
+}
+
+export fun head_status(url) {
+    if env_has("OS") {
+        sink = "NUL"
+    } else {
+        sink = "/dev/null"
+    }
+    args = ["--silent", "--show-error", "--location", "--max-time", "30",
+            "--head", "--output", sink, "--write-out", "%{http_code}", url]
+    process = run_curl(args)
+    if process_exit_code(process) == 0 {
+        return process_stdout(process)
+    } else {
+        return "000"
+    }
+}
+
 export fun download(url, destination) {
     args = ["--silent", "--show-error", "--location", "--fail",
             "--max-time", "120", "--output", destination, url]
     process = run_curl(args)
     return process_exit_code(process) == 0
+}
+
+export fun download_with_header(url, destination, header) {
+    args = ["--silent", "--show-error", "--location", "--fail",
+            "--max-time", "120", "--header", header,
+            "--output", destination, url]
+    process = run_curl(args)
+    return process_exit_code(process) == 0
+}
+
+export fun download_bearer(url, destination, token) {
+    return download_with_header(url, destination, "Authorization: Bearer " + token)
 }

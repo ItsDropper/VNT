@@ -901,13 +901,14 @@ VntValue *vnt_fs_list(VntValue *path) {
 #ifdef _WIN32
     size_t n = strlen(p);
     char *pattern = malloc(n + 3);
-    if (!pattern) { fprintf(stderr, "Runtime error: out of memory in fs_list().\\n"); exit(1); }
-    snprintf(pattern, n + 3, "%s%s*", p, n && (p[n-1] == '/' || p[n-1] == '\\\\') ? "" : "\\\\");
+    if (!pattern) { fprintf(stderr, "Runtime error: out of memory in fs_list().\n"); exit(1); }
+    snprintf(pattern, n + 3, "%s%s*", p,
+             n && (p[n-1] == '/' || p[n-1] == '\\') ? "" : "\\");
     WIN32_FIND_DATAA data;
     HANDLE h = FindFirstFileA(pattern, &data);
     free(pattern);
     if (h == INVALID_HANDLE_VALUE) {
-        fprintf(stderr, "Runtime error: fs_list() could not list '%s'.\\n", p);
+        fprintf(stderr, "Runtime error: fs_list() could not list '%s'.\n", p);
         exit(1);
     }
     do {
@@ -918,7 +919,7 @@ VntValue *vnt_fs_list(VntValue *path) {
 #else
     DIR *dir = opendir(p);
     if (!dir) {
-        fprintf(stderr, "Runtime error: fs_list() could not list '%s'.\\n", p);
+        fprintf(stderr, "Runtime error: fs_list() could not list '%s'.\n", p);
         exit(1);
     }
     struct dirent *entry;

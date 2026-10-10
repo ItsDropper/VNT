@@ -188,6 +188,17 @@ try {
     }
     Write-Host "Standard filesystem library: PASS"
 
+    $StdFoundationExe = Join-Path $OutDir "std_foundation.exe"
+    & .\vnt.exe --compile tests\std_foundation.vnt -o $StdFoundationExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard foundation libraries did not compile." }
+    $foundationOutput = & $StdFoundationExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard foundation program exited unsuccessfully." }
+    $foundationExpected = @("49", "10", "15", "2", "2", "true", "ready", "true", "true", "STD_FOUNDATION_OK")
+    if (($foundationOutput -join "|") -ne ($foundationExpected -join "|")) {
+        throw "Unexpected standard foundation output: $($foundationOutput -join ' | ')"
+    }
+    Write-Host "Standard math/time/OS/process libraries: PASS"
+
     Write-Host "Language and module checks: PASS"
 }
 finally {

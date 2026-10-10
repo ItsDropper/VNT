@@ -10,6 +10,7 @@ New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 $Cases = @(
     @{ Name = "integer-loop"; Source = "benchmarks\loop_sum.vnt"; Marker = "799980000"; Expected = @("799980000") },
     @{ Name = "hir-constant-folding"; Source = "tests\hir_constant_folding.vnt"; Marker = "HIR_CONSTANT_FOLDING_OK"; Expected = @("14", "4", "false", "3.75", "10", "3", "true") },
+    @{ Name = "hir-constant-propagation"; Source = "tests\optimizer_constant_propagation.vnt"; Marker = "CONSTANT_PROPAGATION_OK"; Expected = @("7", "9", "CONSTANT_BRANCH", "2") },
     @{ Name = "branches-logic"; Source = "benchmarks\suite\branches_logic.vnt"; Marker = "BRANCHES_LOGIC_OK"; Expected = @("133255") },
     @{ Name = "function-calls"; Source = "benchmarks\suite\function_calls.vnt"; Marker = "FUNCTION_CALLS_OK"; Expected = @("450195000") },
     @{ Name = "recursion"; Source = "benchmarks\suite\recursion.vnt"; Marker = "RECURSION_OK"; Expected = @("51680") },

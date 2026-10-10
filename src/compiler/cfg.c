@@ -52,6 +52,9 @@ static size_t build_statement(Builder *b, size_t index, size_t next,
                               size_t break_target, size_t continue_target) {
     if (b->failed || index >= b->ir->node_count) return VNT_IR_NO_NODE;
     const VntIrNode *n = &b->ir->nodes[index];
+    if (n->opcode == VNT_IR_PROGRAM)
+        return build_sequence(b, index, VNT_IR_EDGE_STATEMENT, next,
+                              break_target, continue_target, 0);
     if (n->opcode == VNT_IR_IF) {
         size_t cond = child_role(b->ir, index, VNT_IR_EDGE_CONDITION);
         if (cond == VNT_IR_NO_NODE) { b->failed = 1; return VNT_IR_NO_NODE; }

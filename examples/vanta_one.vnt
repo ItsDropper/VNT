@@ -45,7 +45,6 @@ running = true
 current_dir = os.current_dir()
 config_text = config.load_or_create("vanta_one.settings", "theme=midnight\nnetwork=manual\n")
 ui_call_1 = log.info("Vanta One started.")
-diag_1 = io.write_line("DIAG: startup state initialized")
 if fs.exists("vanta_one_profile1_name.txt") { profile_one_name = fs.read_text("vanta_one_profile1_name.txt") }
 if fs.exists("vanta_one_profile2_name.txt") { profile_two_name = fs.read_text("vanta_one_profile2_name.txt") }
 if fs.exists("vanta_one_profile3_name.txt") { profile_three_name = fs.read_text("vanta_one_profile3_name.txt") }
@@ -54,27 +53,19 @@ if fs.exists("vanta_one_profile1_path.txt") { profile_one_path = fs.read_text("v
 if fs.exists("vanta_one_profile2_path.txt") { profile_two_path = fs.read_text("vanta_one_profile2_path.txt") }
 if fs.exists("vanta_one_profile3_path.txt") { profile_three_path = fs.read_text("vanta_one_profile3_path.txt") }
 if fs.exists("vanta_one_profile4_path.txt") { profile_four_path = fs.read_text("vanta_one_profile4_path.txt") }
-diag_2 = io.write_line("DIAG: profile files checked")
 
-diag_3 = io.write_line("DIAG: entering GUI startup")
 if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "examples/vanta_one.css") {
-    diag_4 = io.write_line("DIAG: GUI startup returned true")
     while running {
         running = gui.vanta_gui_poll()
-        diag_5 = io.write_line("DIAG: GUI poll returned")
         elapsed_seconds = math.clamp(time.elapsed_ms(session_start) / 1000, 0, 999999)
-        diag_elapsed = io.write_line("DIAG: elapsed time calculated")
         ui_call_2 = gui.vanta_surface(0, 0, 236, 790, 0x0B1322)
-        diag_surface_1 = io.write_line("DIAG: first surface drawn")
         ui_call_3 = gui.vanta_surface(18, 18, 200, 76, 0x14223A)
         ui_call_4 = gui.vanta_surface(254, 18, 904, 86, 0x111B2D)
         ui_call_5 = gui.vanta_surface(254, 118, 904, 636, 0x0F1828)
         ui_call_6 = gui.vanta_surface(270, 132, 872, 3, 0x315CE8)
-        diag_surface_5 = io.write_line("DIAG: five surfaces drawn")
 
         ui_call_7 = gui.vanta_heading("VANTA", 34, 32)
         ui_call_8 = gui.vanta_text_style("ONE  /  GAME HUB", 36, 70, 0x66D9BE, 11)
-        diag_text = io.write_line("DIAG: first text calls completed")
         ui_call_9 = gui.vanta_text_style("YOUR LIBRARY", 28, 126, 0x7E93B8, 11)
 
         if page == "Home" { ui_call_nav_home = gui.vanta_surface(20, 145, 196, 42, 0x243B60) }
@@ -122,15 +113,12 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
         ui_call_19 = gui.vanta_heading("VANTA ONE", 282, 34)
         ui_call_20 = gui.vanta_text_style("A native game hub that stays out of your way.", 284, 75, 0xAAB9D2, 13)
         ui_call_21 = gui.vanta_status_badge("LOCAL / MANUAL NETWORK", 880, 36, 220, 0x1A3D42)
-        diag_badge = io.write_line("DIAG: status badge completed")
         ui_call_22 = gui.vanta_text_style(status_message, 282, 91, 0xDCE7FF, 11)
-        diag_status_text = io.write_line("DIAG: status text completed")
 
         if page == "Home" {
             ui_call_23 = gui.vanta_surface(282, 150, 548, 192, 0x142138)
             ui_call_24 = gui.vanta_surface(844, 150, 264, 192, 0x142138)
             ui_call_25 = gui.vanta_surface(282, 358, 826, 142, 0x142138)
-            diag_home_surfaces = io.write_line("DIAG: home surfaces completed")
             ui_call_26 = gui.vanta_surface(282, 516, 826, 216, 0x142138)
             ui_call_27 = gui.vanta_text_style("WELCOME BACK", 304, 172, 0x7E93B8, 11)
             ui_call_28 = gui.vanta_heading("Your games. Your rules.", 304, 200)
@@ -138,13 +126,10 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
             ui_call_30 = gui.vanta_text_style("to contact an external service.", 306, 270, 0xAAB9D2, 12)
             ui_call_31 = gui.vanta_text_style("Active profile", 304, 308, 0x7E93B8, 11)
             ui_call_32 = gui.vanta_text_style(profile_name, 410, 308, 0x66D9BE, 12)
-            diag_home_text = io.write_line("DIAG: home text completed")
-            diag_metric_before = io.write_line("DIAG: entering metric card")
             ui_call_33a = gui.vanta_surface(844, 150, 264, 192, 0x142138)
             ui_call_33b = gui.vanta_text_style("THIS SESSION", 862, 168, 0x7E93B8, 11)
             ui_call_33c = gui.vanta_heading("" + launch_count, 862, 198)
             ui_call_33d = gui.vanta_text_style("launch actions", 862, 308, 0xAAB9D2, 11)
-            diag_metric = io.write_line("DIAG: metric card completed")
             ui_call_34 = gui.vanta_text_style("" + math.floor(elapsed_seconds) + " seconds open", 866, 286, 0x7E93B8, 11)
             ui_call_35 = gui.vanta_text_style("QUICK ACTIONS", 304, 378, 0x7E93B8, 11)
             ui_call_36 = gui.vanta_text_style("Jump directly into profile management or look up a Modrinth project.", 304, 406, 0xDCE7FF, 12)
@@ -448,7 +433,6 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
             ui_call_135 = log.info("Vanta One closed.")
         }
         ui_call_136 = gui.vanta_gui_present()
-        diag_6 = io.write_line("DIAG: GUI present returned")
         ui_call_137 = time.sleep_ms(16)
     }
     ui_call_138 = gui.vanta_gui_close()

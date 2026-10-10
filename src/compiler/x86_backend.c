@@ -382,7 +382,7 @@ static int integer_slot_is_unaliased(const HirGen *g,const char *name) {
     }
     return 1;
 }
-/* Reuse a local integer's existing value cell for x = x +/-/* y.
+/* Reuse a local integer's existing value cell for compound arithmetic assignments.
  * This is safe only after the conservative no-alias/no-escape scan above.
  * Overflow and non-integer values retain the ordinary runtime path. */
 static int emit_mutating_integer_assignment(HirGen *g,const char *target,size_t value) {

@@ -82,6 +82,41 @@ static int check_fold_case(AstNode *expression, VntIrOpcode expected_opcode,
     return 1;
 }
 
+static void check_constant_propagation(void) {
+    AstNode *statements = NULL;
+    ast_append(&statements, ast_create_variable_declaration("base", ast_create_integer(4)));
+    ast_append(&statements,
+        ast_create_variable_declaration("copy",
+            ast_create_binary(ast_create_variable("base"), ast_create_integer(3),
+                              BINARY_ADD)));
+    ast_append(&statements, ast_create_print(ast_create_variable("copy")));
+    AstNode *program = ast_create_program(statements);
+    VntIrProgram ir = {0};
+    CHECK(program != NULL, "constant-propagation AST allocated");
+    if (!program) return;
+    CHECK(vnt_ir_lower(&ir, program), "constant-propagation HIR lowering succeeds");
+    ast_free(program);
+    if (ir.nodes) {
+        CHECK(vnt_ir_optimize(&ir), "constant propagation optimization succeeds");
+        size_t declaration = find_role(&ir, ir.root, VNT_IR_EDGE_STATEMENT);
+        size_t copy_decl = declaration == VNT_IR_NO_NODE
+            ? VNT_IR_NO_NODE : ir.nodes[declaration].next_sibling;
+        size_t print = copy_decl == VNT_IR_NO_NODE
+            ? VNT_IR_NO_NODE : ir.nodes[copy_decl].next_sibling;
+        size_t value = print == VNT_IR_NO_NODE
+            ? VNT_IR_NO_NODE : find_role(&ir, print, VNT_IR_EDGE_VALUE);
+        CHECK(value != VNT_IR_NO_NODE, "propagated print expression remains present");
+        if (value != VNT_IR_NO_NODE) {
+            CHECK(ir.nodes[value].opcode == VNT_IR_INTEGER,
+                  "constant propagation removes the variable read");
+            CHECK(ir.nodes[value].value.integer == 7,
+                  "propagated expression folds to the expected constant");
+        }
+        CHECK(vnt_ir_validate(&ir), "constant-propagated HIR validates");
+    }
+    vnt_ir_free(&ir);
+}
+
 static void check_rejects_missing_text_payload(void) {
     AstNode *program = program_with(ast_create_string("payload"));
     VntIrProgram ir = {0};
@@ -332,6 +367,7 @@ int main(void) {
                                       BINARY_MULTIPLY),
                     VNT_IR_BINARY, 0, "non-finite floating result is not folded");
     check_rejects_missing_text_payload();
+    check_constant_propagation();
     check_rejects_disconnected_cycle();
     check_cfg_control_flow();
     check_cfg_prunes_unreachable_statements();

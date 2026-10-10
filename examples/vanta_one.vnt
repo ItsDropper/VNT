@@ -81,7 +81,7 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
         if page == "Activity" { gui.vanta_surface(20, 375, 196, 42, 0x243B60) }
         if gui.vanta_button_sized("Activity log", 28, 377, 180, 38) { page = "Activity"; status_message = "Activity is stored in vnt.log." }
 
-        vanta_separator(24, 444, 188)
+        ui_call_separator = gui.vanta_separator(24, 444, 188)
         ui_call_10 = gui.vanta_text_style("SESSION", 30, 462, 0x7E93B8, 11)
         ui_call_11 = gui.vanta_text_style("Actions", 30, 490, 0xAAB9D2, 12)
         ui_call_12 = gui.vanta_text_style("Requests  " + request_count, 30, 516, 0xDCE7FF, 12)

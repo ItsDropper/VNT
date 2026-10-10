@@ -122,7 +122,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Valid lexical-scope program did not compile." }
     $scopeOutput = & $ScopeExe
     if ($LASTEXITCODE -ne 0) { throw "Lexical-scope program exited unsuccessfully." }
-    $scopeExpected = @("3", "2", "4", "SCOPE_CHECKS_OK")
+    $scopeExpected = @("3", "2", "5", "SCOPE_CHECKS_OK")
     if (($scopeOutput -join "|") -ne ($scopeExpected -join "|")) {
         throw "Unexpected lexical-scope output: $($scopeOutput -join ' | ')"
     }

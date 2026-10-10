@@ -1,0 +1,15 @@
+import "../lib/std/math.vnt" as math
+import "../lib/std/time.vnt" as time
+import "../lib/std/os.vnt" as os
+import "../lib/std/process.vnt" as process
+
+print(math.square(7))
+print(math.clamp(12, 0, 10))
+print(math.lerp(10, 20, 0.5))
+print(math.mod(17, 5))
+print(time.ms_to_seconds(time.seconds_to_ms(2)))
+print(os.env_set("VNT_STD_TEST", "ready"))
+print(os.env_get("VNT_STD_TEST"))
+print(os.env_has("VNT_STD_TEST"))
+print(os.current_dir() != "")
+print("STD_FOUNDATION_OK")

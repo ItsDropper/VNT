@@ -284,7 +284,12 @@ static void check_cfg_definite_assignment(void) {
             : find_role(&ir, if_node, VNT_IR_EDGE_THEN);
         size_t else_decl = if_node == VNT_IR_NO_NODE ? VNT_IR_NO_NODE
             : find_role(&ir, if_node, VNT_IR_EDGE_ELSE);
-        const char *key = root_decl == VNT_IR_NO_NODE ? NULL : ir.nodes[root_decl].value.text;
+        char *key = NULL;
+        if (root_decl != VNT_IR_NO_NODE && ir.nodes[root_decl].value.text) {
+            size_t length = strlen(ir.nodes[root_decl].value.text);
+            key = malloc(length + 1);
+            if (key) memcpy(key, ir.nodes[root_decl].value.text, length + 1);
+        }
         CHECK(root_decl != VNT_IR_NO_NODE && then_decl != VNT_IR_NO_NODE &&
               else_decl != VNT_IR_NO_NODE && key != NULL,
               "both-branch assignment HIR nodes located");

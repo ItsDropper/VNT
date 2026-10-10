@@ -117,7 +117,7 @@ static Token string(
          * Escaped quotes are part of the string, not its terminator.
          * Keep escape sequences in the token; the parser decodes them.
          */
-        if (peek(lexer) == '\\\\') {
+        if (peek(lexer) == '\\') {
             advance(lexer);
             if (peek(lexer) == '\0') break;
             advance(lexer);

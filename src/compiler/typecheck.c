@@ -8,7 +8,7 @@ typedef enum {
     TY_ARRAY, TY_OBJECT, TY_REFERENCE, TY_VOID
 } TypeKind;
 
-typedef struct { char *name; TypeKind type; int explicit_type; int dynamic; } Symbol;
+typedef struct { char *name; TypeKind type; int explicit_type; int dynamic; int scope_depth; } Symbol;
 typedef struct { char *name; int arity; AstNode *node; } FunctionDef;
 typedef struct { char *name; int field_count; } StructDef;
 
@@ -22,6 +22,7 @@ typedef struct {
     int error;
     TypeKind expected_return;
     int in_function;
+    int scope_depth;
 } TypeChecker;
 
 static void error(TypeChecker *tc, const char *message) {
@@ -29,11 +30,35 @@ static void error(TypeChecker *tc, const char *message) {
     tc->error = 1;
 }
 
-static TypeKind find_symbol(TypeChecker *tc, const char *name) {
+static int find_symbol_index(TypeChecker *tc, const char *name) {
     for (int i = tc->count - 1; i >= 0; --i)
-        if (!strcmp(tc->symbols[i].name, name))
-            return tc->symbols[i].type;
-    return TY_UNDECLARED;
+        if (!strcmp(tc->symbols[i].name, name)) return i;
+    return -1;
+}
+
+static TypeKind find_symbol(TypeChecker *tc, const char *name) {
+    int index = find_symbol_index(tc, name);
+    return index < 0 ? TY_UNDECLARED : tc->symbols[index].type;
+}
+
+static int add_symbol(TypeChecker *tc, const char *name, TypeKind type,
+                      int explicit_type) {
+    if (tc->count == tc->capacity) {
+        int cap = tc->capacity ? tc->capacity * 2 : 32;
+        Symbol *symbols = realloc(tc->symbols, sizeof(*symbols) * cap);
+        if (!symbols) { error(tc, "out of memory."); return 0; }
+        tc->symbols = symbols;
+        tc->capacity = cap;
+    }
+    Symbol *symbol = &tc->symbols[tc->count];
+    memset(symbol, 0, sizeof(*symbol));
+    symbol->name = strdup(name);
+    if (!symbol->name) { error(tc, "out of memory."); return 0; }
+    symbol->type = type;
+    symbol->explicit_type = explicit_type;
+    symbol->scope_depth = tc->scope_depth;
+    tc->count++;
+    return 1;
 }
 
 static void set_symbol(TypeChecker *tc, const char *name, TypeKind type,
@@ -63,20 +88,7 @@ static void set_symbol(TypeChecker *tc, const char *name, TypeKind type,
         }
     }
 
-    if (tc->count == tc->capacity) {
-        int cap = tc->capacity ? tc->capacity * 2 : 32;
-        Symbol *symbols = realloc(tc->symbols, sizeof(*symbols) * cap);
-        if (!symbols) { error(tc, "out of memory."); return; }
-        tc->symbols = symbols;
-        tc->capacity = cap;
-    }
-
-    tc->symbols[tc->count].name = strdup(name);
-    if (!tc->symbols[tc->count].name) { error(tc, "out of memory."); return; }
-    tc->symbols[tc->count].type = type;
-    tc->symbols[tc->count].explicit_type = explicit_type;
-    tc->symbols[tc->count].dynamic = 0;
-    tc->count++;
+    (void)add_symbol(tc, name, type, explicit_type);
 }
 
 /* Remove declarations introduced by a lexical block. Updates to symbols that
@@ -491,8 +503,14 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                  * Record that distinction after name resolution so the parser
                  * does not need to guess about scopes.
                  */
+                int existing_index =
+                    find_symbol_index(tc, n->variable_declaration.name);
+                int shadows_outer =
+                    n->variable_declaration.declared_type &&
+                    existing_index >= 0 &&
+                    tc->symbols[existing_index].scope_depth < tc->scope_depth;
                 n->variable_declaration.is_reassignment =
-                    find_symbol(tc, n->variable_declaration.name) != TY_UNDECLARED;
+                    existing_index >= 0 && !shadows_outer;
 
                 TypeKind value_type =
                     expr_type(tc, n->variable_declaration.value);
@@ -507,8 +525,8 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                         error(tc, message);
                         break;
                     }
-                    if (n->variable_declaration.is_reassignment) {
-                        error(tc, "'let' cannot redeclare an existing variable.");
+                    if (existing_index >= 0 && !shadows_outer) {
+                        error(tc, "'let' cannot redeclare a variable in the same scope.");
                         break;
                     }
                     if (!type_compatible(declared_type, value_type)) {
@@ -519,7 +537,10 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                         error(tc, message);
                         break;
                     }
-                    set_symbol(tc, n->variable_declaration.name, declared_type, 1);
+                    if (shadows_outer)
+                        (void)add_symbol(tc, n->variable_declaration.name, declared_type, 1);
+                    else
+                        set_symbol(tc, n->variable_declaration.name, declared_type, 1);
                 } else {
                     set_symbol(tc, n->variable_declaration.name, value_type, 0);
                 }
@@ -547,14 +568,18 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                     SymbolState *before = snapshot_symbols(tc, outer_count);
                     if (outer_count && !before) break;
 
+                    tc->scope_depth++;
                     check_statements(tc, n->if_statement.then_branch);
                     SymbolState *then_state = snapshot_symbols(tc, outer_count);
                     discard_symbols_to(tc, outer_count);
+                    tc->scope_depth--;
 
                     restore_symbols(tc, before, outer_count);
                     if (!tc->error) {
+                        tc->scope_depth++;
                         check_statements(tc, n->if_statement.else_branch);
                         discard_symbols_to(tc, outer_count);
+                        tc->scope_depth--;
                         if (then_state)
                             merge_branch_symbols(tc, before, then_state, outer_count);
                     }
@@ -570,8 +595,10 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                     error(tc, "while condition must be boolean.");
                 {
                     int outer_count = tc->count;
+                    tc->scope_depth++;
                     check_statements(tc, n->while_statement.body);
                     discard_symbols_to(tc, outer_count);
+                    tc->scope_depth--;
                 }
                 break;
             }
@@ -597,8 +624,10 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
 
             case AST_FUNCTION_DECLARATION: {
                 int old_count = tc->count;
+                int old_scope_depth = tc->scope_depth;
                 TypeKind old_return = tc->expected_return;
                 int old_in_function = tc->in_function;
+                tc->scope_depth = old_scope_depth + 1;
                 tc->in_function = 1;
                 tc->expected_return = n->function_declaration.return_type
                     ? type_from_name(n->function_declaration.return_type) : TY_UNKNOWN;
@@ -612,18 +641,8 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                             error(tc, "function declares an invalid parameter type."); break;
                         }
                     }
-                    if (tc->count == tc->capacity) {
-                        int cap = tc->capacity ? tc->capacity * 2 : 32;
-                        Symbol *symbols = realloc(tc->symbols, sizeof(*symbols) * cap);
-                        if (!symbols) { error(tc, "out of memory."); break; }
-                        tc->symbols = symbols; tc->capacity = cap;
-                    }
-                    tc->symbols[tc->count].name = strdup(n->function_declaration.parameters[i]);
-                    if (!tc->symbols[tc->count].name) { error(tc, "out of memory."); break; }
-                    tc->symbols[tc->count].type = pt;
-                    tc->symbols[tc->count].explicit_type = pt != TY_UNKNOWN;
-                    tc->symbols[tc->count].dynamic = 0;
-                    tc->count++;
+                    if (!add_symbol(tc, n->function_declaration.parameters[i],
+                                     pt, pt != TY_UNKNOWN)) break;
                 }
                 check_statements(tc, n->function_declaration.body);
                 if (tc->expected_return != TY_UNKNOWN && tc->expected_return != TY_VOID &&
@@ -632,6 +651,7 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                 while (tc->count > old_count) { free(tc->symbols[tc->count - 1].name); tc->count--; }
                 tc->expected_return = old_return;
                 tc->in_function = old_in_function;
+                tc->scope_depth = old_scope_depth;
                 break;
             }
 

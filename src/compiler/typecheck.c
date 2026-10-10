@@ -149,8 +149,12 @@ static int builtin_arity(const char *name, int argc) {
 
 static TypeKind expr_type(TypeChecker *tc, AstNode *n);
 
+/* One compatibility rule shared by initializers, calls, assignments, and returns.
+   Numeric values interoperate because VNT arithmetic already supports int/float
+   mixtures; unknown values remain dynamic by design. */
 static int type_compatible(TypeKind expected, TypeKind actual) {
-    return expected == TY_UNKNOWN || actual == TY_UNKNOWN || expected == actual;
+    return expected == TY_UNKNOWN || actual == TY_UNKNOWN ||
+           expected == actual || (numeric(expected) && numeric(actual));
 }
 
 static void check_call(TypeChecker *tc, AstNode *n) {
@@ -445,8 +449,7 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                         error(tc, "'let' cannot redeclare an existing variable.");
                         break;
                     }
-                    if (value_type != TY_UNKNOWN &&
-                        value_type != declared_type) {
+                    if (!type_compatible(declared_type, value_type)) {
                         char message[256];
                         snprintf(message, sizeof(message),
                                  "initializer type does not match declared type '%s'.",
@@ -464,8 +467,7 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                 TypeKind target = expr_type(tc, n->assignment.target);
                 TypeKind value = expr_type(tc, n->assignment.value);
                 if (target != TY_UNKNOWN && target != TY_UNDECLARED &&
-                    value != TY_UNKNOWN && target != value &&
-                    !(numeric(target) && numeric(value)))
+                    !type_compatible(target, value))
                     error(tc, "assignment changes an incompatible type.");
                 break;
             }
@@ -494,10 +496,15 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
             case AST_RETURN_STATEMENT: {
                 if (!tc->in_function) { error(tc, "return used outside a function."); break; }
                 TypeKind actual = expr_type(tc, n->return_statement.expression);
-                if (tc->expected_return == TY_VOID)
-                    error(tc, "void function cannot return a value.");
-                else if (tc->expected_return != TY_UNKNOWN && !type_compatible(tc->expected_return, actual))
+                if (tc->expected_return == TY_VOID) {
+                    if (n->return_statement.expression)
+                        error(tc, "void function cannot return a value.");
+                } else if (!n->return_statement.expression) {
+                    error(tc, "non-void function must return a value.");
+                } else if (tc->expected_return != TY_UNKNOWN &&
+                           !type_compatible(tc->expected_return, actual)) {
                     error(tc, "return expression does not match the function return type.");
+                }
                 break;
             }
 

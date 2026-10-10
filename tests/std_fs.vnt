@@ -1,0 +1,54 @@
+import "../lib/std/fs.vnt" as fs
+
+directory = "tests/out/std_fs_tmp"
+first_path = directory + "/sample.txt"
+renamed_path = directory + "/renamed.txt"
+
+fs.create_dir(directory)
+fs.remove_file(first_path)
+fs.remove_file(renamed_path)
+
+if !fs.is_dir(directory) {
+    print("FS_FAIL_DIR")
+} else {
+    if !fs.write_text(first_path, "hello") {
+        print("FS_FAIL_WRITE")
+    } else {
+        fs.append_text(first_path, " world")
+        if fs.read_text(first_path) != "hello world" {
+            print("FS_FAIL_READ_APPEND")
+        } else {
+            entries = fs.list_dir(directory)
+            found = false
+            i = 0
+            while i < len(entries) {
+                if entries[i] == "sample.txt" {
+                    found = true
+                }
+                i = i + 1
+            }
+            if !found {
+                print("FS_FAIL_LIST")
+            } else {
+                if !fs.is_file(first_path) {
+                    print("FS_FAIL_IS_FILE")
+                } else {
+                    if !fs.rename_path(first_path, renamed_path) {
+                        print("FS_FAIL_RENAME")
+                    } else {
+                        if !fs.exists(renamed_path) || !fs.is_file(renamed_path) {
+                            print("FS_FAIL_RENAMED_FILE")
+                        } else {
+                            if !fs.remove_file(renamed_path) {
+                                print("FS_FAIL_DELETE")
+                            } else {
+                                print("FS_OK")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+print("STANDARD_FS_OK")

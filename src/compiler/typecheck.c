@@ -496,7 +496,7 @@ static int statement_list_returns(AstNode *n) {
 static void check_statements(TypeChecker *tc, AstNode *n) {
     for (; n && !tc->error; n = n->next) {
         switch (n->type) {
-            case AST_VARIABLE_DECLARATION:
+            case AST_VARIABLE_DECLARATION: {
                 /*
                  * Assignment syntax is intentionally implicit: the first
                  * assignment introduces a variable, later assignments update it.
@@ -545,6 +545,7 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                     set_symbol(tc, n->variable_declaration.name, value_type, 0);
                 }
                 break;
+            }
 
             case AST_ASSIGNMENT: {
                 TypeKind target = expr_type(tc, n->assignment.target);

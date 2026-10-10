@@ -1,0 +1,7 @@
+import "../lib/std/json.vnt" as json
+
+payload = "{\"hits\":[{\"title\":\"Sodium\",\"slug\":\"sodium\",\"downloads\":100},{\"title\":\"Lithium\",\"slug\":\"lithium\",\"downloads\":200}]}"
+print(json.value_at(payload, "title", 0))
+print(json.value_at(payload, "slug", 1))
+print(json.value_at(payload, "downloads", 0))
+print("JSON_VALUE_AT_OK")

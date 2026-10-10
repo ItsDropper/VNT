@@ -2,7 +2,7 @@
 # Requires curl.exe on Windows or curl on Unix-like systems to be on PATH.
 # TLS verification stays enabled. Arguments are passed without a shell.
 # Body helpers return "" on transport failure; inspect status() for HTTP status.
-# JSON helpers accept a JSON string; VNT does not parse/serialize JSON yet.
+# JSON response fields can be read with lib/std/json.vnt; no full JSON DOM/serializer yet.
 #
 # These functions call native process primitives directly. This avoids relying
 # on private helper functions being resolved across imported module namespaces.

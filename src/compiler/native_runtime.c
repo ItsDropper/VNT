@@ -968,6 +968,9 @@ VntValue *vnt_cwd(void) {
 VntValue *vnt_env_get(VntValue *name) {
     const char *v = getenv(vnt_app_string(name, "env_get()")); return v ? vnt_string(v) : vnt_null();
 }
+VntValue *vnt_env_has(VntValue *name) {
+    return vnt_bool(getenv(vnt_app_string(name, "env_has()")) != NULL);
+}
 VntValue *vnt_env_set(VntValue *name, VntValue *value) {
     const char *k = vnt_app_string(name, "env_set()"), *v = vnt_app_string(value, "env_set()");
 #ifdef _WIN32

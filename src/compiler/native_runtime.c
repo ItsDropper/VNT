@@ -1727,6 +1727,7 @@ VntValue *vnt_gui_button_sized(VntValue *label,VntValue *x,VntValue *y,VntValue 
 VntValue *vnt_gui_input(VntValue *label,VntValue *x,VntValue *y,VntValue *w) { (void)label;(void)x;(void)y;(void)w;return vnt_string(""); }
 VntValue *vnt_gui_textarea(VntValue *label,VntValue *x,VntValue *y,VntValue *w,VntValue *h) { (void)label;(void)x;(void)y;(void)w;(void)h;return vnt_string(""); }
 VntValue *vnt_gui_input_set(VntValue *text,VntValue *x,VntValue *y) { (void)text;(void)x;(void)y;return vnt_bool(0); }
+VntValue *vnt_gui_textarea_set(VntValue *text,VntValue *x,VntValue *y) { (void)text;(void)x;(void)y;return vnt_bool(0); }
 VntValue *vnt_gui_panel_color(VntValue *x,VntValue *y,VntValue *w,VntValue *h,VntValue *c) { (void)x;(void)y;(void)w;(void)h;(void)c;return vnt_bool(0); }
 VntValue *vnt_gui_text_style(VntValue *t,VntValue *x,VntValue *y,VntValue *c,VntValue *s) { (void)t;(void)x;(void)y;(void)c;(void)s;return vnt_bool(0); }
 VntValue *vnt_gui_checkbox(VntValue *label,VntValue *x,VntValue *y,VntValue *checked) { (void)label;(void)x;(void)y;(void)checked;return vnt_bool(0); }

@@ -138,6 +138,29 @@ static void check_rejects_disconnected_cycle(void) {
 }
 
 
+static void check_cfg_prunes_unreachable_statements(void) {
+    AstNode *body = NULL;
+    ast_append(&body, ast_create_print(ast_create_integer(1)));
+    ast_append(&body, ast_create_return(ast_create_integer(2)));
+    ast_append(&body, ast_create_print(ast_create_integer(3)));
+    AstNode *program = ast_create_program(
+        ast_create_function_declaration("cfg_unreachable", NULL, 0, body));
+    VntIrProgram ir = {0};
+    CHECK(program != NULL, "unreachable-block AST allocated");
+    if (!program) return;
+    CHECK(vnt_ir_lower(&ir, program), "unreachable-block HIR lowering succeeds");
+    if (ir.nodes) {
+        VntCfg cfg = {0};
+        CHECK(vnt_cfg_build(&ir, &cfg), "CFG construction succeeds with dead statements");
+        CHECK(cfg.block_count == 3,
+              "CFG pruning removes the statement after an unconditional return");
+        CHECK(vnt_cfg_validate(&cfg), "pruned CFG validates");
+        vnt_cfg_free(&cfg);
+    }
+    vnt_ir_free(&ir);
+    ast_free(program);
+}
+
 static void check_cfg_control_flow(void) {
     AstNode *statements = NULL;
     ast_append(&statements,
@@ -183,6 +206,7 @@ int main(void) {
     check_rejects_missing_text_payload();
     check_rejects_disconnected_cycle();
     check_cfg_control_flow();
+    check_cfg_prunes_unreachable_statements();
 
     if (failures) {
         fprintf(stderr, "%d HIR invariant test(s) failed.\n", failures);

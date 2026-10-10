@@ -1,0 +1,19 @@
+# VNT standard I/O
+# Import with: import "../lib/std/io.vnt" as io
+
+export fun write(text: string) -> bool {
+    return io_write(text)
+}
+
+export fun write_line(text: string) -> bool {
+    io_write(text)
+    return io_write("\n")
+}
+
+export fun write_error(text: string) -> bool {
+    return io_write_error(text)
+}
+
+export fun read_line(prompt: string) -> string {
+    return input(prompt)
+}

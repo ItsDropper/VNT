@@ -194,14 +194,17 @@ static int builtin_arity(const char *name, int argc) {
     if (!strcmp(name, "ffi_int")) return argc >= 2 && argc <= 8;
     if (!strcmp(name, "cwd") || !strcmp(name, "time_ms")) return argc == 0;
     if (!strcmp(name, "fs_exists") || !strcmp(name, "fs_read") ||
-        !strcmp(name, "fs_delete") || !strcmp(name, "dir_create") || !strcmp(name, "env_get") ||
+        !strcmp(name, "fs_delete") || !strcmp(name, "fs_is_file") ||
+        !strcmp(name, "fs_is_dir") || !strcmp(name, "fs_list") ||
+        !strcmp(name, "dir_create") || !strcmp(name, "env_get") ||
         !strcmp(name, "sleep_ms") || !strcmp(name, "process_poll") ||
         !strcmp(name, "process_pid") || !strcmp(name, "process_terminate") ||
         !strcmp(name, "process_stdout") || !strcmp(name, "process_stderr") ||
-        !strcmp(name, "process_exit_code")) return argc == 1;
+        !strcmp(name, "process_exit_code") || !strcmp(name, "io_write") ||
+        !strcmp(name, "io_write_error")) return argc == 1;
     if (!strcmp(name, "process_wait") || !strcmp(name, "process_start")) return argc == 2;
     if (!strcmp(name, "fs_write") || !strcmp(name, "fs_append") ||
-        !strcmp(name, "env_set")) return argc == 2;
+        !strcmp(name, "fs_rename") || !strcmp(name, "env_set")) return argc == 2;
 
     /* Native Windows GUI API. Keep its signatures in sync with the
        runtime dispatch table in x86_backend.c. */
@@ -323,8 +326,14 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 !strcmp(n->function_call.name, "fs_write") ||
                 !strcmp(n->function_call.name, "fs_append") ||
                 !strcmp(n->function_call.name, "fs_delete") ||
+                !strcmp(n->function_call.name, "fs_rename") ||
+                !strcmp(n->function_call.name, "fs_is_file") ||
+                !strcmp(n->function_call.name, "fs_is_dir") ||
+                !strcmp(n->function_call.name, "io_write") ||
+                !strcmp(n->function_call.name, "io_write_error") ||
                 !strcmp(n->function_call.name, "dir_create") ||
                 !strcmp(n->function_call.name, "env_set")) return TY_BOOL;
+            if (!strcmp(n->function_call.name, "fs_list")) return TY_ARRAY;
             if (!strcmp(n->function_call.name, "time_ms")) return TY_FLOAT;
             if (!strcmp(n->function_call.name, "process_pid") ||
                 !strcmp(n->function_call.name, "process_exit_code")) return TY_INT;

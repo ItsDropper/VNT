@@ -196,6 +196,30 @@ Paths are relative to the process working directory unless absolute. `read_text`
 
 Run `.\tests\run_language_checks.ps1` to build VNT and run the language, module, I/O, and filesystem checks.
 
+### Additional standard modules
+
+The standard library is split into small source modules. Import only what an application uses:
+
+- `lib/std/math.vnt`: `square`, `clamp`, `lerp`, plus wrappers for `sqrt`, `sin`, `cos`, `tan`, `abs`, `floor`, `ceil`, `min`, `max`, and `mod`.
+- `lib/std/time.vnt`: `now_ms`, `sleep_ms`, `elapsed_ms`, `seconds_to_ms`, and `ms_to_seconds`. Clock values and sleep durations use milliseconds.
+- `lib/std/os.vnt`: `current_dir`, `env_get`, `env_set`, and `env_has`. Environment updates affect the current process.
+- `lib/std/process.vnt`: `start`, `poll`, `wait`, `pid`, `terminate`, `stdout`, `stderr`, and `exit_code` for native child processes. Arguments are passed as an array, not interpreted as shell text.
+
+Example:
+
+```vnt
+import "../lib/std/math.vnt" as math
+import "../lib/std/time.vnt" as time
+import "../lib/std/os.vnt" as os
+
+start = time.now_ms()
+print(math.clamp(42, 0, 10))
+print(time.elapsed_ms(start))
+print(os.current_dir())
+```
+
+These are source-level wrappers around existing native runtime primitives; they do not add fake or in-memory substitutes. The GUI module remains Windows-only, while the standard OS/process/time runtime has Windows and POSIX implementations. Run ` .\tests\run_language_checks.ps1` (without the leading space) to test the standard modules.
+
 ## Real application example: VNT Desk
 
 VNT Desk is a small interactive developer journal demonstrating that VNT can build a

@@ -1,0 +1,3 @@
+if true {
+    print("CFG_OPT_OK")
+}

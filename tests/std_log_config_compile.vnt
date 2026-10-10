@@ -1,0 +1,10 @@
+import "../lib/std/log.vnt" as log
+import "../lib/std/config.vnt" as config
+
+saved = config.save("settings.ini", "theme=dark\n")
+loaded = config.load_or_create("settings.ini", "theme=light\n")
+exists = config.exists("settings.ini")
+logged = log.info("compile-check")
+warned = log.warn("compile-check")
+failed = log.error("compile-check")
+print("STD_LOG_CONFIG_COMPILE_OK")

@@ -51,7 +51,10 @@ export fun search_mods(query) {
     if env_has("OS") { executable = "curl.exe" }
     process = process_start(executable, args)
     process_wait(process, -1)
-    if process_exit_code(process) == 0 { return process_stdout(process) } else { return "" }
+    response = process_stdout(process)
+    if response != "" { return response }
+    error_text = process_stderr(process)
+    return "VNT_CURL_ERROR | exit=" + process_exit_code(process) + " | " + error_text
 }
 
 export fun get_json_bearer(url, token) {

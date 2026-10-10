@@ -1,0 +1,4 @@
+while false {
+    loop_value = 1
+}
+print(loop_value)

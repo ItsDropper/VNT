@@ -305,10 +305,10 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
             gui.vanta_text_style(download_status, 304, 460, 0xDCE7FF, 13)
             gui.vanta_callout("SAFETY", "Downloads are never executed automatically.", 304, 500, 760, 62, 0x66D9BE)
             gui.vanta_text_style("Vanta One does not auto-install a file or execute it after download.", 304, 574, 0x66D9BE, 12)
-            gui.vanta_text_style("For mods, confirm the Minecraft version and loader compatibility yourself.", 304, 534, 0xAAB9D2, 12)
-            gui.vanta_text_style("Files are saved to the path you specify, relative to:", 304, 592, 0x7E93B8, 11)
-            gui.vanta_text_style(current_dir, 304, 616, 0xAAB9D2, 11)
-            if gui.vanta_button_sized("Check URL status", 304, 658, 166, 40) {
+            gui.vanta_text_style("For mods, confirm the Minecraft version and loader compatibility yourself.", 304, 598, 0xAAB9D2, 12)
+            gui.vanta_text_style("Files are saved to the path you specify, relative to:", 304, 624, 0x7E93B8, 11)
+            gui.vanta_text_style(current_dir, 304, 646, 0xAAB9D2, 11)
+            if gui.vanta_button_sized("Check URL status", 304, 678, 166, 40) {
                 if download_url_input != "" {
                     download_status = "HTTP " + net.status(download_url_input)
                     request_count = request_count + 1
@@ -316,7 +316,7 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                     log.info("Checked download URL status: " + download_status)
                 }
             }
-            if gui.vanta_button_sized("Open Modrinth lookup", 482, 658, 198, 40) { page = "Modrinth" }
+            if gui.vanta_button_sized("Open Modrinth lookup", 482, 678, 198, 40) { page = "Modrinth" }
         }
 
         if page == "Settings" {

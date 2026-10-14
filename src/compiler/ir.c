@@ -578,6 +578,20 @@ static void hir_constants_free(HirConstantEnvironment *env) {
     memset(env, 0, sizeof(*env));
 }
 
+/* Clone the incoming facts so each branch starts with the same known values,
+   while writes in one branch cannot affect analysis of the other branch. */
+static int hir_constants_copy(HirConstantEnvironment *destination,
+                              const HirConstantEnvironment *source) {
+    for (size_t i = 0; i < source->count; ++i) {
+        if (!hir_constant_remember(destination, source->items[i].name,
+                                   source->items[i].constant)) {
+            hir_constants_free(destination);
+            return 0;
+        }
+    }
+    return 1;
+}
+
 static size_t hir_constant_find(const HirConstantEnvironment *env, const char *name) {
     for (size_t i = 0; i < env->count; ++i)
         if (!strcmp(env->items[i].name, name)) return i;
@@ -686,6 +700,10 @@ static int hir_propagate_statement(VntIrProgram *ir, size_t index,
             if (ir->nodes[child].role == VNT_IR_EDGE_THEN ||
                 ir->nodes[child].role == VNT_IR_EDGE_ELSE) {
                 HirConstantEnvironment branch = {0};
+                if (!hir_constants_copy(&branch, env)) {
+                    hir_constants_free(&branch);
+                    return 0;
+                }
                 if (ir->nodes[child].opcode == VNT_IR_PROGRAM &&
                     !hir_propagate_sequence(ir, child, VNT_IR_EDGE_STATEMENT,
                                             &branch, changed)) {

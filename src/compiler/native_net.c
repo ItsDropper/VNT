@@ -1146,8 +1146,11 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
         result = net_copy(sep+4, bodylen_read);
         if (response_length) *response_length = bodylen_read;
     }
-    int chunked_response = strcasestr(raw, "Transfer-Encoding: chunked") != NULL;
-    int reusable = !u.tls && !use_proxy && !strcasestr(raw, "Connection: close") &&
+    int chunked_response = http_header_has_token(raw, headerlen, "Transfer-Encoding", "chunked");
+    int connection_close = http_header_has_token(raw, headerlen, "Connection", "close");
+    int http11 = !strncmp(raw, "HTTP/1.1 ", 9);
+    int explicit_keepalive = http_header_has_token(raw, headerlen, "Connection", "keep-alive");
+    int reusable = !use_proxy && !connection_close && (http11 || explicit_keepalive) &&
                    (response_no_body || has_expected_body_length || chunked_response);
     free(raw);
     if (reusable && result) {

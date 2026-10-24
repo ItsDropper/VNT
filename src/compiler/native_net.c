@@ -1229,6 +1229,7 @@ int vnt_native_http_download_stream(const char *url, const char *destination,
         free(connect_request);
         char response_headers[16385];
         size_t hn = 0;
+        response_headers[0] = '\0';
         while (sent && hn < sizeof(response_headers) - 1) {
             char ch;
             ssize_t got = recv(fd, &ch, 1, 0);
@@ -1255,7 +1256,12 @@ int vnt_native_http_download_stream(const char *url, const char *destination,
         SSL_set_fd(ssl, fd);
         if (SSL_connect(ssl) != 1) goto stream_fail;
     }
-    size_t cap = 1024 + (headers ? strlen(headers) : 0);
+    size_t cap = 1024;
+    size_t cap_parts[] = { headers ? strlen(headers) : 0, strlen(u.host), strlen(u.port), strlen(u.target) };
+    for (size_t i = 0; i < sizeof(cap_parts)/sizeof(cap_parts[0]); ++i) {
+        if (cap_parts[i] > SIZE_MAX - cap) goto stream_fail;
+        cap += cap_parts[i];
+    }
     char *request = (char *)malloc(cap);
     if (!request) goto stream_fail;
     int n;

@@ -188,6 +188,10 @@ static char *decode_chunked(char *body, size_t length, size_t *decoded_length) {
 #include <windows.h>
 #include <winhttp.h>
 
+/* A process-wide WinHTTP session enables its built-in connection pooling.
+   Individual request and connection handles remain scoped to each call. */
+static HINTERNET vnt_shared_http_session;
+
 static char *to_utf8(const wchar_t *s) {
     int n = WideCharToMultiByte(CP_UTF8, 0, s, -1, NULL, 0, NULL, NULL);
     if (n <= 0) return NULL;
@@ -322,9 +326,22 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     path[path_at] = L'\0';
     wchar_t *fragment = wcschr(path, L'#');
     if (fragment) *fragment = L'\0';
-    HINTERNET session = WinHttpOpen(L"VNT/0.1", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
-                                    WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
-    if (session) WinHttpSetTimeouts(session, 10000, 10000, 30000, 30000);
+    HINTERNET session = (HINTERNET)InterlockedCompareExchangePointer(
+        (PVOID volatile *)&vnt_shared_http_session, NULL, NULL);
+    if (!session) {
+        HINTERNET created = WinHttpOpen(L"VNT/0.1", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+                                        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+        if (!created) { free(wide_url); free(wide_method); free(hostname); free(path); return NULL; }
+        HINTERNET existing = (HINTERNET)InterlockedCompareExchangePointer(
+            (PVOID volatile *)&vnt_shared_http_session, created, NULL);
+        if (existing) {
+            WinHttpCloseHandle(created);
+            session = existing;
+        } else {
+            session = created;
+            WinHttpSetTimeouts(session, 10000, 10000, 30000, 30000);
+        }
+    }
     HINTERNET connection = session ? WinHttpConnect(session, hostname, parts.nPort, 0) : NULL;
     DWORD flags = parts.nScheme == INTERNET_SCHEME_HTTPS ? WINHTTP_FLAG_SECURE : 0;
     HINTERNET request = connection ? WinHttpOpenRequest(connection, wide_method,
@@ -332,7 +349,6 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     free(path); free(hostname); free(wide_url); free(wide_method);
     if (!request) {
         if (connection) WinHttpCloseHandle(connection);
-        if (session) WinHttpCloseHandle(session);
         return NULL;
     }
     DWORD redirect_policy = WINHTTP_OPTION_REDIRECT_POLICY_NEVER;
@@ -355,7 +371,6 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     if (body_size > MAXDWORD) {
         WinHttpCloseHandle(request);
         if (connection) WinHttpCloseHandle(connection);
-        if (session) WinHttpCloseHandle(session);
         return NULL;
     }
     DWORD body_len = (DWORD)body_size;
@@ -380,8 +395,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
                 free(wide_location);
                 WinHttpCloseHandle(request);
                 if (connection) WinHttpCloseHandle(connection);
-                if (session) WinHttpCloseHandle(session);
-                if (!next_url) return NULL;
+                        if (!next_url) return NULL;
                 const char *next_method = method ? method : "GET";
                 const char *next_body = body ? body : "";
                 if (code == 303 || ((code == 301 || code == 302) && !_stricmp(next_method, "POST"))) {
@@ -431,7 +445,6 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     if (response_length) *response_length = used;
     if (request) WinHttpCloseHandle(request);
     if (connection) WinHttpCloseHandle(connection);
-    if (session) WinHttpCloseHandle(session);
     if (!ok) { free(result); return NULL; }
     if (!result) result = net_copy("", 0);
     return result;

@@ -82,8 +82,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", "0"))
-        body = self.rfile.read(length).decode("utf-8")
-        self._send(201, "POST_OK:" + body)
+        body = self.rfile.read(length)
+        if self.path == "/echo-bytes":
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        self._send(201, "POST_OK:" + body.decode("utf-8"))
 
     def log_message(self, *_args):
         pass
@@ -125,6 +132,7 @@ def main():
         malformed_chunk_result = "abc\n" if os.name == "nt" else "\n"
         expected = ('VNT_NATIVE_HTTP_OK\nFRAGMENT_NOT_SENT\nCONTENT_LENGTH_OK\n'
                     'VNT_NATIVE_HTTP_OK\nCHUNKED_OK\n' + malformed_chunk_result +
+                    '[0, 1, 255, 10, 13, 128]\n[0, 1, 255, 10, 13, 128]\n'
                     'AUTH_STRIPPED\n204\nHEADER_OK\nPOST_OK:{"native":true}\n'
                     'POST_OK:SAFE_BODY\n404\ntrue\n')
         if result.stdout != expected:

@@ -31,6 +31,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Length", "0")
             self.send_header("Connection", "close")
             self.end_headers()
+        elif self.path == "/redirect-auth":
+            self.send_response(302)
+            self.send_header("Location", "http://localhost:18765/check-auth")
+            self.send_header("Content-Length", "0")
+            self.send_header("Connection", "close")
+            self.end_headers()
+        elif self.path == "/check-auth":
+            self._send(200, "AUTH_STRIPPED" if not self.headers.get("Authorization") and not self.headers.get("Cookie") else "AUTH_LEAKED")
         elif self.path == "/chunked":
             self.send_response(200)
             self.send_header("Transfer-Encoding", "chunked")

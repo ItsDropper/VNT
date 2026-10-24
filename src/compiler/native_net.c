@@ -125,6 +125,7 @@ char *vnt_native_http_request(const char *method, const char *url,
     path[path_at] = L'\\0';
     HINTERNET session = WinHttpOpen(L"VNT/0.1", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
                                     WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    if (session) WinHttpSetTimeouts(session, 10000, 10000, 30000, 30000);
     HINTERNET connection = session ? WinHttpConnect(session, hostname, parts.nPort, 0) : NULL;
     DWORD flags = parts.nScheme == INTERNET_SCHEME_HTTPS ? WINHTTP_FLAG_SECURE : 0;
     HINTERNET request = connection ? WinHttpOpenRequest(connection, wide_method,
@@ -135,7 +136,6 @@ char *vnt_native_http_request(const char *method, const char *url,
         if (session) WinHttpCloseHandle(session);
         return NULL;
     }
-    WinHttpSetTimeouts(request, 10000, 10000, 30000, 30000);
     if (headers && *headers) {
         char *copy = _strdup(headers), *save = NULL;
         if (copy) {

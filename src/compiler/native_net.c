@@ -79,6 +79,92 @@ static char *decode_chunked(char *body, size_t length, size_t *decoded_length) {
 #include <windows.h>
 #include <winhttp.h>
 
+static char *to_utf8(const wchar_t *s) {
+    int n = WideCharToMultiByte(CP_UTF8, 0, s, -1, NULL, 0, NULL, NULL);
+    if (n <= 0) return NULL;
+    char *out = (char *)malloc((size_t)n);
+    if (!out || !WideCharToMultiByte(CP_UTF8, 0, s, -1, out, n, NULL, NULL)) {
+        free(out); return NULL;
+    }
+    return out;
+}
+
+static int win_same_origin(const char *a, const char *b) {
+    const char *as = strstr(a ? a : "", "://"), *bs = strstr(b ? b : "", "://");
+    if (!as || !bs || (size_t)(as-a) != (size_t)(bs-b) ||
+        _strnicmp(a, b, (size_t)(as-a) + 3) != 0) return 0;
+    const char *ah = as+3, *bh = bs+3;
+    size_t an = strcspn(ah, "/?#"), bn = strcspn(bh, "/?#");
+    return an == bn && _strnicmp(ah, bh, an) == 0;
+}
+
+static char *win_headers_without_credentials(const char *headers) {
+    size_t cap = headers ? strlen(headers) + 2 : 2;
+    char *out = (char *)malloc(cap);
+    if (!out) return NULL;
+    size_t used = 0;
+    const char *p = headers ? headers : "";
+    while (*p) {
+        const char *end = strchr(p, '\n');
+        size_t len = end ? (size_t)(end-p) : strlen(p);
+        while (len && p[len-1] == '\r') len--;
+        int sensitive = (len >= 14 && !_strnicmp(p, "Authorization:", 14)) ||
+                        (len >= 19 && !_strnicmp(p, "Proxy-Authorization:", 19)) ||
+                        (len >= 7 && !_strnicmp(p, "Cookie:", 7));
+        if (!sensitive && len) {
+            memcpy(out+used, p, len); used += len; out[used++] = '\n';
+        }
+        if (!end) break;
+        p = end+1;
+    }
+    out[used] = '\0';
+    return out;
+}
+
+static char *win_resolve_redirect(const char *base, const char *location) {
+    if (!location || !*location) return NULL;
+    if (!_strnicmp(location, "http://", 7) || !_strnicmp(location, "https://", 8))
+        return _strdup(location);
+    const char *scheme = strstr(base, "://");
+    if (!scheme) return NULL;
+    const char *authority_end = strpbrk(scheme+3, "/?#");
+    size_t origin_len = authority_end ? (size_t)(authority_end-base) : strlen(base);
+    size_t prefix_len = origin_len;
+    if (location[0] == '/') {
+        /* Root-relative reference. */
+    } else if (location[0] == '?') {
+        const char *fragment = strchr(base, '#');
+        size_t base_len = fragment ? (size_t)(fragment-base) : strlen(base);
+        const char *query = strchr(base, '?');
+        if (query && (size_t)(query-base) < base_len) base_len = (size_t)(query-base);
+        char *out = (char *)malloc(base_len + strlen(location) + 1);
+        if (!out) return NULL;
+        memcpy(out, base, base_len); strcpy(out+base_len, location);
+        return out;
+    } else {
+        const char *fragment = strchr(base, '#');
+        size_t base_len = fragment ? (size_t)(fragment-base) : strlen(base);
+        const char *query = strchr(base, '?');
+        if (query && (size_t)(query-base) < base_len) base_len = (size_t)(query-base);
+        const char *slash = NULL;
+        for (const char *p = scheme+3; p < base+base_len; ++p) if (*p == '/') slash = p;
+        prefix_len = slash ? (size_t)(slash-base+1) : origin_len;
+        if (!slash) {
+            size_t n = prefix_len + 1 + strlen(location) + 1;
+            char *out = (char *)malloc(n);
+            if (!out) return NULL;
+            snprintf(out, n, "%.*s/%s", (int)prefix_len, base, location);
+            return out;
+        }
+    }
+    size_t n = prefix_len + strlen(location) + 1;
+    char *out = (char *)malloc(n);
+    if (!out) return NULL;
+    memcpy(out, base, prefix_len);
+    strcpy(out+prefix_len, location);
+    return out;
+}
+
 static wchar_t *to_wide(const char *s) {
     if (!s) s = "";
     int n = MultiByteToWideChar(CP_UTF8, 0, s, -1, NULL, 0);
@@ -90,8 +176,9 @@ static wchar_t *to_wide(const char *s) {
     return w;
 }
 
-char *vnt_native_http_request(const char *method, const char *url,
-                      const char *headers, const char *body, int *status, size_t *response_length) {
+static char *vnt_native_http_request_impl(const char *method, const char *url,
+                      const char *headers, const char *body, int *status, size_t *response_length,
+                      unsigned int redirect_count) {
     if (status) *status = 0;
     if (response_length) *response_length = 0;
     wchar_t *wide_url = to_wide(url), *wide_method = to_wide(method);
@@ -136,6 +223,8 @@ char *vnt_native_http_request(const char *method, const char *url,
         if (session) WinHttpCloseHandle(session);
         return NULL;
     }
+    DWORD redirect_policy = WINHTTP_OPTION_REDIRECT_POLICY_NEVER;
+    WinHttpSetOption(request, WINHTTP_OPTION_REDIRECT_POLICY, &redirect_policy, sizeof(redirect_policy));
     if (headers && *headers) {
         char *copy = _strdup(headers), *save = NULL;
         if (copy) {
@@ -154,6 +243,45 @@ char *vnt_native_http_request(const char *method, const char *url,
     DWORD code = 0, code_size = sizeof(code);
     if (ok) WinHttpQueryHeaders(request, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
                                 WINHTTP_HEADER_NAME_BY_INDEX, &code, &code_size, WINHTTP_NO_HEADER_INDEX);
+    if (ok && (code == 301 || code == 302 || code == 303 || code == 307 || code == 308) &&
+        redirect_count < 10) {
+        DWORD location_size = 0;
+        WinHttpQueryHeaders(request, WINHTTP_QUERY_LOCATION, WINHTTP_HEADER_NAME_BY_INDEX,
+                            NULL, &location_size, WINHTTP_NO_HEADER_INDEX);
+        if (GetLastError() == ERROR_INSUFFICIENT_BUFFER && location_size >= sizeof(wchar_t)) {
+            wchar_t *wide_location = (wchar_t *)calloc(1, location_size + sizeof(wchar_t));
+            if (wide_location && WinHttpQueryHeaders(request, WINHTTP_QUERY_LOCATION,
+                WINHTTP_HEADER_NAME_BY_INDEX, wide_location, &location_size, WINHTTP_NO_HEADER_INDEX)) {
+                char *location = to_utf8(wide_location);
+                char *next_url = win_resolve_redirect(url, location);
+                free(location);
+                free(wide_location);
+                WinHttpCloseHandle(request);
+                if (connection) WinHttpCloseHandle(connection);
+                if (session) WinHttpCloseHandle(session);
+                if (!next_url) return NULL;
+                const char *next_method = method ? method : "GET";
+                const char *next_body = body ? body : "";
+                if (code == 303 || ((code == 301 || code == 302) && !_stricmp(next_method, "POST"))) {
+                    next_method = "GET";
+                    next_body = "";
+                }
+                char *safe_headers = NULL;
+                const char *next_headers = headers;
+                if (!win_same_origin(url, next_url)) {
+                    safe_headers = win_headers_without_credentials(headers);
+                    if (!safe_headers) { free(next_url); return NULL; }
+                    next_headers = safe_headers;
+                }
+                char *redirected = vnt_native_http_request_impl(next_method, next_url, next_headers,
+                    next_body, status, response_length, redirect_count + 1);
+                free(safe_headers);
+                free(next_url);
+                return redirected;
+            }
+            free(wide_location);
+        }
+    }
     if (status) *status = (int)code;
     char *result = NULL;
     size_t used = 0, capacity = 0;
@@ -185,6 +313,11 @@ char *vnt_native_http_request(const char *method, const char *url,
     if (!ok) { free(result); return NULL; }
     if (!result) result = net_copy("", 0);
     return result;
+}
+
+char *vnt_native_http_request(const char *method, const char *url,
+                      const char *headers, const char *body, int *status, size_t *response_length) {
+    return vnt_native_http_request_impl(method, url, headers, body, status, response_length, 0);
 }
 
 #else

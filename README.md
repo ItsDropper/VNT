@@ -200,7 +200,7 @@ fs.append_text(path, "Second line\n")
 print(fs.read_text(path))
 ```
 
-File operations handle text, not arbitrary binary data. Networking is implemented in the native C runtime: Windows uses WinHTTP, while Unix-like builds use sockets and OpenSSL. No `curl` executable is required. HTTP responses are returned as strings; status helpers return a three-digit status string and `000` indicates a transport failure. Downloads preserve binary bytes and accept only 2xx responses. The in-memory response path has no fixed application-level size cap; practical limits are available memory and allocation success.
+File operations handle text, not arbitrary binary data. Networking is implemented in the native C runtime: Windows uses WinHTTP, while Unix-like builds use sockets and OpenSSL. No `curl` executable is required. Use `net.request(method, url, headers, body)` for custom methods and headers. HTTP responses are returned as strings; status helpers return a three-digit status string and `000` indicates a transport failure. Downloads preserve binary bytes and accept only 2xx responses. The in-memory response path has no fixed application-level size cap; practical limits are available memory and allocation success.
 
 ## Native runtime APIs
 

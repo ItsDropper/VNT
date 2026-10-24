@@ -55,10 +55,10 @@ Other source-level modules include:
 - `lib/std/time.vnt` — millisecond clock and sleep helpers.
 - `lib/std/os.vnt` — current directory and environment variables.
 - `lib/std/process.vnt` — native child-process management.
-- `lib/std/net.vnt` — HTTP helpers that call the system `curl` executable.
+- `lib/std/net.vnt` — native HTTP/HTTPS helpers implemented by the C runtime.
 - `lib/std/log.vnt` and `lib/std/config.vnt` — logging and plain-text configuration helpers.
 
-Check the module source for the exact function names and return behavior before relying on a helper in a larger program. For example, the networking module requires `curl` on `PATH`; it is not a built-in HTTP implementation.
+Check the module source for the exact function names and return behavior before relying on a helper in a larger program. Networking is implemented by VNT's native C runtime, so examples do not need `curl` installed. The current transport is an early implementation; see Tutorial 8 for supported behavior and limitations.
 
 ## Exercise
 

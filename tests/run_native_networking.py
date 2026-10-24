@@ -172,6 +172,12 @@ def main():
         if chunked != b"CHUNKED_OK":
             sys.stderr.write(f"Chunked streaming download was corrupted: {chunked!r}\n")
             return 1
+        redirect_path = ROOT / "vnt-network-redirect.test"
+        redirected = redirect_path.read_bytes() if redirect_path.exists() else b""
+        redirect_path.unlink(missing_ok=True)
+        if redirected != b"VNT_NATIVE_HTTP_OK":
+            sys.stderr.write(f"Redirected streaming download was corrupted: {redirected!r}\n")
+            return 1
         if os.name != "nt":
             proxy_server = http.server.ThreadingHTTPServer((HOST, 18767), ProxyHandler)
             proxy_thread = threading.Thread(target=proxy_server.serve_forever, daemon=True)
@@ -204,6 +210,7 @@ def main():
     finally:
         (ROOT / "vnt-network-binary.test").unlink(missing_ok=True)
         (ROOT / "vnt-network-chunked.test").unlink(missing_ok=True)
+        (ROOT / "vnt-network-redirect.test").unlink(missing_ok=True)
         server.shutdown()
         server.server_close()
         redirect_server.shutdown()

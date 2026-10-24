@@ -1,7 +1,7 @@
 # VNT standard HTTP and HTTPS helpers.
 # Requests are performed by VNT's native C runtime; curl is not required.
 # HTTPS uses the platform TLS implementation with certificate verification.
-# Body helpers return "" on transport failure. status() returns an HTTP status
+# Body helpers return "" on transport failure. Downloads stream directly to disk for direct requests. status() returns an HTTP status
 # string, or "000" when the transport fails. Downloads require a 2xx response.
 
 # Generic request helper for custom methods and headers.

@@ -314,7 +314,14 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
             free(copy);
         }
     }
-    DWORD body_len = body ? (DWORD)strlen(body) : 0;
+    size_t body_size = body ? strlen(body) : 0;
+    if (body_size > MAXDWORD) {
+        WinHttpCloseHandle(request);
+        if (connection) WinHttpCloseHandle(connection);
+        if (session) WinHttpCloseHandle(session);
+        return NULL;
+    }
+    DWORD body_len = (DWORD)body_size;
     BOOL ok = WinHttpSendRequest(request, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
         body_len ? (LPVOID)body : WINHTTP_NO_REQUEST_DATA, body_len, body_len, 0) &&
         WinHttpReceiveResponse(request, NULL);
@@ -580,8 +587,13 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
         SSL_set_fd(ssl, fd);
         if (SSL_connect(ssl) != 1) goto fail;
     }
-    size_t reqcap = strlen(method ? method : "GET") + strlen(u.target) + strlen(u.host) +
-                    (headers ? strlen(headers) : 0) + (body ? strlen(body) : 0) + 512;
+    size_t reqcap = 512;
+    size_t parts[] = { strlen(method ? method : "GET"), strlen(u.target), strlen(u.host),
+                       headers ? strlen(headers) : 0, body ? strlen(body) : 0 };
+    for (size_t i = 0; i < sizeof(parts)/sizeof(parts[0]); ++i) {
+        if (parts[i] > SIZE_MAX - reqcap) goto fail;
+        reqcap += parts[i];
+    }
     char *request = (char *)malloc(reqcap);
     if (!request) goto fail;
     int n = snprintf(request, reqcap, "%s %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n",

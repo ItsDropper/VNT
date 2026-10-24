@@ -1809,7 +1809,7 @@ extern char *vnt_native_url_encode(const char *text);
 
 static const char *vnt_net_string(VntValue *value, const char *function_name) {
     if (!value || value->type != VNT_STRING) {
-        fprintf(stderr, "Runtime error: %s expects string arguments.\\n", function_name);
+        fprintf(stderr, "Runtime error: %s expects string arguments.\n", function_name);
         return "";
     }
     return value->string ? value->string : "";

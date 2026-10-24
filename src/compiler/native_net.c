@@ -24,7 +24,7 @@ static char *net_copy(const char *s, size_t n) {
 static int http_token_char(unsigned char c) {
     if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
         (c >= '0' && c <= '9')) return 1;
-    return strchr("!#$%&'*+-.^_\`|~", c) != NULL;
+    return strchr("!#$%&'*+-.^_`|~", c) != NULL;
 }
 
 static int header_name_equals(const char *line, size_t name_length, const char *name) {

@@ -578,6 +578,9 @@ static void hir_constants_free(HirConstantEnvironment *env) {
     memset(env, 0, sizeof(*env));
 }
 
+static int hir_constant_remember(HirConstantEnvironment *env, const char *name,
+                                 HirConstant constant);
+
 /* Clone the incoming facts so each branch starts with the same known values,
    while writes in one branch cannot affect analysis of the other branch. */
 static int hir_constants_copy(HirConstantEnvironment *destination,

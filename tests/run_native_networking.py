@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Offline integration tests for VNT's native HTTP runtime."""
 import http.server
+import os
 import pathlib
 import subprocess
 import sys
+import tempfile
 import threading
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -74,9 +76,10 @@ def main():
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
-        exe = "/tmp/vnt-native-networking-test"
+        exe = str(pathlib.Path(tempfile.gettempdir()) / ("vnt-native-networking-test.exe" if os.name == "nt" else "vnt-native-networking-test"))
+        compiler = ROOT / ("vnt.exe" if os.name == "nt" else "vnt")
         compile_result = subprocess.run(
-            [str(ROOT / "vnt"), "--compile", "tests/native_networking.vnt", "-o", exe],
+            [str(compiler), "--compile", "tests/native_networking.vnt", "-o", exe],
             cwd=ROOT, text=True, capture_output=True, timeout=60)
         if compile_result.returncode:
             sys.stderr.write(f"VNT compile failed with exit code {compile_result.returncode}.\n")
@@ -100,13 +103,16 @@ def main():
             sys.stderr.write("Unexpected native networking output.\nExpected:\n" + expected +
                              "Actual:\n" + result.stdout + result.stderr)
             return 1
-        binary = pathlib.Path("/tmp/vnt-network-binary").read_bytes()
+        binary_path = ROOT / "vnt-network-binary.test"
+        binary = binary_path.read_bytes()
+        binary_path.unlink(missing_ok=True)
         if binary != bytes((0, 1, 255, 10, 13, 128)):
             sys.stderr.write(f"Binary download was corrupted: {binary!r}\n")
             return 1
         print("Native HTTP integration tests passed.")
         return 0
     finally:
+        (ROOT / "vnt-network-binary.test").unlink(missing_ok=True)
         server.shutdown()
         server.server_close()
 

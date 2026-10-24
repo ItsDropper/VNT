@@ -13,6 +13,16 @@ export fun get(url) {
     return net_request("GET", url, "", "")
 }
 
+# Binary API: byte arrays contain integer values in the inclusive range 0..255.
+# Unlike string helpers, these APIs preserve embedded NUL and arbitrary bytes.
+export fun request_bytes(method, url, headers, body_bytes) {
+    return net_request_bytes(method, url, headers, body_bytes)
+}
+
+export fun get_bytes(url) {
+    return net_request_bytes("GET", url, "", [])
+}
+
 export fun get_with_header(url, header) {
     return net_request("GET", url, header, "")
 }

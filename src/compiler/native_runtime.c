@@ -1833,6 +1833,7 @@ VNT_NATIVE_ABI VntValue *vnt_net_request(VntValue *method, VntValue *url,
 VNT_NATIVE_ABI VntValue *vnt_net_status(VntValue *method, VntValue *url,
                                         VntValue *headers) {
     int status = 0;
+    size_t response_length = 0;
     char *response = vnt_native_http_request(
         vnt_net_string(method, "net_status()"),
         vnt_net_string(url, "net_status()"),
@@ -1846,6 +1847,7 @@ VNT_NATIVE_ABI VntValue *vnt_net_status(VntValue *method, VntValue *url,
 VNT_NATIVE_ABI VntValue *vnt_net_download(VntValue *url, VntValue *destination,
                                           VntValue *headers) {
     int status = 0;
+    size_t response_length = 0;
     char *response = vnt_native_http_request("GET",
         vnt_net_string(url, "net_download()"),
         vnt_net_string(headers, "net_download()"), "", &status, &response_length);

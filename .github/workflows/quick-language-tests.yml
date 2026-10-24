@@ -1,0 +1,75 @@
+name: VNT Quick Language Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'tests/*.vnt'
+      - '.github/workflows/quick-language-tests.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'tests/*.vnt'
+      - '.github/workflows/quick-language-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quick-language-tests:
+    name: Build and run VNT smoke tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install compiler toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes gcc
+
+      - name: Build VNT compiler
+        run: |
+          gcc -O2 -Iinclude -Isrc/compiler \
+            src/main.c \
+            src/modules.c \
+            src/lexer.c \
+            src/parser/parser.c \
+            src/parser/primary.c \
+            src/parser/unary.c \
+            src/parser/binary.c \
+            src/parser/functions.c \
+            src/parser/statements.c \
+            src/parser/simple_statements.c \
+            src/parser/control.c \
+            src/parser/loops.c \
+            src/parser/assignments.c \
+            src/ast.c \
+            src/compiler/compiler.c \
+            src/compiler/typecheck.c \
+            src/compiler/ir.c \
+            src/compiler/ir_lower.c \
+            src/compiler/cfg.c \
+            src/compiler/x86_backend.c \
+            -o vnt
+
+      - name: Compile VNT regression programs
+        run: |
+          ./vnt --compile tests/native_compiler.vnt -o /tmp/vnt-native-smoke
+          ./vnt --compile tests/hir_constant_folding.vnt -o /tmp/vnt-hir-smoke
+
+      - name: Run native programs and verify output
+        run: |
+          /tmp/vnt-native-smoke > /tmp/vnt-native-actual
+          printf 'IR:\n14\ntrue\ntrue\nNative compiler OK\n' > /tmp/vnt-native-expected
+          diff -u /tmp/vnt-native-expected /tmp/vnt-native-actual
+
+          /tmp/vnt-hir-smoke > /tmp/vnt-hir-actual
+          printf '14\n4\nfalse\n3.75\n10\n3\ntrue\nHIR_CONSTANT_FOLDING_OK\n' > /tmp/vnt-hir-expected
+          diff -u /tmp/vnt-hir-expected /tmp/vnt-hir-actual

@@ -499,7 +499,7 @@ static int parse_response_headers(const char *raw, size_t used, const char *meth
     int code = 0;
     if (sscanf(raw, "HTTP/%*u.%*u %d", &code) != 1) return -1;
     size_t content_len = 0;
-    int has_len = 0;
+    int has_len = 0, transfer_chunked = 0;
     char *line = (char *)raw;
     while (line < sep) {
         char *end = strstr(line, "\r\n");
@@ -507,16 +507,23 @@ static int parse_response_headers(const char *raw, size_t used, const char *meth
         if ((size_t)(end-line) > 15 && !strncasecmp(line, "Content-Length:", 15)) {
             char *value = line + 15;
             while (value < end && (*value == ' ' || *value == '\t')) value++;
-            if (value == end || *value == '-') return -1;
+            if (value == end) return -1;
+            for (char *q = value; q < end && *q != ' ' && *q != '\t'; ++q)
+                if (*q < '0' || *q > '9') return -1;
             char *tail = NULL;
             unsigned long long parsed = strtoull(value, &tail, 10);
             while (tail && tail < end && (*tail == ' ' || *tail == '\t')) tail++;
             if (!tail || tail != end || parsed > SIZE_MAX) return -1;
+            if (has_len && content_len != (size_t)parsed) return -1;
             content_len = (size_t)parsed;
             has_len = 1;
+        } else if ((size_t)(end-line) > 18 && !strncasecmp(line, "Transfer-Encoding:", 18) &&
+                   strcasestr(line+18, "chunked")) {
+            transfer_chunked = 1;
         }
         line = end + 2;
     }
+    if (has_len && transfer_chunked) return -1;
     *header_length = hlen;
     *content_length = content_len;
     *has_content_length = has_len;

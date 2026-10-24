@@ -10,6 +10,11 @@ These tutorials teach the language by building small programs. They assume you h
 4. [Build a small terminal journal](04-terminal-journal.md)
 5. [Windows GUI basics](05-windows-gui.md)
 
+### Advanced language and runtime
+6. [Arrays, structs, and references](06-arrays-structs-references.md)
+7. [Launching and managing child processes](07-native-processes.md)
+8. [HTTP APIs and external tools](08-http-apis.md)
+
 ## Compile and run a tutorial
 
 For a source file called `lesson.vnt` in the repository root:

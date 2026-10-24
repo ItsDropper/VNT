@@ -507,9 +507,9 @@ static void emit_function(HirGen*g,size_t i) {
 static void emit_tables(HirGen*g) {
     if(g->float_count||g->string_count) {
 #ifdef _WIN32
-        fputs("\\n.section .rdata\\n",g->out);
+        fputs("\n.section .rdata\n",g->out);
 #else
-        fputs("\\n.section .rodata\\n",g->out);
+        fputs("\n.section .rodata\n",g->out);
 #endif
     }
     for(size_t i=0;i<g->float_count;i++)fprintf(g->out,".Lflt%d:\n    .double %.17g\n",g->floats[i].label,g->floats[i].value);

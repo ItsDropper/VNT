@@ -65,7 +65,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_header("Transfer-Encoding", "chunked")
             self.send_header("Connection", "close")
             self.end_headers()
-            self.wfile.write(b"3\\r\\nabcX\\n0\\r\\n\\r\\n")
+            self.wfile.write(b"3\r\nabcX\n0\r\n\r\n")
         elif self.path == "/status":
             self._send(204, "")
         elif self.path == "/header":

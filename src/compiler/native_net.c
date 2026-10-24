@@ -463,8 +463,9 @@ char *vnt_native_http_request_bytes(const char *method, const char *url,
 
 /* Stream successful downloads directly to disk. Redirects fall back to the
    regular request path so its redirect and credential rules remain identical. */
-int vnt_native_http_download_stream(const char *url, const char *destination,
-                                    const char *headers, int *status) {
+static int vnt_native_http_download_stream_impl(const char *url, const char *destination,
+                                     const char *headers, int *status,
+                                     unsigned int redirect_count) {
     if (status) *status = 0;
     if (!valid_http_url_chars(url) || !valid_request_headers(headers) ||
         !destination || !*destination) return 0;
@@ -674,6 +675,40 @@ static int parse_url(const char *url, ParsedUrl *u) {
     }
     if (!u->host || !u->port || !u->target || !*u->port) { parsed_url_free(u); return 0; }
     return 1;
+}
+
+/* Resolve an HTTP Location reference against the current URL without losing
+   IPv6 brackets, query-only references, or the original scheme. */
+static char *resolve_redirect_url(const ParsedUrl *u, const char *location) {
+    if (!u || !location || !*location) return NULL;
+    if (!strncasecmp(location, "http://", 7) || !strncasecmp(location, "https://", 8))
+        return strdup(location);
+    const char *scheme = u->tls ? "https" : "http";
+    int ipv6 = strchr(u->host, ':') != NULL;
+    size_t origin_cap = strlen(scheme) + strlen(u->host) + strlen(u->port) + 16;
+    char *origin = (char *)malloc(origin_cap);
+    if (!origin) return NULL;
+    snprintf(origin, origin_cap, ipv6 ? "%s://[%s]:%s" : "%s://%s:%s",
+             scheme, u->host, u->port);
+    const char *target = u->target ? u->target : "/";
+    size_t path_len = strcspn(target, "?");
+    size_t directory_len = path_len;
+    while (directory_len && target[directory_len - 1] != '/') directory_len--;
+    size_t loc_len = strlen(location);
+    size_t cap = strlen(origin) + path_len + loc_len + 4;
+    char *result = (char *)malloc(cap);
+    if (!result) { free(origin); return NULL; }
+    if (!strncmp(location, "//", 2)) {
+        snprintf(result, cap, "%s:%s", scheme, location);
+    } else if (location[0] == '/') {
+        snprintf(result, cap, "%s%s", origin, location);
+    } else if (location[0] == '?') {
+        snprintf(result, cap, "%s%.*s%s", origin, (int)path_len, target, location);
+    } else {
+        snprintf(result, cap, "%s%.*s%s", origin, (int)directory_len, target, location);
+    }
+    free(origin);
+    return result;
 }
 
 static int proxy_bypasses_host(const char *host, const char *list) {
@@ -1247,18 +1282,37 @@ int vnt_native_http_download_stream(const char *url, const char *destination,
     }
     if (has_length && chunked) goto stream_fail;
     if (status) *status = code;
-    if (code >= 300 && code < 400) {
-        if (ssl) { SSL_shutdown(ssl); SSL_free(ssl); }
-        if (ctx) SSL_CTX_free(ctx);
-        close(fd); parsed_url_free(&u);
-        size_t length = 0; int redirected_status = 0;
-        char *body = vnt_native_http_request("GET", url, headers, "", &redirected_status, &length);
+    if (code == 301 || code == 302 || code == 303 || code == 307 || code == 308) {
+        if (redirect_count >= 10) goto stream_fail;
+        char *location = NULL;
+        char *loc_line = strstr(header, "\r\n");
+        while (loc_line && *loc_line) {
+            loc_line += 2;
+            if (!strncmp(loc_line, "\r\n", 2)) break;
+            char *line_end = strstr(loc_line, "\r\n");
+            if (!line_end) break;
+            if ((size_t)(line_end - loc_line) >= 9 &&
+                !strncasecmp(loc_line, "Location:", 9)) {
+                char *value = loc_line + 9;
+                while (value < line_end && (*value == ' ' || *value == '\t')) value++;
+                location = net_copy(value, (size_t)(line_end - value));
+                break;
+            }
+            loc_line = line_end;
+        }
+        char *next_url = resolve_redirect_url(&u, location);
+        free(location);
+        if (ssl) { SSL_shutdown(ssl); SSL_free(ssl); ssl = NULL; }
+        if (ctx) { SSL_CTX_free(ctx); ctx = NULL; }
+        close(fd); fd = -1;
+        parsed_url_free(&u);
+        if (!next_url) return 0;
+        int redirected_status = 0;
+        int ok = vnt_native_http_download_stream_impl(next_url, destination, headers,
+                                                       &redirected_status, redirect_count + 1);
+        free(next_url);
         if (status) *status = redirected_status;
-        if (!body || redirected_status < 200 || redirected_status >= 300) { free(body); return 0; }
-        FILE *f = fopen(destination, "wb");
-        int ok = f && fwrite(body, 1, length, f) == length;
-        if (f && fclose(f) != 0) ok = 0;
-        free(body); return ok;
+        return ok;
     }
     if (code < 200 || code >= 300) goto stream_fail;
     FILE *out = fopen(destination, "wb");
@@ -1304,7 +1358,13 @@ int vnt_native_http_download_stream(const char *url, const char *destination,
 stream_fail:
     if (ssl) SSL_free(ssl);
     if (ctx) SSL_CTX_free(ctx);
-    close(fd); parsed_url_free(&u);
+    if (fd >= 0) close(fd);
+    parsed_url_free(&u);
     return 0;
+}
+
+int vnt_native_http_download_stream(const char *url, const char *destination,
+                                    const char *headers, int *status) {
+    return vnt_native_http_download_stream_impl(url, destination, headers, status, 0);
 }
 #endif

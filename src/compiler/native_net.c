@@ -455,6 +455,110 @@ char *vnt_native_http_request(const char *method, const char *url,
     return vnt_native_http_request_impl(method, url, headers, body, status, response_length, 0);
 }
 
+/* Stream successful downloads directly to disk. Redirects fall back to the
+   regular request path so its redirect and credential rules remain identical. */
+int vnt_native_http_download_stream(const char *url, const char *destination,
+                                    const char *headers, int *status) {
+    if (status) *status = 0;
+    if (!valid_http_url_chars(url) || !valid_request_headers(headers) ||
+        !destination || !*destination) return 0;
+    wchar_t *wide_url = to_wide(url);
+    if (!wide_url) return 0;
+    URL_COMPONENTS parts;
+    memset(&parts, 0, sizeof(parts));
+    parts.dwStructSize = sizeof(parts);
+    parts.dwSchemeLength = parts.dwHostNameLength = parts.dwUrlPathLength =
+        parts.dwExtraInfoLength = (DWORD)-1;
+    if (!WinHttpCrackUrl(wide_url, 0, 0, &parts)) { free(wide_url); return 0; }
+    wchar_t *host = (wchar_t *)calloc((size_t)parts.dwHostNameLength + 1, sizeof(wchar_t));
+    size_t plen = (size_t)parts.dwUrlPathLength + (size_t)parts.dwExtraInfoLength;
+    wchar_t *path = (wchar_t *)calloc(plen + 2, sizeof(wchar_t));
+    if (!host || !path) { free(host); free(path); free(wide_url); return 0; }
+    memcpy(host, parts.lpszHostName, (size_t)parts.dwHostNameLength * sizeof(wchar_t));
+    size_t at = 0;
+    if (parts.dwUrlPathLength) {
+        memcpy(path, parts.lpszUrlPath, (size_t)parts.dwUrlPathLength * sizeof(wchar_t));
+        at = (size_t)parts.dwUrlPathLength;
+    } else path[at++] = L'/';
+    if (parts.dwExtraInfoLength) {
+        memcpy(path + at, parts.lpszExtraInfo, (size_t)parts.dwExtraInfoLength * sizeof(wchar_t));
+        at += (size_t)parts.dwExtraInfoLength;
+    }
+    path[at] = L'\0';
+    wchar_t *fragment = wcschr(path, L'#');
+    if (fragment) *fragment = L'\0';
+    HINTERNET session = (HINTERNET)InterlockedCompareExchangePointer(
+        (PVOID volatile *)&vnt_shared_http_session, NULL, NULL);
+    if (!session) {
+        HINTERNET created = WinHttpOpen(L"VNT/0.1", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+                                        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+        if (!created) { free(host); free(path); free(wide_url); return 0; }
+        HINTERNET existing = (HINTERNET)InterlockedCompareExchangePointer(
+            (PVOID volatile *)&vnt_shared_http_session, created, NULL);
+        if (existing) { WinHttpCloseHandle(created); session = existing; }
+        else {
+            session = created;
+            WinHttpSetTimeouts(session, 10000, 10000, 30000, 30000);
+        }
+    }
+    HINTERNET connection = WinHttpConnect(session, host, parts.nPort, 0);
+    HINTERNET request = connection ? WinHttpOpenRequest(connection, L"GET", path, NULL,
+        WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES,
+        parts.nScheme == INTERNET_SCHEME_HTTPS ? WINHTTP_FLAG_SECURE : 0) : NULL;
+    free(host); free(path); free(wide_url);
+    if (!request) { if (connection) WinHttpCloseHandle(connection); return 0; }
+    DWORD no_redirect = WINHTTP_OPTION_REDIRECT_POLICY_NEVER;
+    WinHttpSetOption(request, WINHTTP_OPTION_REDIRECT_POLICY, &no_redirect, sizeof(no_redirect));
+    char *copy = headers ? _strdup(headers) : NULL, *save = NULL;
+    if (copy) {
+        for (char *line = strtok_s(copy, "\n", &save); line; line = strtok_s(NULL, "\n", &save)) {
+            while (*line == ' ') line++;
+            size_t len = strlen(line);
+            while (len && line[len-1] == '\r') line[--len] = '\0';
+            if (!len || reserved_request_header(line, len)) continue;
+            wchar_t *wh = to_wide(line);
+            if (wh) { WinHttpAddRequestHeaders(request, wh, (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD); free(wh); }
+        }
+        free(copy);
+    }
+    BOOL ok = WinHttpSendRequest(request, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
+        WINHTTP_NO_REQUEST_DATA, 0, 0, 0) && WinHttpReceiveResponse(request, NULL);
+    DWORD code = 0, code_size = sizeof(code);
+    if (ok) WinHttpQueryHeaders(request, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+        WINHTTP_HEADER_NAME_BY_INDEX, &code, &code_size, WINHTTP_NO_HEADER_INDEX);
+    if (status) *status = (int)code;
+    if (ok && (code == 301 || code == 302 || code == 303 || code == 307 || code == 308)) {
+        WinHttpCloseHandle(request);
+        if (connection) WinHttpCloseHandle(connection);
+        size_t response_length = 0; int redirected_status = 0;
+        char *response = vnt_native_http_request("GET", url, headers, "", &redirected_status, &response_length);
+        if (status) *status = redirected_status;
+        if (!response || redirected_status < 200 || redirected_status >= 300) { free(response); return 0; }
+        FILE *f = fopen(destination, "wb");
+        int wrote = f && fwrite(response, 1, response_length, f) == response_length;
+        if (f && fclose(f) != 0) wrote = 0;
+        free(response);
+        return wrote;
+    }
+    FILE *out = ok && code >= 200 && code < 300 ? fopen(destination, "wb") : NULL;
+    if (!out) ok = FALSE;
+    char buffer[65536];
+    while (ok) {
+        DWORD available = 0;
+        if (!WinHttpQueryDataAvailable(request, &available)) { ok = FALSE; break; }
+        if (!available) break;
+        DWORD received = 0;
+        if (!WinHttpReadData(request, buffer, (DWORD)(available > sizeof(buffer) ? sizeof(buffer) : available), &received)) {
+            ok = FALSE; break;
+        }
+        if (received && fwrite(buffer, 1, received, out) != received) { ok = FALSE; break; }
+    }
+    if (out && fclose(out) != 0) ok = FALSE;
+    WinHttpCloseHandle(request);
+    if (connection) WinHttpCloseHandle(connection);
+    return ok ? 1 : 0;
+}
+
 #else
 #include <unistd.h>
 #include <errno.h>
@@ -901,5 +1005,212 @@ fail:
 char *vnt_native_http_request(const char *method, const char *url,
                       const char *headers, const char *body, int *status, size_t *response_length) {
     return vnt_native_http_request_impl(method, url, headers, body, status, response_length, 0);
+}
+
+static int stream_read(int fd, SSL *ssl, char *buffer, size_t capacity, size_t *received) {
+    int n;
+    do {
+        n = ssl ? SSL_read(ssl, buffer, (int)(capacity > INT32_MAX ? INT32_MAX : capacity))
+                : (int)recv(fd, buffer, capacity > INT32_MAX ? INT32_MAX : capacity, 0);
+    } while (n < 0 && errno == EINTR);
+    if (n <= 0) return n == 0 ? 0 : -1;
+    *received = (size_t)n;
+    return 1;
+}
+
+static int stream_read_exact(int fd, SSL *ssl, FILE *out, size_t length) {
+    char buffer[65536];
+    while (length) {
+        size_t got = 0, want = length < sizeof(buffer) ? length : sizeof(buffer);
+        int r = stream_read(fd, ssl, buffer, want, &got);
+        if (r != 1 || !got || fwrite(buffer, 1, got, out) != got) return 0;
+        length -= got;
+    }
+    return 1;
+}
+
+static int stream_read_line(int fd, SSL *ssl, char *line, size_t capacity) {
+    size_t used = 0;
+    while (used + 1 < capacity) {
+        char ch; size_t got = 0;
+        int r = stream_read(fd, ssl, &ch, 1, &got);
+        if (r != 1 || got != 1) return 0;
+        line[used++] = ch;
+        if (used >= 2 && line[used-2] == '\r' && line[used-1] == '\n') {
+            line[used-2] = '\0';
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/* Unix-like streaming download: response bytes are written incrementally,
+   including chunked decoding, so large files do not need a response-sized heap buffer. */
+int vnt_native_http_download_stream(const char *url, const char *destination,
+                                    const char *headers, int *status) {
+    if (status) *status = 0;
+    if (!destination || !*destination || !valid_request_headers(headers)) return 0;
+    /* Proxying and redirects use the fully featured request path as a safe fallback. */
+    const char *proxy = proxy_environment_for(url && !strncasecmp(url, "https://", 8));
+    const char *no_proxy = getenv("NO_PROXY");
+    if (!no_proxy || !*no_proxy) no_proxy = getenv("no_proxy");
+    ParsedUrl parsed;
+    if (!parse_url(url ? url : "", &parsed)) return 0;
+    int fallback = proxy && !proxy_bypasses_host(parsed.host, no_proxy);
+    parsed_url_free(&parsed);
+    if (fallback) {
+        size_t length = 0; int code = 0;
+        char *body = vnt_native_http_request("GET", url, headers, "", &code, &length);
+        if (status) *status = code;
+        if (!body || code < 200 || code >= 300) { free(body); return 0; }
+        FILE *f = fopen(destination, "wb");
+        int ok = f && fwrite(body, 1, length, f) == length;
+        if (f && fclose(f) != 0) ok = 0;
+        free(body); return ok;
+    }
+    ParsedUrl u;
+    if (!parse_url(url ? url : "", &u)) return 0;
+    struct addrinfo hints, *addresses = NULL;
+    memset(&hints, 0, sizeof(hints)); hints.ai_socktype = SOCK_STREAM; hints.ai_family = AF_UNSPEC;
+    if (getaddrinfo(u.host, u.port, &hints, &addresses) != 0) { parsed_url_free(&u); return 0; }
+    int fd = -1;
+    for (struct addrinfo *a = addresses; a; a = a->ai_next) {
+        fd = (int)socket(a->ai_family, a->ai_socktype, a->ai_protocol);
+        if (fd < 0) continue;
+        struct timeval timeout = {30, 0};
+        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+        setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+        if (connect(fd, a->ai_addr, a->ai_addrlen) == 0) break;
+        close(fd); fd = -1;
+    }
+    freeaddrinfo(addresses);
+    if (fd < 0) { parsed_url_free(&u); return 0; }
+    SSL_CTX *ctx = NULL; SSL *ssl = NULL;
+    if (u.tls) {
+        ctx = SSL_CTX_new(TLS_client_method());
+        if (!ctx || SSL_CTX_set_default_verify_paths(ctx) != 1) goto stream_fail;
+        SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
+        ssl = SSL_new(ctx);
+        if (!ssl || SSL_set_tlsext_host_name(ssl, u.host) != 1 ||
+            SSL_set1_host(ssl, u.host) != 1) goto stream_fail;
+        SSL_set_fd(ssl, fd);
+        if (SSL_connect(ssl) != 1) goto stream_fail;
+    }
+    size_t cap = 1024 + (headers ? strlen(headers) : 0);
+    char *request = (char *)malloc(cap);
+    if (!request) goto stream_fail;
+    int n = snprintf(request, cap, "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n",
+                     u.target, u.host);
+    if (n < 0 || (size_t)n >= cap) { free(request); goto stream_fail; }
+    size_t used = (size_t)n;
+    const char *hp = headers ? headers : "";
+    while (*hp) {
+        const char *end = strchr(hp, '\n');
+        size_t len = end ? (size_t)(end-hp) : strlen(hp);
+        while (len && hp[len-1] == '\r') len--;
+        if (len && !reserved_request_header(hp, len)) {
+            if (len > cap - used - 4) { free(request); goto stream_fail; }
+            memcpy(request+used, hp, len); used += len;
+            memcpy(request+used, "\r\n", 2); used += 2;
+        }
+        if (!end) break;
+        hp = end + 1;
+    }
+    if (used + 2 >= cap) { free(request); goto stream_fail; }
+    memcpy(request+used, "\r\n", 2); used += 2;
+    int sent = write_all(fd, ssl, request, used);
+    free(request);
+    if (!sent) goto stream_fail;
+    char header[65537]; size_t hlen = 0;
+    while (hlen + 1 < sizeof(header)) {
+        char ch; size_t got = 0;
+        int r = stream_read(fd, ssl, &ch, 1, &got);
+        if (r != 1 || got != 1) goto stream_fail;
+        header[hlen++] = ch; header[hlen] = '\0';
+        if (hlen >= 4 && !memcmp(header + hlen - 4, "\r\n\r\n", 4)) break;
+    }
+    if (hlen < 4 || memcmp(header + hlen - 4, "\r\n\r\n", 4)) goto stream_fail;
+    int code = 0, chunked = 0, has_length = 0, connection_close = 0;
+    unsigned long long content_length = 0;
+    if (sscanf(header, "HTTP/%*u.%*u %d", &code) != 1) goto stream_fail;
+    char *line = strstr(header, "\r\n");
+    while (line && *line) {
+        line += 2;
+        if (!strncmp(line, "\r\n", 2)) break;
+        char *end = strstr(line, "\r\n");
+        if (!end) break;
+        if ((size_t)(end-line) >= 15 && !strncasecmp(line, "Content-Length:", 15)) {
+            char *v = line+15; while (*v == ' ' || *v == '\t') v++;
+            char *tail = NULL; content_length = strtoull(v, &tail, 10);
+            while (tail && tail < end && (*tail == ' ' || *tail == '\t')) tail++;
+            if (!tail || tail != end) goto stream_fail;
+            has_length = 1;
+        } else if ((size_t)(end-line) >= 18 && !strncasecmp(line, "Transfer-Encoding:", 18) &&
+                   strcasestr(line+18, "chunked")) chunked = 1;
+        else if ((size_t)(end-line) >= 11 && !strncasecmp(line, "Connection:", 11) &&
+                 strcasestr(line+11, "close")) connection_close = 1;
+        line = end;
+    }
+    if (has_length && chunked) goto stream_fail;
+    if (status) *status = code;
+    if (code >= 300 && code < 400) {
+        if (ssl) { SSL_shutdown(ssl); SSL_free(ssl); }
+        if (ctx) SSL_CTX_free(ctx);
+        close(fd); parsed_url_free(&u);
+        size_t length = 0; int redirected_status = 0;
+        char *body = vnt_native_http_request("GET", url, headers, "", &redirected_status, &length);
+        if (status) *status = redirected_status;
+        if (!body || redirected_status < 200 || redirected_status >= 300) { free(body); return 0; }
+        FILE *f = fopen(destination, "wb");
+        int ok = f && fwrite(body, 1, length, f) == length;
+        if (f && fclose(f) != 0) ok = 0;
+        free(body); return ok;
+    }
+    if (code < 200 || code >= 300) goto stream_fail;
+    FILE *out = fopen(destination, "wb");
+    if (!out) goto stream_fail;
+    int ok = 1;
+    if (chunked) {
+        char chunk_line[8193];
+        for (;;) {
+            if (!stream_read_line(fd, ssl, chunk_line, sizeof(chunk_line))) { ok = 0; break; }
+            char *semi = strchr(chunk_line, ';'); if (semi) *semi = '\0';
+            if (!*chunk_line) { ok = 0; break; }
+            char *tail = NULL; unsigned long long amount = strtoull(chunk_line, &tail, 16);
+            if (!tail || *tail || amount > SIZE_MAX) { ok = 0; break; }
+            if (!amount) {
+                for (;;) {
+                    if (!stream_read_line(fd, ssl, chunk_line, sizeof(chunk_line))) { ok = 0; break; }
+                    if (!*chunk_line) break;
+                    if (!strchr(chunk_line, ':')) { ok = 0; break; }
+                }
+                break;
+            }
+            if (!stream_read_exact(fd, ssl, out, (size_t)amount)) { ok = 0; break; }
+            char ending[2]; size_t got = 0;
+            if (stream_read(fd, ssl, ending, 1, &got) != 1 || got != 1 || ending[0] != '\r' ||
+                stream_read(fd, ssl, ending+1, 1, &got) != 1 || got != 1 || ending[1] != '\n') { ok = 0; break; }
+        }
+    } else if (has_length) {
+        if (content_length > SIZE_MAX) ok = 0;
+        else ok = stream_read_exact(fd, ssl, out, (size_t)content_length);
+    } else {
+        char buffer[65536];
+        for (;;) {
+            size_t got = 0; int r = stream_read(fd, ssl, buffer, sizeof(buffer), &got);
+            if (r == 0) break;
+            if (r < 0 || fwrite(buffer, 1, got, out) != got) { ok = 0; break; }
+        }
+    }
+    if (fclose(out) != 0) ok = 0;
+    if (ssl) { SSL_shutdown(ssl); SSL_free(ssl); }
+    if (ctx) SSL_CTX_free(ctx);
+    close(fd); parsed_url_free(&u);
+    return ok;
+stream_fail:
+    if (ssl) SSL_free(ssl);
+    if (ctx) SSL_CTX_free(ctx);
+    close(fd); parsed_url_free(&u);
+    return 0;
 }
 #endif

@@ -54,11 +54,11 @@ Bearer-token variants are available for GET, POST, PUT, PATCH and DELETE. Keep c
 
 An HTTP server can return `404 Not Found` even though the connection worked. Use `net.status(url)` to inspect the HTTP status. The helper returns a three-digit string; `000` indicates that the transport failed before an HTTP status was received.
 
-Body helpers return an empty string on transport failure, so an empty response is ambiguous. Download helpers write only successful 2xx responses.
+Body helpers return an empty string on transport failure, so an empty response is ambiguous. Download helpers preserve binary bytes and write only successful 2xx responses. Responses are capped at 256 MiB.
 
 ## 4. Current implementation limits
 
-The native transport supports HTTP and HTTPS, standard request methods, one or more newline-separated request headers, text request bodies, status codes, and bounded response bodies. It currently does not implement redirect handling, proxy configuration, connection pooling, streaming responses, or a general binary response type. Do not treat it as a fully featured HTTP client yet.
+The native transport supports HTTP and HTTPS, standard request methods, one or more newline-separated request headers, text request bodies, status codes, and response bodies capped at 256 MiB. It currently does not implement redirect handling, proxy configuration, connection pooling, streaming responses, or a general binary response type. Do not treat it as a fully featured HTTP client yet.
 
 The Unix-like HTTPS implementation links against OpenSSL and verifies the peer certificate and hostname. Windows uses the platform WinHTTP stack and its certificate validation.
 

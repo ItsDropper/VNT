@@ -82,19 +82,22 @@ jobs:
             -o vnt
 
       - name: Compile VNT regression programs
+        shell: bash
         run: |
-          ./vnt --compile tests/native_compiler.vnt -o /tmp/vnt-native-smoke
-          ./vnt --compile tests/hir_constant_folding.vnt -o /tmp/vnt-hir-smoke
+          ./vnt --compile tests/native_compiler.vnt -o vnt-native-smoke.exe
+          ./vnt --compile tests/hir_constant_folding.vnt -o vnt-hir-smoke.exe
 
       - name: Run native networking integration tests
+        shell: bash
         run: python3 tests/run_native_networking.py
 
       - name: Run native programs and verify output
+        shell: bash
         run: |
-          /tmp/vnt-native-smoke > /tmp/vnt-native-actual
-          printf 'IR:\n14\ntrue\ntrue\nNative compiler OK\n' > /tmp/vnt-native-expected
-          diff -u /tmp/vnt-native-expected /tmp/vnt-native-actual
+          ./vnt-native-smoke.exe > vnt-native-actual.txt
+          printf 'IR:\n14\ntrue\ntrue\nNative compiler OK\n' > vnt-native-expected.txt
+          diff -u vnt-native-expected.txt vnt-native-actual.txt
 
-          /tmp/vnt-hir-smoke > /tmp/vnt-hir-actual
-          printf '14\n4\nfalse\n3.75\n10\n3\ntrue\nHIR_CONSTANT_FOLDING_OK\n' > /tmp/vnt-hir-expected
-          diff -u /tmp/vnt-hir-expected /tmp/vnt-hir-actual
+          ./vnt-hir-smoke.exe > vnt-hir-actual.txt
+          printf '14\n4\nfalse\n3.75\n10\n3\ntrue\nHIR_CONSTANT_FOLDING_OK\n' > vnt-hir-expected.txt
+          diff -u vnt-hir-expected.txt vnt-hir-actual.txt

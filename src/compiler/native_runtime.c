@@ -179,6 +179,7 @@ typedef enum {
     VNT_BOOL,
     VNT_STRING,
     VNT_ARRAY,
+    VNT_BYTES,
     VNT_OBJECT,
     VNT_PROCESS,
     VNT_REFERENCE
@@ -204,6 +205,10 @@ struct VntValue {
             int count;
             int capacity;
         } array;
+        struct {
+            unsigned char *data;
+            size_t length;
+        } bytes;
         struct {
             VntField *fields;
             int count;
@@ -364,6 +369,19 @@ VNT_NATIVE_ABI VntValue * vnt_array_new(void) {
     return alloc_value(VNT_ARRAY);
 }
 
+VNT_NATIVE_ABI VntValue * vnt_bytes_new(const unsigned char *data, size_t length) {
+    VntValue *v = alloc_value(VNT_BYTES);
+    v->bytes.data = (unsigned char *)malloc(length ? length : 1);
+    if (!v->bytes.data) {
+        fprintf(stderr, "Runtime error: out of memory.\n");
+        exit(1);
+    }
+    if (length && data) memcpy(v->bytes.data, data, length);
+    else if (length) memset(v->bytes.data, 0, length);
+    v->bytes.length = length;
+    return v;
+}
+
 VNT_NATIVE_ABI VntValue * vnt_array_push(VntValue *a, VntValue *item) {
     if (!a || a->type != VNT_ARRAY) {
         fprintf(stderr, "Runtime error: expected an array.\n");
@@ -384,8 +402,15 @@ VNT_NATIVE_ABI VntValue * vnt_array_push(VntValue *a, VntValue *item) {
 }
 
 VNT_NATIVE_ABI VntValue * vnt_array_get_int(VntValue *a, int index) {
+    if (a && a->type == VNT_BYTES) {
+        if (index < 0 || (size_t)index >= a->bytes.length) {
+            fprintf(stderr, "Runtime error: byte buffer index out of bounds.\n");
+            exit(1);
+        }
+        return vnt_int((int)a->bytes.data[index]);
+    }
     if (!a || a->type != VNT_ARRAY) {
-        fprintf(stderr, "Runtime error: indexing requires an array.\n");
+        fprintf(stderr, "Runtime error: indexing requires an array or byte buffer.\n");
         exit(1);
     }
     if (index < 0 || index >= a->array.count) {
@@ -396,6 +421,15 @@ VNT_NATIVE_ABI VntValue * vnt_array_get_int(VntValue *a, int index) {
 }
 
 VNT_NATIVE_ABI VntValue * vnt_array_set_int(VntValue *a, int index, VntValue *value) {
+    if (a && a->type == VNT_BYTES) {
+        if (index < 0 || (size_t)index >= a->bytes.length || !value ||
+            value->type != VNT_INT || value->integer < 0 || value->integer > 255) {
+            fprintf(stderr, "Runtime error: byte buffer assignment requires an in-range index and byte integer.\n");
+            exit(1);
+        }
+        a->bytes.data[index] = (unsigned char)value->integer;
+        return value;
+    }
     if (!a || a->type != VNT_ARRAY) {
         fprintf(stderr, "Runtime error: array assignment requires an array.\n");
         exit(1);
@@ -409,21 +443,24 @@ VNT_NATIVE_ABI VntValue * vnt_array_set_int(VntValue *a, int index, VntValue *va
 }
 
 VNT_NATIVE_ABI VntValue * vnt_array_get(VntValue *a, VntValue *index) {
+    if (a && a->type == VNT_BYTES) {
+        if (!index || index->type != VNT_INT) {
+            fprintf(stderr, "Runtime error: byte buffer indexing requires an integer index.\n");
+            exit(1);
+        }
+        return vnt_array_get_int(a, index->integer);
+    }
     if (a && a->type == VNT_STRING)
         return vnt_string_get(a, index);
     if (!a || a->type != VNT_ARRAY || !index || index->type != VNT_INT) {
-        fprintf(stderr, "Runtime error: indexing requires an array/string and integer index.\n");
-        exit(1);
+        fprintf(stderr, "Runtime error: indexVNT_NATIVE_ABI VntValue * vnt_array_set(VntValue *a, VntValue *index, VntValue *value) {
+    if (a && a->type == VNT_BYTES) {
+        if (!index || index->type != VNT_INT) {
+            fprintf(stderr, "Runtime error: byte buffer assignment requires an integer index.\n");
+            exit(1);
+        }
+        return vnt_array_set_int(a, index->integer, value);
     }
-    int i = index->integer;
-    if (i < 0 || i >= a->array.count) {
-        fprintf(stderr, "Runtime error: array index out of bounds.\n");
-        exit(1);
-    }
-    return a->array.items[i];
-}
-
-VNT_NATIVE_ABI VntValue * vnt_array_set(VntValue *a, VntValue *index, VntValue *value) {
     if (!a || a->type != VNT_ARRAY || !index || index->type != VNT_INT) {
         fprintf(stderr, "Runtime error: array assignment requires an array and integer index.\n");
         exit(1);
@@ -577,6 +614,9 @@ static int equal_value(VntValue *a, VntValue *b) {
         case VNT_FLOAT: return a->floating == b->floating;
         case VNT_BOOL: return a->boolean == b->boolean;
         case VNT_STRING: return strcmp(a->string, b->string) == 0;
+        case VNT_BYTES:
+            return a->bytes.length == b->bytes.length &&
+                   (!a->bytes.length || memcmp(a->bytes.data, b->bytes.data, a->bytes.length) == 0);
         case VNT_ARRAY:
             if (a->array.count != b->array.count) return 0;
             for (int i=0;i<a->array.count;i++)
@@ -630,6 +670,14 @@ static void print_value(VntValue *v) {
         case VNT_FLOAT: printf("%.15g", v->floating); break;
         case VNT_BOOL: printf("%s", v->boolean ? "true" : "false"); break;
         case VNT_STRING: printf("%s", v->string); break;
+        case VNT_BYTES:
+            printf("[");
+            for (size_t i = 0; i < v->bytes.length; ++i) {
+                if (i) printf(", ");
+                printf("%u", (unsigned int)v->bytes.data[i]);
+            }
+            printf("]");
+            break;
         case VNT_ARRAY:
             printf("[");
             for (int i=0;i<v->array.count;i++) {
@@ -664,6 +712,14 @@ VNT_NATIVE_ABI void vnt_print(VntValue *v) {
 VNT_NATIVE_ABI VntValue * vnt_len(VntValue *v) {
     if (v->type == VNT_STRING) return vnt_int((int)strlen(v->string));
     if (v->type == VNT_ARRAY) return vnt_int(v->array.count);
+    if (v->type == VNT_BYTES) {
+        if (v->bytes.length > INT_MAX) {
+            fprintf(stderr, "Runtime error: byte buffer is too large for len().
+");
+            exit(1);
+        }
+        return vnt_int((int)v->bytes.length);
+    }
     if (v->type == VNT_OBJECT) return vnt_int(v->object.count);
     fprintf(stderr, "Runtime error: len() requires a string, array, or object.\n");
     exit(1);
@@ -1837,21 +1893,28 @@ VNT_NATIVE_ABI VntValue *vnt_net_request(VntValue *method, VntValue *url,
 
 VNT_NATIVE_ABI VntValue *vnt_net_request_bytes(VntValue *method, VntValue *url,
                                                VntValue *headers, VntValue *body) {
-    if (!body || body->type != VNT_ARRAY) {
-        fprintf(stderr, "Runtime error: net_request_bytes() expects an array of byte integers as its body.\n");
-        return vnt_array_new();
+    if (!body || (body->type != VNT_ARRAY && body->type != VNT_BYTES)) {
+        fprintf(stderr, "Runtime error: net_request_bytes() expects an array of byte integers or a byte buffer as its body.\n");
+        return vnt_bytes_new(NULL, 0);
     }
-    size_t body_length = (size_t)body->array.count;
-    unsigned char *body_data = (unsigned char *)malloc(body_length ? body_length : 1);
-    if (!body_data) return vnt_array_new();
-    for (size_t i = 0; i < body_length; ++i) {
-        VntValue *item = body->array.items[i];
-        if (!item || item->type != VNT_INT || item->integer < 0 || item->integer > 255) {
-            fprintf(stderr, "Runtime error: net_request_bytes() body entries must be integers from 0 to 255.\n");
-            free(body_data);
-            return vnt_array_new();
+    size_t body_length = body->type == VNT_BYTES ? body->bytes.length : (size_t)body->array.count;
+    const unsigned char *body_data = NULL;
+    unsigned char *owned_body_data = NULL;
+    if (body->type == VNT_BYTES) {
+        body_data = body->bytes.data;
+    } else {
+        owned_body_data = (unsigned char *)malloc(body_length ? body_length : 1);
+        if (!owned_body_data) return vnt_bytes_new(NULL, 0);
+        for (size_t i = 0; i < body_length; ++i) {
+            VntValue *item = body->array.items[i];
+            if (!item || item->type != VNT_INT || item->integer < 0 || item->integer > 255) {
+                fprintf(stderr, "Runtime error: net_request_bytes() body entries must be integers from 0 to 255.\n");
+                free(owned_body_data);
+                return vnt_bytes_new(NULL, 0);
+            }
+            owned_body_data[i] = (unsigned char)item->integer;
         }
-        body_data[i] = (unsigned char)item->integer;
+        body_data = owned_body_data;
     }
     int status = 0;
     size_t response_length = 0;
@@ -1860,11 +1923,8 @@ VNT_NATIVE_ABI VntValue *vnt_net_request_bytes(VntValue *method, VntValue *url,
         vnt_net_string(url, "net_request_bytes()"),
         vnt_net_string(headers, "net_request_bytes()"),
         (const char *)body_data, body_length, &status, &response_length);
-    free(body_data);
-    VntValue *result = vnt_array_new();
-    if (!response) return result;
-    for (size_t i = 0; i < response_length; ++i)
-        vnt_array_push(result, vnt_int((unsigned char)response[i]));
+    free(owned_body_data);
+    VntValue *result = vnt_bytes_new((const unsigned char *)response, response ? response_length : 0);
     free(response);
     return result;
 }

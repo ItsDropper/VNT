@@ -28,6 +28,8 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
     def log_message(self, *_args):
         pass
 
+LAST_KEEPALIVE_CONNECTION = None
+
 class Handler(http.server.BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
@@ -46,13 +48,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
         elif self.path == "/query?x=1":
             self._send(200, "FRAGMENT_NOT_SENT")
         elif self.path == "/keepalive":
+            global LAST_KEEPALIVE_CONNECTION
             self.close_connection = False
+            LAST_KEEPALIVE_CONNECTION = self.connection
             payload = b"CONTENT_LENGTH_OK"
             self.send_response(200)
             self.send_header("Content-Length", str(len(payload)))
             self.send_header("Connection", "keep-alive")
             self.end_headers()
             self.wfile.write(payload)
+        elif self.path == "/pool-check":
+            self._send(200, "POOL_REUSED" if self.connection is LAST_KEEPALIVE_CONNECTION else "POOL_NEW")
         elif self.path == "/redirect":
             self.send_response(302)
             self.send_header("Location", "/hello")
@@ -145,7 +151,7 @@ def main():
         # intentionally malformed test response. Both outcomes are platform API
         # behavior, while the Unix decoder must reject the malformed CRLF.
         malformed_chunk_result = "abc\n" if os.name == "nt" else "\n"
-        expected = ('VNT_NATIVE_HTTP_OK\nFRAGMENT_NOT_SENT\nCONTENT_LENGTH_OK\n'
+        expected = ('VNT_NATIVE_HTTP_OK\nFRAGMENT_NOT_SENT\nCONTENT_LENGTH_OK\nPOOL_REUSED\n'
                     'VNT_NATIVE_HTTP_OK\nCHUNKED_OK\n' + malformed_chunk_result +
                     '[0, 1, 255, 10, 13, 128]\ntrue\n[0, 1, 255, 10, 13, 128]\n'
                     'AUTH_STRIPPED\n204\nHEADER_OK\nPOST_OK:{"native":true}\n'

@@ -40,7 +40,7 @@ static int compile_native(AstNode *program, const char *output_path) {
         assembly_path, output_path);
 #else
     sprintf(command,
-        "gcc \"%s\" src/compiler/native_runtime.c -O3 -o \"%s\"",
+        "gcc \"%s\" src/compiler/native_runtime.c -O3 -lm -ldl -o \"%s\"",
         assembly_path, output_path);
 #endif
 

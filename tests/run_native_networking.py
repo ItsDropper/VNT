@@ -11,6 +11,7 @@ import threading
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 HOST = "127.0.0.1"
 PORT = 18765
+REDIRECT_PORT = 18766
 
 class Handler(http.server.BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
@@ -45,7 +46,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
         elif self.path == "/redirect-auth":
             self.send_response(302)
-            self.send_header("Location", "http://localhost:18765/check-auth")
+            self.send_header("Location", "http://127.0.0.1:18766/check-auth")
             self.send_header("Content-Length", "0")
             self.send_header("Connection", "close")
             self.end_headers()
@@ -83,8 +84,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 def main():
     server = http.server.ThreadingHTTPServer((HOST, PORT), Handler)
+    redirect_server = http.server.ThreadingHTTPServer((HOST, REDIRECT_PORT), Handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
+    redirect_thread = threading.Thread(target=redirect_server.serve_forever, daemon=True)
     thread.start()
+    redirect_thread.start()
     try:
         exe = str(pathlib.Path(tempfile.gettempdir()) / ("vnt-native-networking-test.exe" if os.name == "nt" else "vnt-native-networking-test"))
         compiler = ROOT / ("vnt.exe" if os.name == "nt" else "vnt")
@@ -125,6 +129,8 @@ def main():
         (ROOT / "vnt-network-binary.test").unlink(missing_ok=True)
         server.shutdown()
         server.server_close()
+        redirect_server.shutdown()
+        redirect_server.server_close()
 
 if __name__ == "__main__":
     raise SystemExit(main())

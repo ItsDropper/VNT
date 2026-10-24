@@ -282,7 +282,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
         memcpy(path + path_at, parts.lpszExtraInfo, parts.dwExtraInfoLength * sizeof(wchar_t));
         path_at += parts.dwExtraInfoLength;
     }
-    path[path_at] = L'\\0';
+    path[path_at] = L'\0';
     HINTERNET session = WinHttpOpen(L"VNT/0.1", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
                                     WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     if (session) WinHttpSetTimeouts(session, 10000, 10000, 30000, 30000);

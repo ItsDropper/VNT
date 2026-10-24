@@ -116,14 +116,28 @@ char *vnt_native_url_encode(const char *text) {
 }
 
 static char *decode_chunked(char *body, size_t length, size_t *decoded_length) {
+    if (!body || length == SIZE_MAX) return NULL;
     char *out = (char *)malloc(length + 1);
     if (!out) return NULL;
     size_t r = 0, w = 0;
-    while (r < length) {
+    for (;;) {
+        /* Chunk-size lines and delimiters must use HTTP's CRLF framing. */
+        size_t line_start = r;
+        while (r + 1 < length && !(body[r] == '\r' && body[r + 1] == '\n')) {
+            if (body[r] == '\r' || body[r] == '\n' || r - line_start > 8192) {
+                free(out); return NULL;
+            }
+            r++;
+        }
+        if (r + 1 >= length) { free(out); return NULL; }
+        size_t line_end = r;
+        r += 2;
+        size_t digits_end = line_start;
+        while (digits_end < line_end && body[digits_end] != ';') digits_end++;
+        if (digits_end == line_start) { free(out); return NULL; }
         size_t chunk = 0;
-        int digits = 0;
-        while (r < length && body[r] != '\r' && body[r] != ';') {
-            unsigned char c = (unsigned char)body[r++];
+        for (size_t i = line_start; i < digits_end; ++i) {
+            unsigned char c = (unsigned char)body[i];
             unsigned int v;
             if (c >= '0' && c <= '9') v = c - '0';
             else if (c >= 'a' && c <= 'f') v = c - 'a' + 10;
@@ -131,19 +145,42 @@ static char *decode_chunked(char *body, size_t length, size_t *decoded_length) {
             else { free(out); return NULL; }
             if (chunk > (SIZE_MAX - v) / 16) { free(out); return NULL; }
             chunk = chunk * 16 + v;
-            digits++;
         }
-        while (r < length && body[r] != '\n') r++;
-        if (r < length) r++;
-        if (!digits || chunk > length - r) { free(out); return NULL; }
-        if (!chunk) { out[w] = '\0'; if (decoded_length) *decoded_length = w; return out; }
+        if (chunk == 0) {
+            /* Consume trailer fields through the mandatory empty CRLF line. */
+            for (;;) {
+                size_t trailer_start = r;
+                while (r + 1 < length && !(body[r] == '\r' && body[r + 1] == '\n')) {
+                    if (body[r] == '\r' || body[r] == '\n' || r - trailer_start > 8192) {
+                        free(out); return NULL;
+                    }
+                    r++;
+                }
+                if (r + 1 >= length) { free(out); return NULL; }
+                size_t trailer_len = r - trailer_start;
+                r += 2;
+                if (!trailer_len) {
+                    out[w] = '\0';
+                    if (decoded_length) *decoded_length = w;
+                    return out;
+                }
+                const char *colon = (const char *)memchr(body + trailer_start, ':', trailer_len);
+                if (!colon || colon == body + trailer_start) { free(out); return NULL; }
+                for (const char *p = body + trailer_start; p < colon; ++p)
+                    if (!http_token_char((unsigned char)*p)) { free(out); return NULL; }
+                for (const char *p = colon + 1; p < body + trailer_start + trailer_len; ++p) {
+                    unsigned char c = (unsigned char)*p;
+                    if ((c < 0x20 && c != '\t') || c == 0x7f) { free(out); return NULL; }
+                }
+            }
+        }
+        if (chunk > length - r || length - r - chunk < 2) { free(out); return NULL; }
         memcpy(out + w, body + r, chunk);
-        w += chunk; r += chunk;
-        if (r + 1 < length && body[r] == '\r' && body[r + 1] == '\n') r += 2;
+        w += chunk;
+        r += chunk;
+        if (body[r] != '\r' || body[r + 1] != '\n') { free(out); return NULL; }
+        r += 2;
     }
-    out[w] = '\0';
-    if (decoded_length) *decoded_length = w;
-    return out;
 }
 
 #ifdef _WIN32

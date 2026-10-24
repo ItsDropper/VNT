@@ -252,7 +252,7 @@ def main():
                     "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1",
                 ], text=True, capture_output=True, timeout=30)
                 if cert_result.returncode:
-                    sys.stderr.write("Could not generate local TLS test certificate.\\n" +
+                    sys.stderr.write("Could not generate local TLS test certificate.\n" +
                                      cert_result.stdout + cert_result.stderr)
                     return 1
                 tls_server = http.server.ThreadingHTTPServer((HOST, 18768), TLSHandler)
@@ -276,8 +276,8 @@ def main():
                     tls_env["SSL_CERT_FILE"] = str(cert_path)
                     tls_result = subprocess.run([exe], cwd=ROOT, env=tls_env,
                         text=True, capture_output=True, timeout=20)
-                    if tls_result.returncode or tls_result.stdout != "TLS_READY\\nTLS_POOL_REUSED\\n":
-                        sys.stderr.write("Unix TLS connection-pool test failed.\\n" +
+                    if tls_result.returncode or tls_result.stdout != "TLS_READY\nTLS_POOL_REUSED\n":
+                        sys.stderr.write("Unix TLS connection-pool test failed.\n" +
                                          tls_result.stdout + tls_result.stderr)
                         return 1
                 finally:

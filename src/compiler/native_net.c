@@ -13,7 +13,7 @@
 #include <ctype.h>
 #include <stdint.h>
 
-#define VNT_NET_MAX_RESPONSE (16u * 1024u * 1024u)
+#define VNT_NET_MAX_RESPONSE (256u * 1024u * 1024u)
 
 static char *net_copy(const char *s, size_t n) {
     char *p = (char *)malloc(n + 1);

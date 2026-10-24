@@ -251,8 +251,9 @@ static int write_all(int fd, SSL *ssl, const char *data, size_t length) {
     return 1;
 }
 
-char *vnt_native_http_request(const char *method, const char *url,
-                      const char *headers, const char *body, int *status, size_t *response_length) {
+static char *vnt_native_http_request_impl(const char *method, const char *url,
+                      const char *headers, const char *body, int *status, size_t *response_length,
+                      unsigned int redirect_count) {
     if (status) *status = 0;
     if (response_length) *response_length = 0;
     ParsedUrl u;
@@ -340,8 +341,65 @@ char *vnt_native_http_request(const char *method, const char *url,
     if (!sep) { free(raw); goto fail; }
     int code = 0;
     if (sscanf(raw, "HTTP/%*u.%*u %d", &code) != 1) { free(raw); goto fail; }
-    if (status) *status = code;
     size_t headerlen = (size_t)(sep + 4 - raw), bodylen_read = used - headerlen;
+
+    /* Follow standard redirects, with a hard loop limit and relative URL support. */
+    if ((code == 301 || code == 302 || code == 303 || code == 307 || code == 308) &&
+        redirect_count < 10) {
+        char *location = NULL;
+        char *line = raw;
+        while (line < sep) {
+            char *line_end = strstr(line, "\\r\\n");
+            if (!line_end || line_end > sep) break;
+            if ((size_t)(line_end - line) > 9 && !strncasecmp(line, "Location:", 9)) {
+                char *value = line + 9;
+                while (value < line_end && (*value == ' ' || *value == '\\t')) value++;
+                location = net_copy(value, (size_t)(line_end - value));
+                break;
+            }
+            line = line_end + 2;
+        }
+        if (location && *location) {
+            char *next_url = NULL;
+            if (!strncasecmp(location, "http://", 7) || !strncasecmp(location, "https://", 8)) {
+                next_url = strdup(location);
+            } else if (location[0] == '/') {
+                size_t n = strlen(u.host) + strlen(u.port) + strlen(location) + 16;
+                next_url = (char *)malloc(n);
+                if (next_url) snprintf(next_url, n, "%s://%s:%s%s", u.tls ? "https" : "http", u.host, u.port, location);
+            } else if (location[0] == '?') {
+                const char *slash = strrchr(u.target, '?');
+                size_t path_len = slash ? (size_t)(slash-u.target) : strlen(u.target);
+                size_t n = strlen(u.host) + strlen(u.port) + path_len + strlen(location) + 16;
+                next_url = (char *)malloc(n);
+                if (next_url) snprintf(next_url, n, "%s://%s:%s%.*s%s", u.tls ? "https" : "http", u.host, u.port, (int)path_len, u.target, location);
+            } else {
+                const char *slash = strrchr(u.target, '/');
+                size_t path_len = slash ? (size_t)(slash-u.target+1) : 1;
+                size_t n = strlen(u.host) + strlen(u.port) + path_len + strlen(location) + 16;
+                next_url = (char *)malloc(n);
+                if (next_url) snprintf(next_url, n, "%s://%s:%s%.*s%s", u.tls ? "https" : "http", u.host, u.port, (int)path_len, u.target, location);
+            }
+            free(location);
+            free(raw);
+            if (ssl) { SSL_shutdown(ssl); SSL_free(ssl); }
+            if (ctx) SSL_CTX_free(ctx);
+            close(fd); parsed_url_free(&u);
+            if (!next_url) return NULL;
+            const char *next_method = method ? method : "GET";
+            const char *next_body = body ? body : "";
+            if (code == 303 || ((code == 301 || code == 302) && !strcasecmp(next_method, "POST"))) {
+                next_method = "GET";
+                next_body = "";
+            }
+            char *redirected = vnt_native_http_request_impl(next_method, next_url, headers, next_body,
+                                                             status, response_length, redirect_count + 1);
+            free(next_url);
+            return redirected;
+        }
+        free(location);
+    }
+    if (status) *status = code;
     char *result = NULL;
     if (strcasestr(raw, "Transfer-Encoding: chunked") && bodylen_read) {
         result = decode_chunked(sep+4, bodylen_read, response_length);
@@ -359,5 +417,10 @@ fail:
     if (ctx) SSL_CTX_free(ctx);
     close(fd); parsed_url_free(&u);
     return NULL;
+}
+
+char *vnt_native_http_request(const char *method, const char *url,
+                      const char *headers, const char *body, int *status, size_t *response_length) {
+    return vnt_native_http_request_impl(method, url, headers, body, status, response_length, 0);
 }
 #endif

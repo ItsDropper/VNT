@@ -22,7 +22,7 @@ static char *net_copy(const char *s, size_t n) {
     return p;
 }
 
-char *vnt_net_url_encode(const char *text) {
+char *vnt_native_url_encode(const char *text) {
     static const char hex[] = "0123456789ABCDEF";
     if (!text) text = "";
     size_t n = strlen(text);
@@ -90,7 +90,7 @@ static wchar_t *to_wide(const char *s) {
     return w;
 }
 
-char *vnt_net_request(const char *method, const char *url,
+char *vnt_native_http_request(const char *method, const char *url,
                       const char *headers, const char *body, int *status) {
     if (status) *status = 0;
     wchar_t *wide_url = to_wide(url), *wide_method = to_wide(method);
@@ -102,8 +102,6 @@ char *vnt_net_request(const char *method, const char *url,
     if (!WinHttpCrackUrl(wide_url, 0, 0, &parts)) {
         free(wide_url); free(wide_method); return NULL;
     }
-    wchar_t *host = net_copy((const char *)"", 0) ? NULL : NULL;
-    (void)host;
     size_t host_bytes = ((size_t)parts.dwHostNameLength + 1) * sizeof(wchar_t);
     wchar_t *hostname = (wchar_t *)calloc(1, host_bytes);
     if (!hostname) { free(wide_url); free(wide_method); return NULL; }
@@ -232,7 +230,7 @@ static int write_all(int fd, SSL *ssl, const char *data, size_t length) {
     return 1;
 }
 
-char *vnt_net_request(const char *method, const char *url,
+char *vnt_native_http_request(const char *method, const char *url,
                       const char *headers, const char *body, int *status) {
     if (status) *status = 0;
     ParsedUrl u;

@@ -45,6 +45,20 @@ static int reserved_request_header(const char *line, size_t length) {
            header_name_equals(line,n,"proxy-connection");
 }
 
+static int valid_http_method(const char *method) {
+    if (!method || !*method) return 0;
+    for (const unsigned char *p = (const unsigned char *)method; *p; ++p)
+        if (!http_token_char(*p)) return 0;
+    return 1;
+}
+
+static int valid_http_url_chars(const char *url) {
+    if (!url || !*url) return 0;
+    for (const unsigned char *p = (const unsigned char *)url; *p; ++p)
+        if (*p <= 0x20 || *p == 0x7f) return 0;
+    return 1;
+}
+
 static int valid_request_headers(const char *headers) {
     const char *p = headers ? headers : "";
     while (*p) {
@@ -239,7 +253,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
                       unsigned int redirect_count) {
     if (status) *status = 0;
     if (response_length) *response_length = 0;
-    if (!valid_request_headers(headers)) return NULL;
+    if (!valid_http_method(method ? method : "GET") || !valid_http_url_chars(url) || !valid_request_headers(headers)) return NULL;
     wchar_t *wide_url = to_wide(url), *wide_method = to_wide(method);
     if (!wide_url || !wide_method) { free(wide_url); free(wide_method); return NULL; }
     URL_COMPONENTS parts;
@@ -406,6 +420,7 @@ static void parsed_url_free(ParsedUrl *u) {
 
 static int parse_url(const char *url, ParsedUrl *u) {
     memset(u, 0, sizeof(*u));
+    if (!valid_http_url_chars(url)) return 0;
     const char *p;
     if (!strncasecmp(url, "http://", 7)) { p = url + 7; u->tls = 0; }
     else if (!strncasecmp(url, "https://", 8)) { p = url + 8; u->tls = 1; }

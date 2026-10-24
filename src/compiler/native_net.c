@@ -1127,26 +1127,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
             line = line_end + 2;
         }
         if (location && *location) {
-            char *next_url = NULL;
-            if (!strncasecmp(location, "http://", 7) || !strncasecmp(location, "https://", 8)) {
-                next_url = strdup(location);
-            } else if (location[0] == '/') {
-                size_t n = strlen(u.host) + strlen(u.port) + strlen(location) + 16;
-                next_url = (char *)malloc(n);
-                if (next_url) snprintf(next_url, n, "%s://%s:%s%s", u.tls ? "https" : "http", u.host, u.port, location);
-            } else if (location[0] == '?') {
-                const char *slash = strrchr(u.target, '?');
-                size_t path_len = slash ? (size_t)(slash-u.target) : strlen(u.target);
-                size_t n = strlen(u.host) + strlen(u.port) + path_len + strlen(location) + 16;
-                next_url = (char *)malloc(n);
-                if (next_url) snprintf(next_url, n, "%s://%s:%s%.*s%s", u.tls ? "https" : "http", u.host, u.port, (int)path_len, u.target, location);
-            } else {
-                const char *slash = strrchr(u.target, '/');
-                size_t path_len = slash ? (size_t)(slash-u.target+1) : 1;
-                size_t n = strlen(u.host) + strlen(u.port) + path_len + strlen(location) + 16;
-                next_url = (char *)malloc(n);
-                if (next_url) snprintf(next_url, n, "%s://%s:%s%.*s%s", u.tls ? "https" : "http", u.host, u.port, (int)path_len, u.target, location);
-            }
+            char *next_url = resolve_redirect_url(&u, location);
             free(location);
             free(raw);
             if (ssl) { SSL_shutdown(ssl); SSL_free(ssl); }

@@ -182,7 +182,7 @@ The source-level standard library lives in `lib/std/`. Available modules include
 | `time.vnt` | Millisecond clock and sleep helpers |
 | `os.vnt` | Current directory and environment variables |
 | `process.vnt` | Start, inspect, wait for, and terminate child processes |
-| `net.vnt` | HTTP helpers backed by the system `curl` executable |
+| `net.vnt` | Native HTTP/HTTPS requests, status codes, headers, and downloads |
 | `log.vnt` | File and console logging |
 | `config.vnt` | Plain-text configuration helpers |
 | `json.vnt` | JSON-related source helpers |
@@ -200,7 +200,7 @@ fs.append_text(path, "Second line\n")
 print(fs.read_text(path))
 ```
 
-File operations handle text, not arbitrary binary data. The networking module requires `curl` (or `curl.exe` on Windows) on `PATH`; it is a runtime bridge to that program, not a built-in HTTP stack. Read the module source and tutorial documentation for exact return behavior and limitations.
+File operations handle text, not arbitrary binary data. Networking is implemented in the native C runtime: Windows uses WinHTTP, while Unix-like builds use sockets and OpenSSL. No `curl` executable is required. HTTP responses are returned as strings; status helpers return a three-digit status string and `000` indicates a transport failure. Downloads accept only 2xx responses.
 
 ## Native runtime APIs
 
@@ -289,7 +289,7 @@ The checks build VNT and exercise language features, module loading, and runtime
 - GUI APIs currently target Windows.
 - GUI styling implements a small CSS-like subset, not full CSS or browser behavior.
 - Text file APIs are not binary-safe.
-- HTTP helpers depend on the system `curl` executable and return response bodies as strings; they are not a native HTTP implementation.
+- Native HTTP/HTTPS support is an early implementation: response bodies are currently text-oriented, redirects and advanced proxy/authentication features are not yet implemented, and the Unix-like HTTPS path requires OpenSSL development/runtime libraries.
 - The standard library and runtime API may change as the language develops.
 
 ## Roadmap

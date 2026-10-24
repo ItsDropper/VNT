@@ -54,11 +54,11 @@ Bearer-token variants are available for GET, POST, PUT, PATCH and DELETE. Keep c
 
 An HTTP server can return `404 Not Found` even though the connection worked. Use `net.status(url)` to inspect the HTTP status. The helper returns a three-digit string; `000` indicates that the transport failed before an HTTP status was received.
 
-Body helpers return an empty string on transport failure, so an empty response is ambiguous. Download helpers preserve binary bytes and write only successful 2xx responses. Responses are capped at 256 MiB.
+Body helpers return an empty string on transport failure, so an empty response is ambiguous. Download helpers preserve binary bytes and write only successful 2xx responses. The in-memory response path has no fixed application-level size cap; it remains bounded by available memory and allocation success.
 
-## 4. Current implementation limits
+## 4. Behavior and remaining gaps
 
-The native transport supports HTTP and HTTPS, standard request methods, one or more newline-separated request headers, text request bodies, status codes, and response bodies capped at 256 MiB. The Unix-like transport does not currently follow redirects; Windows delegates redirect behavior to WinHTTP. Neither implementation supports proxy configuration, connection pooling, streaming responses, or a general binary response type. Do not treat it as a fully featured HTTP client yet.
+The native transport supports HTTP and HTTPS, standard request methods, newline-separated headers, text request bodies, status codes, redirects, and binary-safe downloads. Redirect loops are capped at ten hops; cross-origin redirects strip `Authorization`, `Proxy-Authorization`, and `Cookie` headers. The in-memory response path has no fixed application-level size cap, but it must fit in memory. Streaming response APIs, connection pooling, and proxy configuration are not implemented. VNT's ordinary string values remain text-oriented, so use `net.download` for binary files.
 
 The Unix-like HTTPS implementation links against OpenSSL and verifies the peer certificate and hostname. Windows uses the platform WinHTTP stack and its certificate validation.
 

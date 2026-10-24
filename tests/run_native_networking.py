@@ -60,6 +60,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
             for chunk in (b"CHUNK", b"ED_OK"):
                 self.wfile.write(f"{len(chunk):X}\r\n".encode("ascii") + chunk + b"\r\n")
             self.wfile.write(b"0\r\n\r\n")
+        elif self.path == "/bad-chunked":
+            self.send_response(200)
+            self.send_header("Transfer-Encoding", "chunked")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self.wfile.write(b"3\\r\\nabcX\\n0\\r\\n\\r\\n")
         elif self.path == "/status":
             self._send(204, "")
         elif self.path == "/header":
@@ -112,7 +118,7 @@ def main():
                         sys.stderr.write(f"\n--- assembly context: {marker} line {pos + 1} ---\n")
                         sys.stderr.write("\n".join(lines[max(0, pos - 8):pos + 22]) + "\n")
             return 1
-        expected = 'VNT_NATIVE_HTTP_OK\nFRAGMENT_NOT_SENT\nCONTENT_LENGTH_OK\nVNT_NATIVE_HTTP_OK\nCHUNKED_OK\nAUTH_STRIPPED\n204\nHEADER_OK\nPOST_OK:{"native":true}\nPOST_OK:SAFE_BODY\n404\ntrue\n'
+        expected = 'VNT_NATIVE_HTTP_OK\nFRAGMENT_NOT_SENT\nCONTENT_LENGTH_OK\nVNT_NATIVE_HTTP_OK\nCHUNKED_OK\n\nAUTH_STRIPPED\n204\nHEADER_OK\nPOST_OK:{"native":true}\nPOST_OK:SAFE_BODY\n404\ntrue\n'
         if result.stdout != expected:
             sys.stderr.write("Unexpected native networking output.\nExpected:\n" + expected +
                              "Actual:\n" + result.stdout + result.stderr)

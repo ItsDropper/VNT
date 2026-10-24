@@ -981,6 +981,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
                 next_headers = safe_headers;
             }
             char *redirected = vnt_native_http_request_impl(next_method, next_url, next_headers, next_body,
+                                                             next_body == body ? body_length : 0,
                                                              status, response_length, redirect_count + 1);
             free(safe_headers);
             free(next_url);

@@ -57,6 +57,14 @@ def main():
         if result.returncode:
             sys.stderr.write(f"Native networking program failed with exit code {result.returncode}.\\n")
             sys.stderr.write(result.stdout + result.stderr)
+            asm_path = pathlib.Path(exe + ".s")
+            if asm_path.exists():
+                lines = asm_path.read_text(errors="replace").splitlines()
+                for marker in ("main:", "vnt_fn_get:", "call vnt_net_request", "vnt_net_request:"):
+                    positions = [i for i, line in enumerate(lines) if marker in line]
+                    for pos in positions[:2]:
+                        sys.stderr.write(f"\\n--- assembly context: {marker} line {pos + 1} ---\\n")
+                        sys.stderr.write("\\n".join(lines[max(0, pos - 8):pos + 22]) + "\\n")
             return 1
         expected = 'VNT_NATIVE_HTTP_OK\n204\nHEADER_OK\nPOST_OK:{"native":true}\n404\n'
         if result.stdout != expected:

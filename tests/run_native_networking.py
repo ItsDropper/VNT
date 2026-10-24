@@ -164,7 +164,7 @@ def main():
         chunked = chunked_path.read_bytes()
         chunked_path.unlink(missing_ok=True)
         if chunked != b"CHUNKED_OK":
-            sys.stderr.write(f"Chunked streaming download was corrupted: {chunked!r}\\n")
+            sys.stderr.write(f"Chunked streaming download was corrupted: {chunked!r}\n")
             return 1
         if os.name != "nt":
             proxy_server = http.server.ThreadingHTTPServer((HOST, 18767), ProxyHandler)
@@ -187,8 +187,8 @@ def main():
                 })
                 proxy_result = subprocess.run([exe], cwd=ROOT, env=proxy_env,
                     text=True, capture_output=True, timeout=20)
-                if proxy_result.returncode or proxy_result.stdout != "PROXY_OK\\n":
-                    sys.stderr.write("Unix HTTP proxy test failed.\\n" + proxy_result.stdout + proxy_result.stderr)
+                if proxy_result.returncode or proxy_result.stdout != "PROXY_OK\n":
+                    sys.stderr.write("Unix HTTP proxy test failed.\n" + proxy_result.stdout + proxy_result.stderr)
                     return 1
             finally:
                 proxy_server.shutdown()

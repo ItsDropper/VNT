@@ -1179,29 +1179,33 @@ int vnt_native_http_download_stream(const char *url, const char *destination,
                                     const char *headers, int *status) {
     if (status) *status = 0;
     if (!destination || !*destination || !valid_request_headers(headers)) return 0;
-    /* Proxying and redirects use the fully featured request path as a safe fallback. */
-    const char *proxy = proxy_environment_for(url && !strncasecmp(url, "https://", 8));
+    const char *proxy_text = proxy_environment_for(url && !strncasecmp(url, "https://", 8));
     const char *no_proxy = getenv("NO_PROXY");
     if (!no_proxy || !*no_proxy) no_proxy = getenv("no_proxy");
-    ParsedUrl parsed;
-    if (!parse_url(url ? url : "", &parsed)) return 0;
-    int fallback = proxy && !proxy_bypasses_host(parsed.host, no_proxy);
-    parsed_url_free(&parsed);
-    if (fallback) {
-        size_t length = 0; int code = 0;
-        char *body = vnt_native_http_request("GET", url, headers, "", &code, &length);
-        if (status) *status = code;
-        if (!body || code < 200 || code >= 300) { free(body); return 0; }
-        FILE *f = fopen(destination, "wb");
-        int ok = f && fwrite(body, 1, length, f) == length;
-        if (f && fclose(f) != 0) ok = 0;
-        free(body); return ok;
-    }
-    ParsedUrl u;
+    ParsedUrl u, proxy_u;
+    memset(&proxy_u, 0, sizeof(proxy_u));
     if (!parse_url(url ? url : "", &u)) return 0;
+    int use_proxy = proxy_text && !proxy_bypasses_host(u.host, no_proxy);
+    char *proxy_url = NULL;
+    if (use_proxy) {
+        if (strstr(proxy_text, "://")) proxy_url = strdup(proxy_text);
+        else {
+            size_t n = strlen(proxy_text) + sizeof("http://");
+            proxy_url = (char *)malloc(n);
+            if (proxy_url) snprintf(proxy_url, n, "http://%s", proxy_text);
+        }
+        if (!proxy_url || !parse_url(proxy_url, &proxy_u) || proxy_u.tls) {
+            free(proxy_url); parsed_url_free(&proxy_u); parsed_url_free(&u); return 0;
+        }
+        free(proxy_url);
+    }
     struct addrinfo hints, *addresses = NULL;
     memset(&hints, 0, sizeof(hints)); hints.ai_socktype = SOCK_STREAM; hints.ai_family = AF_UNSPEC;
-    if (getaddrinfo(u.host, u.port, &hints, &addresses) != 0) { parsed_url_free(&u); return 0; }
+    const char *connect_host = use_proxy ? proxy_u.host : u.host;
+    const char *connect_port = use_proxy ? proxy_u.port : u.port;
+    if (getaddrinfo(connect_host, connect_port, &hints, &addresses) != 0) {
+        parsed_url_free(&proxy_u); parsed_url_free(&u); return 0;
+    }
     int fd = -1;
     for (struct addrinfo *a = addresses; a; a = a->ai_next) {
         fd = (int)socket(a->ai_family, a->ai_socktype, a->ai_protocol);
@@ -1213,7 +1217,33 @@ int vnt_native_http_download_stream(const char *url, const char *destination,
         close(fd); fd = -1;
     }
     freeaddrinfo(addresses);
-    if (fd < 0) { parsed_url_free(&u); return 0; }
+    if (fd < 0) { parsed_url_free(&proxy_u); parsed_url_free(&u); return 0; }
+    if (use_proxy && u.tls) {
+        size_t need = strlen(u.host) + strlen(u.port) + 128;
+        char *connect_request = (char *)malloc(need);
+        if (!connect_request) { close(fd); parsed_url_free(&proxy_u); parsed_url_free(&u); return 0; }
+        int cn = snprintf(connect_request, need,
+            "CONNECT %s:%s HTTP/1.1\r\nHost: %s:%s\r\nProxy-Connection: keep-alive\r\n\r\n",
+            u.host, u.port, u.host, u.port);
+        int sent = cn > 0 && (size_t)cn < need && write_all(fd, NULL, connect_request, (size_t)cn);
+        free(connect_request);
+        char response_headers[16385];
+        size_t hn = 0;
+        while (sent && hn < sizeof(response_headers) - 1) {
+            char ch;
+            ssize_t got = recv(fd, &ch, 1, 0);
+            if (got != 1) { sent = 0; break; }
+            response_headers[hn++] = ch;
+            if (hn >= 4 && !memcmp(response_headers + hn - 4, "\r\n\r\n", 4)) break;
+        }
+        int proxy_status = 0;
+        if (sscanf(response_headers, "HTTP/%*u.%*u %d", &proxy_status) != 1 ||
+            proxy_status != 200 || hn < 4 ||
+            memcmp(response_headers + hn - 4, "\r\n\r\n", 4) != 0) {
+            close(fd); parsed_url_free(&proxy_u); parsed_url_free(&u); return 0;
+        }
+    }
+    parsed_url_free(&proxy_u);
     SSL_CTX *ctx = NULL; SSL *ssl = NULL;
     if (u.tls) {
         ctx = SSL_CTX_new(TLS_client_method());
@@ -1228,7 +1258,12 @@ int vnt_native_http_download_stream(const char *url, const char *destination,
     size_t cap = 1024 + (headers ? strlen(headers) : 0);
     char *request = (char *)malloc(cap);
     if (!request) goto stream_fail;
-    int n = snprintf(request, cap, "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n",
+    int n;
+    if (use_proxy && !u.tls)
+        n = snprintf(request, cap, "GET http://%s:%s%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n",
+                     u.host, u.port, u.target, u.host);
+    else
+        n = snprintf(request, cap, "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n",
                      u.target, u.host);
     if (n < 0 || (size_t)n >= cap) { free(request); goto stream_fail; }
     size_t used = (size_t)n;
@@ -1302,14 +1337,22 @@ int vnt_native_http_download_stream(const char *url, const char *destination,
         }
         char *next_url = resolve_redirect_url(&u, location);
         free(location);
+        char *safe_headers = NULL;
+        const char *next_headers = headers;
+        if (next_url && !same_origin(url, next_url)) {
+            safe_headers = headers_without_credentials(headers);
+            if (!safe_headers) { free(next_url); next_url = NULL; }
+            else next_headers = safe_headers;
+        }
         if (ssl) { SSL_shutdown(ssl); SSL_free(ssl); ssl = NULL; }
         if (ctx) { SSL_CTX_free(ctx); ctx = NULL; }
         close(fd); fd = -1;
         parsed_url_free(&u);
-        if (!next_url) return 0;
+        if (!next_url) { free(safe_headers); return 0; }
         int redirected_status = 0;
-        int ok = vnt_native_http_download_stream_impl(next_url, destination, headers,
+        int ok = vnt_native_http_download_stream_impl(next_url, destination, next_headers,
                                                        &redirected_status, redirect_count + 1);
+        free(safe_headers);
         free(next_url);
         if (status) *status = redirected_status;
         return ok;
@@ -1359,6 +1402,7 @@ stream_fail:
     if (ssl) SSL_free(ssl);
     if (ctx) SSL_CTX_free(ctx);
     if (fd >= 0) close(fd);
+    parsed_url_free(&proxy_u);
     parsed_url_free(&u);
     return 0;
 }

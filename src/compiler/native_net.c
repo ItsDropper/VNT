@@ -290,8 +290,8 @@ static wchar_t *to_wide(const char *s) {
 }
 
 static char *vnt_native_http_request_impl(const char *method, const char *url,
-                      const char *headers, const char *body, int *status, size_t *response_length,
-                      unsigned int redirect_count) {
+                      const char *headers, const char *body, size_t body_length,
+                      int *status, size_t *response_length, unsigned int redirect_count) {
     if (status) *status = 0;
     if (response_length) *response_length = 0;
     if (!valid_http_method(method ? method : "GET") || !valid_http_url_chars(url) || !valid_request_headers(headers)) return NULL;
@@ -367,7 +367,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
             free(copy);
         }
     }
-    size_t body_size = body ? strlen(body) : 0;
+    size_t body_size = body ? body_length : 0;
     if (body_size > MAXDWORD) {
         WinHttpCloseHandle(request);
         if (connection) WinHttpCloseHandle(connection);
@@ -410,7 +410,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
                     next_headers = safe_headers;
                 }
                 char *redirected = vnt_native_http_request_impl(next_method, next_url, next_headers,
-                    next_body, status, response_length, redirect_count + 1);
+                    next_body, next_body == body ? body_length : 0, status, response_length, redirect_count + 1);
                 free(safe_headers);
                 free(next_url);
                 return redirected;
@@ -452,7 +452,13 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
 
 char *vnt_native_http_request(const char *method, const char *url,
                       const char *headers, const char *body, int *status, size_t *response_length) {
-    return vnt_native_http_request_impl(method, url, headers, body, status, response_length, 0);
+    return vnt_native_http_request_impl(method, url, headers, body, body ? strlen(body) : 0, status, response_length, 0);
+}
+
+char *vnt_native_http_request_bytes(const char *method, const char *url,
+                      const char *headers, const char *body, size_t body_length,
+                      int *status, size_t *response_length) {
+    return vnt_native_http_request_impl(method, url, headers, body, body_length, status, response_length, 0);
 }
 
 /* Stream successful downloads directly to disk. Redirects fall back to the
@@ -746,8 +752,8 @@ static int write_all(int fd, SSL *ssl, const char *data, size_t length) {
 }
 
 static char *vnt_native_http_request_impl(const char *method, const char *url,
-                      const char *headers, const char *body, int *status, size_t *response_length,
-                      unsigned int redirect_count) {
+                      const char *headers, const char *body, size_t body_length,
+                      int *status, size_t *response_length, unsigned int redirect_count) {
     if (status) *status = 0;
     if (response_length) *response_length = 0;
     if (!valid_request_headers(headers)) return NULL;
@@ -830,7 +836,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     }
     size_t reqcap = 512;
     size_t parts[] = { strlen(method ? method : "GET"), strlen(u.target), strlen(u.host),
-                       headers ? strlen(headers) : 0, body ? strlen(body) : 0 };
+                       headers ? strlen(headers) : 0, body ? body_length : 0 };
     for (size_t i = 0; i < sizeof(parts)/sizeof(parts[0]); ++i) {
         if (parts[i] > SIZE_MAX - reqcap) goto fail;
         reqcap += parts[i];
@@ -859,7 +865,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
             if (!e) break; p=e+1;
         }
     }
-    size_t bodylen = body ? strlen(body) : 0;
+    size_t bodylen = body ? body_length : 0;
     if (bodylen) at += (size_t)snprintf(request+at, reqcap-at, "Content-Length: %zu\r\n", bodylen);
     if (bodylen && !has_request_header(headers, "Content-Type"))
         at += (size_t)snprintf(request+at, reqcap-at, "Content-Type: application/octet-stream\r\n");
@@ -1004,7 +1010,13 @@ fail:
 
 char *vnt_native_http_request(const char *method, const char *url,
                       const char *headers, const char *body, int *status, size_t *response_length) {
-    return vnt_native_http_request_impl(method, url, headers, body, status, response_length, 0);
+    return vnt_native_http_request_impl(method, url, headers, body, body ? strlen(body) : 0, status, response_length, 0);
+}
+
+char *vnt_native_http_request_bytes(const char *method, const char *url,
+                      const char *headers, const char *body, size_t body_length,
+                      int *status, size_t *response_length) {
+    return vnt_native_http_request_impl(method, url, headers, body, body_length, status, response_length, 0);
 }
 
 static int stream_read(int fd, SSL *ssl, char *buffer, size_t capacity, size_t *received) {

@@ -13,8 +13,6 @@
 #include <ctype.h>
 #include <stdint.h>
 
-#define VNT_NET_MAX_RESPONSE (256u * 1024u * 1024u)
-
 static char *net_copy(const char *s, size_t n) {
     char *p = (char *)malloc(n + 1);
     if (!p) return NULL;
@@ -163,9 +161,13 @@ char *vnt_native_http_request(const char *method, const char *url,
         for (;;) {
             DWORD available = 0;
             if (!WinHttpQueryDataAvailable(request, &available) || !available) break;
-            if ((size_t)available > VNT_NET_MAX_RESPONSE - used) { ok = FALSE; break; }
-            if (used + available + 1 > capacity) {
-                size_t next = used + available + 1;
+            if ((size_t)available > SIZE_MAX - used - 1) { ok = FALSE; break; }
+            if (used + (size_t)available + 1 > capacity) {
+                size_t next = capacity ? capacity : 8192;
+                while (next < used + (size_t)available + 1) {
+                    if (next > SIZE_MAX / 2) { next = used + (size_t)available + 1; break; }
+                    next *= 2;
+                }
                 char *grown = (char *)realloc(result, next);
                 if (!grown) { ok = FALSE; break; }
                 result = grown; capacity = next;
@@ -313,9 +315,9 @@ char *vnt_native_http_request(const char *method, const char *url,
     if (!raw) goto fail;
     for (;;) {
         if (used == cap) {
-            if (cap >= VNT_NET_MAX_RESPONSE + 65536u) { free(raw); goto fail; }
+            if (cap > SIZE_MAX / 2) { free(raw); goto fail; }
             size_t next = cap * 2;
-            if (next > VNT_NET_MAX_RESPONSE + 65536u) next = VNT_NET_MAX_RESPONSE + 65536u;
+            if (next <= cap || next == SIZE_MAX) { free(raw); goto fail; }
             char *grown = (char *)realloc(raw, next + 1);
             if (!grown) { free(raw); goto fail; }
             raw = grown; cap = next;
@@ -332,7 +334,6 @@ char *vnt_native_http_request(const char *method, const char *url,
             break;
         }
         used += (size_t)got;
-        if (used > VNT_NET_MAX_RESPONSE + 65536u) { free(raw); goto fail; }
     }
     raw[used] = '\0';
     char *sep = strstr(raw, "\r\n\r\n");
@@ -345,7 +346,6 @@ char *vnt_native_http_request(const char *method, const char *url,
     if (strcasestr(raw, "Transfer-Encoding: chunked") && bodylen_read) {
         result = decode_chunked(sep+4, bodylen_read, response_length);
     } else {
-        if (bodylen_read > VNT_NET_MAX_RESPONSE) { free(raw); goto fail; }
         result = net_copy(sep+4, bodylen_read);
         if (response_length) *response_length = bodylen_read;
     }

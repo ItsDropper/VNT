@@ -123,7 +123,27 @@ static int float_label(HirGen *g,double d) {
     if(g->float_count==g->float_cap){size_t nc=g->float_cap?g->float_cap*2:8;HirFloat*p=realloc(g->floats,nc*sizeof(*p));if(!p){fail(g,"out of memory in float table.");return 0;}g->floats=p;g->float_cap=nc;}
     int l=label_new(g);g->floats[g->float_count++]=(HirFloat){d,l};return l;
 }
-static void call0(HirGen *g,const char *name) { fputs("    subq $32,%rsp\n    call ",g->out);fputs(name,g->out);fputs("\n    addq $32,%rsp\n",g->out); }
+static void call0(HirGen *g,const char *name) {
+    /*
+     * Expression evaluation can leave earlier arguments on the stack while
+     * later arguments are evaluated. Align every runtime call dynamically so
+     * nested calls obey the Microsoft x64 ABI on both Windows and SysV hosts.
+     */
+    int aligned = label_new(g), done = label_new(g);
+    fprintf(g->out,
+        "    testq $8,%%rsp\\n"
+        "    jz .L%d\\n"
+        "    subq $40,%%rsp\\n"
+        "    call %s\\n"
+        "    addq $40,%%rsp\\n"
+        "    jmp .L%d\\n"
+        ".L%d:\\n"
+        "    subq $32,%%rsp\\n"
+        "    call %s\\n"
+        "    addq $32,%%rsp\\n"
+        ".L%d:\\n",
+        aligned, name, done, aligned, name, done);
+}
 static void emit_expr(HirGen *g,size_t i);
 static void emit_stmt(HirGen *g,size_t i);
 static void emit_stmt_role(HirGen *g,size_t i,VntIrEdgeRole role) {

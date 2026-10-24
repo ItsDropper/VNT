@@ -726,8 +726,7 @@ VNT_NATIVE_ABI VntValue * vnt_len(VntValue *v) {
     if (v->type == VNT_ARRAY) return vnt_int(v->array.count);
     if (v->type == VNT_BYTES) {
         if (v->bytes.length > INT_MAX) {
-            fprintf(stderr, "Runtime error: byte buffer is too large for len().
-");
+            fprintf(stderr, "Runtime error: byte buffer is too large for len().\n");
             exit(1);
         }
         return vnt_int((int)v->bytes.length);

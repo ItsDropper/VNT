@@ -4,6 +4,11 @@
 # Body helpers return "" on transport failure. status() returns an HTTP status
 # string, or "000" when the transport fails. Downloads require a 2xx response.
 
+# Generic request helper for custom methods and headers.
+export fun request(method, url, headers, body) {
+    return net_request(method, url, headers, body)
+}
+
 export fun get(url) {
     return net_request("GET", url, "", "")
 }

@@ -289,7 +289,7 @@ The checks build VNT and exercise language features, module loading, and runtime
 - GUI APIs currently target Windows.
 - GUI styling implements a small CSS-like subset, not full CSS or browser behavior.
 - Text file APIs are not binary-safe.
-- Native HTTP/HTTPS support is an early implementation: response bodies are currently text-oriented, redirects and advanced proxy/authentication features are not yet implemented, and the Unix-like HTTPS path requires OpenSSL development/runtime libraries.
+- Native HTTP/HTTPS support is an early implementation: response bodies are currently text-oriented, Unix-like redirect handling and advanced proxy/authentication features are not yet implemented; Windows follows WinHTTP's platform behavior, and the Unix-like HTTPS path requires OpenSSL development/runtime libraries.
 - The standard library and runtime API may change as the language develops.
 
 ## Roadmap

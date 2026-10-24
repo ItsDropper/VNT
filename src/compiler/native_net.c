@@ -6,7 +6,7 @@
  *
  * Native HTTP transport for compiled VNT programs. No external curl process.
  */
-#include <stdio.h>
+#define _GNU_SOURCE\n#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>

@@ -50,13 +50,22 @@ print(created)
 
 Bearer-token variants are available for GET, POST, PUT, PATCH and DELETE. Keep credentials out of source control and logs.
 
-## 3. Understand status codes and failures
+## 3. Use a custom method or header set
+
+`net.request(method, url, headers, body)` exposes the native request path for methods and headers not covered by the convenience wrappers. Supply headers as newline-separated `Name: value` lines. VNT filters caller-supplied framing headers (`Host`, `Content-Length`, `Transfer-Encoding`, and connection headers) so they cannot override the transport's framing.
+
+```vnt
+response = net.request("PATCH", "https://example.com/api/item", "Content-Type: application/json", "{\\"enabled\\":true}")
+print(response)
+```
+
+## 4. Understand status codes and failures
 
 An HTTP server can return `404 Not Found` even though the connection worked. Use `net.status(url)` to inspect the HTTP status. The helper returns a three-digit string; `000` indicates that the transport failed before an HTTP status was received.
 
 Body helpers return an empty string on transport failure, so an empty response is ambiguous. Download helpers preserve binary bytes and write only successful 2xx responses. The in-memory response path has no fixed application-level size cap; it remains bounded by available memory and allocation success.
 
-## 4. Behavior and remaining gaps
+## 5. Behavior and remaining gaps
 
 The native transport supports HTTP and HTTPS, standard request methods, newline-separated headers, text request bodies, status codes, redirects, and binary-safe downloads. Redirect loops are capped at ten hops; cross-origin redirects strip `Authorization`, `Proxy-Authorization`, and `Cookie` headers. The in-memory response path has no fixed application-level size cap, but it must fit in memory. Streaming response APIs, connection pooling, and proxy configuration are not implemented. VNT's ordinary string values remain text-oriented, so use `net.download` for binary files.
 

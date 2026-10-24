@@ -186,9 +186,13 @@ def main():
         # intentionally malformed test response. Both outcomes are platform API
         # behavior, while the Unix decoder must reject the malformed CRLF.
         malformed_chunk_result = "abc\n" if os.name == "nt" else "\n"
+        # WinHTTP normalizes conflicting Content-Length fields; the Unix parser
+        # rejects them before creating the destination file.
+        conflicting_length_result = "true\n" if os.name == "nt" else "false\n"
         expected = ('VNT_NATIVE_HTTP_OK\nFRAGMENT_NOT_SENT\nCONTENT_LENGTH_OK\nPOOL_REUSED\n'
                     'VNT_NATIVE_HTTP_OK\nCHUNKED_OK\nTransfer-Encoding: chunked is body text\n' + malformed_chunk_result +
-                    '[0, 1, 255, 10, 13, 128]\n6\n255\ntrue\nfalse\n[0, 1, 255, 10, 13, 128]\n'
+                    '[0, 1, 255, 10, 13, 128]\n6\n255\ntrue\n' + conflicting_length_result +
+                    '[0, 1, 255, 10, 13, 128]\n'
                     'AUTH_STRIPPED\n204\nHEADER_OK\nPOST_OK:{"native":true}\n'
                     'POST_OK:SAFE_BODY\n404\ntrue\n')
         if result.stdout != expected:

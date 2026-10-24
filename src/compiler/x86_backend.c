@@ -505,7 +505,13 @@ static void emit_function(HirGen*g,size_t i) {
     if(!g->error)fputs("    xorl %eax,%eax\n    leave\n    ret\n",g->out);
 }
 static void emit_tables(HirGen*g) {
-    if(g->float_count||g->string_count)fputs("\n.section .rdata\n",g->out);
+    if(g->float_count||g->string_count) {
+#ifdef _WIN32
+        fputs("\\n.section .rdata\\n",g->out);
+#else
+        fputs("\\n.section .rodata\\n",g->out);
+#endif
+    }
     for(size_t i=0;i<g->float_count;i++)fprintf(g->out,".Lflt%d:\n    .double %.17g\n",g->floats[i].label,g->floats[i].value);
     for(size_t i=0;i<g->string_count;i++){fprintf(g->out,".Lstr%d:\n    .asciz \"",g->strings[i].label);for(const unsigned char*p=(const unsigned char*)g->strings[i].value;*p;p++){switch(*p){case '\\':fputs("\\\\",g->out);break;case '"':fputs("\\\"",g->out);break;case '\n':fputs("\\n",g->out);break;case '\r':fputs("\\r",g->out);break;case '\t':fputs("\\t",g->out);break;default:fputc(*p,g->out);}}fputs("\"\n",g->out);}
 }

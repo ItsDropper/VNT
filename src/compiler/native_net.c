@@ -545,8 +545,18 @@ static int parse_response_headers(const char *raw, size_t used, const char *meth
 static int write_all(int fd, SSL *ssl, const char *data, size_t length) {
     size_t sent = 0;
     while (sent < length) {
-        int n = ssl ? SSL_write(ssl, data + sent, (int)((length-sent)>INT32_MAX?INT32_MAX:length-sent))
-                    : (int)send(fd, data + sent, length-sent, 0);
+        size_t remaining = length - sent;
+        int amount = (int)(remaining > INT32_MAX ? INT32_MAX : remaining);
+        int n;
+        if (ssl) {
+            n = SSL_write(ssl, data + sent, amount);
+        } else {
+#ifdef MSG_NOSIGNAL
+            n = (int)send(fd, data + sent, (size_t)amount, MSG_NOSIGNAL);
+#else
+            n = (int)send(fd, data + sent, (size_t)amount, 0);
+#endif
+        }
         if (n <= 0) return 0;
         sent += (size_t)n;
     }
@@ -636,8 +646,9 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
             if (!grown) { free(raw); goto fail; }
             raw = grown; cap = next;
         }
-        int got = ssl ? SSL_read(ssl, raw+used, (int)((cap-used)>INT32_MAX?INT32_MAX:cap-used))
-                      : (int)recv(fd, raw+used, cap-used, 0);
+        int receive_size = (int)((cap-used)>INT32_MAX?INT32_MAX:cap-used);
+        int got = ssl ? SSL_read(ssl, raw+used, receive_size)
+                      : (int)recv(fd, raw+used, (size_t)receive_size, 0);
         if (got <= 0) {
             if (ssl && SSL_get_error(ssl, got) == SSL_ERROR_ZERO_RETURN) break;
             if (!ssl && got == 0) break;

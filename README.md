@@ -200,7 +200,7 @@ fs.append_text(path, "Second line\n")
 print(fs.read_text(path))
 ```
 
-File operations handle text, not arbitrary binary data. Networking is implemented in the native C runtime: Windows uses WinHTTP, while Unix-like builds use sockets and OpenSSL. No `curl` executable is required. Use `net.request(method, url, headers, body)` for custom methods and headers. HTTP responses are returned as strings; status helpers return a three-digit status string and `000` indicates a transport failure. Downloads preserve binary bytes and accept only 2xx responses. The in-memory response path has no fixed application-level size cap; practical limits are available memory and allocation success.
+File operations handle text, not arbitrary binary data. Networking is implemented in the native C runtime: Windows uses WinHTTP, while Unix-like builds use sockets and OpenSSL. No `curl` executable is required. Use `net.request(method, url, headers, body)` for custom methods and headers. HTTP responses are returned as strings; status helpers return a three-digit status string and `000` indicates a transport failure. Downloads preserve binary bytes, stream successful direct responses to disk in bounded chunks, and accept only 2xx responses. Redirect and configured-proxy download fallbacks currently use the buffered request path. The ordinary response API has no fixed application-level size cap; practical limits are available memory and allocation success.
 
 ## Native runtime APIs
 
@@ -289,7 +289,7 @@ The checks build VNT and exercise language features, module loading, and runtime
 - GUI APIs currently target Windows.
 - GUI styling implements a small CSS-like subset, not full CSS or browser behavior.
 - Text file APIs are not binary-safe.
-- Native HTTP/HTTPS support is an early implementation: response bodies are currently text-oriented, Unix-like redirect handling and advanced proxy/authentication features are not yet implemented; Windows follows WinHTTP's platform behavior, and the Unix-like HTTPS path requires OpenSSL development/runtime libraries.
+- Native HTTP/HTTPS support is still evolving. Ordinary response values are text-oriented; streaming downloads write directly to files for direct requests, while redirect/proxy download fallbacks are buffered. The Unix transport supports HTTP(S) proxy environment variables and NO_PROXY; Windows uses WinHTTP's system proxy behavior. A first-class byte-buffer API and Unix connection pooling are not implemented. The Unix-like HTTPS path requires OpenSSL development/runtime libraries.
 - The standard library and runtime API may change as the language develops.
 
 ## Roadmap

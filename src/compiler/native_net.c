@@ -582,6 +582,57 @@ typedef struct {
     int tls;
 } ParsedUrl;
 
+/* One-entry keep-alive pool for direct plain-HTTP requests. The current VNT
+   runtime is single-threaded; TLS pooling is delegated to WinHTTP on Windows. */
+static int vnt_http_pool_fd = -1;
+static char *vnt_http_pool_host;
+static char *vnt_http_pool_port;
+
+static void vnt_http_pool_close(void) {
+    if (vnt_http_pool_fd >= 0) close(vnt_http_pool_fd);
+    vnt_http_pool_fd = -1;
+    free(vnt_http_pool_host); vnt_http_pool_host = NULL;
+    free(vnt_http_pool_port); vnt_http_pool_port = NULL;
+}
+
+static int chunked_body_complete(const char *body, size_t length) {
+    size_t r = 0;
+    for (;;) {
+        size_t line = r;
+        while (r + 1 < length && !(body[r] == '\r' && body[r+1] == '\n')) r++;
+        if (r + 1 >= length) return 0;
+        size_t end = r; r += 2;
+        size_t digits_end = line;
+        while (digits_end < end && body[digits_end] != ';') digits_end++;
+        if (digits_end == line) return 0;
+        size_t amount = 0;
+        for (size_t i = line; i < digits_end; ++i) {
+            unsigned char ch = (unsigned char)body[i];
+            unsigned int digit;
+            if (ch >= '0' && ch <= '9') digit = ch - '0';
+            else if (ch >= 'a' && ch <= 'f') digit = ch - 'a' + 10;
+            else if (ch >= 'A' && ch <= 'F') digit = ch - 'A' + 10;
+            else return 0;
+            if (amount > (SIZE_MAX - digit) / 16) return 0;
+            amount = amount * 16 + digit;
+        }
+        if (!amount) {
+            for (;;) {
+                size_t trailer = r;
+                while (r + 1 < length && !(body[r] == '\r' && body[r+1] == '\n')) r++;
+                if (r + 1 >= length) return 0;
+                size_t trailer_len = r - trailer; r += 2;
+                if (!trailer_len) return 1;
+                if (!memchr(body + trailer, ':', trailer_len)) return 0;
+            }
+        }
+        if (amount > length - r || length - r - amount < 2) return 0;
+        r += amount;
+        if (body[r] != '\r' || body[r+1] != '\n') return 0;
+        r += 2;
+    }
+}
+
 static void parsed_url_free(ParsedUrl *u) {
     free(u->host); free(u->port); free(u->target);
     memset(u, 0, sizeof(*u));
@@ -776,15 +827,27 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
             free(proxy_url); parsed_url_free(&proxy); parsed_url_free(&u); return NULL;
         }
     }
+    int fd = -1, reused_pool = 0;
+    if (!u.tls && !use_proxy && vnt_http_pool_fd >= 0) {
+        if (vnt_http_pool_host && vnt_http_pool_port &&
+            !strcmp(vnt_http_pool_host, u.host) && !strcmp(vnt_http_pool_port, u.port)) {
+            fd = vnt_http_pool_fd;
+            vnt_http_pool_fd = -1;
+            free(vnt_http_pool_host); vnt_http_pool_host = NULL;
+            free(vnt_http_pool_port); vnt_http_pool_port = NULL;
+            reused_pool = 1;
+        } else {
+            vnt_http_pool_close();
+        }
+    }
     struct addrinfo hints, *addresses = NULL;
     memset(&hints, 0, sizeof(hints)); hints.ai_socktype = SOCK_STREAM; hints.ai_family = AF_UNSPEC;
     const char *connect_host = use_proxy ? proxy.host : u.host;
     const char *connect_port = use_proxy ? proxy.port : u.port;
-    if (getaddrinfo(connect_host, connect_port, &hints, &addresses) != 0) {
+    if (fd < 0 && getaddrinfo(connect_host, connect_port, &hints, &addresses) != 0) {
         free(proxy_url); parsed_url_free(&proxy); parsed_url_free(&u); return NULL;
     }
-    int fd = -1;
-    for (struct addrinfo *a = addresses; a; a = a->ai_next) {
+    for (struct addrinfo *a = addresses; fd < 0 && a; a = a->ai_next) {
         fd = (int)socket(a->ai_family, a->ai_socktype, a->ai_protocol);
         if (fd < 0) continue;
         struct timeval timeout = {30, 0};
@@ -793,7 +856,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
         if (connect(fd, a->ai_addr, a->ai_addrlen) == 0) break;
         close(fd); fd = -1;
     }
-    freeaddrinfo(addresses);
+    if (addresses) freeaddrinfo(addresses);
     if (fd < 0) { free(proxy_url); parsed_url_free(&proxy); parsed_url_free(&u); return NULL; }
     if (use_proxy && u.tls) {
         size_t need = strlen(u.host) + strlen(u.port) + 128;
@@ -907,8 +970,11 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
                                             &expected_body_length, &has_expected_body_length,
                                             &code, &response_no_body);
         if (parsed < 0) { free(raw); goto fail; }
+        int chunked_complete = parsed > 0 && strcasestr(raw, "Transfer-Encoding: chunked") &&
+            chunked_body_complete(raw + headerlen, used - headerlen);
         if (parsed > 0 && (response_no_body ||
-            (has_expected_body_length && used - headerlen >= expected_body_length)))
+            (has_expected_body_length && used - headerlen >= expected_body_length) ||
+            chunked_complete))
             break;
     }
     raw[used] = '\0';
@@ -997,15 +1063,29 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
         result = net_copy(sep+4, bodylen_read);
         if (response_length) *response_length = bodylen_read;
     }
+    int chunked_response = strcasestr(raw, "Transfer-Encoding: chunked") != NULL;
+    int reusable = !u.tls && !use_proxy && !strcasestr(raw, "Connection: close") &&
+                   (response_no_body || has_expected_body_length || chunked_response);
     free(raw);
+    if (reusable && result) {
+        vnt_http_pool_close();
+        vnt_http_pool_fd = fd;
+        vnt_http_pool_host = strdup(u.host);
+        vnt_http_pool_port = strdup(u.port);
+        if (!vnt_http_pool_host || !vnt_http_pool_port) vnt_http_pool_close();
+        else fd = -1;
+    }
     if (ssl) { SSL_shutdown(ssl); SSL_free(ssl); }
     if (ctx) SSL_CTX_free(ctx);
-    close(fd); parsed_url_free(&u);
+    if (fd >= 0) close(fd);
+    parsed_url_free(&u);
     return result;
 fail:
     if (ssl) SSL_free(ssl);
     if (ctx) SSL_CTX_free(ctx);
-    close(fd); parsed_url_free(&u);
+    if (fd >= 0) close(fd);
+    if (reused_pool) vnt_http_pool_close();
+    parsed_url_free(&u);
     return NULL;
 }
 

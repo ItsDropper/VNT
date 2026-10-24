@@ -107,6 +107,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             for chunk in (b"CHUNK", b"ED_OK"):
                 self.wfile.write(f"{len(chunk):X}\r\n".encode("ascii") + chunk + b"\r\n")
             self.wfile.write(b"0\r\n\r\n")
+        elif self.path == "/conflicting-length":
+            self.send_response(200)
+            self.send_header("Content-Length", "3")
+            self.send_header("Content-Length", "4")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self.wfile.write(b"test")
         elif self.path == "/mentions-framing":
             self._send(200, "Transfer-Encoding: chunked is body text")
         elif self.path == "/bad-chunked":
@@ -181,7 +188,7 @@ def main():
         malformed_chunk_result = "abc\n" if os.name == "nt" else "\n"
         expected = ('VNT_NATIVE_HTTP_OK\nFRAGMENT_NOT_SENT\nCONTENT_LENGTH_OK\nPOOL_REUSED\n'
                     'VNT_NATIVE_HTTP_OK\nCHUNKED_OK\nTransfer-Encoding: chunked is body text\n' + malformed_chunk_result +
-                    '[0, 1, 255, 10, 13, 128]\n6\n255\ntrue\n[0, 1, 255, 10, 13, 128]\n'
+                    'false\n[0, 1, 255, 10, 13, 128]\n6\n255\ntrue\n[0, 1, 255, 10, 13, 128]\n'
                     'AUTH_STRIPPED\n204\nHEADER_OK\nPOST_OK:{"native":true}\n'
                     'POST_OK:SAFE_BODY\n404\ntrue\n')
         if result.stdout != expected:
@@ -289,6 +296,7 @@ def main():
         (ROOT / "vnt-network-binary.test").unlink(missing_ok=True)
         (ROOT / "vnt-network-chunked.test").unlink(missing_ok=True)
         (ROOT / "vnt-network-redirect.test").unlink(missing_ok=True)
+        (ROOT / "vnt-network-conflicting.test").unlink(missing_ok=True)
         (ROOT / "vnt-network-proxy.test").unlink(missing_ok=True)
         server.shutdown()
         server.server_close()

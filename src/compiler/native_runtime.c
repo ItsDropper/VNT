@@ -1799,3 +1799,73 @@ VNT_NATIVE_ABI VntValue * vnt_gui_poll(void) { return vnt_bool(0); }
 VNT_NATIVE_ABI VntValue * vnt_gui_key(void) { return vnt_int(0); }
 VNT_NATIVE_ABI VntValue * vnt_gui_close(void) { return vnt_bool(1); }
 #endif
+
+
+/* Native networking bridge. Transport implementation lives in native_net.c. */
+extern char *vnt_native_http_request(const char *method, const char *url,
+                                     const char *headers, const char *body,
+                                     int *status);
+extern char *vnt_native_url_encode(const char *text);
+
+static const char *vnt_net_string(VntValue *value, const char *function_name) {
+    if (!value || value->type != VNT_STRING) {
+        fprintf(stderr, "Runtime error: %s expects string arguments.\\n", function_name);
+        return "";
+    }
+    return value->string ? value->string : "";
+}
+
+VNT_NATIVE_ABI VntValue *vnt_net_request(VntValue *method, VntValue *url,
+                                         VntValue *headers, VntValue *body) {
+    int status = 0;
+    char *response = vnt_native_http_request(
+        vnt_net_string(method, "net_request()"),
+        vnt_net_string(url, "net_request()"),
+        vnt_net_string(headers, "net_request()"),
+        vnt_net_string(body, "net_request()"), &status);
+    if (!response) return vnt_string("");
+    VntValue *result = vnt_string(response);
+    free(response);
+    return result;
+}
+
+VNT_NATIVE_ABI VntValue *vnt_net_status(VntValue *method, VntValue *url,
+                                        VntValue *headers) {
+    int status = 0;
+    char *response = vnt_native_http_request(
+        vnt_net_string(method, "net_status()"),
+        vnt_net_string(url, "net_status()"),
+        vnt_net_string(headers, "net_status()"), "", &status);
+    free(response);
+    char code[16];
+    snprintf(code, sizeof(code), "%03d", status);
+    return vnt_string(code);
+}
+
+VNT_NATIVE_ABI VntValue *vnt_net_download(VntValue *url, VntValue *destination,
+                                          VntValue *headers) {
+    int status = 0;
+    char *response = vnt_native_http_request("GET",
+        vnt_net_string(url, "net_download()"),
+        vnt_net_string(headers, "net_download()"), "", &status);
+    if (!response || status < 200 || status >= 300) {
+        free(response);
+        return vnt_bool(0);
+    }
+    const char *path = vnt_net_string(destination, "net_download()");
+    FILE *f = fopen(path, "wb");
+    if (!f) { free(response); return vnt_bool(0); }
+    size_t length = strlen(response);
+    int ok = fwrite(response, 1, length, f) == length;
+    if (fclose(f) != 0) ok = 0;
+    free(response);
+    return vnt_bool(ok);
+}
+
+VNT_NATIVE_ABI VntValue *vnt_net_url_encode(VntValue *text) {
+    char *encoded = vnt_native_url_encode(vnt_net_string(text, "net_url_encode()"));
+    if (!encoded) return vnt_string("");
+    VntValue *result = vnt_string(encoded);
+    free(encoded);
+    return result;
+}

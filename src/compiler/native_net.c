@@ -588,10 +588,18 @@ typedef struct {
 static int vnt_http_pool_fd = -1;
 static char *vnt_http_pool_host;
 static char *vnt_http_pool_port;
+static int vnt_http_pool_tls;
+static SSL_CTX *vnt_http_pool_ctx;
+static SSL *vnt_http_pool_ssl;
 
 static void vnt_http_pool_close(void) {
+    if (vnt_http_pool_ssl) SSL_free(vnt_http_pool_ssl);
+    if (vnt_http_pool_ctx) SSL_CTX_free(vnt_http_pool_ctx);
     if (vnt_http_pool_fd >= 0) close(vnt_http_pool_fd);
     vnt_http_pool_fd = -1;
+    vnt_http_pool_ssl = NULL;
+    vnt_http_pool_ctx = NULL;
+    vnt_http_pool_tls = 0;
     free(vnt_http_pool_host); vnt_http_pool_host = NULL;
     free(vnt_http_pool_port); vnt_http_pool_port = NULL;
 }
@@ -897,11 +905,17 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
         }
     }
     int fd = -1, reused_pool = 0;
-    if (!u.tls && !use_proxy && vnt_http_pool_fd >= 0) {
+    SSL_CTX *ctx = NULL;
+    SSL *ssl = NULL;
+    if (!use_proxy && vnt_http_pool_fd >= 0) {
         if (vnt_http_pool_host && vnt_http_pool_port &&
+            vnt_http_pool_tls == u.tls &&
             !strcmp(vnt_http_pool_host, u.host) && !strcmp(vnt_http_pool_port, u.port)) {
             fd = vnt_http_pool_fd;
             vnt_http_pool_fd = -1;
+            ssl = vnt_http_pool_ssl; vnt_http_pool_ssl = NULL;
+            ctx = vnt_http_pool_ctx; vnt_http_pool_ctx = NULL;
+            vnt_http_pool_tls = 0;
             free(vnt_http_pool_host); vnt_http_pool_host = NULL;
             free(vnt_http_pool_port); vnt_http_pool_port = NULL;
             reused_pool = 1;
@@ -955,8 +969,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     }
     free(proxy_url);
     parsed_url_free(&proxy);
-    SSL_CTX *ctx = NULL; SSL *ssl = NULL;
-    if (u.tls) {
+    if (u.tls && !ssl) {
         ctx = SSL_CTX_new(TLS_client_method());
         if (!ctx || SSL_CTX_set_default_verify_paths(ctx) != 1) goto fail;
         SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
@@ -1142,6 +1155,11 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
         vnt_http_pool_fd = fd;
         vnt_http_pool_host = strdup(u.host);
         vnt_http_pool_port = strdup(u.port);
+        vnt_http_pool_tls = u.tls;
+        vnt_http_pool_ssl = ssl;
+        vnt_http_pool_ctx = ctx;
+        ssl = NULL;
+        ctx = NULL;
         if (!vnt_http_pool_host || !vnt_http_pool_port) vnt_http_pool_close();
         else fd = -1;
     }

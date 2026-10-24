@@ -25,6 +25,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/hello":
             self._send(200, "VNT_NATIVE_HTTP_OK")
+        elif self.path == "/redirect":
+            self.send_response(302)
+            self.send_header("Location", "/hello")
+            self.send_header("Content-Length", "0")
+            self.send_header("Connection", "close")
+            self.end_headers()
+        elif self.path == "/chunked":
+            self.send_response(200)
+            self.send_header("Transfer-Encoding", "chunked")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            for chunk in (b"CHUNK", b"ED_OK"):
+                self.wfile.write(f"{len(chunk):X}\\r\\n".encode("ascii") + chunk + b"\\r\\n")
+            self.wfile.write(b"0\\r\\n\\r\\n")
         elif self.path == "/status":
             self._send(204, "")
         elif self.path == "/header":

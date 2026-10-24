@@ -226,7 +226,7 @@ Runnable sample programs are in [`examples/`](examples/). Start with:
 
 The GUI runtime is Windows-only. Its CSS-like styling is a small supported subset, not a browser engine or a complete cross-platform widget toolkit.
 
-Follow the [step-by-step coding tutorials](docs/tutorials/README.md), starting with a first program and progressing through control flow, modules and files, a terminal application, and a Windows GUI. The [compiler architecture document](docs/compiler-architecture.md) describes the planned AST-to-HIR migration and clearly records work that is not complete.
+Follow the [step-by-step coding tutorials](docs/tutorials/README.md), starting with a first program and progressing through control flow, modules and files, a terminal application, and a Windows GUI. The [compiler architecture document](docs/compiler-architecture.md) describes the AST-to-HIR boundary, the HIR-native backend, and the remaining compiler work.
 
 ## Compiler pipeline
 
@@ -252,7 +252,7 @@ GCC + native runtime
 Native executable
 ```
 
-The compiler lowers the parsed AST into an index-addressed HIR representation and validates it before optimization. However, the x86-64 backend still uses an AST compatibility tree reconstructed from HIR, and some optimization behavior still depends on the AST. **Direct HIR-native code generation and full AST retirement are not complete.** See [`docs/compiler-architecture.md`](docs/compiler-architecture.md) for the migration contract and known gaps.
+The parser produces an AST for front-end semantic analysis and lowering. After lowering, optimization, HIR validation, control-flow analysis, and x86-64 code generation operate on the self-contained, index-addressed HIR. The HIR owns its payloads and stores no pointers into the AST; the native backend traverses HIR nodes directly. The repository includes an AST-free pipeline regression test that destroys the AST before HIR optimization and native code generation. The AST is still used by the frontend and type checker, but it is not a requirement of the HIR backend. See [`docs/compiler-architecture.md`](docs/compiler-architecture.md) for the pipeline and remaining gaps.
 
 ## Project layout
 
@@ -284,7 +284,7 @@ The checks build VNT and exercise language features, module loading, and runtime
 
 - VNT is experimental; syntax and semantics can change.
 - The native backend targets x86-64 and depends on GCC for assembly/linking.
-- The HIR backend migration is incomplete; the backend still relies on an AST compatibility path.
+- Frontend parsing and type checking still use the AST before lowering; the HIR optimizer and native backend are designed to work without it.
 - Imports expand source before parsing and do not provide private symbol isolation or incremental compilation.
 - GUI APIs currently target Windows.
 - GUI styling implements a small CSS-like subset, not full CSS or browser behavior.
@@ -302,7 +302,8 @@ The checks build VNT and exercise language features, module loading, and runtime
 - [x] Initial HIR lowering, validation, and constant folding
 - [x] Source-expanded imports and exported functions
 - [x] Initial Windows GUI APIs and sample applications
-- [ ] Direct HIR-native code generation and AST retirement
+- [x] HIR-native x86-64 code generation and AST-free optimization/codegen path
+- [ ] Remove remaining frontend/type-checker AST coupling where it is beneficial
 - [ ] Typed-value optimization and broader compiler verification
 - [ ] Game-oriented standard library
 - [ ] Cross-platform GUI backends

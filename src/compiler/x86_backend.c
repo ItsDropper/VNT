@@ -131,17 +131,17 @@ static void call0(HirGen *g,const char *name) {
      */
     int aligned = label_new(g), done = label_new(g);
     fprintf(g->out,
-        "    testq $8,%%rsp\\n"
-        "    jz .L%d\\n"
-        "    subq $40,%%rsp\\n"
-        "    call %s\\n"
-        "    addq $40,%%rsp\\n"
-        "    jmp .L%d\\n"
-        ".L%d:\\n"
-        "    subq $32,%%rsp\\n"
-        "    call %s\\n"
-        "    addq $32,%%rsp\\n"
-        ".L%d:\\n",
+        "    testq $8,%%rsp\n"
+        "    jz .L%d\n"
+        "    subq $40,%%rsp\n"
+        "    call %s\n"
+        "    addq $40,%%rsp\n"
+        "    jmp .L%d\n"
+        ".L%d:\n"
+        "    subq $32,%%rsp\n"
+        "    call %s\n"
+        "    addq $32,%%rsp\n"
+        ".L%d:\n",
         aligned, name, done, aligned, name, done);
 }
 static void emit_expr(HirGen *g,size_t i);

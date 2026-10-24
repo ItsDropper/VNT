@@ -1817,14 +1817,12 @@ static const char *vnt_net_string(VntValue *value, const char *function_name) {
 
 VNT_NATIVE_ABI VntValue *vnt_net_request(VntValue *method, VntValue *url,
                                          VntValue *headers, VntValue *body) {
-    fprintf(stderr, "NETWRAP enter %p %p %p %p\\n", (void *)method, (void *)url, (void *)headers, (void *)body);
     int status = 0;
     char *response = vnt_native_http_request(
         vnt_net_string(method, "net_request()"),
         vnt_net_string(url, "net_request()"),
         vnt_net_string(headers, "net_request()"),
         vnt_net_string(body, "net_request()"), &status);
-    fprintf(stderr, "NETWRAP response=%p status=%d\\n", (void *)response, status);
     if (!response) return vnt_string("");
     VntValue *result = vnt_string(response);
     free(response);

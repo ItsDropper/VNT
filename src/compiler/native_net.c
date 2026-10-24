@@ -240,6 +240,40 @@ static int parse_url(const char *url, ParsedUrl *u) {
     return 1;
 }
 
+static int same_origin(const char *a, const char *b) {
+    const char *as = strstr(a ? a : "", "://");
+    const char *bs = strstr(b ? b : "", "://");
+    if (!as || !bs || (size_t)(as-(a ? a : "")) != (size_t)(bs-(b ? b : "")) ||
+        strncasecmp(a, b, (size_t)(as-(a ? a : "")) + 3) != 0) return 0;
+    const char *ah = as + 3, *bh = bs + 3;
+    size_t an = strcspn(ah, "/?#"), bn = strcspn(bh, "/?#");
+    return an == bn && strncasecmp(ah, bh, an) == 0;
+}
+
+static char *headers_without_credentials(const char *headers) {
+    size_t cap = headers ? strlen(headers) + 1 : 1;
+    char *out = (char *)malloc(cap);
+    if (!out) return NULL;
+    size_t used = 0;
+    const char *p = headers ? headers : "";
+    while (*p) {
+        const char *end = strchr(p, '\n');
+        size_t len = end ? (size_t)(end-p) : strlen(p);
+        while (len && p[len-1] == '\r') len--;
+        int sensitive = (len >= 14 && !strncasecmp(p, "Authorization:", 14)) ||
+                        (len >= 19 && !strncasecmp(p, "Proxy-Authorization:", 19)) ||
+                        (len >= 7 && !strncasecmp(p, "Cookie:", 7));
+        if (!sensitive && len) {
+            memcpy(out + used, p, len); used += len;
+            out[used++] = '\n';
+        }
+        if (!end) break;
+        p = end + 1;
+    }
+    out[used] = '\0';
+    return out;
+}
+
 static int write_all(int fd, SSL *ssl, const char *data, size_t length) {
     size_t sent = 0;
     while (sent < length) {
@@ -392,8 +426,16 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
                 next_method = "GET";
                 next_body = "";
             }
-            char *redirected = vnt_native_http_request_impl(next_method, next_url, headers, next_body,
+            char *safe_headers = NULL;
+            const char *next_headers = headers;
+            if (!same_origin(url, next_url)) {
+                safe_headers = headers_without_credentials(headers);
+                if (!safe_headers) { free(next_url); return NULL; }
+                next_headers = safe_headers;
+            }
+            char *redirected = vnt_native_http_request_impl(next_method, next_url, next_headers, next_body,
                                                              status, response_length, redirect_count + 1);
+            free(safe_headers);
             free(next_url);
             return redirected;
         }

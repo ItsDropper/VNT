@@ -27,6 +27,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/hello":
             self._send(200, "VNT_NATIVE_HTTP_OK")
+        elif self.path == "/keepalive":
+            self.close_connection = False
+            payload = b"CONTENT_LENGTH_OK"
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(payload)))
+            self.send_header("Connection", "keep-alive")
+            self.end_headers()
+            self.wfile.write(payload)
         elif self.path == "/redirect":
             self.send_response(302)
             self.send_header("Location", "/hello")

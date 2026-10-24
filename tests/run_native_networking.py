@@ -4,6 +4,7 @@ import http.server
 import os
 import pathlib
 import subprocess
+import ssl
 import sys
 import tempfile
 import threading
@@ -29,6 +30,31 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
         pass
 
 LAST_KEEPALIVE_CONNECTION = None
+
+TLS_LAST_CONNECTION = None
+
+class TLSHandler(http.server.BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+
+    def do_GET(self):
+        global TLS_LAST_CONNECTION
+        if self.path == "/tls-keepalive":
+            TLS_LAST_CONNECTION = self.connection
+            payload = b"TLS_READY"
+        elif self.path == "/tls-pool-check":
+            payload = b"TLS_POOL_REUSED" if self.connection is TLS_LAST_CONNECTION else b"TLS_POOL_NEW"
+        else:
+            payload = b"TLS_UNKNOWN_PATH"
+        self.close_connection = False
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Connection", "keep-alive")
+        self.end_headers()
+        self.wfile.write(payload)
+        self.wfile.flush()
+
+    def log_message(self, *_args):
+        pass
 
 class Handler(http.server.BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
@@ -211,6 +237,50 @@ def main():
             finally:
                 proxy_server.shutdown()
                 proxy_server.server_close()
+        if os.name != "nt":
+            # Use a locally generated SAN certificate trusted only by this test process.
+            with tempfile.TemporaryDirectory(prefix="vnt-tls-pool-") as tls_dir:
+                tls_dir = pathlib.Path(tls_dir)
+                cert_path = tls_dir / "localhost.crt"
+                key_path = tls_dir / "localhost.key"
+                cert_result = subprocess.run([
+                    "openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+                    "-keyout", str(key_path), "-out", str(cert_path), "-days", "1",
+                    "-subj", "/CN=localhost",
+                    "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1",
+                ], text=True, capture_output=True, timeout=30)
+                if cert_result.returncode:
+                    sys.stderr.write("Could not generate local TLS test certificate.\\n" +
+                                     cert_result.stdout + cert_result.stderr)
+                    return 1
+                tls_server = http.server.ThreadingHTTPServer((HOST, 18768), TLSHandler)
+                tls_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                tls_context.load_cert_chain(str(cert_path), str(key_path))
+                tls_server.socket = tls_context.wrap_socket(tls_server.socket, server_side=True)
+                tls_thread = threading.Thread(target=tls_server.serve_forever, daemon=True)
+                tls_thread.start()
+                try:
+                    tls_compile = subprocess.run(
+                        [str(compiler), "--compile", "tests/native_tls_pool_networking.vnt", "-o", exe],
+                        cwd=ROOT, text=True, capture_output=True, timeout=60)
+                    if tls_compile.returncode:
+                        sys.stderr.write(tls_compile.stdout + tls_compile.stderr)
+                        return 1
+                    tls_env = os.environ.copy()
+                    for name in ("HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy"):
+                        tls_env[name] = ""
+                    tls_env["NO_PROXY"] = "localhost,127.0.0.1"
+                    tls_env["no_proxy"] = "localhost,127.0.0.1"
+                    tls_env["SSL_CERT_FILE"] = str(cert_path)
+                    tls_result = subprocess.run([exe], cwd=ROOT, env=tls_env,
+                        text=True, capture_output=True, timeout=20)
+                    if tls_result.returncode or tls_result.stdout != "TLS_READY\\nTLS_POOL_REUSED\\n":
+                        sys.stderr.write("Unix TLS connection-pool test failed.\\n" +
+                                         tls_result.stdout + tls_result.stderr)
+                        return 1
+                finally:
+                    tls_server.shutdown()
+                    tls_server.server_close()
         print("Native HTTP integration tests passed.")
         return 0
     finally:

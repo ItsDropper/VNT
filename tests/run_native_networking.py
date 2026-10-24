@@ -50,12 +50,12 @@ def main():
             [str(ROOT / "vnt"), "--compile", "tests/native_networking.vnt", "-o", exe],
             cwd=ROOT, text=True, capture_output=True, timeout=60)
         if compile_result.returncode:
-            sys.stderr.write(f"VNT compile failed with exit code {compile_result.returncode}.\\n")
+            sys.stderr.write(f"VNT compile failed with exit code {compile_result.returncode}.\n")
             sys.stderr.write(compile_result.stdout + compile_result.stderr)
             return 1
         result = subprocess.run([exe], cwd=ROOT, text=True, capture_output=True, timeout=40)
         if result.returncode:
-            sys.stderr.write(f"Native networking program failed with exit code {result.returncode}.\\n")
+            sys.stderr.write(f"Native networking program failed with exit code {result.returncode}.\n")
             sys.stderr.write(result.stdout + result.stderr)
             asm_path = pathlib.Path(exe + ".s")
             if asm_path.exists():
@@ -63,8 +63,8 @@ def main():
                 for marker in ("main:", "vnt_fn_get:", "call vnt_net_request", "vnt_net_request:"):
                     positions = [i for i, line in enumerate(lines) if marker in line]
                     for pos in positions[:2]:
-                        sys.stderr.write(f"\\n--- assembly context: {marker} line {pos + 1} ---\\n")
-                        sys.stderr.write("\\n".join(lines[max(0, pos - 8):pos + 22]) + "\\n")
+                        sys.stderr.write(f"\n--- assembly context: {marker} line {pos + 1} ---\n")
+                        sys.stderr.write("\n".join(lines[max(0, pos - 8):pos + 22]) + "\n")
             return 1
         expected = 'VNT_NATIVE_HTTP_OK\n204\nHEADER_OK\nPOST_OK:{"native":true}\n404\n'
         if result.stdout != expected:

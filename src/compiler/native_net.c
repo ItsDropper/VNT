@@ -463,9 +463,8 @@ char *vnt_native_http_request_bytes(const char *method, const char *url,
 
 /* Stream successful downloads directly to disk. Redirects fall back to the
    regular request path so its redirect and credential rules remain identical. */
-static int vnt_native_http_download_stream_impl(const char *url, const char *destination,
-                                     const char *headers, int *status,
-                                     unsigned int redirect_count) {
+int vnt_native_http_download_stream(const char *url, const char *destination,
+                                    const char *headers, int *status) {
     if (status) *status = 0;
     if (!valid_http_url_chars(url) || !valid_request_headers(headers) ||
         !destination || !*destination) return 0;
@@ -1230,8 +1229,9 @@ static int stream_read_line(int fd, SSL *ssl, char *line, size_t capacity) {
 
 /* Unix-like streaming download: response bytes are written incrementally,
    including chunked decoding, so large files do not need a response-sized heap buffer. */
-int vnt_native_http_download_stream(const char *url, const char *destination,
-                                    const char *headers, int *status) {
+static int vnt_native_http_download_stream_impl(const char *url, const char *destination,
+                                     const char *headers, int *status,
+                                     unsigned int redirect_count) {
     if (status) *status = 0;
     if (!destination || !*destination || !valid_request_headers(headers)) return 0;
     const char *proxy_text = proxy_environment_for(url && !strncasecmp(url, "https://", 8));

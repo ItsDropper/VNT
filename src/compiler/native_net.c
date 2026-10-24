@@ -349,11 +349,11 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
         char *location = NULL;
         char *line = raw;
         while (line < sep) {
-            char *line_end = strstr(line, "\\r\\n");
+            char *line_end = strstr(line, "\r\n");
             if (!line_end || line_end > sep) break;
             if ((size_t)(line_end - line) > 9 && !strncasecmp(line, "Location:", 9)) {
                 char *value = line + 9;
-                while (value < line_end && (*value == ' ' || *value == '\\t')) value++;
+                while (value < line_end && (*value == ' ' || *value == '\t')) value++;
                 location = net_copy(value, (size_t)(line_end - value));
                 break;
             }

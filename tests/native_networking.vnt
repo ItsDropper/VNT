@@ -11,6 +11,6 @@ print(net.get_with_header("http://127.0.0.1:18765/redirect-auth", "Authorization
 print(net.status("http://127.0.0.1:18765/status"))
 print(net.get_with_header("http://127.0.0.1:18765/header", "X-VNT-Test: present"))
 print(net.post_json("http://127.0.0.1:18765/echo", "{\"native\":true}"))
-print(net.net_request("POST", "http://127.0.0.1:18765/echo", "Content-Length: 0", "SAFE_BODY"))
+print(net.request("POST", "http://127.0.0.1:18765/echo", "Content-Length: 0", "SAFE_BODY"))
 print(net.status("http://127.0.0.1:18765/missing"))
 print(net.download("http://127.0.0.1:18765/binary", "vnt-network-binary.test"))

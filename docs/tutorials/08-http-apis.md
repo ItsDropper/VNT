@@ -58,7 +58,7 @@ Body helpers return an empty string on transport failure, so an empty response i
 
 ## 4. Current implementation limits
 
-The native transport supports HTTP and HTTPS, standard request methods, one or more newline-separated request headers, text request bodies, status codes, and response bodies capped at 256 MiB. It currently does not implement redirect handling, proxy configuration, connection pooling, streaming responses, or a general binary response type. Do not treat it as a fully featured HTTP client yet.
+The native transport supports HTTP and HTTPS, standard request methods, one or more newline-separated request headers, text request bodies, status codes, and response bodies capped at 256 MiB. The Unix-like transport does not currently follow redirects; Windows delegates redirect behavior to WinHTTP. Neither implementation supports proxy configuration, connection pooling, streaming responses, or a general binary response type. Do not treat it as a fully featured HTTP client yet.
 
 The Unix-like HTTPS implementation links against OpenSSL and verifies the peer certificate and hostname. Windows uses the platform WinHTTP stack and its certificate validation.
 

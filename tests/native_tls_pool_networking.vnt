@@ -1,0 +1,7 @@
+/* Copyright (c) 2026 ItsDropper
+ * Licensed under the MIT License. See LICENSE in the repository root.
+ */
+import "../lib/std/net.vnt" as net
+
+print(net.get("https://localhost:18768/tls-keepalive"))
+print(net.get("https://localhost:18768/tls-pool-check"))

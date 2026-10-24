@@ -785,11 +785,11 @@ static int http_value_has_token(const char *value, const char *end, const char *
     size_t token_len = strlen(token);
     const char *p = value;
     while (p < end) {
-        while (p < end && (*p == ' ' || *p == '\\t' || *p == ',')) p++;
+        while (p < end && (*p == ' ' || *p == '\t' || *p == ',')) p++;
         const char *q = p;
         while (q < end && *q != ',') q++;
         const char *trim = q;
-        while (trim > p && (trim[-1] == ' ' || trim[-1] == '\\t')) trim--;
+        while (trim > p && (trim[-1] == ' ' || trim[-1] == '\t')) trim--;
         if ((size_t)(trim - p) == token_len && !strncasecmp(p, token, token_len)) return 1;
         p = q < end ? q + 1 : q;
     }
@@ -801,10 +801,10 @@ static int http_header_has_token(const char *raw, size_t header_length,
     const char *p = raw, *limit = raw + header_length;
     size_t name_len = strlen(name);
     while (p < limit) {
-        const char *line_end = memchr(p, '\\n', (size_t)(limit - p));
+        const char *line_end = memchr(p, '\n', (size_t)(limit - p));
         if (!line_end) break;
         const char *end = line_end;
-        if (end > p && end[-1] == '\\r') end--;
+        if (end > p && end[-1] == '\r') end--;
         if (end == p) break;
         const char *colon = memchr(p, ':', (size_t)(end - p));
         if (colon && (size_t)(colon - p) == name_len &&

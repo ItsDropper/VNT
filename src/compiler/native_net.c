@@ -463,8 +463,9 @@ char *vnt_native_http_request_bytes(const char *method, const char *url,
 
 /* Stream successful downloads directly to disk. Redirects fall back to the
    regular request path so its redirect and credential rules remain identical. */
-int vnt_native_http_download_stream(const char *url, const char *destination,
-                                    const char *headers, int *status) {
+static int vnt_native_http_download_stream_impl(const char *url, const char *destination,
+                                     const char *headers, int *status,
+                                     unsigned int redirect_count) {
     if (status) *status = 0;
     if (!valid_http_url_chars(url) || !valid_request_headers(headers) ||
         !destination || !*destination) return 0;
@@ -534,16 +535,41 @@ int vnt_native_http_download_stream(const char *url, const char *destination,
         WINHTTP_HEADER_NAME_BY_INDEX, &code, &code_size, WINHTTP_NO_HEADER_INDEX);
     if (status) *status = (int)code;
     if (ok && (code == 301 || code == 302 || code == 303 || code == 307 || code == 308)) {
+        if (redirect_count >= 10) {
+            WinHttpCloseHandle(request);
+            if (connection) WinHttpCloseHandle(connection);
+            return 0;
+        }
+        DWORD location_size = 0;
+        WinHttpQueryHeaders(request, WINHTTP_QUERY_LOCATION, WINHTTP_HEADER_NAME_BY_INDEX,
+                            NULL, &location_size, WINHTTP_NO_HEADER_INDEX);
+        char *next_url = NULL;
+        if (GetLastError() == ERROR_INSUFFICIENT_BUFFER && location_size >= sizeof(wchar_t)) {
+            wchar_t *wide_location = (wchar_t *)calloc(1, (size_t)location_size + sizeof(wchar_t));
+            if (wide_location && WinHttpQueryHeaders(request, WINHTTP_QUERY_LOCATION,
+                WINHTTP_HEADER_NAME_BY_INDEX, wide_location, &location_size, WINHTTP_NO_HEADER_INDEX)) {
+                char *location = to_utf8(wide_location);
+                next_url = win_resolve_redirect(url, location);
+                free(location);
+            }
+            free(wide_location);
+        }
         WinHttpCloseHandle(request);
         if (connection) WinHttpCloseHandle(connection);
-        size_t response_length = 0; int redirected_status = 0;
-        char *response = vnt_native_http_request("GET", url, headers, "", &redirected_status, &response_length);
+        if (!next_url) return 0;
+        char *safe_headers = NULL;
+        const char *next_headers = headers;
+        if (!win_same_origin(url, next_url)) {
+            safe_headers = win_headers_without_credentials(headers);
+            if (!safe_headers) { free(next_url); return 0; }
+            next_headers = safe_headers;
+        }
+        int redirected_status = 0;
+        int wrote = vnt_native_http_download_stream_impl(next_url, destination, next_headers,
+                                                          &redirected_status, redirect_count + 1);
+        free(safe_headers);
+        free(next_url);
         if (status) *status = redirected_status;
-        if (!response || redirected_status < 200 || redirected_status >= 300) { free(response); return 0; }
-        FILE *f = fopen(destination, "wb");
-        int wrote = f && fwrite(response, 1, response_length, f) == response_length;
-        if (f && fclose(f) != 0) wrote = 0;
-        free(response);
         return wrote;
     }
     FILE *out = ok && code >= 200 && code < 300 ? fopen(destination, "wb") : NULL;
@@ -563,6 +589,11 @@ int vnt_native_http_download_stream(const char *url, const char *destination,
     WinHttpCloseHandle(request);
     if (connection) WinHttpCloseHandle(connection);
     return ok ? 1 : 0;
+}
+
+int vnt_native_http_download_stream(const char *url, const char *destination,
+                                    const char *headers, int *status) {
+    return vnt_native_http_download_stream_impl(url, destination, headers, status, 0);
 }
 
 #else

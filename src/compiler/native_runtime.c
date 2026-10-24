@@ -1805,6 +1805,9 @@ VNT_NATIVE_ABI VntValue * vnt_gui_close(void) { return vnt_bool(1); }
 extern char *vnt_native_http_request(const char *method, const char *url,
                                      const char *headers, const char *body,
                                      int *status, size_t *response_length);
+extern char *vnt_native_http_request_bytes(const char *method, const char *url,
+                                     const char *headers, const char *body, size_t body_length,
+                                     int *status, size_t *response_length);
 extern int vnt_native_http_download_stream(const char *url, const char *destination,
                                            const char *headers, int *status);
 extern char *vnt_native_url_encode(const char *text);
@@ -1828,6 +1831,40 @@ VNT_NATIVE_ABI VntValue *vnt_net_request(VntValue *method, VntValue *url,
         vnt_net_string(body, "net_request()"), &status, &response_length);
     if (!response) return vnt_string("");
     VntValue *result = vnt_string(response);
+    free(response);
+    return result;
+}
+
+VNT_NATIVE_ABI VntValue *vnt_net_request_bytes(VntValue *method, VntValue *url,
+                                               VntValue *headers, VntValue *body) {
+    if (!body || body->type != VNT_ARRAY) {
+        fprintf(stderr, "Runtime error: net_request_bytes() expects an array of byte integers as its body.\n");
+        return vnt_array_new();
+    }
+    size_t body_length = (size_t)body->array.count;
+    unsigned char *body_data = (unsigned char *)malloc(body_length ? body_length : 1);
+    if (!body_data) return vnt_array_new();
+    for (size_t i = 0; i < body_length; ++i) {
+        VntValue *item = body->array.items[i];
+        if (!item || item->type != VNT_INT || item->integer < 0 || item->integer > 255) {
+            fprintf(stderr, "Runtime error: net_request_bytes() body entries must be integers from 0 to 255.\n");
+            free(body_data);
+            return vnt_array_new();
+        }
+        body_data[i] = (unsigned char)item->integer;
+    }
+    int status = 0;
+    size_t response_length = 0;
+    char *response = vnt_native_http_request_bytes(
+        vnt_net_string(method, "net_request_bytes()"),
+        vnt_net_string(url, "net_request_bytes()"),
+        vnt_net_string(headers, "net_request_bytes()"),
+        (const char *)body_data, body_length, &status, &response_length);
+    free(body_data);
+    VntValue *result = vnt_array_new();
+    if (!response) return result;
+    for (size_t i = 0; i < response_length; ++i)
+        vnt_array_push(result, vnt_int((unsigned char)response[i]));
     free(response);
     return result;
 }

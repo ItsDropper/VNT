@@ -1,63 +1,74 @@
-# VNT Compiler Architecture and AST Retirement
+# VNT Compiler Architecture
 
-## Goal
+## Current pipeline
 
-The AST is a frontend implementation detail. Once parsing and semantic analysis finish, the compiler pipeline must operate on a self-contained intermediate representation (IR). Optimization and native code generation must not inspect AST nodes or rely on pointers into the AST.
-
-This is a migration contract, not a claim that the current implementation has completed the migration.
-
-## Required pipeline
+VNT uses an AST in the frontend, then lowers the program into a self-contained high-level intermediate representation (HIR). The AST is not a runtime requirement of HIR optimization or native code generation.
 
 ```text
-source
-  -> lexer/parser
-  -> temporary AST
-  -> semantic analysis (diagnostics + resolved symbols/types)
-  -> self-contained HIR
-  -> HIR validation
-  -> HIR optimization passes
-  -> native backend
-  -> assembler/linker
+VNT source
+    |
+    v
+Lexer and parser
+    |
+    v
+AST
+    |
+    v
+Semantic/type analysis
+    |
+    v
+HIR lowering (owned payloads, index-addressed nodes)
+    |
+    v
+HIR validation and optimization
+    |
+    v
+Control-flow graph + definite-assignment analysis
+    |
+    v
+HIR-native x86-64 backend
+    |
+    v
+GCC + native runtime
+    |
+    v
+Native executable
 ```
 
-The AST can be destroyed immediately after HIR lowering and semantic information has been transferred. No HIR node may retain an AST pointer.
+## HIR ownership and structure
 
-## HIR invariants
+The HIR is represented by `VntIrProgram` and `VntIrNode` in `include/vnt/ir.h`.
 
-1. **Ownership:** names, literal text, type metadata, source spans, and symbol references are owned by the HIR/module arena or referenced by stable IDs.
-2. **No AST dependencies:** the HIR public header and optimizer/backend implementations must not require `AstNode`, `AST_*`, or source-AST pointers.
-3. **Validation:** every node has a valid opcode, operation, type, source span, and child-edge shape. The graph is connected, acyclic, and has exactly one root.
-4. **Semantics first:** name resolution and type checking finish before optimization. The backend does not infer language semantics from syntax.
-5. **Pass contracts:** each optimization pass takes validated HIR and returns validated HIR. Passes must preserve observable behavior, including evaluation order, short-circuiting, overflow, division-by-zero, and reference semantics.
-6. **Diagnostics:** errors retain source spans after the AST is destroyed.
-7. **Backend contract:** code generation consumes HIR only. It must not reconstruct an AST as an intermediate workaround.
+- Nodes live in a growable array and refer to children and siblings by stable numeric indexes, not pointers into the AST.
+- Text payloads, names, and explicit type annotation strings are copied into HIR-owned allocations during lowering.
+- Node child edges have explicit roles such as condition, body, statement, operand, target, and value.
+- `vnt_ir_validate` validates HIR structure and node shape using HIR-owned data.
+- `vnt_ir_optimize` operates on the HIR graph rather than rewriting AST nodes.
+- `src/compiler/x86_backend.c` traverses HIR opcodes and edge roles directly to emit x86-64 assembly.
 
-## Migration stages
+The frontend still parses source into an AST, and semantic/type checking currently takes that AST as input. That is normal frontend use; it does **not** mean the HIR backend requires the AST to remain alive.
 
-### Stage 1 — Make HIR self-contained
-- Copy all required node data, source spans, type information, and resolved symbol IDs into HIR.
-- Remove `VntIrNode.source` and `VntIrProgram.program`.
-- Make HIR validation check IR invariants rather than comparing against AST nodes.
-- Keep the AST alive only until lowering and semantic analysis complete.
+## AST-free regression coverage
 
-### Stage 2 — Move optimization to HIR
-- Implement constant folding over IR nodes, with safe graph rewriting and node compaction/arena management.
-- Add explicit pass APIs and validate after each pass.
-- Add tests for signed integer edge cases, floating-point behavior, short-circuit logic, and side effects.
-- Never mutate the AST during optimization.
+`tests/hir_ast_free_native.c` explicitly verifies the boundary:
 
-### Stage 3 — Migrate native code generation
-- Replace AST traversal in the x86-64 backend with HIR traversal.
-- Derive variable/symbol layouts and control flow from HIR metadata.
-- Keep runtime ABI and executable output stable while migrating.
-- Remove the transitional AST backend path only after all language constructs are covered.
+1. Construct a small AST and lower it into HIR.
+2. Destroy the AST.
+3. Validate and optimize the HIR after AST destruction.
+4. Validate and dump the HIR.
+5. Emit native x86-64 assembly from that HIR and check the expected assembly markers.
 
-### Stage 4 — Prove the migration
-- Add tests that lower a program, free its AST, and then optimize, validate, dump, and compile the HIR.
-- Run the complete correctness suite and benchmark suite.
-- Compare generated program outputs against the pre-migration compiler for the supported corpus.
-- Do not declare AST retirement complete until the AST-free compile test and all regression tests pass.
+This test is intended to catch accidental reintroduction of AST dependencies in HIR optimization or code generation. It proves the tested HIR path can operate after AST destruction; it does not, by itself, prove every language construct or generated executable is correct. The full language and runtime regression suites remain necessary.
 
-## Current known blocker
+## Remaining work
 
-The current implementation does not satisfy this contract yet: `VntIrProgram` retains the source AST, `vnt_ir_optimize` folds AST nodes and rebuilds HIR, and `src/compiler/x86_backend.c` traverses the AST through `ir->program`. These dependencies must be removed in the stages above; adding more optimization rules before that migration would deepen the coupling.
+The existence of an AST-free HIR backend does not mean the compiler is finished. Useful future work includes:
+
+- Broader regression coverage for every HIR opcode and interactions between features.
+- Stronger semantic/type information in HIR, including resolved symbol metadata where needed.
+- More robust diagnostics that preserve source locations across all lowering and optimization cases.
+- Additional HIR optimization passes with explicit correctness tests.
+- Broader end-to-end tests that compile and execute representative programs, not just inspect emitted assembly.
+- Keeping the control-flow graph and definite-assignment analysis consistent with language semantics.
+
+Do not describe the backend as rebuilding or traversing an AST: its current implementation consumes HIR directly. Distinguish this from the frontend, which still uses an AST for parsing and type checking.

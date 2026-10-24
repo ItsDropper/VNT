@@ -108,7 +108,7 @@ def main():
                         sys.stderr.write(f"\n--- assembly context: {marker} line {pos + 1} ---\n")
                         sys.stderr.write("\n".join(lines[max(0, pos - 8):pos + 22]) + "\n")
             return 1
-        expected = 'VNT_NATIVE_HTTP_OK\nCONTENT_LENGTH_OK\nVNT_NATIVE_HTTP_OK\nCHUNKED_OK\nAUTH_STRIPPED\n204\nHEADER_OK\nPOST_OK:{"native":true}\n404\ntrue\n'
+        expected = 'VNT_NATIVE_HTTP_OK\nFRAGMENT_NOT_SENT\nCONTENT_LENGTH_OK\nVNT_NATIVE_HTTP_OK\nCHUNKED_OK\nAUTH_STRIPPED\n204\nHEADER_OK\nPOST_OK:{"native":true}\n404\ntrue\n'
         if result.stdout != expected:
             sys.stderr.write("Unexpected native networking output.\nExpected:\n" + expected +
                              "Actual:\n" + result.stdout + result.stderr)

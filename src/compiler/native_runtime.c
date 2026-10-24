@@ -382,6 +382,7 @@ VNT_NATIVE_ABI VntValue * vnt_bytes_new(const unsigned char *data, size_t length
     return v;
 }
 
+
 VNT_NATIVE_ABI VntValue * vnt_array_push(VntValue *a, VntValue *item) {
     if (!a || a->type != VNT_ARRAY) {
         fprintf(stderr, "Runtime error: expected an array.\n");
@@ -453,7 +454,18 @@ VNT_NATIVE_ABI VntValue * vnt_array_get(VntValue *a, VntValue *index) {
     if (a && a->type == VNT_STRING)
         return vnt_string_get(a, index);
     if (!a || a->type != VNT_ARRAY || !index || index->type != VNT_INT) {
-        fprintf(stderr, "Runtime error: indexVNT_NATIVE_ABI VntValue * vnt_array_set(VntValue *a, VntValue *index, VntValue *value) {
+        fprintf(stderr, "Runtime error: indexing requires an array/string and integer index.\n");
+        exit(1);
+    }
+    int i = index->integer;
+    if (i < 0 || i >= a->array.count) {
+        fprintf(stderr, "Runtime error: array index out of bounds.\n");
+        exit(1);
+    }
+    return a->array.items[i];
+}
+
+VNT_NATIVE_ABI VntValue * vnt_array_set(VntValue *a, VntValue *index, VntValue *value) {
     if (a && a->type == VNT_BYTES) {
         if (!index || index->type != VNT_INT) {
             fprintf(stderr, "Runtime error: byte buffer assignment requires an integer index.\n");
@@ -1928,7 +1940,6 @@ VNT_NATIVE_ABI VntValue *vnt_net_request_bytes(VntValue *method, VntValue *url,
     free(response);
     return result;
 }
-
 VNT_NATIVE_ABI VntValue *vnt_net_status(VntValue *method, VntValue *url,
                                         VntValue *headers) {
     int status = 0;

@@ -3,6 +3,8 @@ import "../lib/std/net.vnt" as net
 
 body = net.get("http://127.0.0.1:18765/hello")
 print(body)
+print(net.get("http://127.0.0.1:18765/redirect"))
+print(net.get("http://127.0.0.1:18765/chunked"))
 print(net.status("http://127.0.0.1:18765/status"))
 print(net.get_with_header("http://127.0.0.1:18765/header", "X-VNT-Test: present"))
 print(net.post_json("http://127.0.0.1:18765/echo", "{\"native\":true}"))

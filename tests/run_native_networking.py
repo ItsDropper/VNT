@@ -132,7 +132,7 @@ def main():
         malformed_chunk_result = "abc\n" if os.name == "nt" else "\n"
         expected = ('VNT_NATIVE_HTTP_OK\nFRAGMENT_NOT_SENT\nCONTENT_LENGTH_OK\n'
                     'VNT_NATIVE_HTTP_OK\nCHUNKED_OK\n' + malformed_chunk_result +
-                    '[0, 1, 255, 10, 13, 128]\n[0, 1, 255, 10, 13, 128]\n'
+                    '[0, 1, 255, 10, 13, 128]\ntrue\n[0, 1, 255, 10, 13, 128]\n'
                     'AUTH_STRIPPED\n204\nHEADER_OK\nPOST_OK:{"native":true}\n'
                     'POST_OK:SAFE_BODY\n404\ntrue\n')
         if result.stdout != expected:
@@ -145,10 +145,17 @@ def main():
         if binary != bytes((0, 1, 255, 10, 13, 128)):
             sys.stderr.write(f"Binary download was corrupted: {binary!r}\n")
             return 1
+        chunked_path = ROOT / "vnt-network-chunked.test"
+        chunked = chunked_path.read_bytes()
+        chunked_path.unlink(missing_ok=True)
+        if chunked != b"CHUNKED_OK":
+            sys.stderr.write(f"Chunked streaming download was corrupted: {chunked!r}\\n")
+            return 1
         print("Native HTTP integration tests passed.")
         return 0
     finally:
         (ROOT / "vnt-network-binary.test").unlink(missing_ok=True)
+        (ROOT / "vnt-network-chunked.test").unlink(missing_ok=True)
         server.shutdown()
         server.server_close()
         redirect_server.shutdown()

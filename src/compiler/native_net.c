@@ -239,6 +239,14 @@ static char *win_resolve_redirect(const char *base, const char *location) {
     if (!_strnicmp(location, "http://", 7) || !_strnicmp(location, "https://", 8))
         return _strdup(location);
     const char *scheme = strstr(base, "://");
+    if (location[0] == '/' && location[1] == '/') {
+        if (!scheme) return NULL;
+        size_t n = (size_t)(scheme - base) + strlen(location) + 2;
+        char *out = (char *)malloc(n);
+        if (!out) return NULL;
+        snprintf(out, n, "%.*s:%s", (int)(scheme - base), base, location);
+        return out;
+    }
     if (!scheme) return NULL;
     const char *authority_end = strpbrk(scheme+3, "/?#");
     size_t origin_len = authority_end ? (size_t)(authority_end-base) : strlen(base);

@@ -50,10 +50,12 @@ def main():
             [str(ROOT / "vnt"), "--compile", "tests/native_networking.vnt", "-o", exe],
             cwd=ROOT, text=True, capture_output=True, timeout=60)
         if compile_result.returncode:
+            sys.stderr.write(f"VNT compile failed with exit code {compile_result.returncode}.\\n")
             sys.stderr.write(compile_result.stdout + compile_result.stderr)
             return 1
         result = subprocess.run([exe], cwd=ROOT, text=True, capture_output=True, timeout=40)
         if result.returncode:
+            sys.stderr.write(f"Native networking program failed with exit code {result.returncode}.\\n")
             sys.stderr.write(result.stdout + result.stderr)
             return 1
         expected = 'VNT_NATIVE_HTTP_OK\n204\nHEADER_OK\nPOST_OK:{"native":true}\n404\n'

@@ -202,6 +202,12 @@ def main():
                 if proxy_result.returncode or proxy_result.stdout != "PROXY_OK\n":
                     sys.stderr.write("Unix HTTP proxy test failed.\n" + proxy_result.stdout + proxy_result.stderr)
                     return 1
+                proxy_download_path = ROOT / "vnt-network-proxy.test"
+                proxy_download = proxy_download_path.read_bytes() if proxy_download_path.exists() else b""
+                proxy_download_path.unlink(missing_ok=True)
+                if proxy_download != b"PROXY_OK":
+                    sys.stderr.write(f"Unix proxy streaming download failed: {proxy_download!r}\n")
+                    return 1
             finally:
                 proxy_server.shutdown()
                 proxy_server.server_close()
@@ -211,6 +217,7 @@ def main():
         (ROOT / "vnt-network-binary.test").unlink(missing_ok=True)
         (ROOT / "vnt-network-chunked.test").unlink(missing_ok=True)
         (ROOT / "vnt-network-redirect.test").unlink(missing_ok=True)
+        (ROOT / "vnt-network-proxy.test").unlink(missing_ok=True)
         server.shutdown()
         server.server_close()
         redirect_server.shutdown()

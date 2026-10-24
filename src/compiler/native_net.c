@@ -45,7 +45,7 @@ char *vnt_native_url_encode(const char *text) {
     return out;
 }
 
-static char *decode_chunked(char *body, size_t length) {
+static char *decode_chunked(char *body, size_t length, size_t *decoded_length) {
     char *out = (char *)malloc(length + 1);
     if (!out) return NULL;
     size_t r = 0, w = 0;
@@ -66,12 +66,13 @@ static char *decode_chunked(char *body, size_t length) {
         while (r < length && body[r] != '\n') r++;
         if (r < length) r++;
         if (!digits || chunk > length - r) { free(out); return NULL; }
-        if (!chunk) { out[w] = '\0'; return out; }
+        if (!chunk) { out[w] = '\0'; if (decoded_length) *decoded_length = w; return out; }
         memcpy(out + w, body + r, chunk);
         w += chunk; r += chunk;
         if (r + 1 < length && body[r] == '\r' && body[r + 1] == '\n') r += 2;
     }
     out[w] = '\0';
+    if (decoded_length) *decoded_length = w;
     return out;
 }
 
@@ -92,8 +93,9 @@ static wchar_t *to_wide(const char *s) {
 }
 
 char *vnt_native_http_request(const char *method, const char *url,
-                      const char *headers, const char *body, int *status) {
+                      const char *headers, const char *body, int *status, size_t *response_length) {
     if (status) *status = 0;
+    if (response_length) *response_length = 0;
     wchar_t *wide_url = to_wide(url), *wide_method = to_wide(method);
     if (!wide_url || !wide_method) { free(wide_url); free(wide_method); return NULL; }
     URL_COMPONENTS parts;
@@ -174,6 +176,7 @@ char *vnt_native_http_request(const char *method, const char *url,
         }
     }
     if (result) result[used] = '\0';
+    if (response_length) *response_length = used;
     if (request) WinHttpCloseHandle(request);
     if (connection) WinHttpCloseHandle(connection);
     if (session) WinHttpCloseHandle(session);
@@ -249,6 +252,7 @@ static int write_all(int fd, SSL *ssl, const char *data, size_t length) {
 char *vnt_native_http_request(const char *method, const char *url,
                       const char *headers, const char *body, int *status) {
     if (status) *status = 0;
+    if (response_length) *response_length = 0;
     ParsedUrl u;
     if (!parse_url(url ? url : "", &u)) return NULL;
     struct addrinfo hints, *addresses = NULL;
@@ -339,10 +343,11 @@ char *vnt_native_http_request(const char *method, const char *url,
     size_t headerlen = (size_t)(sep + 4 - raw), bodylen_read = used - headerlen;
     char *result = NULL;
     if (strcasestr(raw, "Transfer-Encoding: chunked") && bodylen_read) {
-        result = decode_chunked(sep+4, bodylen_read);
+        result = decode_chunked(sep+4, bodylen_read, response_length);
     } else {
         if (bodylen_read > VNT_NET_MAX_RESPONSE) { free(raw); goto fail; }
         result = net_copy(sep+4, bodylen_read);
+        if (response_length) *response_length = bodylen_read;
     }
     free(raw);
     if (ssl) { SSL_shutdown(ssl); SSL_free(ssl); }

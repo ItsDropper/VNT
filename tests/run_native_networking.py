@@ -181,7 +181,7 @@ def main():
         malformed_chunk_result = "abc\n" if os.name == "nt" else "\n"
         expected = ('VNT_NATIVE_HTTP_OK\nFRAGMENT_NOT_SENT\nCONTENT_LENGTH_OK\nPOOL_REUSED\n'
                     'VNT_NATIVE_HTTP_OK\nCHUNKED_OK\nTransfer-Encoding: chunked is body text\n' + malformed_chunk_result +
-                    '[0, 1, 255, 10, 13, 128]\ntrue\n[0, 1, 255, 10, 13, 128]\n'
+                    '[0, 1, 255, 10, 13, 128]\n6\n255\ntrue\n[0, 1, 255, 10, 13, 128]\n'
                     'AUTH_STRIPPED\n204\nHEADER_OK\nPOST_OK:{"native":true}\n'
                     'POST_OK:SAFE_BODY\n404\ntrue\n')
         if result.stdout != expected:

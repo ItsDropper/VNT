@@ -204,6 +204,9 @@ static int builtin_arity(const char *name, int argc) {
         !strcmp(name, "process_exit_code") || !strcmp(name, "process_launch") || !strcmp(name, "io_write") ||
         !strcmp(name, "io_write_error")) return argc == 1;
     if (!strcmp(name, "process_wait") || !strcmp(name, "process_start")) return argc == 2;
+    if (!strcmp(name, "net_request")) return argc == 4;
+    if (!strcmp(name, "net_status") || !strcmp(name, "net_download")) return argc == 3;
+    if (!strcmp(name, "net_url_encode")) return argc == 1;
     if (!strcmp(name, "fs_write") || !strcmp(name, "fs_append") ||
         !strcmp(name, "fs_rename") || !strcmp(name, "env_set")) return argc == 2;
 

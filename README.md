@@ -289,7 +289,7 @@ The checks build VNT and exercise language features, module loading, and runtime
 - GUI APIs currently target Windows.
 - GUI styling implements a small CSS-like subset, not full CSS or browser behavior.
 - Text file APIs are not binary-safe.
-- Native HTTP/HTTPS support is still evolving. Ordinary response values are text-oriented; streaming downloads write directly to files for direct requests, while redirect/proxy download fallbacks are buffered. The Unix transport supports HTTP(S) proxy environment variables and NO_PROXY; Windows uses WinHTTP's system proxy behavior. Binary-safe request/response arrays are available, but a compact dedicated byte-buffer type and Unix connection pooling remain unimplemented. The Unix-like HTTPS path requires OpenSSL development/runtime libraries.
+- Native HTTP/HTTPS support is still evolving. Ordinary response values are text-oriented; streaming downloads write directly to files for direct requests, while redirect/proxy download fallbacks are buffered. The Unix transport supports HTTP(S) proxy environment variables and NO_PROXY; Windows uses WinHTTP's system proxy behavior. Binary-safe request/response arrays are available, but a compact dedicated byte-buffer type and Unix TLS connection pooling remain unimplemented. Unix direct HTTP requests reuse a single keep-alive connection when response framing permits; Windows uses WinHTTP's shared connection pool. The Unix-like HTTPS path requires OpenSSL development/runtime libraries.
 - The standard library and runtime API may change as the language develops.
 
 ## Roadmap

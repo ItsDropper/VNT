@@ -27,6 +27,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/hello":
             self._send(200, "VNT_NATIVE_HTTP_OK")
+        elif self.path == "/query?x=1":
+            self._send(200, "FRAGMENT_NOT_SENT")
         elif self.path == "/keepalive":
             self.close_connection = False
             payload = b"CONTENT_LENGTH_OK"

@@ -13,6 +13,21 @@ HOST = "127.0.0.1"
 PORT = 18765
 REDIRECT_PORT = 18766
 
+class ProxyHandler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        if not self.path.startswith("http://proxy-test.invalid:80/"):
+            self.send_error(400, "expected absolute-form proxy request")
+            return
+        payload = b"PROXY_OK"
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Connection", "close")
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def log_message(self, *_args):
+        pass
+
 class Handler(http.server.BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
@@ -151,6 +166,33 @@ def main():
         if chunked != b"CHUNKED_OK":
             sys.stderr.write(f"Chunked streaming download was corrupted: {chunked!r}\\n")
             return 1
+        if os.name != "nt":
+            proxy_server = http.server.ThreadingHTTPServer((HOST, 18767), ProxyHandler)
+            proxy_thread = threading.Thread(target=proxy_server.serve_forever, daemon=True)
+            proxy_thread.start()
+            try:
+                proxy_source = ROOT / "tests/native_proxy_networking.vnt"
+                proxy_compile = subprocess.run(
+                    [str(compiler), "--compile", str(proxy_source.relative_to(ROOT)), "-o", exe],
+                    cwd=ROOT, text=True, capture_output=True, timeout=60)
+                if proxy_compile.returncode:
+                    sys.stderr.write(proxy_compile.stdout + proxy_compile.stderr)
+                    return 1
+                proxy_env = os.environ.copy()
+                proxy_env.update({
+                    "HTTP_PROXY": "http://127.0.0.1:18767",
+                    "http_proxy": "http://127.0.0.1:18767",
+                    "NO_PROXY": "",
+                    "no_proxy": "",
+                })
+                proxy_result = subprocess.run([exe], cwd=ROOT, env=proxy_env,
+                    text=True, capture_output=True, timeout=20)
+                if proxy_result.returncode or proxy_result.stdout != "PROXY_OK\\n":
+                    sys.stderr.write("Unix HTTP proxy test failed.\\n" + proxy_result.stdout + proxy_result.stderr)
+                    return 1
+            finally:
+                proxy_server.shutdown()
+                proxy_server.server_close()
         print("Native HTTP integration tests passed.")
         return 0
     finally:

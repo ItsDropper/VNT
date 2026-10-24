@@ -61,7 +61,7 @@ print(response)
 
 ## 4. Send and receive arbitrary bytes
 
-VNT can represent binary payloads as arrays of integer bytes (`0` through `255`). These values preserve embedded NUL bytes and invalid UTF-8:
+VNT uses a compact byte-buffer value for binary responses, preserving embedded NUL bytes and invalid UTF-8. You can index it like an array, call `len()`, and pass it directly to another binary request. `request_bytes` also accepts an ordinary array of integer bytes (`0` through `255`):
 
 ```vnt
 import "lib/std/net.vnt" as net
@@ -78,17 +78,17 @@ echoed = net.request_bytes(
 print(echoed)
 ```
 
-`request_bytes` takes an array of byte integers for its body and returns the response as an array of byte integers. Use ordinary `get`/`request` for text-oriented responses.
+`request_bytes` accepts either an integer array or a compact byte buffer as its body and returns a compact byte buffer. Use ordinary `get`/`request` for text-oriented responses.
 
 ## 5. Understand status codes and failures
 
 An HTTP server can return `404 Not Found` even though the connection worked. Use `net.status(url)` to inspect the HTTP status. The helper returns a three-digit string; `000` indicates that the transport failed before an HTTP status was received.
 
-Body helpers return an empty string on transport failure, so an empty response is ambiguous. Download helpers preserve binary bytes, write successful 2xx responses directly to disk in bounded chunks for direct requests, and avoid allocating the entire file in memory. Redirect/proxy download fallbacks still buffer the response. The ordinary in-memory response path has no fixed application-level size cap; it remains bounded by available memory and allocation success.
+Body helpers return an empty string on transport failure, so an empty response is ambiguous. `net.download` preserves binary bytes and streams successful 2xx bodies to disk in bounded chunks. Redirects are followed without switching to a response-sized in-memory buffer; Unix proxy-routed downloads also stream the response body. Use this for large files. The ordinary `get`/`request` APIs return a complete string, so those responses necessarily remain in memory.
 
 ## 6. Behavior and remaining gaps
 
-The native transport supports HTTP and HTTPS, standard request methods, newline-separated headers, text request bodies, status codes, redirects, and binary-safe downloads. Redirect loops are capped at ten hops; cross-origin redirects strip `Authorization`, `Proxy-Authorization`, and `Cookie` headers. The in-memory response path has no fixed application-level size cap, but it must fit in memory. Streaming downloads are implemented; a compact dedicated byte-buffer type and Unix TLS connection pooling remain unimplemented. Byte-array request/response helpers are available. Direct Unix HTTP requests reuse a single keep-alive connection when framing allows it, and Windows shares a WinHTTP session for connection pooling. Unix-like requests honor HTTP_PROXY/HTTPS_PROXY (and lowercase equivalents), ALL_PROXY, and NO_PROXY. Windows delegates proxy selection to WinHTTP. VNT's ordinary string values remain text-oriented, so use `net.download` for binary files.
+The native transport supports HTTP and HTTPS, standard request methods, newline-separated headers, text request bodies, status codes, redirects, and binary-safe downloads. Redirect loops are capped at ten hops; cross-origin redirects strip `Authorization`, `Proxy-Authorization`, and `Cookie` headers. The in-memory `get`/`request` path is intentionally buffered because it returns a complete string; use `net.download` when bounded-memory transfer matters. Binary helpers return compact byte buffers that support `len()`, indexing, and reuse as a subsequent binary request body. Unix direct HTTP and verified HTTPS requests reuse eligible keep-alive connections; Windows shares a WinHTTP session for pooling. Unix-like requests honor HTTP_PROXY/HTTPS_PROXY (and lowercase equivalents), ALL_PROXY, and NO_PROXY. Windows delegates proxy selection to WinHTTP. Redirects strip Authorization, Proxy-Authorization, and Cookie headers when the origin changes.
 
 The Unix-like HTTPS implementation links against OpenSSL and verifies the peer certificate and hostname. Windows uses the platform WinHTTP stack and its certificate validation.
 

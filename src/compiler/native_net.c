@@ -248,11 +248,9 @@ static int write_all(int fd, SSL *ssl, const char *data, size_t length) {
 
 char *vnt_native_http_request(const char *method, const char *url,
                       const char *headers, const char *body, int *status) {
-    fprintf(stderr, "NET transport start method=%s url=%s\\n", method ? method : "NULL", url ? url : "NULL");
     if (status) *status = 0;
     ParsedUrl u;
-    if (!parse_url(url ? url : "", &u)) { fprintf(stderr, "NET parse failed\\n"); return NULL; }
-    fprintf(stderr, "NET parsed host=%s port=%s target=%s\\n", u.host, u.port, u.target);
+    if (!parse_url(url ? url : "", &u)) return NULL;
     struct addrinfo hints, *addresses = NULL;
     memset(&hints, 0, sizeof(hints)); hints.ai_socktype = SOCK_STREAM; hints.ai_family = AF_UNSPEC;
     if (getaddrinfo(u.host, u.port, &hints, &addresses) != 0) { parsed_url_free(&u); return NULL; }
@@ -267,8 +265,7 @@ char *vnt_native_http_request(const char *method, const char *url,
         close(fd); fd = -1;
     }
     freeaddrinfo(addresses);
-    if (fd < 0) { fprintf(stderr, "NET connect failed\\n"); parsed_url_free(&u); return NULL; }
-    fprintf(stderr, "NET connected fd=%d\\n", fd);
+    if (fd < 0) { parsed_url_free(&u); return NULL; }
     SSL_CTX *ctx = NULL; SSL *ssl = NULL;
     if (u.tls) {
         ctx = SSL_CTX_new(TLS_client_method());
@@ -306,8 +303,7 @@ char *vnt_native_http_request(const char *method, const char *url,
     if (bodylen && at + bodylen < reqcap) { memcpy(request+at, body, bodylen); at+=bodylen; }
     int sentok = write_all(fd, ssl, request, at);
     free(request);
-    if (!sentok) { fprintf(stderr, "NET send failed\\n"); goto fail; }
-    fprintf(stderr, "NET sent %zu bytes\\n", at);
+    if (!sentok) goto fail;
     size_t cap = 8192, used = 0;
     char *raw = (char *)malloc(cap + 1);
     if (!raw) goto fail;
@@ -335,7 +331,6 @@ char *vnt_native_http_request(const char *method, const char *url,
         if (used > VNT_NET_MAX_RESPONSE + 65536u) { free(raw); goto fail; }
     }
     raw[used] = '\0';
-    fprintf(stderr, "NET received %zu bytes\\n", used);
     char *sep = strstr(raw, "\r\n\r\n");
     if (!sep) { free(raw); goto fail; }
     int code = 0;

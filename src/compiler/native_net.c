@@ -694,6 +694,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
         int sent = cn > 0 && (size_t)cn < need && write_all(fd, NULL, connect_request, (size_t)cn);
         free(connect_request);
         char response_headers[16385];
+        response_headers[0] = '\0';
         size_t hn = 0;
         while (sent && hn < sizeof(response_headers) - 1) {
             char ch;

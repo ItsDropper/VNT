@@ -911,8 +911,9 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
         n = snprintf(request, reqcap, "%s http://%s:%s%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n",
                      method ? method : "GET", u.host, u.port, u.target, u.host);
     } else {
-        n = snprintf(request, reqcap, "%s %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n",
-                     method ? method : "GET", u.target, u.host);
+        n = snprintf(request, reqcap, "%s %s HTTP/1.1\r\nHost: %s\r\nConnection: %s\r\n",
+                     method ? method : "GET", u.target, u.host,
+                     (!u.tls && !use_proxy) ? "keep-alive" : "close");
     }
     if (n < 0 || (size_t)n >= reqcap) { free(request); goto fail; }
     size_t at = (size_t)n;

@@ -469,8 +469,7 @@ char *vnt_native_http_request_bytes(const char *method, const char *url,
     return vnt_native_http_request_impl(method, url, headers, body, body_length, status, response_length, 0);
 }
 
-/* Stream successful downloads directly to disk. Redirects fall back to the
-   regular request path so its redirect and credential rules remain identical. */
+/* Stream successful downloads directly to disk, including followed redirects. */
 static int vnt_native_http_download_stream_impl(const char *url, const char *destination,
                                      const char *headers, int *status,
                                      unsigned int redirect_count) {
@@ -1394,28 +1393,13 @@ static int vnt_native_http_download_stream_impl(const char *url, const char *des
         if (hlen >= 4 && !memcmp(header + hlen - 4, "\r\n\r\n", 4)) break;
     }
     if (hlen < 4 || memcmp(header + hlen - 4, "\r\n\r\n", 4)) goto stream_fail;
-    int code = 0, chunked = 0, has_length = 0, connection_close = 0;
-    unsigned long long content_length = 0;
-    if (sscanf(header, "HTTP/%*u.%*u %d", &code) != 1) goto stream_fail;
-    char *line = strstr(header, "\r\n");
-    while (line && *line) {
-        line += 2;
-        if (!strncmp(line, "\r\n", 2)) break;
-        char *end = strstr(line, "\r\n");
-        if (!end) break;
-        if ((size_t)(end-line) >= 15 && !strncasecmp(line, "Content-Length:", 15)) {
-            char *v = line+15; while (*v == ' ' || *v == '\t') v++;
-            char *tail = NULL; content_length = strtoull(v, &tail, 10);
-            while (tail && tail < end && (*tail == ' ' || *tail == '\t')) tail++;
-            if (!tail || tail != end) goto stream_fail;
-            has_length = 1;
-        } else if ((size_t)(end-line) >= 18 && !strncasecmp(line, "Transfer-Encoding:", 18) &&
-                   strcasestr(line+18, "chunked")) chunked = 1;
-        else if ((size_t)(end-line) >= 11 && !strncasecmp(line, "Connection:", 11) &&
-                 http_value_has_token(line+11, end, "close")) connection_close = 1;
-        line = end;
-    }
-    if (has_length && chunked) goto stream_fail;
+    int code = 0, chunked = 0, has_length = 0, connection_close = 0, no_body = 0;
+    size_t content_length = 0, parsed_header_length = 0;
+    int parsed_headers = parse_response_headers(header, hlen, "GET", &parsed_header_length,
+        &content_length, &has_length, &code, &no_body);
+    if (parsed_headers <= 0 || parsed_header_length != hlen) goto stream_fail;
+    chunked = http_header_has_token(header, hlen, "Transfer-Encoding", "chunked");
+    connection_close = http_header_has_token(header, hlen, "Connection", "close");
     if (status) *status = code;
     if (code == 301 || code == 302 || code == 303 || code == 307 || code == 308) {
         if (redirect_count >= 10) goto stream_fail;
@@ -1461,7 +1445,9 @@ static int vnt_native_http_download_stream_impl(const char *url, const char *des
     FILE *out = fopen(destination, "wb");
     if (!out) goto stream_fail;
     int ok = 1;
-    if (chunked) {
+    if (no_body) {
+        ok = 1;
+    } else if (chunked) {
         char chunk_line[8193];
         for (;;) {
             if (!stream_read_line(fd, ssl, chunk_line, sizeof(chunk_line))) { ok = 0; break; }
@@ -1483,8 +1469,7 @@ static int vnt_native_http_download_stream_impl(const char *url, const char *des
                 stream_read(fd, ssl, ending+1, 1, &got) != 1 || got != 1 || ending[1] != '\n') { ok = 0; break; }
         }
     } else if (has_length) {
-        if (content_length > SIZE_MAX) ok = 0;
-        else ok = stream_read_exact(fd, ssl, out, (size_t)content_length);
+        ok = stream_read_exact(fd, ssl, out, content_length);
     } else {
         char buffer[65536];
         for (;;) {

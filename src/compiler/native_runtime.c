@@ -1805,6 +1805,8 @@ VNT_NATIVE_ABI VntValue * vnt_gui_close(void) { return vnt_bool(1); }
 extern char *vnt_native_http_request(const char *method, const char *url,
                                      const char *headers, const char *body,
                                      int *status, size_t *response_length);
+extern int vnt_native_http_download_stream(const char *url, const char *destination,
+                                           const char *headers, int *status);
 extern char *vnt_native_url_encode(const char *text);
 
 static const char *vnt_net_string(VntValue *value, const char *function_name) {
@@ -1847,20 +1849,10 @@ VNT_NATIVE_ABI VntValue *vnt_net_status(VntValue *method, VntValue *url,
 VNT_NATIVE_ABI VntValue *vnt_net_download(VntValue *url, VntValue *destination,
                                           VntValue *headers) {
     int status = 0;
-    size_t response_length = 0;
-    char *response = vnt_native_http_request("GET",
+    int ok = vnt_native_http_download_stream(
         vnt_net_string(url, "net_download()"),
-        vnt_net_string(headers, "net_download()"), "", &status, &response_length);
-    if (!response || status < 200 || status >= 300) {
-        free(response);
-        return vnt_bool(0);
-    }
-    const char *path = vnt_net_string(destination, "net_download()");
-    FILE *f = fopen(path, "wb");
-    if (!f) { free(response); return vnt_bool(0); }
-    int ok = fwrite(response, 1, response_length, f) == response_length;
-    if (fclose(f) != 0) ok = 0;
-    free(response);
+        vnt_net_string(destination, "net_download()"),
+        vnt_net_string(headers, "net_download()"), &status);
     return vnt_bool(ok);
 }
 

@@ -274,6 +274,42 @@ static char *headers_without_credentials(const char *headers) {
     return out;
 }
 
+static int parse_response_headers(const char *raw, size_t used, const char *method,
+                                  size_t *header_length, size_t *content_length,
+                                  int *has_content_length, int *status_code, int *no_body) {
+    char *sep = strstr(raw, "\r\n\r\n");
+    if (!sep || (size_t)(sep-raw) + 4 > used) return 0;
+    size_t hlen = (size_t)(sep-raw) + 4;
+    int code = 0;
+    if (sscanf(raw, "HTTP/%*u.%*u %d", &code) != 1) return -1;
+    size_t content_len = 0;
+    int has_len = 0;
+    char *line = (char *)raw;
+    while (line < sep) {
+        char *end = strstr(line, "\r\n");
+        if (!end || end > sep) break;
+        if ((size_t)(end-line) > 15 && !strncasecmp(line, "Content-Length:", 15)) {
+            char *value = line + 15;
+            while (value < end && (*value == ' ' || *value == '\t')) value++;
+            if (value == end || *value == '-') return -1;
+            char *tail = NULL;
+            unsigned long long parsed = strtoull(value, &tail, 10);
+            while (tail && tail < end && (*tail == ' ' || *tail == '\t')) tail++;
+            if (!tail || tail != end || parsed > SIZE_MAX) return -1;
+            content_len = (size_t)parsed;
+            has_len = 1;
+        }
+        line = end + 2;
+    }
+    *header_length = hlen;
+    *content_length = content_len;
+    *has_content_length = has_len;
+    *status_code = code;
+    *no_body = (method && !strcasecmp(method, "HEAD")) ||
+               (code >= 100 && code < 200) || code == 204 || code == 304;
+    return 1;
+}
+
 static int write_all(int fd, SSL *ssl, const char *data, size_t length) {
     size_t sent = 0;
     while (sent < length) {
@@ -346,8 +382,11 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     free(request);
     if (!sentok) goto fail;
     size_t cap = 8192, used = 0;
+    size_t headerlen = 0, expected_body_length = 0;
+    int has_expected_body_length = 0, code = 0, response_no_body = 0;
     char *raw = (char *)malloc(cap + 1);
     if (!raw) goto fail;
+    raw[0] = '\0';
     for (;;) {
         if (used == cap) {
             if (cap > SIZE_MAX / 2) { free(raw); goto fail; }
@@ -369,13 +408,27 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
             break;
         }
         used += (size_t)got;
+        raw[used] = '\0';
+        int parsed = parse_response_headers(raw, used, method, &headerlen,
+                                            &expected_body_length, &has_expected_body_length,
+                                            &code, &response_no_body);
+        if (parsed < 0) { free(raw); goto fail; }
+        if (parsed > 0 && (response_no_body ||
+            (has_expected_body_length && used - headerlen >= expected_body_length)))
+            break;
     }
     raw[used] = '\0';
+    int parsed = parse_response_headers(raw, used, method, &headerlen,
+                                        &expected_body_length, &has_expected_body_length,
+                                        &code, &response_no_body);
+    if (parsed <= 0) { free(raw); goto fail; }
+    if (has_expected_body_length && used - headerlen < expected_body_length) {
+        free(raw); goto fail;
+    }
     char *sep = strstr(raw, "\r\n\r\n");
-    if (!sep) { free(raw); goto fail; }
-    int code = 0;
-    if (sscanf(raw, "HTTP/%*u.%*u %d", &code) != 1) { free(raw); goto fail; }
-    size_t headerlen = (size_t)(sep + 4 - raw), bodylen_read = used - headerlen;
+    size_t bodylen_read = response_no_body ? 0 : used - headerlen;
+    if (has_expected_body_length && bodylen_read > expected_body_length)
+        bodylen_read = expected_body_length;
 
     /* Follow standard redirects, with a hard loop limit and relative URL support. */
     if ((code == 301 || code == 302 || code == 303 || code == 307 || code == 308) &&

@@ -21,6 +21,64 @@ static char *net_copy(const char *s, size_t n) {
     return p;
 }
 
+static int http_token_char(unsigned char c) {
+    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+        (c >= '0' && c <= '9')) return 1;
+    return strchr("!#$%&'*+-.^_\`|~", c) != NULL;
+}
+
+static int header_name_equals(const char *line, size_t name_length, const char *name) {
+    if (strlen(name) != name_length) return 0;
+    for (size_t i = 0; i < name_length; ++i)
+        if (tolower((unsigned char)line[i]) != tolower((unsigned char)name[i])) return 0;
+    return 1;
+}
+
+static int reserved_request_header(const char *line, size_t length) {
+    const char *colon = (const char *)memchr(line, ':', length);
+    if (!colon) return 0;
+    size_t n = (size_t)(colon-line);
+    return header_name_equals(line,n,"host") ||
+           header_name_equals(line,n,"content-length") ||
+           header_name_equals(line,n,"transfer-encoding") ||
+           header_name_equals(line,n,"connection") ||
+           header_name_equals(line,n,"proxy-connection");
+}
+
+static int valid_request_headers(const char *headers) {
+    const char *p = headers ? headers : "";
+    while (*p) {
+        const char *end = strchr(p, '\n');
+        size_t n = end ? (size_t)(end-p) : strlen(p);
+        if (n && p[n-1] == '\r') n--;
+        const char *colon = (const char *)memchr(p, ':', n);
+        if (!colon || colon == p) return 0;
+        for (const char *q = p; q < colon; ++q)
+            if (!http_token_char((unsigned char)*q)) return 0;
+        for (const char *q = colon+1; q < p+n; ++q) {
+            unsigned char ch = (unsigned char)*q;
+            if ((ch < 0x20 && ch != '\t') || ch == 0x7f) return 0;
+        }
+        if (!end) break;
+        p = end+1;
+    }
+    return 1;
+}
+
+static int has_request_header(const char *headers, const char *name) {
+    const char *p = headers ? headers : "";
+    while (*p) {
+        const char *end = strchr(p, '\n');
+        size_t n = end ? (size_t)(end-p) : strlen(p);
+        if (n && p[n-1] == '\r') n--;
+        if (header_name_equals(p, (size_t)((const char *)memchr(p, ':', n)-p), name))
+            return 1;
+        if (!end) break;
+        p = end+1;
+    }
+    return 0;
+}
+
 char *vnt_native_url_encode(const char *text) {
     static const char hex[] = "0123456789ABCDEF";
     if (!text) text = "";
@@ -181,6 +239,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
                       unsigned int redirect_count) {
     if (status) *status = 0;
     if (response_length) *response_length = 0;
+    if (!valid_request_headers(headers)) return NULL;
     wchar_t *wide_url = to_wide(url), *wide_method = to_wide(method);
     if (!wide_url || !wide_method) { free(wide_url); free(wide_method); return NULL; }
     URL_COMPONENTS parts;
@@ -229,7 +288,10 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
         char *copy = _strdup(headers), *save = NULL;
         if (copy) {
             for (char *line = strtok_s(copy, "\n", &save); line; line = strtok_s(NULL, "\n", &save)) {
-                while (*line == '\r' || *line == ' ') line++;
+                while (*line == ' ') line++;
+                size_t line_length = strlen(line);
+                while (line_length && line[line_length-1] == '\r') line[--line_length] = '\0';
+                if (!line_length || reserved_request_header(line, line_length)) continue;
                 wchar_t *wh = to_wide(line);
                 if (wh) { WinHttpAddRequestHeaders(request, wh, (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD); free(wh); }
             }
@@ -465,6 +527,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
                       unsigned int redirect_count) {
     if (status) *status = 0;
     if (response_length) *response_length = 0;
+    if (!valid_request_headers(headers)) return NULL;
     ParsedUrl u;
     if (!parse_url(url ? url : "", &u)) return NULL;
     struct addrinfo hints, *addresses = NULL;
@@ -507,13 +570,15 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
             const char *e = strchr(p, '\n');
             size_t len = e ? (size_t)(e-p) : strlen(p);
             while (len && p[len-1] == '\r') len--;
-            if (len && at + len + 2 < reqcap) { memcpy(request+at,p,len); at+=len; request[at++]='\r'; request[at++]='\n'; }
+            if (len && !reserved_request_header(p, len) && at + len + 2 < reqcap) {
+                memcpy(request+at,p,len); at+=len; request[at++]='\r'; request[at++]='\n';
+            }
             if (!e) break; p=e+1;
         }
     }
     size_t bodylen = body ? strlen(body) : 0;
     if (bodylen) at += (size_t)snprintf(request+at, reqcap-at, "Content-Length: %zu\r\n", bodylen);
-    if (bodylen && !strstr(headers ? headers : "", "Content-Type:") && !strstr(headers ? headers : "", "content-type:"))
+    if (bodylen && !has_request_header(headers, "Content-Type"))
         at += (size_t)snprintf(request+at, reqcap-at, "Content-Type: application/octet-stream\r\n");
     at += (size_t)snprintf(request+at, reqcap-at, "\r\n");
     if (bodylen && at + bodylen < reqcap) { memcpy(request+at, body, bodylen); at+=bodylen; }

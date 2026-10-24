@@ -37,8 +37,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_header("Connection", "close")
             self.end_headers()
             for chunk in (b"CHUNK", b"ED_OK"):
-                self.wfile.write(f"{len(chunk):X}\\r\\n".encode("ascii") + chunk + b"\\r\\n")
-            self.wfile.write(b"0\\r\\n\\r\\n")
+                self.wfile.write(f"{len(chunk):X}\r\n".encode("ascii") + chunk + b"\r\n")
+            self.wfile.write(b"0\r\n\r\n")
         elif self.path == "/status":
             self._send(204, "")
         elif self.path == "/header":

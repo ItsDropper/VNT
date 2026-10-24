@@ -17,6 +17,17 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
+#if defined(_WIN32)
+/* Windows x64 already uses the ABI emitted by the native backend. */
+#define VNT_NATIVE_ABI
+#elif defined(__x86_64__) && defined(__GNUC__)
+/* The current x86-64 backend emits Microsoft x64 call sequences on every host.
+   Keep the runtime boundary compatible on ELF/SysV hosts without changing
+   libc calls made inside this C runtime. */
+#define VNT_NATIVE_ABI __attribute__((ms_abi))
+#else
+#define VNT_NATIVE_ABI
+#endif
 #include <sys/types.h>
 #include <sys/wait.h>
 #endif
@@ -141,7 +152,7 @@ static LONG CALLBACK vnt_first_chance_exception(EXCEPTION_POINTERS *info) {
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
-static void vnt_install_crash_handler(void) {
+static VNT_NATIVE_ABI void vnt_install_crash_handler(void) {
     FILE *f = fopen("vnt_crash.log", "w");
     if (f) {
         fprintf(f, "VNT crash logger initialized. PID=%lu\n",
@@ -154,7 +165,7 @@ static void vnt_install_crash_handler(void) {
 #if defined(__GNUC__)
 __attribute__((constructor))
 #endif
-static void vnt_runtime_initialize(void) {
+static VNT_NATIVE_ABI void vnt_runtime_initialize(void) {
     vnt_install_crash_handler();
 }
 #endif
@@ -257,7 +268,7 @@ static VntValue *alloc_value(VntType type) {
     return v;
 }
 
-VntValue *vnt_string_get(VntValue *s, VntValue *index);
+VNT_NATIVE_ABI VntValue * vnt_string_get(VntValue *s, VntValue *index);
 
 static void require_number(VntValue *a, VntValue *b) {
     if (!a || !b ||
@@ -272,9 +283,9 @@ static double number_value(VntValue *v) {
     return v->type == VNT_FLOAT ? v->floating : (double)v->integer;
 }
 
-VntValue *vnt_null(void) { return alloc_value(VNT_NULL); }
+VNT_NATIVE_ABI VntValue * vnt_null(void) { return alloc_value(VNT_NULL); }
 
-VntValue *vnt_ref(VntValue **slot) {
+VNT_NATIVE_ABI VntValue * vnt_ref(VntValue **slot) {
     if (!slot) {
         fprintf(stderr, "Runtime error: cannot reference a null slot.\n");
         exit(1);
@@ -284,7 +295,7 @@ VntValue *vnt_ref(VntValue **slot) {
     return v;
 }
 
-VntValue *vnt_deref(VntValue *ref) {
+VNT_NATIVE_ABI VntValue * vnt_deref(VntValue *ref) {
     if (!ref || ref->type != VNT_REFERENCE || !ref->reference.slot) {
         fprintf(stderr, "Runtime error: dereference requires a reference.\n");
         exit(1);
@@ -292,7 +303,7 @@ VntValue *vnt_deref(VntValue *ref) {
     return *ref->reference.slot;
 }
 
-VntValue *vnt_ref_set(VntValue *ref, VntValue *value) {
+VNT_NATIVE_ABI VntValue * vnt_ref_set(VntValue *ref, VntValue *value) {
     if (!ref || ref->type != VNT_REFERENCE || !ref->reference.slot) {
         fprintf(stderr, "Runtime error: assignment requires a reference.\n");
         exit(1);
@@ -301,43 +312,43 @@ VntValue *vnt_ref_set(VntValue *ref, VntValue *value) {
     return value;
 }
 
-VntValue *vnt_int(int x) {
+VNT_NATIVE_ABI VntValue * vnt_int(int x) {
     VntValue *v = alloc_value(VNT_INT);
     v->integer = x;
     return v;
 }
 
 /* Error exits used by generated native integer fast paths on overflow. */
-void vnt_int_add_overflow(void) {
+VNT_NATIVE_ABI void vnt_int_add_overflow(void) {
     fprintf(stderr, "Runtime error: integer overflow in addition.\n");
     exit(1);
 }
-void vnt_int_sub_overflow(void) {
+VNT_NATIVE_ABI void vnt_int_sub_overflow(void) {
     fprintf(stderr, "Runtime error: integer overflow in subtraction.\n");
     exit(1);
 }
-void vnt_int_mul_overflow(void) {
+VNT_NATIVE_ABI void vnt_int_mul_overflow(void) {
     fprintf(stderr, "Runtime error: integer overflow in multiplication.\n");
     exit(1);
 }
-void vnt_int_neg_overflow(void) {
+VNT_NATIVE_ABI void vnt_int_neg_overflow(void) {
     fprintf(stderr, "Runtime error: integer overflow in unary '-'.\n");
     exit(1);
 }
 
-VntValue *vnt_float(double x) {
+VNT_NATIVE_ABI VntValue * vnt_float(double x) {
     VntValue *v = alloc_value(VNT_FLOAT);
     v->floating = x;
     return v;
 }
 
-VntValue *vnt_bool(int x) {
+VNT_NATIVE_ABI VntValue * vnt_bool(int x) {
     VntValue *v = alloc_value(VNT_BOOL);
     v->boolean = x ? 1 : 0;
     return v;
 }
 
-VntValue *vnt_string(const char *s) {
+VNT_NATIVE_ABI VntValue * vnt_string(const char *s) {
     VntValue *v = alloc_value(VNT_STRING);
     v->string = strdup(s ? s : "");
     if (!v->string) {
@@ -347,11 +358,11 @@ VntValue *vnt_string(const char *s) {
     return v;
 }
 
-VntValue *vnt_array_new(void) {
+VNT_NATIVE_ABI VntValue * vnt_array_new(void) {
     return alloc_value(VNT_ARRAY);
 }
 
-VntValue *vnt_array_push(VntValue *a, VntValue *item) {
+VNT_NATIVE_ABI VntValue * vnt_array_push(VntValue *a, VntValue *item) {
     if (!a || a->type != VNT_ARRAY) {
         fprintf(stderr, "Runtime error: expected an array.\n");
         exit(1);
@@ -370,7 +381,7 @@ VntValue *vnt_array_push(VntValue *a, VntValue *item) {
     return a;
 }
 
-VntValue *vnt_array_get_int(VntValue *a, int index) {
+VNT_NATIVE_ABI VntValue * vnt_array_get_int(VntValue *a, int index) {
     if (!a || a->type != VNT_ARRAY) {
         fprintf(stderr, "Runtime error: indexing requires an array.\n");
         exit(1);
@@ -382,7 +393,7 @@ VntValue *vnt_array_get_int(VntValue *a, int index) {
     return a->array.items[index];
 }
 
-VntValue *vnt_array_set_int(VntValue *a, int index, VntValue *value) {
+VNT_NATIVE_ABI VntValue * vnt_array_set_int(VntValue *a, int index, VntValue *value) {
     if (!a || a->type != VNT_ARRAY) {
         fprintf(stderr, "Runtime error: array assignment requires an array.\n");
         exit(1);
@@ -395,7 +406,7 @@ VntValue *vnt_array_set_int(VntValue *a, int index, VntValue *value) {
     return value;
 }
 
-VntValue *vnt_array_get(VntValue *a, VntValue *index) {
+VNT_NATIVE_ABI VntValue * vnt_array_get(VntValue *a, VntValue *index) {
     if (a && a->type == VNT_STRING)
         return vnt_string_get(a, index);
     if (!a || a->type != VNT_ARRAY || !index || index->type != VNT_INT) {
@@ -410,7 +421,7 @@ VntValue *vnt_array_get(VntValue *a, VntValue *index) {
     return a->array.items[i];
 }
 
-VntValue *vnt_array_set(VntValue *a, VntValue *index, VntValue *value) {
+VNT_NATIVE_ABI VntValue * vnt_array_set(VntValue *a, VntValue *index, VntValue *value) {
     if (!a || a->type != VNT_ARRAY || !index || index->type != VNT_INT) {
         fprintf(stderr, "Runtime error: array assignment requires an array and integer index.\n");
         exit(1);
@@ -424,7 +435,7 @@ VntValue *vnt_array_set(VntValue *a, VntValue *index, VntValue *value) {
     return value;
 }
 
-VntValue *vnt_string_get(VntValue *s, VntValue *index) {
+VNT_NATIVE_ABI VntValue * vnt_string_get(VntValue *s, VntValue *index) {
     if (!s || s->type != VNT_STRING || !index || index->type != VNT_INT) {
         fprintf(stderr, "Runtime error: string indexing requires a string and integer index.\n");
         exit(1);
@@ -453,7 +464,7 @@ static char *value_to_concat_string(VntValue *v) {
     return strdup(text ? text : "");
 }
 
-VntValue *vnt_add(VntValue *a, VntValue *b) {
+VNT_NATIVE_ABI VntValue * vnt_add(VntValue *a, VntValue *b) {
     if (a && b && (a->type == VNT_STRING || b->type == VNT_STRING)) {
         char *left = value_to_concat_string(a);
         char *right = value_to_concat_string(b);
@@ -489,7 +500,7 @@ VntValue *vnt_add(VntValue *a, VntValue *b) {
     }
     return vnt_int((int)result);
 }
-VntValue *vnt_sub(VntValue *a, VntValue *b) {
+VNT_NATIVE_ABI VntValue * vnt_sub(VntValue *a, VntValue *b) {
     require_number(a,b);
     if (a->type == VNT_FLOAT || b->type == VNT_FLOAT)
         return vnt_float(number_value(a) - number_value(b));
@@ -501,7 +512,7 @@ VntValue *vnt_sub(VntValue *a, VntValue *b) {
     return vnt_int((int)result);
 }
 
-VntValue *vnt_mul(VntValue *a, VntValue *b) {
+VNT_NATIVE_ABI VntValue * vnt_mul(VntValue *a, VntValue *b) {
     require_number(a,b);
     if (a->type == VNT_FLOAT || b->type == VNT_FLOAT)
         return vnt_float(number_value(a) * number_value(b));
@@ -513,7 +524,7 @@ VntValue *vnt_mul(VntValue *a, VntValue *b) {
     return vnt_int((int)result);
 }
 
-VntValue *vnt_div(VntValue *a, VntValue *b) {
+VNT_NATIVE_ABI VntValue * vnt_div(VntValue *a, VntValue *b) {
     require_number(a,b);
     if (number_value(b) == 0.0) {
         fprintf(stderr, "Runtime error: division by zero.\n");
@@ -528,7 +539,7 @@ VntValue *vnt_div(VntValue *a, VntValue *b) {
     return vnt_int(a->integer / b->integer);
 }
 
-VntValue *vnt_mod(VntValue *a, VntValue *b) {
+VNT_NATIVE_ABI VntValue * vnt_mod(VntValue *a, VntValue *b) {
     if (!a || !b || a->type != VNT_INT || b->type != VNT_INT) {
         fprintf(stderr, "Runtime error: modulo requires integers.\n");
         exit(1);
@@ -541,7 +552,7 @@ VntValue *vnt_mod(VntValue *a, VntValue *b) {
     return vnt_int(a->integer % b->integer);
 }
 
-VntValue *vnt_neg(VntValue *a) {
+VNT_NATIVE_ABI VntValue * vnt_neg(VntValue *a) {
     require_number(a, a);
     if (a->type == VNT_FLOAT) return vnt_float(-a->floating);
     if (a->integer == INT_MIN) {
@@ -576,8 +587,8 @@ static int equal_value(VntValue *a, VntValue *b) {
     return 0;
 }
 
-VntValue *vnt_eq(VntValue *a, VntValue *b) { return vnt_bool(equal_value(a,b)); }
-VntValue *vnt_ne(VntValue *a, VntValue *b) { return vnt_bool(!equal_value(a,b)); }
+VNT_NATIVE_ABI VntValue * vnt_eq(VntValue *a, VntValue *b) { return vnt_bool(equal_value(a,b)); }
+VNT_NATIVE_ABI VntValue * vnt_ne(VntValue *a, VntValue *b) { return vnt_bool(!equal_value(a,b)); }
 
 static int order(VntValue *a, VntValue *b, int op) {
     require_number(a,b);
@@ -588,12 +599,12 @@ static int order(VntValue *a, VntValue *b, int op) {
     return x <= y;
 }
 
-VntValue *vnt_gt(VntValue *a,VntValue *b){return vnt_bool(order(a,b,0));}
-VntValue *vnt_lt(VntValue *a,VntValue *b){return vnt_bool(order(a,b,1));}
-VntValue *vnt_ge(VntValue *a,VntValue *b){return vnt_bool(order(a,b,2));}
-VntValue *vnt_le(VntValue *a,VntValue *b){return vnt_bool(order(a,b,3));}
+VNT_NATIVE_ABI VntValue * vnt_gt(VntValue *a,VntValue *b){return vnt_bool(order(a,b,0));}
+VNT_NATIVE_ABI VntValue * vnt_lt(VntValue *a,VntValue *b){return vnt_bool(order(a,b,1));}
+VNT_NATIVE_ABI VntValue * vnt_ge(VntValue *a,VntValue *b){return vnt_bool(order(a,b,2));}
+VNT_NATIVE_ABI VntValue * vnt_le(VntValue *a,VntValue *b){return vnt_bool(order(a,b,3));}
 
-VntValue *vnt_not(VntValue *a) {
+VNT_NATIVE_ABI VntValue * vnt_not(VntValue *a) {
     if (!a || a->type != VNT_BOOL) {
         fprintf(stderr, "Runtime error: '!' requires a boolean.\n");
         exit(1);
@@ -601,7 +612,7 @@ VntValue *vnt_not(VntValue *a) {
     return vnt_bool(!a->boolean);
 }
 
-int vnt_truth(VntValue *a) {
+VNT_NATIVE_ABI int vnt_truth(VntValue *a) {
     if (!a || a->type != VNT_BOOL) {
         fprintf(stderr, "Runtime error: condition must be boolean.\n");
         exit(1);
@@ -643,12 +654,12 @@ static void print_value(VntValue *v) {
     }
 }
 
-void vnt_print(VntValue *v) {
+VNT_NATIVE_ABI void vnt_print(VntValue *v) {
     print_value(v);
     putchar('\n');
 }
 
-VntValue *vnt_len(VntValue *v) {
+VNT_NATIVE_ABI VntValue * vnt_len(VntValue *v) {
     if (v->type == VNT_STRING) return vnt_int((int)strlen(v->string));
     if (v->type == VNT_ARRAY) return vnt_int(v->array.count);
     if (v->type == VNT_OBJECT) return vnt_int(v->object.count);
@@ -656,7 +667,7 @@ VntValue *vnt_len(VntValue *v) {
     exit(1);
 }
 
-VntValue *vnt_input(VntValue *prompt) {
+VNT_NATIVE_ABI VntValue * vnt_input(VntValue *prompt) {
     if (!prompt || prompt->type != VNT_STRING) {
         fprintf(stderr, "Runtime error: input() requires a string prompt.\n");
         exit(1);
@@ -672,11 +683,11 @@ VntValue *vnt_input(VntValue *prompt) {
     return vnt_string(buffer);
 }
 
-VntValue *vnt_object_new(void) {
+VNT_NATIVE_ABI VntValue * vnt_object_new(void) {
     return alloc_value(VNT_OBJECT);
 }
 
-VntValue *vnt_struct_new(const char *name) {
+VNT_NATIVE_ABI VntValue * vnt_struct_new(const char *name) {
     VntValue *v = alloc_value(VNT_OBJECT);
     v->object.type_name = strdup(name ? name : "");
     if (!v->object.type_name) {
@@ -686,7 +697,7 @@ VntValue *vnt_struct_new(const char *name) {
     return v;
 }
 
-VntValue *vnt_object_get(VntValue *object, const char *key) {
+VNT_NATIVE_ABI VntValue * vnt_object_get(VntValue *object, const char *key) {
     if (!object || object->type != VNT_OBJECT) {
         fprintf(stderr, "Runtime error: member access requires an object.\n");
         exit(1);
@@ -697,7 +708,7 @@ VntValue *vnt_object_get(VntValue *object, const char *key) {
     return vnt_null();
 }
 
-VntValue *vnt_object_set(VntValue *object, const char *key, VntValue *value) {
+VNT_NATIVE_ABI VntValue * vnt_object_set(VntValue *object, const char *key, VntValue *value) {
     if (!object || object->type != VNT_OBJECT) {
         fprintf(stderr, "Runtime error: member assignment requires an object.\n");
         exit(1);
@@ -723,16 +734,16 @@ VntValue *vnt_object_set(VntValue *object, const char *key, VntValue *value) {
     return value;
 }
 
-VntValue *vnt_sqrt(VntValue *x) { require_number(x,x); return vnt_float(sqrt(number_value(x))); }
-VntValue *vnt_sin(VntValue *x) { require_number(x,x); return vnt_float(sin(number_value(x))); }
-VntValue *vnt_cos(VntValue *x) { require_number(x,x); return vnt_float(cos(number_value(x))); }
-VntValue *vnt_tan(VntValue *x) { require_number(x,x); return vnt_float(tan(number_value(x))); }
-VntValue *vnt_abs(VntValue *x) { require_number(x,x); return x->type==VNT_FLOAT ? vnt_float(fabs(x->floating)) : vnt_int(abs(x->integer)); }
-VntValue *vnt_floor(VntValue *x) { require_number(x,x); return vnt_float(floor(number_value(x))); }
-VntValue *vnt_ceil(VntValue *x) { require_number(x,x); return vnt_float(ceil(number_value(x))); }
-VntValue *vnt_min(VntValue *a,VntValue *b) { require_number(a,b); return number_value(a)<number_value(b)?a:b; }
-VntValue *vnt_max(VntValue *a,VntValue *b) { require_number(a,b); return number_value(a)>number_value(b)?a:b; }
-VntValue *vnt_range(VntValue *a, VntValue *b, VntValue *c, int argc) {
+VNT_NATIVE_ABI VntValue * vnt_sqrt(VntValue *x) { require_number(x,x); return vnt_float(sqrt(number_value(x))); }
+VNT_NATIVE_ABI VntValue * vnt_sin(VntValue *x) { require_number(x,x); return vnt_float(sin(number_value(x))); }
+VNT_NATIVE_ABI VntValue * vnt_cos(VntValue *x) { require_number(x,x); return vnt_float(cos(number_value(x))); }
+VNT_NATIVE_ABI VntValue * vnt_tan(VntValue *x) { require_number(x,x); return vnt_float(tan(number_value(x))); }
+VNT_NATIVE_ABI VntValue * vnt_abs(VntValue *x) { require_number(x,x); return x->type==VNT_FLOAT ? vnt_float(fabs(x->floating)) : vnt_int(abs(x->integer)); }
+VNT_NATIVE_ABI VntValue * vnt_floor(VntValue *x) { require_number(x,x); return vnt_float(floor(number_value(x))); }
+VNT_NATIVE_ABI VntValue * vnt_ceil(VntValue *x) { require_number(x,x); return vnt_float(ceil(number_value(x))); }
+VNT_NATIVE_ABI VntValue * vnt_min(VntValue *a,VntValue *b) { require_number(a,b); return number_value(a)<number_value(b)?a:b; }
+VNT_NATIVE_ABI VntValue * vnt_max(VntValue *a,VntValue *b) { require_number(a,b); return number_value(a)>number_value(b)?a:b; }
+VNT_NATIVE_ABI VntValue * vnt_range(VntValue *a, VntValue *b, VntValue *c, int argc) {
     int start=0,end=0,step=1;
     if (argc==1) { if(a->type!=VNT_INT) goto bad; end=a->integer; }
     else if(argc==2) { if(a->type!=VNT_INT||b->type!=VNT_INT) goto bad; start=a->integer; end=b->integer; }
@@ -763,7 +774,7 @@ static const char *ffi_string(VntValue *v, const char *what) {
     return v->string;
 }
 
-VntValue *vnt_ffi_int(
+VNT_NATIVE_ABI VntValue * vnt_ffi_int(
     VntValue *library,
     VntValue *symbol,
     VntValue *a0,
@@ -822,21 +833,21 @@ VntValue *vnt_ffi_int(
 }
 
 
-void vnt_int_div_zero(void) {
+VNT_NATIVE_ABI void vnt_int_div_zero(void) {
     fprintf(stderr, "Runtime error: division or modulo by zero.\n");
     exit(1);
 }
 
 
 /* Native application API: portable file, environment, and timing calls. */
-static const char *vnt_app_string(VntValue *v, const char *fn) {
+static VNT_NATIVE_ABI const char * vnt_app_string(VntValue *v, const char *fn) {
     if (!v || v->type != VNT_STRING || !v->string) {
         fprintf(stderr, "Runtime error: %s expects a string argument.\n", fn);
         exit(1);
     }
     return v->string;
 }
-VntValue *vnt_fs_exists(VntValue *path) {
+VNT_NATIVE_ABI VntValue * vnt_fs_exists(VntValue *path) {
     const char *p = vnt_app_string(path, "fs_exists()");
 #ifdef _WIN32
     return vnt_bool(GetFileAttributesA(p) != INVALID_FILE_ATTRIBUTES);
@@ -844,7 +855,7 @@ VntValue *vnt_fs_exists(VntValue *path) {
     struct stat st; return vnt_bool(stat(p, &st) == 0);
 #endif
 }
-VntValue *vnt_fs_read(VntValue *path) {
+VNT_NATIVE_ABI VntValue * vnt_fs_read(VntValue *path) {
     const char *p = vnt_app_string(path, "fs_read()");
     FILE *f = fopen(p, "rb");
     if (!f) { fprintf(stderr, "Runtime error: fs_read() could not open '%s'.\n", p); exit(1); }
@@ -860,7 +871,7 @@ VntValue *vnt_fs_read(VntValue *path) {
     buf[n] = '\0';
     VntValue *result = vnt_string(buf); free(buf); return result;
 }
-static VntValue *vnt_fs_write_mode(VntValue *path, VntValue *contents, const char *mode, const char *fn) {
+static VNT_NATIVE_ABI VntValue * vnt_fs_write_mode(VntValue *path, VntValue *contents, const char *mode, const char *fn) {
     const char *p = vnt_app_string(path, fn), *data = vnt_app_string(contents, fn);
     FILE *f = fopen(p, mode);
     if (!f) { fprintf(stderr, "Runtime error: %s could not open file.\n", fn); return vnt_bool(0); }
@@ -868,14 +879,14 @@ static VntValue *vnt_fs_write_mode(VntValue *path, VntValue *contents, const cha
     int bad = written != n || ferror(f); if (fclose(f) != 0) bad = 1;
     return vnt_bool(!bad);
 }
-VntValue *vnt_fs_write(VntValue *p, VntValue *s) { return vnt_fs_write_mode(p, s, "wb", "fs_write()"); }
-VntValue *vnt_fs_append(VntValue *p, VntValue *s) { return vnt_fs_write_mode(p, s, "ab", "fs_append()"); }
-VntValue *vnt_fs_delete(VntValue *path) { return vnt_bool(remove(vnt_app_string(path, "fs_delete()")) == 0); }
-VntValue *vnt_fs_rename(VntValue *from, VntValue *to) {
+VNT_NATIVE_ABI VntValue * vnt_fs_write(VntValue *p, VntValue *s) { return vnt_fs_write_mode(p, s, "wb", "fs_write()"); }
+VNT_NATIVE_ABI VntValue * vnt_fs_append(VntValue *p, VntValue *s) { return vnt_fs_write_mode(p, s, "ab", "fs_append()"); }
+VNT_NATIVE_ABI VntValue * vnt_fs_delete(VntValue *path) { return vnt_bool(remove(vnt_app_string(path, "fs_delete()")) == 0); }
+VNT_NATIVE_ABI VntValue * vnt_fs_rename(VntValue *from, VntValue *to) {
     return vnt_bool(rename(vnt_app_string(from, "fs_rename()"),
                            vnt_app_string(to, "fs_rename()")) == 0);
 }
-VntValue *vnt_fs_is_file(VntValue *path) {
+VNT_NATIVE_ABI VntValue * vnt_fs_is_file(VntValue *path) {
     const char *p = vnt_app_string(path, "fs_is_file()");
 #ifdef _WIN32
     DWORD a = GetFileAttributesA(p);
@@ -885,7 +896,7 @@ VntValue *vnt_fs_is_file(VntValue *path) {
     return vnt_bool(stat(p, &st) == 0 && S_ISREG(st.st_mode));
 #endif
 }
-VntValue *vnt_fs_is_dir(VntValue *path) {
+VNT_NATIVE_ABI VntValue * vnt_fs_is_dir(VntValue *path) {
     const char *p = vnt_app_string(path, "fs_is_dir()");
 #ifdef _WIN32
     DWORD a = GetFileAttributesA(p);
@@ -895,7 +906,7 @@ VntValue *vnt_fs_is_dir(VntValue *path) {
     return vnt_bool(stat(p, &st) == 0 && S_ISDIR(st.st_mode));
 #endif
 }
-VntValue *vnt_fs_list(VntValue *path) {
+VNT_NATIVE_ABI VntValue * vnt_fs_list(VntValue *path) {
     const char *p = vnt_app_string(path, "fs_list()");
     VntValue *result = vnt_array_new();
 #ifdef _WIN32
@@ -931,17 +942,17 @@ VntValue *vnt_fs_list(VntValue *path) {
 #endif
     return result;
 }
-VntValue *vnt_io_write(VntValue *value) {
+VNT_NATIVE_ABI VntValue * vnt_io_write(VntValue *value) {
     const char *s = vnt_app_string(value, "io_write()");
     size_t n = strlen(s);
     return vnt_bool(fwrite(s, 1, n, stdout) == n && fflush(stdout) == 0);
 }
-VntValue *vnt_io_write_error(VntValue *value) {
+VNT_NATIVE_ABI VntValue * vnt_io_write_error(VntValue *value) {
     const char *s = vnt_app_string(value, "io_write_error()");
     size_t n = strlen(s);
     return vnt_bool(fwrite(s, 1, n, stderr) == n && fflush(stderr) == 0);
 }
-VntValue *vnt_dir_create(VntValue *path) {
+VNT_NATIVE_ABI VntValue * vnt_dir_create(VntValue *path) {
     const char *p = vnt_app_string(path, "dir_create()");
 #ifdef _WIN32
     return vnt_bool(_mkdir(p) == 0);
@@ -949,7 +960,7 @@ VntValue *vnt_dir_create(VntValue *path) {
     return vnt_bool(mkdir(p, 0777) == 0);
 #endif
 }
-VntValue *vnt_cwd(void) {
+VNT_NATIVE_ABI VntValue * vnt_cwd(void) {
     size_t cap = 256; char *buf = NULL;
     for (;;) {
         char *next = realloc(buf, cap);
@@ -965,13 +976,13 @@ VntValue *vnt_cwd(void) {
     }
     VntValue *out = vnt_string(buf); free(buf); return out;
 }
-VntValue *vnt_env_get(VntValue *name) {
+VNT_NATIVE_ABI VntValue * vnt_env_get(VntValue *name) {
     const char *v = getenv(vnt_app_string(name, "env_get()")); return v ? vnt_string(v) : vnt_null();
 }
-VntValue *vnt_env_has(VntValue *name) {
+VNT_NATIVE_ABI VntValue * vnt_env_has(VntValue *name) {
     return vnt_bool(getenv(vnt_app_string(name, "env_has()")) != NULL);
 }
-VntValue *vnt_env_set(VntValue *name, VntValue *value) {
+VNT_NATIVE_ABI VntValue * vnt_env_set(VntValue *name, VntValue *value) {
     const char *k = vnt_app_string(name, "env_set()"), *v = vnt_app_string(value, "env_set()");
 #ifdef _WIN32
     return vnt_bool(_putenv_s(k, v) == 0);
@@ -979,7 +990,7 @@ VntValue *vnt_env_set(VntValue *name, VntValue *value) {
     return vnt_bool(setenv(k, v, 1) == 0);
 #endif
 }
-VntValue *vnt_time_ms(void) {
+VNT_NATIVE_ABI VntValue * vnt_time_ms(void) {
 #ifdef _WIN32
     return vnt_float((double)GetTickCount64());
 #else
@@ -987,7 +998,7 @@ VntValue *vnt_time_ms(void) {
     return vnt_float((double)tv.tv_sec * 1000.0 + (double)tv.tv_usec / 1000.0);
 #endif
 }
-VntValue *vnt_sleep_ms(VntValue *value) {
+VNT_NATIVE_ABI VntValue * vnt_sleep_ms(VntValue *value) {
     if (!value || value->type != VNT_INT || value->integer < 0) {
         fprintf(stderr, "Runtime error: sleep_ms() expects a non-negative integer.\n"); exit(1);
     }
@@ -1117,7 +1128,7 @@ static void append_win_arg(char **cmd, size_t *len, size_t *cap, const char *arg
     (*cmd)[(*len)++] = '"'; (*cmd)[*len] = '\0';
 }
 #endif
-VntValue *vnt_process_start(VntValue *executable, VntValue *arguments) {
+VNT_NATIVE_ABI VntValue * vnt_process_start(VntValue *executable, VntValue *arguments) {
     const char *exe = vnt_app_string(executable, "process_start()");
     if (!arguments || arguments->type != VNT_ARRAY) {
         fprintf(stderr, "Runtime error: process_start() expects an array of string arguments.\n"); exit(1);
@@ -1202,10 +1213,10 @@ VntValue *vnt_process_start(VntValue *executable, VntValue *arguments) {
 #endif
     VntValue *result = alloc_value(VNT_PROCESS); result->process = p; return result;
 }
-VntValue *vnt_process_poll(VntValue *value) {
+VNT_NATIVE_ABI VntValue * vnt_process_poll(VntValue *value) {
     VntProcess *p = process_from_value(value, "process_poll()"); process_refresh(p); return vnt_bool(p->done);
 }
-VntValue *vnt_process_wait(VntValue *value, VntValue *timeout) {
+VNT_NATIVE_ABI VntValue * vnt_process_wait(VntValue *value, VntValue *timeout) {
     VntProcess *p = process_from_value(value, "process_wait()");
     if (!timeout || timeout->type != VNT_INT || timeout->integer < -1) {
         fprintf(stderr, "Runtime error: process_wait() timeout must be -1 or a non-negative integer.\n"); exit(1);
@@ -1237,10 +1248,10 @@ VntValue *vnt_process_wait(VntValue *value, VntValue *timeout) {
 #endif
     }
 }
-VntValue *vnt_process_pid(VntValue *value) {
+VNT_NATIVE_ABI VntValue * vnt_process_pid(VntValue *value) {
     VntProcess *p = process_from_value(value, "process_pid()"); return vnt_int((int)p->pid);
 }
-VntValue *vnt_process_terminate(VntValue *value) {
+VNT_NATIVE_ABI VntValue * vnt_process_terminate(VntValue *value) {
     VntProcess *p = process_from_value(value, "process_terminate()"); process_refresh(p);
     if (p->done) return vnt_bool(0);
 #ifdef _WIN32
@@ -1249,21 +1260,21 @@ VntValue *vnt_process_terminate(VntValue *value) {
     return vnt_bool(kill(p->pid, SIGTERM) == 0);
 #endif
 }
-VntValue *vnt_process_stdout(VntValue *value) {
+VNT_NATIVE_ABI VntValue * vnt_process_stdout(VntValue *value) {
     VntProcess *p = process_from_value(value, "process_stdout()"); process_refresh(p);
     return vnt_string(p->stdout_data ? p->stdout_data : "");
 }
-VntValue *vnt_process_stderr(VntValue *value) {
+VNT_NATIVE_ABI VntValue * vnt_process_stderr(VntValue *value) {
     VntProcess *p = process_from_value(value, "process_stderr()"); process_refresh(p);
     return vnt_string(p->stderr_data ? p->stderr_data : "");
 }
-VntValue *vnt_process_exit_code(VntValue *value) {
+VNT_NATIVE_ABI VntValue * vnt_process_exit_code(VntValue *value) {
     VntProcess *p = process_from_value(value, "process_exit_code()"); process_refresh(p);
     return vnt_int(p->done ? p->exit_code : -1);
 }
 
 /* Visible launcher for interactive desktop applications and scripts. */
-VntValue *vnt_process_launch(VntValue *path_value) {
+VNT_NATIVE_ABI VntValue * vnt_process_launch(VntValue *path_value) {
     const char *path = vnt_app_string(path_value, "process_launch()");
 #ifdef _WIN32
     DWORD attrs = GetFileAttributesA(path);
@@ -1302,7 +1313,7 @@ VntValue *vnt_process_launch(VntValue *path_value) {
 
 /* Read a scalar field from the Nth JSON object/key occurrence. This is a
    deliberately small accessor for API responses, not a full JSON DOM. */
-static void vnt_json_copy_string(const char *p, char *out, size_t cap) {
+static VNT_NATIVE_ABI void vnt_json_copy_string(const char *p, char *out, size_t cap) {
     size_t n=0;
     if(*p=='"')p++;
     while(*p && *p!='"' && n+1<cap) {
@@ -1329,7 +1340,7 @@ static void vnt_json_copy_string(const char *p, char *out, size_t cap) {
     }
     out[n]=0;
 }
-static void vnt_json_extract_value(const char *json,const char *key,int wanted,char *out,size_t cap) {
+static VNT_NATIVE_ABI void vnt_json_extract_value(const char *json,const char *key,int wanted,char *out,size_t cap) {
     int found=0;
     out[0]=0;
     if(!json||!key||wanted<0||cap<2)return;
@@ -1365,7 +1376,7 @@ static void vnt_json_extract_value(const char *json,const char *key,int wanted,c
         p++;
     }
 }
-VntValue *vnt_json_value_at(VntValue *json_value,VntValue *key_value,VntValue *index_value) {
+VNT_NATIVE_ABI VntValue * vnt_json_value_at(VntValue *json_value,VntValue *key_value,VntValue *index_value) {
     const char *json=vnt_app_string(json_value,"json_value_at()");
     const char *key=vnt_app_string(key_value,"json_value_at()");
     if(!index_value || index_value->type!=VNT_INT) {
@@ -1406,22 +1417,22 @@ static int vnt_gui_command_count;
 static VntGuiInputState vnt_gui_inputs[16];
 static int vnt_gui_input_count, vnt_gui_focused_input=-1;
 
-static int vnt_gui_require_int(VntValue *v,const char *fn) {
+static VNT_NATIVE_ABI int vnt_gui_require_int(VntValue *v,const char *fn) {
     if(!v || v->type!=VNT_INT) { fprintf(stderr,"Runtime error: %s expects integer arguments.\n",fn); exit(1); }
     return v->integer;
 }
 static COLORREF vnt_gui_color(int c) { return RGB((c>>16)&255,(c>>8)&255,c&255); }
-static char *vnt_gui_trim(char *s) {
+static VNT_NATIVE_ABI char * vnt_gui_trim(char *s) {
     while(*s==' '||*s=='\t'||*s=='\r'||*s=='\n') s++;
     size_t n=strlen(s); while(n&&(s[n-1]==' '||s[n-1]=='\t'||s[n-1]=='\r'||s[n-1]=='\n')) s[--n]=0;
     return s;
 }
-static int vnt_gui_parse_color(const char *s,COLORREF *out) {
+static VNT_NATIVE_ABI int vnt_gui_parse_color(const char *s,COLORREF *out) {
     if(!s||s[0]!='#'||strlen(s)!=7) return 0;
     char *end=NULL; unsigned long rgb=strtoul(s+1,&end,16);
     if(!end||*end) return 0; *out=RGB((rgb>>16)&255,(rgb>>8)&255,rgb&255); return 1;
 }
-static void vnt_gui_apply_css_rule(const char *css,const char *selector) {
+static VNT_NATIVE_ABI void vnt_gui_apply_css_rule(const char *css,const char *selector) {
     size_t slen=strlen(selector); const char *p=css;
     while((p=strstr(p,selector))!=NULL) {
         if(p!=css&&(isalnum((unsigned char)p[-1])||p[-1]=='_'||p[-1]=='-')) { p+=slen; continue; }
@@ -1463,7 +1474,7 @@ static VntGuiCommand *vnt_gui_add(int type,int x,int y,int w,int h,const char *t
     if(text) snprintf(c->text,sizeof(c->text),"%s",text);
     return c;
 }
-static void vnt_gui_render(HDC dc) {
+static VNT_NATIVE_ABI void vnt_gui_render(HDC dc) {
     RECT client; GetClientRect(vnt_gui_hwnd,&client);
     HBRUSH bg=CreateSolidBrush(vnt_gui_background); FillRect(dc,&client,bg); DeleteObject(bg);
     SetBkMode(dc,TRANSPARENT);
@@ -1565,7 +1576,7 @@ static LRESULT CALLBACK vnt_gui_wndproc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) 
         default:return DefWindowProcA(hwnd,msg,wp,lp);
     }
 }
-VntValue *vnt_gui_css(VntValue *path) {
+VNT_NATIVE_ABI VntValue * vnt_gui_css(VntValue *path) {
     const char *filename=vnt_app_string(path,"gui_css()");FILE *file=fopen(filename,"rb");if(!file)return vnt_bool(0);
     char *css=(char*)malloc(65536);if(!css){fclose(file);return vnt_bool(0);}
     size_t n=fread(css,1,65535,file);fclose(file);css[n]=0;
@@ -1579,12 +1590,12 @@ VntValue *vnt_gui_css(VntValue *path) {
     vnt_gui_textarea_brush=CreateSolidBrush(vnt_gui_textarea_background);free(css);
     return vnt_bool(1);
 }
-VntValue *vnt_gui_size(VntValue *width,VntValue *height) {
+VNT_NATIVE_ABI VntValue * vnt_gui_size(VntValue *width,VntValue *height) {
     int w=vnt_gui_require_int(width,"gui_size()"),h=vnt_gui_require_int(height,"gui_size()");
     if(w<160||h<120||w>8192||h>8192){fprintf(stderr,"Runtime error: gui_size() dimensions must be between 160x120 and 8192x8192.\n");return vnt_bool(0);}
     vnt_gui_width=w;vnt_gui_height=h;return vnt_bool(1);
 }
-VntValue *vnt_gui_open(VntValue *title) {
+VNT_NATIVE_ABI VntValue * vnt_gui_open(VntValue *title) {
     const char *caption=vnt_app_string(title,"gui_open()");if(vnt_gui_hwnd)return vnt_bool(1);
     HINSTANCE instance=GetModuleHandleA(NULL);WNDCLASSEXA wc;memset(&wc,0,sizeof(wc));
     wc.cbSize=sizeof(wc);wc.lpfnWndProc=vnt_gui_wndproc;wc.hInstance=instance;wc.hCursor=LoadCursor(NULL,IDC_ARROW);
@@ -1595,18 +1606,18 @@ VntValue *vnt_gui_open(VntValue *title) {
     vnt_gui_hwnd=CreateWindowExA(0,vnt_gui_class_name,caption,WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,rect.right-rect.left,rect.bottom-rect.top,NULL,NULL,instance,NULL);
     if(!vnt_gui_hwnd)return vnt_bool(0);ShowWindow(vnt_gui_hwnd,SW_SHOW);UpdateWindow(vnt_gui_hwnd);return vnt_bool(1);
 }
-static VntValue *vnt_gui_draw_text(const char *text,int x,int y,int title) {
+static VNT_NATIVE_ABI VntValue * vnt_gui_draw_text(const char *text,int x,int y,int title) {
     VntGuiCommand *c=vnt_gui_add(title?VG_TITLE:VG_TEXT,x,y,0,0,text);if(!c)return vnt_bool(0);
     c->font_size=title?vnt_gui_title_font_size:vnt_gui_font_size;c->color=title?vnt_gui_title_color:vnt_gui_text_color;return vnt_bool(1);
 }
-VntValue *vnt_gui_text(VntValue *text){const char *s=vnt_app_string(text,"gui_text()");int y=vnt_gui_text_y;vnt_gui_text_y+=vnt_gui_font_size+8;RECT r;if(vnt_gui_hwnd&&GetClientRect(vnt_gui_hwnd,&r)&&vnt_gui_text_y>r.bottom-20)vnt_gui_text_y=18;return vnt_gui_draw_text(s,18,y,0);}
-VntValue *vnt_gui_text_at(VntValue *text,VntValue *x,VntValue *y){return vnt_gui_draw_text(vnt_app_string(text,"gui_text_at()"),vnt_gui_require_int(x,"gui_text_at()"),vnt_gui_require_int(y,"gui_text_at()"),0);}
-VntValue *vnt_gui_title(VntValue *text,VntValue *x,VntValue *y){return vnt_gui_draw_text(vnt_app_string(text,"gui_title()"),vnt_gui_require_int(x,"gui_title()"),vnt_gui_require_int(y,"gui_title()"),1);}
-VntValue *vnt_gui_panel(VntValue *x,VntValue *y,VntValue *w,VntValue *h){
+VNT_NATIVE_ABI VntValue * vnt_gui_text(VntValue *text){const char *s=vnt_app_string(text,"gui_text()");int y=vnt_gui_text_y;vnt_gui_text_y+=vnt_gui_font_size+8;RECT r;if(vnt_gui_hwnd&&GetClientRect(vnt_gui_hwnd,&r)&&vnt_gui_text_y>r.bottom-20)vnt_gui_text_y=18;return vnt_gui_draw_text(s,18,y,0);}
+VNT_NATIVE_ABI VntValue * vnt_gui_text_at(VntValue *text,VntValue *x,VntValue *y){return vnt_gui_draw_text(vnt_app_string(text,"gui_text_at()"),vnt_gui_require_int(x,"gui_text_at()"),vnt_gui_require_int(y,"gui_text_at()"),0);}
+VNT_NATIVE_ABI VntValue * vnt_gui_title(VntValue *text,VntValue *x,VntValue *y){return vnt_gui_draw_text(vnt_app_string(text,"gui_title()"),vnt_gui_require_int(x,"gui_title()"),vnt_gui_require_int(y,"gui_title()"),1);}
+VNT_NATIVE_ABI VntValue * vnt_gui_panel(VntValue *x,VntValue *y,VntValue *w,VntValue *h){
     int xx=vnt_gui_require_int(x,"gui_panel()"),yy=vnt_gui_require_int(y,"gui_panel()"),ww=vnt_gui_require_int(w,"gui_panel()"),hh=vnt_gui_require_int(h,"gui_panel()");
     VntGuiCommand *c=vnt_gui_add(VG_PANEL,xx,yy,ww,hh,NULL);if(!c)return vnt_bool(0);c->background=vnt_gui_panel_background;c->radius=12;return vnt_bool(1);
 }
-static int vnt_gui_input_state(int x,int y,int width,int height,int multiline,int create){
+static VNT_NATIVE_ABI int vnt_gui_input_state(int x,int y,int width,int height,int multiline,int create){
     for(int i=0;i<vnt_gui_input_count;i++) if(vnt_gui_inputs[i].x==x&&vnt_gui_inputs[i].y==y){
         VntGuiInputState *state=&vnt_gui_inputs[i];
         state->seen_this_frame=1;
@@ -1625,7 +1636,7 @@ static int vnt_gui_input_state(int x,int y,int width,int height,int multiline,in
     int i=vnt_gui_input_count++;memset(&vnt_gui_inputs[i],0,sizeof(vnt_gui_inputs[i]));
     vnt_gui_inputs[i].x=x;vnt_gui_inputs[i].y=y;vnt_gui_inputs[i].width=width;vnt_gui_inputs[i].height=height;vnt_gui_inputs[i].multiline=multiline;vnt_gui_inputs[i].seen_this_frame=1;return i;
 }
-static int vnt_gui_native_input(int index,const char *placeholder){
+static VNT_NATIVE_ABI int vnt_gui_native_input(int index,const char *placeholder){
     if(index<0||index>=vnt_gui_input_count||!vnt_gui_hwnd)return 0;
     VntGuiInputState *state=&vnt_gui_inputs[index];
     if(!state->edit_hwnd){
@@ -1655,47 +1666,47 @@ static int vnt_gui_native_input(int index,const char *placeholder){
     if(!IsWindowVisible(state->edit_hwnd))ShowWindow(state->edit_hwnd,SW_SHOW);
     return 1;
 }
-static void vnt_gui_read_native_input(int index){
+static VNT_NATIVE_ABI void vnt_gui_read_native_input(int index){
     if(index<0||index>=vnt_gui_input_count)return;
     VntGuiInputState *state=&vnt_gui_inputs[index];
     if(!state->edit_hwnd)return;
     GetWindowTextA(state->edit_hwnd,state->text,(int)sizeof(state->text));
     state->text[sizeof(state->text)-1]=0;
 }
-static VntValue *vnt_gui_button_draw(const char *text,int xx,int yy,int w,int h){
+static VNT_NATIVE_ABI VntValue * vnt_gui_button_draw(const char *text,int xx,int yy,int w,int h){
     if(w<24)w=24;if(h<24)h=24;RECT r={xx,yy,xx+w,yy+h};
     int hover=vnt_gui_mouse_x>=r.left&&vnt_gui_mouse_x<r.right&&vnt_gui_mouse_y>=r.top&&vnt_gui_mouse_y<r.bottom;
     VntGuiCommand *c=vnt_gui_add(VG_BUTTON,xx,yy,w,h,text);if(c){c->font_size=vnt_gui_button_font_size;c->radius=vnt_gui_button_radius;c->hovered=hover;}
     return vnt_bool(vnt_gui_clicked&&vnt_gui_click_x>=r.left&&vnt_gui_click_x<r.right&&vnt_gui_click_y>=r.top&&vnt_gui_click_y<r.bottom);
 }
-VntValue *vnt_gui_button(VntValue *label,VntValue *x,VntValue *y){
+VNT_NATIVE_ABI VntValue * vnt_gui_button(VntValue *label,VntValue *x,VntValue *y){
     const char *text=vnt_app_string(label,"gui_button()");int xx=vnt_gui_require_int(x,"gui_button()"),yy=vnt_gui_require_int(y,"gui_button()");
     int w=(int)(strlen(text)*vnt_gui_button_font_size*0.62)+vnt_gui_button_padding*2+16,h=vnt_gui_button_font_size+vnt_gui_button_padding*2+2;
     return vnt_gui_button_draw(text,xx,yy,w,h);
 }
-VntValue *vnt_gui_button_sized(VntValue *label,VntValue *x,VntValue *y,VntValue *width,VntValue *height){
+VNT_NATIVE_ABI VntValue * vnt_gui_button_sized(VntValue *label,VntValue *x,VntValue *y,VntValue *width,VntValue *height){
     return vnt_gui_button_draw(vnt_app_string(label,"gui_button_sized()"),vnt_gui_require_int(x,"gui_button_sized()"),vnt_gui_require_int(y,"gui_button_sized()"),vnt_gui_require_int(width,"gui_button_sized()"),vnt_gui_require_int(height,"gui_button_sized()"));
 }
-VntValue *vnt_gui_input(VntValue *label,VntValue *x,VntValue *y,VntValue *width){
+VNT_NATIVE_ABI VntValue * vnt_gui_input(VntValue *label,VntValue *x,VntValue *y,VntValue *width){
     const char *placeholder=vnt_app_string(label,"gui_input()");int xx=vnt_gui_require_int(x,"gui_input()"),yy=vnt_gui_require_int(y,"gui_input()"),ww=vnt_gui_require_int(width,"gui_input()");
     int index=vnt_gui_input_state(xx,yy,ww,36,0,1);
     if(index>=0){vnt_gui_native_input(index,placeholder);vnt_gui_read_native_input(index);return vnt_string(vnt_gui_inputs[index].text);}
     return vnt_string("");
 }
-VntValue *vnt_gui_textarea(VntValue *label,VntValue *x,VntValue *y,VntValue *width,VntValue *height){
+VNT_NATIVE_ABI VntValue * vnt_gui_textarea(VntValue *label,VntValue *x,VntValue *y,VntValue *width,VntValue *height){
     const char *placeholder=vnt_app_string(label,"gui_textarea()");int xx=vnt_gui_require_int(x,"gui_textarea()"),yy=vnt_gui_require_int(y,"gui_textarea()"),ww=vnt_gui_require_int(width,"gui_textarea()"),hh=vnt_gui_require_int(height,"gui_textarea()");
     int index=vnt_gui_input_state(xx,yy,ww,hh,1,1);
     if(index>=0){vnt_gui_native_input(index,placeholder);vnt_gui_read_native_input(index);return vnt_string(vnt_gui_inputs[index].text);}
     return vnt_string("");
 }
-VntValue *vnt_gui_input_set(VntValue *text,VntValue *x,VntValue *y){
+VNT_NATIVE_ABI VntValue * vnt_gui_input_set(VntValue *text,VntValue *x,VntValue *y){
     const char *value=vnt_app_string(text,"gui_input_set()");int xx=vnt_gui_require_int(x,"gui_input_set()"),yy=vnt_gui_require_int(y,"gui_input_set()");
     int index=vnt_gui_input_state(xx,yy,0,0,0,1);if(index<0)return vnt_bool(0);
     snprintf(vnt_gui_inputs[index].text,sizeof(vnt_gui_inputs[index].text),"%s",value);vnt_gui_inputs[index].select_all=0;
     if(vnt_gui_inputs[index].edit_hwnd)SetWindowTextA(vnt_gui_inputs[index].edit_hwnd,vnt_gui_inputs[index].text);
     return vnt_bool(1);
 }
-VntValue *vnt_gui_textarea_set(VntValue *text,VntValue *x,VntValue *y){
+VNT_NATIVE_ABI VntValue * vnt_gui_textarea_set(VntValue *text,VntValue *x,VntValue *y){
     const char *value=vnt_app_string(text,"gui_textarea_set()");
     int xx=vnt_gui_require_int(x,"gui_textarea_set()"),yy=vnt_gui_require_int(y,"gui_textarea_set()");
     int index=-1;
@@ -1710,33 +1721,33 @@ VntValue *vnt_gui_textarea_set(VntValue *text,VntValue *x,VntValue *y){
     if(state->edit_hwnd)SetWindowTextA(state->edit_hwnd,state->text);
     return vnt_bool(1);
 }
-VntValue *vnt_gui_panel_color(VntValue *x,VntValue *y,VntValue *w,VntValue *h,VntValue *color){
+VNT_NATIVE_ABI VntValue * vnt_gui_panel_color(VntValue *x,VntValue *y,VntValue *w,VntValue *h,VntValue *color){
     int xx=vnt_gui_require_int(x,"gui_panel_color()"),yy=vnt_gui_require_int(y,"gui_panel_color()"),ww=vnt_gui_require_int(w,"gui_panel_color()"),hh=vnt_gui_require_int(h,"gui_panel_color()");
     VntGuiCommand *c=vnt_gui_add(VG_PANEL,xx,yy,ww,hh,NULL);if(!c)return vnt_bool(0);c->background=vnt_gui_color(vnt_gui_require_int(color,"gui_panel_color()"));c->radius=12;return vnt_bool(1);
 }
-VntValue *vnt_gui_text_style(VntValue *text,VntValue *x,VntValue *y,VntValue *color,VntValue *size){
+VNT_NATIVE_ABI VntValue * vnt_gui_text_style(VntValue *text,VntValue *x,VntValue *y,VntValue *color,VntValue *size){
     const char *s=vnt_app_string(text,"gui_text_style()");int xx=vnt_gui_require_int(x,"gui_text_style()"),yy=vnt_gui_require_int(y,"gui_text_style()"),font=vnt_gui_require_int(size,"gui_text_style()");
     if(font<8||font>72)font=16;VntGuiCommand *c=vnt_gui_add(VG_TEXT,xx,yy,0,0,s);if(!c)return vnt_bool(0);c->font_size=font;c->color=vnt_gui_color(vnt_gui_require_int(color,"gui_text_style()"));return vnt_bool(1);
 }
 
-VntValue *vnt_gui_checkbox(VntValue *label,VntValue *x,VntValue *y,VntValue *checked){
+VNT_NATIVE_ABI VntValue * vnt_gui_checkbox(VntValue *label,VntValue *x,VntValue *y,VntValue *checked){
     const char *text=vnt_app_string(label,"gui_checkbox()");int xx=vnt_gui_require_int(x,"gui_checkbox()"),yy=vnt_gui_require_int(y,"gui_checkbox()");
     int on=checked&&(checked->type==VNT_BOOL?checked->boolean:checked->type==VNT_INT?checked->integer:0);
     RECT r={xx,yy,xx+24,yy+24};if(vnt_gui_clicked&&vnt_gui_click_x>=xx&&vnt_gui_click_x<xx+250&&vnt_gui_click_y>=yy&&vnt_gui_click_y<yy+28)on=!on;
     VntGuiCommand *c=vnt_gui_add(VG_CHECKBOX,xx,yy,24,24,text);if(c)c->checked=on;
     return vnt_bool(on);
 }
-VntValue *vnt_gui_progress(VntValue *value,VntValue *maximum,VntValue *x,VntValue *y){
+VNT_NATIVE_ABI VntValue * vnt_gui_progress(VntValue *value,VntValue *maximum,VntValue *x,VntValue *y){
     int v=vnt_gui_require_int(value,"gui_progress()"),m=vnt_gui_require_int(maximum,"gui_progress()"),xx=vnt_gui_require_int(x,"gui_progress()"),yy=vnt_gui_require_int(y,"gui_progress()");
     VntGuiCommand *c=vnt_gui_add(VG_PROGRESS,xx,yy,260,10,NULL);if(!c)return vnt_bool(0);c->value=v;c->maximum=m;return vnt_bool(1);
 }
-VntValue *vnt_gui_separator(VntValue *x,VntValue *y,VntValue *width){
+VNT_NATIVE_ABI VntValue * vnt_gui_separator(VntValue *x,VntValue *y,VntValue *width){
     int xx=vnt_gui_require_int(x,"gui_separator()"),yy=vnt_gui_require_int(y,"gui_separator()"),ww=vnt_gui_require_int(width,"gui_separator()");
     VntGuiCommand *c=vnt_gui_add(VG_SEPARATOR,xx,yy,ww,1,NULL);return vnt_bool(c!=NULL);
 }
-VntValue *vnt_gui_fill(VntValue *color){vnt_gui_background=vnt_gui_color(vnt_gui_require_int(color,"gui_fill()"));return vnt_bool(1);}
-VntValue *vnt_gui_rect(VntValue *color){VntGuiCommand *c=vnt_gui_add(VG_RECT,32,64,160,80,NULL);if(!c)return vnt_bool(0);c->background=vnt_gui_color(vnt_gui_require_int(color,"gui_rect()"));return vnt_bool(1);}
-VntValue *vnt_gui_poll(void){
+VNT_NATIVE_ABI VntValue * vnt_gui_fill(VntValue *color){vnt_gui_background=vnt_gui_color(vnt_gui_require_int(color,"gui_fill()"));return vnt_bool(1);}
+VNT_NATIVE_ABI VntValue * vnt_gui_rect(VntValue *color){VntGuiCommand *c=vnt_gui_add(VG_RECT,32,64,160,80,NULL);if(!c)return vnt_bool(0);c->background=vnt_gui_color(vnt_gui_require_int(color,"gui_rect()"));return vnt_bool(1);}
+VNT_NATIVE_ABI VntValue * vnt_gui_poll(void){
     if(!vnt_gui_hwnd)return vnt_bool(0);MSG msg;
     vnt_gui_clicked=0;
     /* Keep native edit controls visible between frames to avoid flashing.
@@ -1746,7 +1757,7 @@ VntValue *vnt_gui_poll(void){
     vnt_gui_command_count=0;vnt_gui_text_y=18;
     return vnt_bool(vnt_gui_hwnd!=NULL);
 }
-VntValue *vnt_gui_present(void){
+VNT_NATIVE_ABI VntValue * vnt_gui_present(void){
     if(!vnt_gui_hwnd)return vnt_bool(0);
     for(int i=0;i<vnt_gui_input_count;i++) {
         VntGuiInputState *state=&vnt_gui_inputs[i];
@@ -1758,31 +1769,31 @@ VntValue *vnt_gui_present(void){
     RedrawWindow(vnt_gui_hwnd,NULL,NULL,RDW_INVALIDATE|RDW_UPDATENOW|RDW_NOCHILDREN);
     return vnt_bool(1);
 }
-VntValue *vnt_gui_key(void){int key=vnt_gui_last_key;vnt_gui_last_key=0;return vnt_int(key);}
-VntValue *vnt_gui_close(void){if(vnt_gui_hwnd)DestroyWindow(vnt_gui_hwnd);vnt_gui_hwnd=NULL;vnt_gui_command_count=0;return vnt_bool(1);}
+VNT_NATIVE_ABI VntValue * vnt_gui_key(void){int key=vnt_gui_last_key;vnt_gui_last_key=0;return vnt_int(key);}
+VNT_NATIVE_ABI VntValue * vnt_gui_close(void){if(vnt_gui_hwnd)DestroyWindow(vnt_gui_hwnd);vnt_gui_hwnd=NULL;vnt_gui_command_count=0;return vnt_bool(1);}
 #else
-VntValue *vnt_gui_css(VntValue *path) { (void)path;fprintf(stderr,"Runtime error: native GUI is currently supported on Windows only.\n");return vnt_bool(0); }
-VntValue *vnt_gui_size(VntValue *width,VntValue *height) { (void)width;(void)height;fprintf(stderr,"Runtime error: native GUI is currently supported on Windows only.\n");return vnt_bool(0); }
-VntValue *vnt_gui_open(VntValue *title) { (void)title;fprintf(stderr,"Runtime error: native GUI is currently supported on Windows only.\n");return vnt_bool(0); }
-VntValue *vnt_gui_text(VntValue *text) { (void)text;return vnt_bool(0); }
-VntValue *vnt_gui_text_at(VntValue *text,VntValue *x,VntValue *y) { (void)text;(void)x;(void)y;return vnt_bool(0); }
-VntValue *vnt_gui_title(VntValue *text,VntValue *x,VntValue *y) { (void)text;(void)x;(void)y;return vnt_bool(0); }
-VntValue *vnt_gui_panel(VntValue *x,VntValue *y,VntValue *w,VntValue *h) { (void)x;(void)y;(void)w;(void)h;return vnt_bool(0); }
-VntValue *vnt_gui_fill(VntValue *color) { (void)color;return vnt_bool(0); }
-VntValue *vnt_gui_rect(VntValue *color) { (void)color;return vnt_bool(0); }
-VntValue *vnt_gui_button(VntValue *label,VntValue *x,VntValue *y) { (void)label;(void)x;(void)y;return vnt_bool(0); }
-VntValue *vnt_gui_button_sized(VntValue *label,VntValue *x,VntValue *y,VntValue *w,VntValue *h) { (void)label;(void)x;(void)y;(void)w;(void)h;return vnt_bool(0); }
-VntValue *vnt_gui_input(VntValue *label,VntValue *x,VntValue *y,VntValue *w) { (void)label;(void)x;(void)y;(void)w;return vnt_string(""); }
-VntValue *vnt_gui_textarea(VntValue *label,VntValue *x,VntValue *y,VntValue *w,VntValue *h) { (void)label;(void)x;(void)y;(void)w;(void)h;return vnt_string(""); }
-VntValue *vnt_gui_input_set(VntValue *text,VntValue *x,VntValue *y) { (void)text;(void)x;(void)y;return vnt_bool(0); }
-VntValue *vnt_gui_textarea_set(VntValue *text,VntValue *x,VntValue *y) { (void)text;(void)x;(void)y;return vnt_bool(0); }
-VntValue *vnt_gui_panel_color(VntValue *x,VntValue *y,VntValue *w,VntValue *h,VntValue *c) { (void)x;(void)y;(void)w;(void)h;(void)c;return vnt_bool(0); }
-VntValue *vnt_gui_text_style(VntValue *t,VntValue *x,VntValue *y,VntValue *c,VntValue *s) { (void)t;(void)x;(void)y;(void)c;(void)s;return vnt_bool(0); }
-VntValue *vnt_gui_checkbox(VntValue *label,VntValue *x,VntValue *y,VntValue *checked) { (void)label;(void)x;(void)y;(void)checked;return vnt_bool(0); }
-VntValue *vnt_gui_progress(VntValue *v,VntValue *m,VntValue *x,VntValue *y) { (void)v;(void)m;(void)x;(void)y;return vnt_bool(0); }
-VntValue *vnt_gui_separator(VntValue *x,VntValue *y,VntValue *w) { (void)x;(void)y;(void)w;return vnt_bool(0); }
-VntValue *vnt_gui_present(void) { return vnt_bool(0); }
-VntValue *vnt_gui_poll(void) { return vnt_bool(0); }
-VntValue *vnt_gui_key(void) { return vnt_int(0); }
-VntValue *vnt_gui_close(void) { return vnt_bool(1); }
+VNT_NATIVE_ABI VntValue * vnt_gui_css(VntValue *path) { (void)path;fprintf(stderr,"Runtime error: native GUI is currently supported on Windows only.\n");return vnt_bool(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_size(VntValue *width,VntValue *height) { (void)width;(void)height;fprintf(stderr,"Runtime error: native GUI is currently supported on Windows only.\n");return vnt_bool(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_open(VntValue *title) { (void)title;fprintf(stderr,"Runtime error: native GUI is currently supported on Windows only.\n");return vnt_bool(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_text(VntValue *text) { (void)text;return vnt_bool(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_text_at(VntValue *text,VntValue *x,VntValue *y) { (void)text;(void)x;(void)y;return vnt_bool(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_title(VntValue *text,VntValue *x,VntValue *y) { (void)text;(void)x;(void)y;return vnt_bool(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_panel(VntValue *x,VntValue *y,VntValue *w,VntValue *h) { (void)x;(void)y;(void)w;(void)h;return vnt_bool(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_fill(VntValue *color) { (void)color;return vnt_bool(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_rect(VntValue *color) { (void)color;return vnt_bool(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_button(VntValue *label,VntValue *x,VntValue *y) { (void)label;(void)x;(void)y;return vnt_bool(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_button_sized(VntValue *label,VntValue *x,VntValue *y,VntValue *w,VntValue *h) { (void)label;(void)x;(void)y;(void)w;(void)h;return vnt_bool(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_input(VntValue *label,VntValue *x,VntValue *y,VntValue *w) { (void)label;(void)x;(void)y;(void)w;return vnt_string(""); }
+VNT_NATIVE_ABI VntValue * vnt_gui_textarea(VntValue *label,VntValue *x,VntValue *y,VntValue *w,VntValue *h) { (void)label;(void)x;(void)y;(void)w;(void)h;return vnt_string(""); }
+VNT_NATIVE_ABI VntValue * vnt_gui_input_set(VntValue *text,VntValue *x,VntValue *y) { (void)text;(void)x;(void)y;return vnt_bool(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_textarea_set(VntValue *text,VntValue *x,VntValue *y) { (void)text;(void)x;(void)y;return vnt_bool(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_panel_color(VntValue *x,VntValue *y,VntValue *w,VntValue *h,VntValue *c) { (void)x;(void)y;(void)w;(void)h;(void)c;return vnt_bool(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_text_style(VntValue *t,VntValue *x,VntValue *y,VntValue *c,VntValue *s) { (void)t;(void)x;(void)y;(void)c;(void)s;return vnt_bool(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_checkbox(VntValue *label,VntValue *x,VntValue *y,VntValue *checked) { (void)label;(void)x;(void)y;(void)checked;return vnt_bool(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_progress(VntValue *v,VntValue *m,VntValue *x,VntValue *y) { (void)v;(void)m;(void)x;(void)y;return vnt_bool(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_separator(VntValue *x,VntValue *y,VntValue *w) { (void)x;(void)y;(void)w;return vnt_bool(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_present(void) { return vnt_bool(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_poll(void) { return vnt_bool(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_key(void) { return vnt_int(0); }
+VNT_NATIVE_ABI VntValue * vnt_gui_close(void) { return vnt_bool(1); }
 #endif

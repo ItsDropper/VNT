@@ -6,7 +6,8 @@
  *
  * Native HTTP transport for compiled VNT programs. No external curl process.
  */
-#define _GNU_SOURCE\n#include <stdio.h>
+#define _GNU_SOURCE
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -106,14 +107,29 @@ char *vnt_native_http_request(const char *method, const char *url,
     wchar_t *hostname = (wchar_t *)calloc(1, host_bytes);
     if (!hostname) { free(wide_url); free(wide_method); return NULL; }
     memcpy(hostname, parts.lpszHostName, parts.dwHostNameLength * sizeof(wchar_t));
-    HINTERNET session = WinHttpOpen(L"VNT/0.1", WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
+    size_t path_len = (size_t)parts.dwUrlPathLength + (size_t)parts.dwExtraInfoLength;
+    int has_path = parts.dwUrlPathLength != 0;
+    wchar_t *path = (wchar_t *)calloc(path_len + 2, sizeof(wchar_t));
+    if (!path) { free(hostname); free(wide_url); free(wide_method); return NULL; }
+    size_t path_at = 0;
+    if (has_path) {
+        memcpy(path, parts.lpszUrlPath, parts.dwUrlPathLength * sizeof(wchar_t));
+        path_at = parts.dwUrlPathLength;
+    } else {
+        path[path_at++] = L'/';
+    }
+    if (parts.dwExtraInfoLength) {
+        memcpy(path + path_at, parts.lpszExtraInfo, parts.dwExtraInfoLength * sizeof(wchar_t));
+        path_at += parts.dwExtraInfoLength;
+    }
+    path[path_at] = L'\\0';
+    HINTERNET session = WinHttpOpen(L"VNT/0.1", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
                                     WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     HINTERNET connection = session ? WinHttpConnect(session, hostname, parts.nPort, 0) : NULL;
     DWORD flags = parts.nScheme == INTERNET_SCHEME_HTTPS ? WINHTTP_FLAG_SECURE : 0;
     HINTERNET request = connection ? WinHttpOpenRequest(connection, wide_method,
-        parts.lpszUrlPath && parts.dwUrlPathLength ? parts.lpszUrlPath : L"/",
-        NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, flags) : NULL;
-    free(hostname); free(wide_url); free(wide_method);
+        path, NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, flags) : NULL;
+    free(path); free(hostname); free(wide_url); free(wide_method);
     if (!request) {
         if (connection) WinHttpCloseHandle(connection);
         if (session) WinHttpCloseHandle(session);

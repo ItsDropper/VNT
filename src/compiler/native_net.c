@@ -773,6 +773,40 @@ static char *headers_without_credentials(const char *headers) {
     return out;
 }
 
+static int http_value_has_token(const char *value, const char *end, const char *token) {
+    size_t token_len = strlen(token);
+    const char *p = value;
+    while (p < end) {
+        while (p < end && (*p == ' ' || *p == '\\t' || *p == ',')) p++;
+        const char *q = p;
+        while (q < end && *q != ',') q++;
+        const char *trim = q;
+        while (trim > p && (trim[-1] == ' ' || trim[-1] == '\\t')) trim--;
+        if ((size_t)(trim - p) == token_len && !strncasecmp(p, token, token_len)) return 1;
+        p = q < end ? q + 1 : q;
+    }
+    return 0;
+}
+
+static int http_header_has_token(const char *raw, size_t header_length,
+                                 const char *name, const char *token) {
+    const char *p = raw, *limit = raw + header_length;
+    size_t name_len = strlen(name);
+    while (p < limit) {
+        const char *line_end = memchr(p, '\\n', (size_t)(limit - p));
+        if (!line_end) break;
+        const char *end = line_end;
+        if (end > p && end[-1] == '\\r') end--;
+        if (end == p) break;
+        const char *colon = memchr(p, ':', (size_t)(end - p));
+        if (colon && (size_t)(colon - p) == name_len &&
+            !strncasecmp(p, name, name_len) &&
+            http_value_has_token(colon + 1, end, token)) return 1;
+        p = line_end + 1;
+    }
+    return 0;
+}
+
 static int parse_response_headers(const char *raw, size_t used, const char *method,
                                   size_t *header_length, size_t *content_length,
                                   int *has_content_length, int *status_code, int *no_body) {
@@ -801,7 +835,7 @@ static int parse_response_headers(const char *raw, size_t used, const char *meth
             content_len = (size_t)parsed;
             has_len = 1;
         } else if ((size_t)(end-line) > 18 && !strncasecmp(line, "Transfer-Encoding:", 18) &&
-                   strcasestr(line+18, "chunked")) {
+                   http_value_has_token(line+18, end, "chunked")) {
             transfer_chunked = 1;
         }
         line = end + 2;
@@ -1006,7 +1040,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
                                             &expected_body_length, &has_expected_body_length,
                                             &code, &response_no_body);
         if (parsed < 0) { free(raw); goto fail; }
-        int chunked_complete = parsed > 0 && strcasestr(raw, "Transfer-Encoding: chunked") &&
+        int chunked_complete = parsed > 0 && http_header_has_token(raw, headerlen, "Transfer-Encoding", "chunked") &&
             chunked_body_complete(raw + headerlen, used - headerlen);
         if (parsed > 0 && (response_no_body ||
             (has_expected_body_length && used - headerlen >= expected_body_length) ||
@@ -1093,7 +1127,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     }
     if (status) *status = code;
     char *result = NULL;
-    if (strcasestr(raw, "Transfer-Encoding: chunked") && bodylen_read) {
+    if (http_header_has_token(raw, headerlen, "Transfer-Encoding", "chunked") && bodylen_read) {
         result = decode_chunked(sep+4, bodylen_read, response_length);
     } else {
         result = net_copy(sep+4, bodylen_read);
@@ -1318,7 +1352,7 @@ int vnt_native_http_download_stream(const char *url, const char *destination,
         } else if ((size_t)(end-line) >= 18 && !strncasecmp(line, "Transfer-Encoding:", 18) &&
                    strcasestr(line+18, "chunked")) chunked = 1;
         else if ((size_t)(end-line) >= 11 && !strncasecmp(line, "Connection:", 11) &&
-                 strcasestr(line+11, "close")) connection_close = 1;
+                 http_value_has_token(line+11, end, "close")) connection_close = 1;
         line = end;
     }
     if (has_length && chunked) goto stream_fail;

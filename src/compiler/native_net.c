@@ -251,7 +251,7 @@ static int same_origin(const char *a, const char *b) {
 }
 
 static char *headers_without_credentials(const char *headers) {
-    size_t cap = headers ? strlen(headers) + 1 : 1;
+    size_t cap = headers ? strlen(headers) + 2 : 2;
     char *out = (char *)malloc(cap);
     if (!out) return NULL;
     size_t used = 0;

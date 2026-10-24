@@ -250,7 +250,7 @@ static int write_all(int fd, SSL *ssl, const char *data, size_t length) {
 }
 
 char *vnt_native_http_request(const char *method, const char *url,
-                      const char *headers, const char *body, int *status) {
+                      const char *headers, const char *body, int *status, size_t *response_length) {
     if (status) *status = 0;
     if (response_length) *response_length = 0;
     ParsedUrl u;

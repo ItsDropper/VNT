@@ -1,3 +1,5 @@
 import "../lib/std/net.vnt" as net
 
 print(net.get("http://proxy-test.invalid/check"))
+
+proxy_download_ok = net.download("http://proxy-test.invalid:80/download", "vnt-network-proxy.test")

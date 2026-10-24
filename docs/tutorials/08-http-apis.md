@@ -59,13 +59,34 @@ response = net.request("PATCH", "https://example.com/api/item", "Content-Type: a
 print(response)
 ```
 
-## 4. Understand status codes and failures
+## 4. Send and receive arbitrary bytes
+
+VNT can represent binary payloads as arrays of integer bytes (`0` through `255`). These values preserve embedded NUL bytes and invalid UTF-8:
+
+```vnt
+import "lib/std/net.vnt" as net
+
+response_bytes = net.get_bytes("https://example.com/image.bin")
+print(len(response_bytes))
+
+echoed = net.request_bytes(
+    "POST",
+    "https://example.com/byte-endpoint",
+    "Content-Type: application/octet-stream",
+    [0, 1, 255, 10, 13, 128]
+)
+print(echoed)
+```
+
+`request_bytes` takes an array of byte integers for its body and returns the response as an array of byte integers. Use ordinary `get`/`request` for text-oriented responses.
+
+## 5. Understand status codes and failures
 
 An HTTP server can return `404 Not Found` even though the connection worked. Use `net.status(url)` to inspect the HTTP status. The helper returns a three-digit string; `000` indicates that the transport failed before an HTTP status was received.
 
 Body helpers return an empty string on transport failure, so an empty response is ambiguous. Download helpers preserve binary bytes, write successful 2xx responses directly to disk in bounded chunks for direct requests, and avoid allocating the entire file in memory. Redirect/proxy download fallbacks still buffer the response. The ordinary in-memory response path has no fixed application-level size cap; it remains bounded by available memory and allocation success.
 
-## 5. Behavior and remaining gaps
+## 6. Behavior and remaining gaps
 
 The native transport supports HTTP and HTTPS, standard request methods, newline-separated headers, text request bodies, status codes, redirects, and binary-safe downloads. Redirect loops are capped at ten hops; cross-origin redirects strip `Authorization`, `Proxy-Authorization`, and `Cookie` headers. The in-memory response path has no fixed application-level size cap, but it must fit in memory. Streaming downloads are implemented; streaming response values, Unix connection pooling, and first-class byte-buffer request/response values remain unimplemented. Unix-like requests honor HTTP_PROXY/HTTPS_PROXY (and lowercase equivalents), ALL_PROXY, and NO_PROXY. Windows delegates proxy selection to WinHTTP. VNT's ordinary string values remain text-oriented, so use `net.download` for binary files.
 

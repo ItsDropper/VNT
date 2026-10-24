@@ -226,7 +226,7 @@ Runnable sample programs are in [`examples/`](examples/). Start with:
 
 The GUI runtime is Windows-only. Its CSS-like styling is a small supported subset, not a browser engine or a complete cross-platform widget toolkit.
 
-Step-by-step coding tutorials are being added under [`docs/`](docs/). The [compiler architecture document](docs/compiler-architecture.md) describes the planned AST-to-HIR migration and clearly records work that is not complete.
+Follow the [step-by-step coding tutorials](docs/tutorials/README.md), starting with a first program and progressing through control flow, modules and files, a terminal application, and a Windows GUI. The [compiler architecture document](docs/compiler-architecture.md) describes the planned AST-to-HIR migration and clearly records work that is not complete.
 
 ## Compiler pipeline
 

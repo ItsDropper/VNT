@@ -7,6 +7,10 @@ on:
       - 'src/**'
       - 'include/**'
       - 'tests/*.vnt'
+      - 'tests/**/*.py'
+      - 'lib/std/**'
+      - 'examples/**'
+      - 'docs/tutorials/**'
       - '.github/workflows/quick-language-tests.yml'
   pull_request:
     branches: [main]

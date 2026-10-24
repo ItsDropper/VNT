@@ -212,8 +212,8 @@ static void parsed_url_free(ParsedUrl *u) {
 static int parse_url(const char *url, ParsedUrl *u) {
     memset(u, 0, sizeof(*u));
     const char *p;
-    if (!strncmp(url, "http://", 7)) { p = url + 7; u->tls = 0; }
-    else if (!strncmp(url, "https://", 8)) { p = url + 8; u->tls = 1; }
+    if (!strncasecmp(url, "http://", 7)) { p = url + 7; u->tls = 0; }
+    else if (!strncasecmp(url, "https://", 8)) { p = url + 8; u->tls = 1; }
     else return 0;
     const char *end = p + strcspn(p, "/?#");
     if (p == end || memchr(p, '@', (size_t)(end-p))) return 0;
@@ -229,13 +229,19 @@ static int parse_url(const char *url, ParsedUrl *u) {
     if (*p == '[') { p++; host_end--; }
     u->host = net_copy(p, (size_t)(host_end-p));
     u->port = colon ? net_copy(colon+1, (size_t)(end-colon-1)) : net_copy(u->tls ? "443" : "80", 2 + (u->tls ? 1 : 0));
-    const char *path = *end ? end : "/";
-    if (*path == '?') u->target = NULL;
-    if (*path == '#') return 0;
+    const char *path = (*end == '/' || *end == '?') ? end : "/";
+    const char *fragment = strchr(path, '#');
+    size_t path_length = fragment ? (size_t)(fragment-path) : strlen(path);
     if (*path == '?') {
-        size_t n = strlen(path); u->target = (char *)malloc(n + 2);
-        if (u->target) { u->target[0] = '/'; memcpy(u->target+1, path, n+1); }
-    } else u->target = strdup(path);
+        u->target = (char *)malloc(path_length + 2);
+        if (u->target) {
+            u->target[0] = '/';
+            memcpy(u->target + 1, path, path_length);
+            u->target[path_length + 1] = '\0';
+        }
+    } else {
+        u->target = net_copy(path, path_length);
+    }
     if (!u->host || !u->port || !u->target || !*u->port) { parsed_url_free(u); return 0; }
     return 1;
 }

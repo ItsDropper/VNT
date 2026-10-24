@@ -29,6 +29,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._send(204, "")
         elif self.path == "/header":
             self._send(200, "HEADER_OK" if self.headers.get("X-VNT-Test") == "present" else "HEADER_MISSING")
+        elif self.path == "/binary":
+            payload = bytes((0, 1, 255, 10, 13, 128))
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(payload)))
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self.wfile.write(payload)
         else:
             self._send(404, "NOT_FOUND")
 
@@ -66,10 +73,14 @@ def main():
                         sys.stderr.write(f"\n--- assembly context: {marker} line {pos + 1} ---\n")
                         sys.stderr.write("\n".join(lines[max(0, pos - 8):pos + 22]) + "\n")
             return 1
-        expected = 'VNT_NATIVE_HTTP_OK\n204\nHEADER_OK\nPOST_OK:{"native":true}\n404\n'
+        expected = 'VNT_NATIVE_HTTP_OK\n204\nHEADER_OK\nPOST_OK:{"native":true}\n404\ntrue\n'
         if result.stdout != expected:
             sys.stderr.write("Unexpected native networking output.\nExpected:\n" + expected +
                              "Actual:\n" + result.stdout + result.stderr)
+            return 1
+        binary = pathlib.Path("/tmp/vnt-network-binary").read_bytes()
+        if binary != bytes((0, 1, 255, 10, 13, 128)):
+            sys.stderr.write(f"Binary download was corrupted: {binary!r}\n")
             return 1
         print("Native HTTP integration tests passed.")
         return 0

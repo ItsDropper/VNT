@@ -32,7 +32,7 @@ jobs:
       - name: Install compiler toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install --yes gcc
+          sudo apt-get install --yes gcc libssl-dev python3
 
       - name: Build VNT compiler
         run: |
@@ -63,6 +63,9 @@ jobs:
         run: |
           ./vnt --compile tests/native_compiler.vnt -o /tmp/vnt-native-smoke
           ./vnt --compile tests/hir_constant_folding.vnt -o /tmp/vnt-hir-smoke
+
+      - name: Run native networking integration tests
+        run: python3 tests/run_native_networking.py
 
       - name: Run native programs and verify output
         run: |

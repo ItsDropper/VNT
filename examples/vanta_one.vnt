@@ -292,8 +292,8 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                     project_mode = "search"
                     request_count = request_count + 1
                     if project_response == "" {
-                        project_response = "No response received. Check that curl.exe is installed and internet access is available."
-                        status_message = "Modrinth search failed: empty response."
+                        project_response = "No response received. Check the URL and network connection."
+                        status_message = "Modrinth search failed: no response received. Check the URL and network connection."
                     } else {
                         status_message = "Modrinth search results loaded for: " + project_slug_input
                         activity_message = "Searched Modrinth mods: " + project_slug_input
@@ -418,7 +418,7 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                         activity_message = "Downloaded file to " + download_path_input
                         ui_call_84 = log.info("Download completed: " + download_path_input)
                     } else {
-                        download_status = "Download failed. Check URL, path, permissions, and curl availability."
+                        download_status = "Download failed. Check the URL, path, permissions, and network connection."
                         status_message = download_status
                         ui_call_85 = log.warn("Download failed: " + download_url_input)
                     }

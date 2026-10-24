@@ -17,6 +17,10 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#endif
+
 #if defined(_WIN32)
 /* Windows x64 already uses the ABI emitted by the native backend. */
 #define VNT_NATIVE_ABI
@@ -28,9 +32,7 @@
 #else
 #define VNT_NATIVE_ABI
 #endif
-#include <sys/types.h>
-#include <sys/wait.h>
-#endif
+
 #ifdef _WIN32
 #include <direct.h>
 

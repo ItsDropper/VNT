@@ -515,6 +515,34 @@ static int parse_url(const char *url, ParsedUrl *u) {
     return 1;
 }
 
+static int proxy_bypasses_host(const char *host, const char *list) {
+    if (!host || !list) return 0;
+    size_t host_len = strlen(host);
+    const char *p = list;
+    while (*p) {
+        while (*p == ' ' || *p == '\t' || *p == ',') p++;
+        const char *end = p;
+        while (*end && *end != ',') end++;
+        const char *trim = end;
+        while (trim > p && (trim[-1] == ' ' || trim[-1] == '\t')) trim--;
+        size_t n = (size_t)(trim - p);
+        if (n == 1 && p[0] == '*') return 1;
+        if (n && p[0] == '.') {
+            if (host_len >= n && !strncasecmp(host + host_len - n, p, n)) return 1;
+        } else if (n == host_len && !strncasecmp(host, p, n)) return 1;
+        p = *end ? end + 1 : end;
+    }
+    return 0;
+}
+
+static const char *proxy_environment_for(int tls) {
+    const char *value = getenv(tls ? "HTTPS_PROXY" : "HTTP_PROXY");
+    if (!value || !*value) value = getenv(tls ? "https_proxy" : "http_proxy");
+    if (!value || !*value) value = getenv("ALL_PROXY");
+    if (!value || !*value) value = getenv("all_proxy");
+    return value && *value ? value : NULL;
+}
+
 static int same_origin(const char *a, const char *b) {
     const char *as = strstr(a ? a : "", "://");
     const char *bs = strstr(b ? b : "", "://");
@@ -619,11 +647,32 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     if (status) *status = 0;
     if (response_length) *response_length = 0;
     if (!valid_request_headers(headers)) return NULL;
-    ParsedUrl u;
+    ParsedUrl u, proxy;
+    memset(&proxy, 0, sizeof(proxy));
     if (!parse_url(url ? url : "", &u)) return NULL;
+    const char *proxy_text = proxy_environment_for(u.tls);
+    const char *no_proxy = getenv("NO_PROXY");
+    if (!no_proxy || !*no_proxy) no_proxy = getenv("no_proxy");
+    int use_proxy = proxy_text && !proxy_bypasses_host(u.host, no_proxy);
+    char *proxy_url = NULL;
+    if (use_proxy) {
+        if (strstr(proxy_text, "://")) proxy_url = strdup(proxy_text);
+        else {
+            size_t n = strlen(proxy_text) + sizeof("http://");
+            proxy_url = (char *)malloc(n);
+            if (proxy_url) snprintf(proxy_url, n, "http://%s", proxy_text);
+        }
+        if (!proxy_url || !parse_url(proxy_url, &proxy) || proxy.tls) {
+            free(proxy_url); parsed_url_free(&proxy); parsed_url_free(&u); return NULL;
+        }
+    }
     struct addrinfo hints, *addresses = NULL;
     memset(&hints, 0, sizeof(hints)); hints.ai_socktype = SOCK_STREAM; hints.ai_family = AF_UNSPEC;
-    if (getaddrinfo(u.host, u.port, &hints, &addresses) != 0) { parsed_url_free(&u); return NULL; }
+    const char *connect_host = use_proxy ? proxy.host : u.host;
+    const char *connect_port = use_proxy ? proxy.port : u.port;
+    if (getaddrinfo(connect_host, connect_port, &hints, &addresses) != 0) {
+        free(proxy_url); parsed_url_free(&proxy); parsed_url_free(&u); return NULL;
+    }
     int fd = -1;
     for (struct addrinfo *a = addresses; a; a = a->ai_next) {
         fd = (int)socket(a->ai_family, a->ai_socktype, a->ai_protocol);
@@ -635,7 +684,34 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
         close(fd); fd = -1;
     }
     freeaddrinfo(addresses);
-    if (fd < 0) { parsed_url_free(&u); return NULL; }
+    if (fd < 0) { free(proxy_url); parsed_url_free(&proxy); parsed_url_free(&u); return NULL; }
+    if (use_proxy && u.tls) {
+        size_t need = strlen(u.host) + strlen(u.port) + 128;
+        char *connect_request = (char *)malloc(need);
+        if (!connect_request) { close(fd); free(proxy_url); parsed_url_free(&proxy); parsed_url_free(&u); return NULL; }
+        int cn = snprintf(connect_request, need, "CONNECT %s:%s HTTP/1.1\r\nHost: %s:%s\r\nProxy-Connection: keep-alive\r\n\r\n",
+                          u.host, u.port, u.host, u.port);
+        int sent = cn > 0 && (size_t)cn < need && write_all(fd, NULL, connect_request, (size_t)cn);
+        free(connect_request);
+        char response_headers[16385];
+        size_t hn = 0;
+        while (sent && hn < sizeof(response_headers) - 1) {
+            char ch;
+            ssize_t got = recv(fd, &ch, 1, 0);
+            if (got != 1) { sent = 0; break; }
+            response_headers[hn++] = ch;
+            response_headers[hn] = '\0';
+            if (hn >= 4 && !memcmp(response_headers + hn - 4, "\r\n\r\n", 4)) break;
+        }
+        int proxy_status = 0;
+        if (sscanf(response_headers, "HTTP/%*u.%*u %d", &proxy_status) != 1 ||
+            proxy_status != 200 || hn < 4 ||
+            memcmp(response_headers + hn - 4, "\r\n\r\n", 4) != 0) {
+            close(fd); free(proxy_url); parsed_url_free(&proxy); parsed_url_free(&u); return NULL;
+        }
+    }
+    free(proxy_url);
+    parsed_url_free(&proxy);
     SSL_CTX *ctx = NULL; SSL *ssl = NULL;
     if (u.tls) {
         ctx = SSL_CTX_new(TLS_client_method());
@@ -656,8 +732,14 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     }
     char *request = (char *)malloc(reqcap);
     if (!request) goto fail;
-    int n = snprintf(request, reqcap, "%s %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n",
+    int n;
+    if (use_proxy && !u.tls) {
+        n = snprintf(request, reqcap, "%s http://%s:%s%s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n",
+                     method ? method : "GET", u.host, u.port, u.target, u.host);
+    } else {
+        n = snprintf(request, reqcap, "%s %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n",
                      method ? method : "GET", u.target, u.host);
+    }
     if (n < 0 || (size_t)n >= reqcap) { free(request); goto fail; }
     size_t at = (size_t)n;
     if (headers && *headers) {

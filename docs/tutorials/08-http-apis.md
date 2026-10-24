@@ -55,7 +55,7 @@ Bearer-token variants are available for GET, POST, PUT, PATCH and DELETE. Keep c
 `net.request(method, url, headers, body)` exposes the native request path for methods and headers not covered by the convenience wrappers. Supply headers as newline-separated `Name: value` lines. VNT filters caller-supplied framing headers (`Host`, `Content-Length`, `Transfer-Encoding`, and connection headers) so they cannot override the transport's framing.
 
 ```vnt
-response = net.request("PATCH", "https://example.com/api/item", "Content-Type: application/json", "{\\"enabled\\":true}")
+response = net.request("PATCH", "https://example.com/api/item", "Content-Type: application/json", "{\"enabled\":true}")
 print(response)
 ```
 

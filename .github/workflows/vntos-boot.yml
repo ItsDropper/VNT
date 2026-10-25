@@ -51,7 +51,7 @@ jobs:
       - name: Boot guest and test interactive shell
         shell: bash
         run: |
-          qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -monitor none -serial unix:build/qemu-serial.sock,server,nowait -debugcon file:build/debug.log -global isa-debugcon.iobase=0xe9 -no-reboot -no-shutdown &
+          qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -monitor unix:build/qemu-keyboard-monitor.sock,server,nowait -serial unix:build/qemu-serial.sock,server,nowait -debugcon file:build/debug.log -global isa-debugcon.iobase=0xe9 -no-reboot -no-shutdown &
           qemu_pid=$!
           cleanup_qemu() {
             kill "$qemu_pid" 2>/dev/null || true
@@ -94,10 +94,31 @@ jobs:
               print(output.decode("ascii", errors="replace"))
               raise SystemExit("VNTOS did not reach its interactive command prompt")
 
-          for command in (b"help\r", b"about\r", b"echo tesX\x7ft\r",
-                          b"mem\r", b"mouse\r", b"not-a-command\r", b"halt\r"):
-              serial.sendall(command)
+          monitor = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+          monitor.settimeout(0.2)
+          for _ in range(100):
+              try:
+                  monitor.connect("build/qemu-keyboard-monitor.sock")
+                  break
+              except OSError:
+                  time.sleep(0.05)
+          else:
+              raise SystemExit("QEMU keyboard-test monitor socket did not become available")
+
+          def press(key):
+              monitor.sendall(("sendkey " + key + "\\n").encode("ascii"))
+              time.sleep(0.12)
+
+          def type_command(command):
+              for key in command:
+                  press(key)
+              press("ret")
               drain(0.35)
+
+          # Exercise the real PS/2 keyboard path, not only the serial RX path.
+          for command in ("help", "about", "echo test", "mem", "mouse", "badcommand", "clear", "halt"):
+              type_command(command)
+          monitor.close()
           drain(0.5)
           serial.close()
 

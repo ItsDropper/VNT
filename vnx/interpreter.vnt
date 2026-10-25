@@ -88,9 +88,15 @@ fun lex(source: string) {
                             i = i + 2
                         } else {
                             word = ""
-                            while i < len(source) && source[i] != " " && source[i] != "\\t" && source[i] != "\\r" && source[i] != "\\n" && source[i] != "=" && source[i] != "\\"" && source[i] != "#" {
-                                word = word + source[i]
-                                i = i + 1
+                            scanning_word = true
+                            while i < len(source) && scanning_word {
+                                ch = source[i]
+                                if ch == " " || ch == "\\t" || ch == "\\r" || ch == "\\n" || ch == "=" || ch == "\\"" || ch == "#" {
+                                    scanning_word = false
+                                } else {
+                                    word = word + ch
+                                    i = i + 1
+                                }
                             }
                             if word == "" {
                                 print("VNX lexer error: unexpected character")

@@ -4,7 +4,7 @@
 #include <string.h>
 
 typedef enum {
-    TY_UNDECLARED, TY_UNKNOWN, TY_INT, TY_FLOAT, TY_BOOL, TY_STRING,
+    TY_UNDECLARED, TY_UNKNOWN, TY_INT, TY_I64, TY_FLOAT, TY_BOOL, TY_STRING,
     TY_ARRAY, TY_OBJECT, TY_REFERENCE, TY_POINTER, TY_VOID
 } TypeKind;
 
@@ -70,7 +70,9 @@ static void set_symbol(TypeChecker *tc, const char *name, TypeKind type,
             TypeKind old = symbol->type;
             if (old != TY_UNKNOWN && type != TY_UNKNOWN &&
                 old != type && !(old == TY_INT && type == TY_FLOAT) &&
-                !(old == TY_FLOAT && type == TY_INT)) {
+                !(old == TY_FLOAT && type == TY_INT) &&
+                !(old == TY_I64 && type == TY_INT) &&
+                !(old == TY_INT && type == TY_I64)) {
                 if (symbol->explicit_type || explicit_type) {
                     error(tc, "variable type changed incompatibly.");
                     return;
@@ -154,10 +156,11 @@ static void merge_branch_symbols(TypeChecker *tc, const SymbolState *before,
     }
 }
 
-static int numeric(TypeKind t) { return t == TY_INT || t == TY_FLOAT; }
+static int numeric(TypeKind t) { return t == TY_INT || t == TY_I64 || t == TY_FLOAT; }
 
 static TypeKind type_from_name(const char *name) {
     if (!strcmp(name, "int")) return TY_INT;
+    if (!strcmp(name, "i64")) return TY_I64;
     if (!strcmp(name, "float")) return TY_FLOAT;
     if (!strcmp(name, "bool")) return TY_BOOL;
     if (!strcmp(name, "string")) return TY_STRING;
@@ -185,9 +188,9 @@ static StructDef *find_struct(TypeChecker *tc, const char *name) {
 
 static int builtin_arity(const char *name, int argc) {
     if (!strcmp(name, "mem_alloc") || !strcmp(name, "mem_free") || !strcmp(name, "mem_is_null")) return argc == 1;
-    if (!strcmp(name, "mem_read_u8") || !strcmp(name, "mem_read_u32")) return argc == 2;
+    if (!strcmp(name, "mem_read_u8") || !strcmp(name, "mem_read_u32") || !strcmp(name, "mem_read_u64")) return argc == 2;
     if (!strcmp(name, "mem_realloc") || !strcmp(name, "mem_ptr_add")) return argc == 2;
-    if (!strcmp(name, "mem_write_u8") || !strcmp(name, "mem_write_u32") || !strcmp(name, "mem_copy") || !strcmp(name, "mem_set")) return argc == 3;
+    if (!strcmp(name, "mem_write_u8") || !strcmp(name, "mem_write_u32") || !strcmp(name, "mem_write_u64") || !strcmp(name, "mem_copy") || !strcmp(name, "mem_set")) return argc == 3;
     if (!strcmp(name, "range")) return argc >= 1 && argc <= 3;
     if (!strcmp(name, "sqrt") || !strcmp(name, "sin") ||
         !strcmp(name, "cos") || !strcmp(name, "tan") ||
@@ -284,7 +287,9 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
     if (!n) return TY_UNKNOWN;
 
     switch (n->type) {
-        case AST_INTEGER_LITERAL: return TY_INT;
+        case AST_INTEGER_LITERAL:
+            return n->integer_literal.value < INT32_MIN ||
+                   n->integer_literal.value > INT32_MAX ? TY_I64 : TY_INT;
         case AST_FLOAT_LITERAL: return TY_FLOAT;
         case AST_BOOLEAN_LITERAL: return TY_BOOL;
         case AST_STRING_LITERAL: return TY_STRING;
@@ -332,8 +337,10 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                  !strcmp(n->function_call.name, "mem_ptr_add") ||
                  !strcmp(n->function_call.name, "mem_read_u8") ||
                  !strcmp(n->function_call.name, "mem_read_u32") ||
+                 !strcmp(n->function_call.name, "mem_read_u64") ||
                  !strcmp(n->function_call.name, "mem_write_u8") ||
                  !strcmp(n->function_call.name, "mem_write_u32") ||
+                 !strcmp(n->function_call.name, "mem_write_u64") ||
                  !strcmp(n->function_call.name, "mem_copy") ||
                  !strcmp(n->function_call.name, "mem_set")) &&
                 tc->unsafe_depth == 0)
@@ -356,7 +363,8 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 return TY_FLOAT;
             if (!strcmp(n->function_call.name, "mem_alloc") || !strcmp(n->function_call.name, "mem_realloc") || !strcmp(n->function_call.name, "mem_ptr_add")) return TY_POINTER;
             if (!strcmp(n->function_call.name, "mem_read_u8") || !strcmp(n->function_call.name, "mem_read_u32")) return TY_INT;
-            if (!strcmp(n->function_call.name, "mem_free") || !strcmp(n->function_call.name, "mem_is_null") || !strcmp(n->function_call.name, "mem_write_u8") || !strcmp(n->function_call.name, "mem_write_u32") || !strcmp(n->function_call.name, "mem_copy") || !strcmp(n->function_call.name, "mem_set")) return TY_BOOL;
+             if (!strcmp(n->function_call.name, "mem_read_u64")) return TY_I64;
+            if (!strcmp(n->function_call.name, "mem_free") || !strcmp(n->function_call.name, "mem_is_null") || !strcmp(n->function_call.name, "mem_write_u8") || !strcmp(n->function_call.name, "mem_write_u32") || !strcmp(n->function_call.name, "mem_write_u64") || !strcmp(n->function_call.name, "mem_copy") || !strcmp(n->function_call.name, "mem_set")) return TY_BOOL;
             if (!strcmp(n->function_call.name, "process_start")) return TY_OBJECT;
             if (!strcmp(n->function_call.name, "process_launch")) return TY_BOOL;
             if (!strcmp(n->function_call.name, "process_stdout") ||
@@ -489,7 +497,9 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 return TY_UNKNOWN;
             }
 
-            return left == TY_FLOAT || right == TY_FLOAT ? TY_FLOAT : TY_INT;
+            if (left == TY_FLOAT || right == TY_FLOAT) return TY_FLOAT;
+            if (left == TY_I64 || right == TY_I64) return TY_I64;
+            return TY_INT;
         }
 
         default:

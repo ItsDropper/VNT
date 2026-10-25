@@ -2,6 +2,7 @@
 #define VNT_AST_H
 
 #include <vnt/operators.h>
+#include <stdint.h>
 
 typedef enum {
     AST_PROGRAM,
@@ -87,7 +88,7 @@ typedef struct AstNode {
         } string_literal;
 
         struct {
-            int value;
+            int64_t value;
         } integer_literal;
 
         struct {
@@ -166,7 +167,7 @@ AstNode *ast_create_return(AstNode *expression);
 AstNode *ast_create_break(void);
 AstNode *ast_create_continue(void);
 AstNode *ast_create_string(const char *value);
-AstNode *ast_create_integer(int value);
+AstNode *ast_create_integer(int64_t value);
 AstNode *ast_create_float(double value);
 AstNode *ast_create_boolean(int value);
 AstNode *ast_create_array(AstNode *elements, int element_count);

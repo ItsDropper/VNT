@@ -36,16 +36,15 @@ static AstNode *parse_primary(Parser *parser) {
         errno = 0;
         char *end = NULL;
         int base = (buffer[0] == '0' && (buffer[1] == 'x' || buffer[1] == 'X')) ? 16 : 10;
-        long value = strtol(buffer, &end, base);
-        if (errno == ERANGE || end == buffer || *end != '\0' ||
-            value < INT_MIN || value > INT_MAX) {
-            printf("Parser error: integer literal is outside the supported range.\n");
+        long long value = strtoll(buffer, &end, base);
+        if (errno == ERANGE || end == buffer || *end != '\0') {
+            printf("Parser error: integer literal is outside the signed 64-bit range.\n");
             return NULL;
         }
 
         parser_advance(parser);
 
-        AstNode *node = ast_create_integer((int)value);
+        AstNode *node = ast_create_integer((int64_t)value);
         if (!node)
             printf("Parser error: out of memory.\n");
         return node;

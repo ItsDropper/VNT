@@ -213,7 +213,7 @@ AstNode *ast_create_string(const char *value) {
     return node;
 }
 
-AstNode *ast_create_integer(int value) {
+AstNode *ast_create_integer(int64_t value) {
     AstNode *node = malloc(sizeof(AstNode));
 
     if (node == NULL) {

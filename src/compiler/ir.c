@@ -305,7 +305,7 @@ void vnt_ir_dump(const VntIrProgram *ir, FILE *out) {
         }
         fputc(']', out);
         switch (node->opcode) {
-            case VNT_IR_INTEGER: fprintf(out, " value=%d", node->value.integer); break;
+            case VNT_IR_INTEGER: fprintf(out, " value=%lld", (long long)node->value.integer); break;
             case VNT_IR_BOOLEAN: fprintf(out, " value=%s", node->value.boolean ? "true" : "false"); break;
             case VNT_IR_FLOAT: fprintf(out, " value=%.17g", node->value.floating); break;
             case VNT_IR_STRING:
@@ -342,7 +342,7 @@ void vnt_ir_free(VntIrProgram *ir) {
 
 typedef struct {
     int kind; /* 1 = integer, 2 = boolean, 3 = float */
-    union { int integer; int boolean; double floating; } value;
+    union { int64_t integer; int boolean; double floating; } value;
 } HirConstant;
 
 static int hir_constant(const VntIrProgram *ir, size_t index, HirConstant *out) {
@@ -371,18 +371,19 @@ static int hir_fold_node(VntIrProgram *ir, size_t index, size_t *changed) {
     if (!hir_constant(ir, left, &a) || !hir_constant(ir, right, &b) || a.kind != b.kind)
         return 1;
 
-    int result_int = 0, result_bool = 0, folded = 0;
+    int64_t result_int = 0;
+    int result_bool = 0, folded = 0;
     double result_float = 0.0;
     int kind = a.kind;
     int op = n->operation;
     if (kind == 1) {
         int64_t x = a.value.integer, y = b.value.integer, z = 0;
         switch (op) {
-            case BINARY_ADD: z = x + y; folded = z >= INT_MIN && z <= INT_MAX; break;
-            case BINARY_SUBTRACT: z = x - y; folded = z >= INT_MIN && z <= INT_MAX; break;
-            case BINARY_MULTIPLY: z = x * y; folded = z >= INT_MIN && z <= INT_MAX; break;
-            case BINARY_DIVIDE: if (y && !(x == INT_MIN && y == -1)) { z = x / y; folded = 1; } break;
-            case BINARY_MODULO: if (y && !(x == INT_MIN && y == -1)) { z = x % y; folded = 1; } break;
+            case BINARY_ADD: folded = !__builtin_add_overflow(x, y, &z); break;
+            case BINARY_SUBTRACT: folded = !__builtin_sub_overflow(x, y, &z); break;
+            case BINARY_MULTIPLY: folded = !__builtin_mul_overflow(x, y, &z); break;
+            case BINARY_DIVIDE: if (y && !(x == INT64_MIN && y == -1)) { z = x / y; folded = 1; } break;
+            case BINARY_MODULO: if (y && !(x == INT64_MIN && y == -1)) { z = x % y; folded = 1; } break;
             case BINARY_EQUAL: result_bool = x == y; kind = 2; folded = 1; break;
             case BINARY_NOT_EQUAL: result_bool = x != y; kind = 2; folded = 1; break;
             case BINARY_GREATER: result_bool = x > y; kind = 2; folded = 1; break;
@@ -391,7 +392,7 @@ static int hir_fold_node(VntIrProgram *ir, size_t index, size_t *changed) {
             case BINARY_LESS_EQUAL: result_bool = x <= y; kind = 2; folded = 1; break;
             default: break;
         }
-        result_int = (int)z;
+        result_int = z;
     } else if (kind == 2) {
         int x = a.value.boolean, y = b.value.boolean;
         switch (op) {

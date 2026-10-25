@@ -177,7 +177,7 @@ static const char *builtin(const char *s,int *arity) {
     struct Entry { const char *name,*target; int arity; };
     static const struct Entry e[]={
       {"mem_alloc","vnt_mem_alloc",1},{"mem_free","vnt_mem_free",1},{"mem_is_null","vnt_mem_is_null",1},{"mem_realloc","vnt_mem_realloc",2},{"mem_ptr_add","vnt_mem_ptr_add",2},
-      {"mem_read_u8","vnt_mem_read_u8",2},{"mem_read_u32","vnt_mem_read_u32",2},{"mem_write_u8","vnt_mem_write_u8",3},{"mem_write_u32","vnt_mem_write_u32",3},
+      {"mem_read_u8","vnt_mem_read_u8",2},{"mem_read_u32","vnt_mem_read_u32",2},{"mem_read_u64","vnt_mem_read_u64",2},{"mem_write_u8","vnt_mem_write_u8",3},{"mem_write_u32","vnt_mem_write_u32",3},{"mem_write_u64","vnt_mem_write_u64",3},
       {"mem_copy","vnt_mem_copy",3},{"mem_set","vnt_mem_set",3},
       {"sqrt","vnt_sqrt",1},{"sin","vnt_sin",1},{"cos","vnt_cos",1},{"tan","vnt_tan",1},
       {"abs","vnt_abs",1},{"floor","vnt_floor",1},{"ceil","vnt_ceil",1},{"min","vnt_min",2},{"max","vnt_max",2},
@@ -263,7 +263,7 @@ static void emit_call(HirGen *g,size_t i,const VntIrNode*n) {
 static void emit_expr(HirGen *g,size_t i) {
     const VntIrNode*n=node(g,i);if(g->error)return;if(!n){fail(g,"missing HIR expression.");return;}
     switch(n->opcode){
-    case VNT_IR_INTEGER:fprintf(g->out,"    movl $%d,%%ecx\n",n->value.integer);call0(g,"vnt_int");break;
+    case VNT_IR_INTEGER:fprintf(g->out,"    movabsq $%lld,%%rcx\n",(long long)n->value.integer);call0(g,"vnt_int");break;
     case VNT_IR_BOOLEAN:fprintf(g->out,"    movl $%d,%%ecx\n",!!n->value.boolean);call0(g,"vnt_bool");break;
     case VNT_IR_FLOAT:fprintf(g->out,"    movsd .Lflt%d(%%rip),%%xmm0\n",float_label(g,n->value.floating));call0(g,"vnt_float");break;
     case VNT_IR_STRING:fprintf(g->out,"    lea .Lstr%d(%%rip),%%rcx\n",string_label(g,n->value.text));call0(g,"vnt_string");break;
@@ -306,15 +306,16 @@ static void emit_expr(HirGen *g,size_t i) {
         }
         const VntIrNode *right_node=node(g,r);
         if((n->operation==BINARY_ADD||n->operation==BINARY_SUBTRACT||n->operation==BINARY_MULTIPLY)&&
-           right_node&&right_node->opcode==VNT_IR_INTEGER) {
+           right_node&&right_node->opcode==VNT_IR_INTEGER &&
+           right_node->value.integer >= INT32_MIN && right_node->value.integer <= INT32_MAX) {
             int slow=label_new(g),done=label_new(g);
             emit_expr(g,l);
             fputs("    pushq %rax\n    movq (%rsp),%r11\n    testq %r11,%r11\n    jz ",g->out);fprintf(g->out,".L%d\n",slow);
-            fputs("    cmpl $1,0(%r11)\n    jne ",g->out);fprintf(g->out,".L%d\n    movl 8(%%r11),%%r10d\n",slow);
-            if(n->operation==BINARY_ADD)fprintf(g->out,"    addl $%d,%%r10d\n    jo .L%d\n",right_node->value.integer,slow);
-            else if(n->operation==BINARY_SUBTRACT)fprintf(g->out,"    subl $%d,%%r10d\n    jo .L%d\n",right_node->value.integer,slow);
-            else fprintf(g->out,"    imull $%d,%%r10d,%%r10d\n    jo .L%d\n",right_node->value.integer,slow);
-            fputs("    movl %r10d,%ecx\n    addq $8,%rsp\n",g->out);
+            fputs("    cmpl $1,0(%r11)\n    jne ",g->out);fprintf(g->out,".L%d\n    movq 8(%%r11),%%r10\n",slow);
+            if(n->operation==BINARY_ADD)fprintf(g->out,"    addq $%lld,%%r10\n    jo .L%d\n",(long long)right_node->value.integer,slow);
+            else if(n->operation==BINARY_SUBTRACT)fprintf(g->out,"    subq $%lld,%%r10\n    jo .L%d\n",(long long)right_node->value.integer,slow);
+            else fprintf(g->out,"    imulq $%lld,%%r10,%%r10\n    jo .L%d\n",(long long)right_node->value.integer,slow);
+            fputs("    movq %r10,%rcx\n    addq $8,%rsp\n",g->out);
             call0(g,"vnt_int");
             fprintf(g->out,"    jmp .L%d\n",done);
             label_emit(g,slow);
@@ -337,11 +338,11 @@ static void emit_expr(HirGen *g,size_t i) {
             fputs("    testq %rdx,%rdx\n    jz ",g->out);fprintf(g->out,".L%d\n",slow);
             fputs("    cmpl $1,0(%rcx)\n    jne ",g->out);fprintf(g->out,".L%d\n",slow);
             fputs("    cmpl $1,0(%rdx)\n    jne ",g->out);fprintf(g->out,".L%d\n",slow);
-            fputs("    movl 8(%rcx),%r10d\n    ",g->out);
-            fputs(n->operation==BINARY_ADD?"addl 8(%rdx),%r10d\n    jo ":
-                  n->operation==BINARY_SUBTRACT?"subl 8(%rdx),%r10d\n    jo ":
-                  "imull 8(%rdx),%r10d\n    jo ",g->out);
-            fprintf(g->out,".L%d\n    movl %%r10d,%%ecx\n",slow);
+            fputs("    movq 8(%rcx),%r10\n    ",g->out);
+            fputs(n->operation==BINARY_ADD?"addq 8(%rdx),%r10\n    jo ":
+                  n->operation==BINARY_SUBTRACT?"subq 8(%rdx),%r10\n    jo ":
+                  "imulq 8(%rdx),%r10\n    jo ",g->out);
+            fprintf(g->out,".L%d\n    movq %%r10,%%rcx\n",slow);
             call0(g,"vnt_int");
             fprintf(g->out,"    jmp .L%d\n",done);
             label_emit(g,slow);
@@ -365,13 +366,13 @@ static void emit_condition_false_branch(HirGen *g,size_t condition,int false_lab
     const VntIrNode *left=n&&n->opcode==VNT_IR_BINARY?node(g,child(g,condition,VNT_IR_EDGE_LEFT)):NULL;
     const VntIrNode *right=n&&n->opcode==VNT_IR_BINARY?node(g,child(g,condition,VNT_IR_EDGE_RIGHT)):NULL;
     if(n&&n->opcode==VNT_IR_BINARY&&left&&left->opcode==VNT_IR_VARIABLE&&right&&
-       right->opcode==VNT_IR_INTEGER&&n->operation>=BINARY_EQUAL&&
+       right->opcode==VNT_IR_INTEGER&&right->value.integer >= INT32_MIN && right->value.integer <= INT32_MAX&&n->operation>=BINARY_EQUAL&&
        n->operation<=BINARY_LESS_EQUAL) {
         int slow=label_new(g),done=label_new(g);
         emit_expr(g,child(g,condition,VNT_IR_EDGE_LEFT));
         fputs("    movq %rax,%r11\n    testq %r11,%r11\n    jz ",g->out);fprintf(g->out,".L%d\n",slow);
-        fputs("    cmpl $1,0(%r11)\n    jne ",g->out);fprintf(g->out,".L%d\n    movl 8(%%r11),%%eax\n",slow);
-        fprintf(g->out,"    cmpl $%d,%%eax\n",right->value.integer);
+        fputs("    cmpl $1,0(%r11)\n    jne ",g->out);fprintf(g->out,".L%d\n    movq 8(%%r11),%%rax\n",slow);
+        fprintf(g->out,"    cmpq $%lld,%%rax\n",(long long)right->value.integer);
         const char *branch=NULL;
         switch(n->operation) {
             case BINARY_EQUAL: branch="jne"; break;
@@ -432,6 +433,7 @@ static int emit_mutating_integer_assignment(HirGen *g,const char *target,size_t 
     if(vi<0||g->vars[vi].global||!integer_slot_is_unaliased(g,target)) return 0;
     int right_var=rn->opcode==VNT_IR_VARIABLE&&rn->value.text;
     int right_int=rn->opcode==VNT_IR_INTEGER;
+    if(right_int && (rn->value.integer < INT32_MIN || rn->value.integer > INT32_MAX)) return 0;
     if(!right_var&&!right_int) return 0;
     if(right_var) {
         int ri=var_index(g->vars,g->var_count,rn->value.text);
@@ -441,21 +443,24 @@ static int emit_mutating_integer_assignment(HirGen *g,const char *target,size_t 
     fprintf(g->out,"    movq -%d(%%rbp),%%r9\n",g->vars[vi].offset);
     fputs("    testq %r9,%r9\n",g->out); fprintf(g->out,"    jz .L%d\n",slow);
     fputs("    cmpl $1,0(%r9)\n",g->out); fprintf(g->out,"    jne .L%d\n",slow);
-    fputs("    movl 8(%r9),%r10d\n",g->out);
+    fputs("    movq 8(%r9),%r10\n",g->out);
     if(right_int) {
-        fprintf(g->out,"    %sl $%d,%%r10d\n",
-            n->operation==BINARY_ADD?"add":n->operation==BINARY_SUBTRACT?"sub":"imul",
-            rn->value.integer);
+        if(n->operation==BINARY_ADD)
+            fprintf(g->out,"    addq $%lld,%%r10\n",(long long)rn->value.integer);
+        else if(n->operation==BINARY_SUBTRACT)
+            fprintf(g->out,"    subq $%lld,%%r10\n",(long long)rn->value.integer);
+        else
+            fprintf(g->out,"    imulq $%lld,%%r10,%%r10\n",(long long)rn->value.integer);
     } else {
         int ri=var_index(g->vars,g->var_count,rn->value.text);
         fprintf(g->out,"    movq -%d(%%rbp),%%r11\n",g->vars[ri].offset);
         fputs("    testq %r11,%r11\n",g->out); fprintf(g->out,"    jz .L%d\n",slow);
         fputs("    cmpl $1,0(%r11)\n",g->out); fprintf(g->out,"    jne .L%d\n",slow);
-        fputs("    movl 8(%r11),%eax\n",g->out);
-        fprintf(g->out,"    %sl %%eax,%%r10d\n",
+        fputs("    movq 8(%r11),%rax\n",g->out);
+        fprintf(g->out,"    %sq %%rax,%%r10\n",
             n->operation==BINARY_ADD?"add":n->operation==BINARY_SUBTRACT?"sub":"imul");
     }
-    fprintf(g->out,"    jo .L%d\n    movl %%r10d,8(%%r9)\n    movq %%r9,%%rax\n    jmp .L%d\n",slow,done);
+    fprintf(g->out,"    jo .L%d\n    movq %%r10,8(%%r9)\n    movq %%r9,%%rax\n    jmp .L%d\n",slow,done);
     label_emit(g,slow);
     emit_expr(g,value);
     label_emit(g,done);

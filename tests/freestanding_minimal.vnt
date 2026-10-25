@@ -1,0 +1,13 @@
+fun kernel_main() {
+    let value: int = 40 + 2
+    let counter: int = 0
+    if value == 42 {
+        unsafe {
+            asm volatile("nop")
+        }
+    }
+    while counter < 2 {
+        counter = counter + 1
+    }
+    return value - 42
+}

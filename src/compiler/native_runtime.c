@@ -197,7 +197,7 @@ typedef struct {
 struct VntValue {
     VntType type;
     union {
-        int integer;
+        int64_t integer;
         double floating;
         int boolean;
         char *string;
@@ -321,7 +321,7 @@ VNT_NATIVE_ABI VntValue * vnt_ref_set(VntValue *ref, VntValue *value) {
     return value;
 }
 
-VNT_NATIVE_ABI VntValue * vnt_int(int x) {
+VNT_NATIVE_ABI VntValue * vnt_int(int64_t x) {
     VntValue *v = alloc_value(VNT_INT);
     v->integer = x;
     return v;
@@ -404,13 +404,13 @@ VNT_NATIVE_ABI VntValue * vnt_array_push(VntValue *a, VntValue *item) {
     return a;
 }
 
-VNT_NATIVE_ABI VntValue * vnt_array_get_int(VntValue *a, int index) {
+VNT_NATIVE_ABI VntValue * vnt_array_get_int(VntValue *a, int64_t index) {
     if (a && a->type == VNT_BYTES) {
-        if (index < 0 || (size_t)index >= a->bytes.length) {
+        if (index < 0 || (uint64_t)index >= a->bytes.length) {
             fprintf(stderr, "Runtime error: byte buffer index out of bounds.\n");
             exit(1);
         }
-        return vnt_int((int)a->bytes.data[index]);
+        return vnt_int((int64_t)a->bytes.data[(size_t)index]);
     }
     if (!a || a->type != VNT_ARRAY) {
         fprintf(stderr, "Runtime error: indexing requires an array or byte buffer.\n");
@@ -423,14 +423,14 @@ VNT_NATIVE_ABI VntValue * vnt_array_get_int(VntValue *a, int index) {
     return a->array.items[index];
 }
 
-VNT_NATIVE_ABI VntValue * vnt_array_set_int(VntValue *a, int index, VntValue *value) {
+VNT_NATIVE_ABI VntValue * vnt_array_set_int(VntValue *a, int64_t index, VntValue *value) {
     if (a && a->type == VNT_BYTES) {
         if (index < 0 || (size_t)index >= a->bytes.length || !value ||
             value->type != VNT_INT || value->integer < 0 || value->integer > 255) {
             fprintf(stderr, "Runtime error: byte buffer assignment requires an in-range index and byte integer.\n");
             exit(1);
         }
-        a->bytes.data[index] = (unsigned char)value->integer;
+        a->bytes.data[(size_t)index] = (unsigned char)value->integer;
         return value;
     }
     if (!a || a->type != VNT_ARRAY) {
@@ -459,12 +459,12 @@ VNT_NATIVE_ABI VntValue * vnt_array_get(VntValue *a, VntValue *index) {
         fprintf(stderr, "Runtime error: indexing requires an array/string and integer index.\n");
         exit(1);
     }
-    int i = index->integer;
+    int64_t i = index->integer;
     if (i < 0 || i >= a->array.count) {
         fprintf(stderr, "Runtime error: array index out of bounds.\n");
         exit(1);
     }
-    return a->array.items[i];
+    return a->array.items[(int)i];
 }
 
 VNT_NATIVE_ABI VntValue * vnt_array_set(VntValue *a, VntValue *index, VntValue *value) {
@@ -479,12 +479,12 @@ VNT_NATIVE_ABI VntValue * vnt_array_set(VntValue *a, VntValue *index, VntValue *
         fprintf(stderr, "Runtime error: array assignment requires an array and integer index.\n");
         exit(1);
     }
-    int i = index->integer;
+    int64_t i = index->integer;
     if (i < 0 || i >= a->array.count) {
         fprintf(stderr, "Runtime error: array index out of bounds.\n");
         exit(1);
     }
-    a->array.items[i] = value;
+    a->array.items[(int)i] = value;
     return value;
 }
 
@@ -493,13 +493,13 @@ VNT_NATIVE_ABI VntValue * vnt_string_get(VntValue *s, VntValue *index) {
         fprintf(stderr, "Runtime error: string indexing requires a string and integer index.\n");
         exit(1);
     }
-    int i = index->integer;
-    int len = (int)strlen(s->string);
-    if (i < 0 || i >= len) {
+    int64_t i = index->integer;
+    size_t len = strlen(s->string);
+    if (i < 0 || (uint64_t)i >= len) {
         fprintf(stderr, "Runtime error: string index out of bounds.\n");
         exit(1);
     }
-    char out[2] = { s->string[i], '\0' };
+    char out[2] = { s->string[(size_t)i], '\0' };
     return vnt_string(out);
 }
 
@@ -509,7 +509,7 @@ static char *value_to_concat_string(VntValue *v) {
     if (!v) return strdup("null");
     switch (v->type) {
         case VNT_STRING: text = v->string; break;
-        case VNT_INT: snprintf(buffer, sizeof(buffer), "%d", v->integer); text = buffer; break;
+        case VNT_INT: snprintf(buffer, sizeof(buffer), "%lld", (long long)v->integer); text = buffer; break;
         case VNT_FLOAT: snprintf(buffer, sizeof(buffer), "%.15g", v->floating); text = buffer; break;
         case VNT_BOOL: text = v->boolean ? "true" : "false"; break;
         default: return NULL;
@@ -546,35 +546,35 @@ VNT_NATIVE_ABI VntValue * vnt_add(VntValue *a, VntValue *b) {
     require_number(a, b);
     if (a->type == VNT_FLOAT || b->type == VNT_FLOAT)
         return vnt_float(number_value(a) + number_value(b));
-    int64_t result = (int64_t)a->integer + (int64_t)b->integer;
-    if (result < INT_MIN || result > INT_MAX) {
-        fprintf(stderr, "Runtime error: integer overflow in addition.\n");
+    int64_t result;
+    if (__builtin_add_overflow(a->integer, b->integer, &result)) {
+        fprintf(stderr, "Runtime error: signed 64-bit integer overflow in addition.\n");
         exit(1);
     }
-    return vnt_int((int)result);
+    return vnt_int(result);
 }
 VNT_NATIVE_ABI VntValue * vnt_sub(VntValue *a, VntValue *b) {
     require_number(a,b);
     if (a->type == VNT_FLOAT || b->type == VNT_FLOAT)
         return vnt_float(number_value(a) - number_value(b));
-    int64_t result = (int64_t)a->integer - (int64_t)b->integer;
-    if (result < INT_MIN || result > INT_MAX) {
-        fprintf(stderr, "Runtime error: integer overflow in subtraction.\n");
+    int64_t result;
+    if (__builtin_sub_overflow(a->integer, b->integer, &result)) {
+        fprintf(stderr, "Runtime error: signed 64-bit integer overflow in subtraction.\n");
         exit(1);
     }
-    return vnt_int((int)result);
+    return vnt_int(result);
 }
 
 VNT_NATIVE_ABI VntValue * vnt_mul(VntValue *a, VntValue *b) {
     require_number(a,b);
     if (a->type == VNT_FLOAT || b->type == VNT_FLOAT)
         return vnt_float(number_value(a) * number_value(b));
-    int64_t result = (int64_t)a->integer * (int64_t)b->integer;
-    if (result < INT_MIN || result > INT_MAX) {
-        fprintf(stderr, "Runtime error: integer overflow in multiplication.\n");
+    int64_t result;
+    if (__builtin_mul_overflow(a->integer, b->integer, &result)) {
+        fprintf(stderr, "Runtime error: signed 64-bit integer overflow in multiplication.\n");
         exit(1);
     }
-    return vnt_int((int)result);
+    return vnt_int(result);
 }
 
 VNT_NATIVE_ABI VntValue * vnt_div(VntValue *a, VntValue *b) {
@@ -585,7 +585,7 @@ VNT_NATIVE_ABI VntValue * vnt_div(VntValue *a, VntValue *b) {
     }
     if (a->type == VNT_FLOAT || b->type == VNT_FLOAT)
         return vnt_float(number_value(a) / number_value(b));
-    if (a->integer == INT_MIN && b->integer == -1) {
+    if (a->integer == INT64_MIN && b->integer == -1) {
         fprintf(stderr, "Runtime error: integer overflow in division.\n");
         exit(1);
     }
@@ -601,14 +601,17 @@ VNT_NATIVE_ABI VntValue * vnt_mod(VntValue *a, VntValue *b) {
         fprintf(stderr, "Runtime error: modulo by zero.\n");
         exit(1);
     }
-    if (a->integer == INT_MIN && b->integer == -1) return vnt_int(0);
+    if (a->integer == INT64_MIN && b->integer == -1) {
+        fprintf(stderr, "Runtime error: integer overflow in modulo.\n");
+        exit(1);
+    }
     return vnt_int(a->integer % b->integer);
 }
 
 VNT_NATIVE_ABI VntValue * vnt_neg(VntValue *a) {
     require_number(a, a);
     if (a->type == VNT_FLOAT) return vnt_float(-a->floating);
-    if (a->integer == INT_MIN) {
+    if (a->integer == INT64_MIN) {
         fprintf(stderr, "Runtime error: integer overflow in negation.\n");
         exit(1);
     }
@@ -648,6 +651,12 @@ VNT_NATIVE_ABI VntValue * vnt_ne(VntValue *a, VntValue *b) { return vnt_bool(!eq
 
 static int order(VntValue *a, VntValue *b, int op) {
     require_number(a,b);
+    if (a->type == VNT_INT && b->type == VNT_INT) {
+        if (op == 0) return a->integer > b->integer;
+        if (op == 1) return a->integer < b->integer;
+        if (op == 2) return a->integer >= b->integer;
+        return a->integer <= b->integer;
+    }
     double x=number_value(a), y=number_value(b);
     if (op == 0) return x > y;
     if (op == 1) return x < y;
@@ -680,7 +689,7 @@ static void print_value(VntValue *v) {
     if (!v) { printf("null"); return; }
     switch (v->type) {
         case VNT_NULL: printf("null"); break;
-        case VNT_INT: printf("%d", v->integer); break;
+        case VNT_INT: printf("%lld", (long long)v->integer); break;
         case VNT_FLOAT: printf("%.15g", v->floating); break;
         case VNT_BOOL: printf("%s", v->boolean ? "true" : "false"); break;
         case VNT_STRING: printf("%s", v->string); break;
@@ -721,17 +730,18 @@ static void print_value(VntValue *v) {
 VNT_NATIVE_ABI void vnt_print(VntValue *v) {
     print_value(v);
     putchar('\n');
+    fflush(stdout);
 }
 
 VNT_NATIVE_ABI VntValue * vnt_len(VntValue *v) {
-    if (v->type == VNT_STRING) return vnt_int((int)strlen(v->string));
+    if (v->type == VNT_STRING) return vnt_int((int64_t)strlen(v->string));
     if (v->type == VNT_ARRAY) return vnt_int(v->array.count);
     if (v->type == VNT_BYTES) {
-        if (v->bytes.length > INT_MAX) {
+        if (v->bytes.length > (uint64_t)INT64_MAX) {
             fprintf(stderr, "Runtime error: byte buffer is too large for len().\n");
             exit(1);
         }
-        return vnt_int((int)v->bytes.length);
+        return vnt_int((int64_t)v->bytes.length);
     }
     if (v->type == VNT_OBJECT) return vnt_int(v->object.count);
     fprintf(stderr, "Runtime error: len() requires a string, array, or object.\n");
@@ -809,20 +819,30 @@ VNT_NATIVE_ABI VntValue * vnt_sqrt(VntValue *x) { require_number(x,x); return vn
 VNT_NATIVE_ABI VntValue * vnt_sin(VntValue *x) { require_number(x,x); return vnt_float(sin(number_value(x))); }
 VNT_NATIVE_ABI VntValue * vnt_cos(VntValue *x) { require_number(x,x); return vnt_float(cos(number_value(x))); }
 VNT_NATIVE_ABI VntValue * vnt_tan(VntValue *x) { require_number(x,x); return vnt_float(tan(number_value(x))); }
-VNT_NATIVE_ABI VntValue * vnt_abs(VntValue *x) { require_number(x,x); return x->type==VNT_FLOAT ? vnt_float(fabs(x->floating)) : vnt_int(abs(x->integer)); }
+VNT_NATIVE_ABI VntValue * vnt_abs(VntValue *x) { require_number(x,x); if (x->type==VNT_FLOAT) return vnt_float(fabs(x->floating)); if (x->integer==INT64_MIN) { fprintf(stderr,"Runtime error: integer overflow in abs().\n"); exit(1); } return vnt_int(x->integer<0?-x->integer:x->integer); }
 VNT_NATIVE_ABI VntValue * vnt_floor(VntValue *x) { require_number(x,x); return vnt_float(floor(number_value(x))); }
 VNT_NATIVE_ABI VntValue * vnt_ceil(VntValue *x) { require_number(x,x); return vnt_float(ceil(number_value(x))); }
-VNT_NATIVE_ABI VntValue * vnt_min(VntValue *a,VntValue *b) { require_number(a,b); return number_value(a)<number_value(b)?a:b; }
-VNT_NATIVE_ABI VntValue * vnt_max(VntValue *a,VntValue *b) { require_number(a,b); return number_value(a)>number_value(b)?a:b; }
+VNT_NATIVE_ABI VntValue * vnt_min(VntValue *a,VntValue *b) {
+    require_number(a,b);
+    if (a->type == VNT_INT && b->type == VNT_INT)
+        return a->integer < b->integer ? a : b;
+    return number_value(a) < number_value(b) ? a : b;
+}
+VNT_NATIVE_ABI VntValue * vnt_max(VntValue *a,VntValue *b) {
+    require_number(a,b);
+    if (a->type == VNT_INT && b->type == VNT_INT)
+        return a->integer > b->integer ? a : b;
+    return number_value(a) > number_value(b) ? a : b;
+}
 VNT_NATIVE_ABI VntValue * vnt_range(VntValue *a, VntValue *b, VntValue *c, int argc) {
-    int start=0,end=0,step=1;
+    int64_t start=0,end=0,step=1;
     if (argc==1) { if(a->type!=VNT_INT) goto bad; end=a->integer; }
     else if(argc==2) { if(a->type!=VNT_INT||b->type!=VNT_INT) goto bad; start=a->integer; end=b->integer; }
     else { if(a->type!=VNT_INT||b->type!=VNT_INT||c->type!=VNT_INT) goto bad; start=a->integer; end=b->integer; step=c->integer; }
     if (!step) { fprintf(stderr,"Runtime error: range() step cannot be zero.\n"); exit(1); }
     VntValue *r=vnt_array_new();
-    if(step>0) for(int i=start;i<end;i+=step) vnt_array_push(r,vnt_int(i));
-    else for(int i=start;i>end;i+=step) vnt_array_push(r,vnt_int(i));
+    if(step>0) for(int64_t i=start;i<end;) { vnt_array_push(r,vnt_int(i)); if (i > INT64_MAX-step) break; i+=step; }
+    else for(int64_t i=start;i>end;) { vnt_array_push(r,vnt_int(i)); if (i < INT64_MIN-step) break; i+=step; }
     return r;
 bad:
     fprintf(stderr,"Runtime error: range() requires integer arguments.\n"); exit(1);
@@ -900,7 +920,7 @@ VNT_NATIVE_ABI VntValue * vnt_ffi_int(
         case 5: result = ((intptr_t (*)(intptr_t, intptr_t, intptr_t, intptr_t, intptr_t))proc)(args[0], args[1], args[2], args[3], args[4]); break;
         case 6: result = ((intptr_t (*)(intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t))proc)(args[0], args[1], args[2], args[3], args[4], args[5]); break;
     }
-    return vnt_int((int)result);
+    return vnt_int((int64_t)result);
 }
 
 
@@ -1489,8 +1509,11 @@ static VntGuiInputState vnt_gui_inputs[16];
 static int vnt_gui_input_count, vnt_gui_focused_input=-1;
 
 static VNT_NATIVE_ABI int vnt_gui_require_int(VntValue *v,const char *fn) {
-    if(!v || v->type!=VNT_INT) { fprintf(stderr,"Runtime error: %s expects integer arguments.\n",fn); exit(1); }
-    return v->integer;
+    if(!v || v->type!=VNT_INT || v->integer < INT_MIN || v->integer > INT_MAX) {
+        fprintf(stderr,"Runtime error: %s expects an integer in the platform UI range.\n",fn);
+        exit(1);
+    }
+    return (int)v->integer;
 }
 static COLORREF vnt_gui_color(int c) { return RGB((c>>16)&255,(c>>8)&255,c&255); }
 static VNT_NATIVE_ABI char * vnt_gui_trim(char *s) {
@@ -2112,26 +2135,29 @@ VNT_NATIVE_ABI VntValue *vnt_mem_realloc(VntValue *pointer, VntValue *size_value
 
 VNT_NATIVE_ABI VntValue *vnt_mem_ptr_add(VntValue *pointer, VntValue *offset_value) {
     uintptr_t base = (uintptr_t)vnt_require_pointer(pointer);
-    int offset = offset_value && offset_value->type == VNT_INT
+    int64_t offset = offset_value && offset_value->type == VNT_INT
         ? offset_value->integer : 0;
-    if (!offset_value || offset_value->type != VNT_INT ||
-        (offset > 0 && (uintptr_t)offset > UINTPTR_MAX - base) ||
-        (offset < 0 && (uintptr_t)(-(int64_t)offset) > base)) {
+    uint64_t magnitude = offset < 0
+        ? (uint64_t)(-(offset + 1)) + 1u : (uint64_t)offset;
+    if (!base || !offset_value || offset_value->type != VNT_INT ||
+        (offset >= 0 && magnitude > UINTPTR_MAX - base) ||
+        (offset < 0 && magnitude > base)) {
         fprintf(stderr, "Runtime error: invalid pointer offset.\n");
         exit(1);
     }
     return vnt_pointer_value((void *)(offset >= 0
-        ? base + (uintptr_t)offset
-        : base - (uintptr_t)(-(int64_t)offset)));
+        ? base + (uintptr_t)magnitude
+        : base - (uintptr_t)magnitude));
 }
 
 #define VNT_MEM_READ(name, ctype) \
 VNT_NATIVE_ABI VntValue *vnt_mem_read_##name(VntValue *pointer, VntValue *offset) { \
     ctype value; memcpy(&value, vnt_memory_address(pointer, offset, sizeof(value)), sizeof(value)); \
-    return vnt_int((int)value); \
+    return vnt_int((int64_t)value); \
 }
 VNT_MEM_READ(u8, uint8_t)
 VNT_MEM_READ(u32, uint32_t)
+VNT_MEM_READ(u64, uint64_t)
 #undef VNT_MEM_READ
 
 #define VNT_MEM_WRITE(name, ctype) \
@@ -2145,6 +2171,7 @@ VNT_NATIVE_ABI VntValue *vnt_mem_write_##name(VntValue *pointer, VntValue *offse
 }
 VNT_MEM_WRITE(u8, uint8_t)
 VNT_MEM_WRITE(u32, uint32_t)
+VNT_MEM_WRITE(u64, uint64_t)
 #undef VNT_MEM_WRITE
 
 VNT_NATIVE_ABI VntValue *vnt_mem_copy(VntValue *destination, VntValue *source,

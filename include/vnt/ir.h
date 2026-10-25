@@ -2,6 +2,7 @@
 #define VNT_IR_H
 
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <vnt/operators.h>
 
@@ -71,7 +72,7 @@ typedef struct {
     size_t next_sibling;
     size_t child_count;
     union {
-        int integer;
+        int64_t integer;
         int boolean;
         double floating;
         char *text;

@@ -23,7 +23,8 @@ $sources = @(
     "src/compiler/ir.c",
     "src/compiler/ir_lower.c",
     "src/compiler/cfg.c",
-    "src/compiler/x86_backend.c"
+    "src/compiler/x86_backend.c",
+    "src/compiler/freestanding_x86.c"
 )
 
 Write-Host "Building VNT..."

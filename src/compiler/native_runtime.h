@@ -235,7 +235,7 @@ static VntValue vnt_input(VntValue prompt) {
 static VntValue vnt_range1(VntValue end) {
     if (end.type != V_INTEGER) vnt_error("range() requires integer arguments.");
     VntValue result = vnt_array();
-    for (int64_t i=0;i<end.integer;i++) vnt_append(&result,vnt_int((int32_t)i));
+    for (int64_t i=0;i<end.integer;i++) vnt_append(&result,vnt_int(i));
     return result;
 }
 
@@ -243,7 +243,7 @@ static VntValue vnt_range2(VntValue start,VntValue end) {
     if (start.type != V_INTEGER || end.type != V_INTEGER)
         vnt_error("range() requires integer arguments.");
     VntValue result=vnt_array();
-    for (int64_t i=start.integer;i<end.integer;i++) vnt_append(&result,vnt_int((int32_t)i));
+    for (int64_t i=start.integer;i<end.integer;i++) vnt_append(&result,vnt_int(i));
     return result;
 }
 
@@ -254,10 +254,10 @@ static VntValue vnt_range3(VntValue start,VntValue end,VntValue step) {
     VntValue result=vnt_array();
     if (step.integer > 0)
         for (int64_t i=start.integer;i<end.integer;i+=step.integer)
-            vnt_append(&result,vnt_int((int32_t)i));
+            vnt_append(&result,vnt_int(i));
     else
         for (int64_t i=start.integer;i>end.integer;i+=step.integer)
-            vnt_append(&result,vnt_int((int32_t)i));
+            vnt_append(&result,vnt_int(i));
     return result;
 }
 

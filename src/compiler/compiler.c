@@ -7,7 +7,11 @@
 
 #include "x86_backend.h"
 
-int compiler_compile(AstNode *program, const char *assembly_path) {
+int vnt_emit_freestanding_x86_64(const VntIrProgram *ir,
+                                 const char *assembly_path);
+
+static int compile_mode(AstNode *program, const char *assembly_path,
+                        int freestanding) {
     if (!vnt_typecheck(program)) {
         fprintf(stderr, "Native compiler: type checking failed.\n");
         return 0;
@@ -41,12 +45,24 @@ int compiler_compile(AstNode *program, const char *assembly_path) {
     }
     vnt_cfg_free(&cfg);
 
-    if (!vnt_emit_x86_64(&ir, assembly_path)) {
-        fprintf(stderr, "Native compiler: x86-64 code generation failed.\n");
+    int emitted = freestanding
+        ? vnt_emit_freestanding_x86_64(&ir, assembly_path)
+        : vnt_emit_x86_64(&ir, assembly_path);
+    if (!emitted) {
+        fprintf(stderr, "%s compiler: x86-64 code generation failed.\n",
+                freestanding ? "Freestanding" : "Native");
         vnt_ir_free(&ir);
         return 0;
     }
 
     vnt_ir_free(&ir);
     return 1;
+}
+
+int compiler_compile(AstNode *program, const char *assembly_path) {
+    return compile_mode(program, assembly_path, 0);
+}
+
+int compiler_compile_freestanding(AstNode *program, const char *assembly_path) {
+    return compile_mode(program, assembly_path, 1);
 }

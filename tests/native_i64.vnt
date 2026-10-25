@@ -1,0 +1,15 @@
+let folded: i64 = 4294967296 + 2147483648
+print(folded)
+let value: i64 = 4294967296
+print(value)
+value = value * 3
+print(value)
+if value == 12884901888 {
+    print("NATIVE_I64_OK")
+} else {
+    print("NATIVE_I64_FAIL")
+}
+print(min(9007199254740993, 9007199254740992))
+print(max(9007199254740993, 9007199254740992))
+
+print(-9223372036854775808)

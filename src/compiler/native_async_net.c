@@ -4,9 +4,9 @@
  * This file is part of VNT and is licensed under the MIT License.
  * See the LICENSE file in the project root for the full license text.
  *
- * Bounded asynchronous HTTP request queue. Active transport cancellation and
- * caller-consumed response streaming are intentionally separate follow-up
- * capabilities; cancel() only succeeds before a worker starts a request.
+ * Bounded asynchronous HTTP request queue with active transport cancellation.
+ * Responses are still buffered under the existing 64 MiB cap; caller-consumed
+ * streaming with backpressure is a separate capability not implemented here.
  */
 #include <stdlib.h>
 #include <string.h>

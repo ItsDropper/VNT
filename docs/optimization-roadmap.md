@@ -13,6 +13,7 @@ This document tracks implementation work against observable compiler behavior. I
 - Direct HIR traversal by the x86-64 backend.
 - **Implemented on this branch:** safe literal unary folding for boolean NOT and integer/floating negation; integer minimum negation and unsupported/memory-affecting unary operations are intentionally left unfolded. Regression tests cover boolean NOT, integer negation, floating negation, and signed-negation overflow.
 - **Implemented on this branch:** CFG construction folds branches whose condition is a literal boolean, then prunes the dead arm. The CFG verifier now checks terminator-specific instruction, condition, and successor invariants, including synthesized jumps. Tests cover dead-arm pruning and the synthetic jump representation.
+- **Implemented on this branch:** backward variable liveness analysis computes `live_in`/`live_out` to a fixed point from CFG successors, block uses, and definitions. It exposes name-based queries and explicit cleanup, with tests for live-before-definition, live-through-definition, live-at-read, and dead-after-final-read. This is analysis infrastructure, not yet dead-store elimination or register allocation.
 - Runtime benchmark harness in `benchmarks/run.ps1`, including output checks, warmups, repeated timing, medians, and CSV output.
 
 ## Implementation sequence
@@ -32,6 +33,7 @@ Current branch delta: safe unary literal folding and constant-boolean CFG branch
 - Introduce an explicit basic-block representation with predecessor/successor edges.
 - Define stable value IDs and explicit terminators before implementing SSA.
 - Add dominance information and verified phi-node placement.
+- **Completed groundwork:** backward CFG liveness (`vnt_cfg_compute_liveness`) is now available to later register allocation and dead-store analysis.
 - Add verifier tests for malformed edges, unreachable blocks, dominance violations, and invalid phi inputs.
 - Keep the current HIR pipeline as the supported path until the new representation passes differential tests.
 

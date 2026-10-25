@@ -25,7 +25,7 @@ static int compile_native(AstNode *program, const char *output_path) {
         return 1;
     }
 
-    size_t command_size = strlen(assembly_path) + strlen(output_path) + 128;
+    size_t command_size = strlen(assembly_path) + strlen(output_path) + 512;
     char *command = malloc(command_size);
     if (!command) {
         fprintf(stderr, "Could not allocate memory.\n");
@@ -35,12 +35,12 @@ static int compile_native(AstNode *program, const char *output_path) {
     }
 
 #ifdef _WIN32
-    sprintf(command,
-        "gcc \"%s\" src/compiler/native_runtime.c -O3 -lgdi32 -luser32 -o \"%s\"",
+    snprintf(command, command_size,
+        "gcc \"%s\" src/compiler/native_runtime.c src/compiler/native_net.c src/compiler/native_async_net.c -O3 -lgdi32 -luser32 -lwinhttp -lws2_32 -o \"%s\"",
         assembly_path, output_path);
 #else
-    sprintf(command,
-        "gcc \"%s\" src/compiler/native_runtime.c -O3 -lm -ldl -o \"%s\"",
+    snprintf(command, command_size,
+        "gcc \"%s\" src/compiler/native_runtime.c src/compiler/native_net.c src/compiler/native_async_net.c -O3 -pthread -lm -ldl -lssl -lcrypto -o \"%s\"",
         assembly_path, output_path);
 #endif
 

@@ -182,7 +182,7 @@ The source-level standard library lives in `lib/std/`. Available modules include
 | `time.vnt` | Millisecond clock and sleep helpers |
 | `os.vnt` | Current directory and environment variables |
 | `process.vnt` | Start, inspect, wait for, and terminate child processes |
-| `net.vnt` | HTTP helpers backed by the system `curl` executable |
+| `net.vnt` | Native HTTP/HTTPS requests, status codes, headers, and downloads |
 | `log.vnt` | File and console logging |
 | `config.vnt` | Plain-text configuration helpers |
 | `json.vnt` | JSON-related source helpers |
@@ -200,7 +200,7 @@ fs.append_text(path, "Second line\n")
 print(fs.read_text(path))
 ```
 
-File operations handle text, not arbitrary binary data. The networking module requires `curl` (or `curl.exe` on Windows) on `PATH`; it is a runtime bridge to that program, not a built-in HTTP stack. Read the module source and tutorial documentation for exact return behavior and limitations.
+File operations handle text, not arbitrary binary data. Networking is implemented in the native C runtime: Windows uses WinHTTP, while Unix-like builds use sockets and OpenSSL. No `curl` executable is required. Use `net.request(method, url, headers, body)` for custom methods and headers. HTTP responses are returned as strings; status helpers return a three-digit status string and `000` indicates a transport failure. Downloads preserve binary bytes, stream successful direct responses to disk in bounded chunks, and accept only 2xx responses. Redirect and configured-proxy download fallbacks currently use the buffered request path. The ordinary response API has no fixed application-level size cap; practical limits are available memory and allocation success.
 
 ## Native runtime APIs
 
@@ -289,7 +289,7 @@ The checks build VNT and exercise language features, module loading, and runtime
 - GUI APIs currently target Windows.
 - GUI styling implements a small CSS-like subset, not full CSS or browser behavior.
 - Text file APIs are not binary-safe.
-- HTTP helpers depend on the system `curl` executable and return response bodies as strings; they are not a native HTTP implementation.
+- Native HTTP/HTTPS support is still evolving. Ordinary response values are text-oriented; streaming downloads write directly to files for direct requests, while redirect/proxy download fallbacks are buffered. The Unix transport supports HTTP(S) proxy environment variables and NO_PROXY; Windows uses WinHTTP's system proxy behavior. Binary-safe request/response arrays are available, but a compact dedicated byte-buffer type and Unix TLS connection pooling remain unimplemented. Unix direct HTTP requests reuse a single keep-alive connection when response framing permits; Windows uses WinHTTP's shared connection pool. The Unix-like HTTPS path requires OpenSSL development/runtime libraries.
 - The standard library and runtime API may change as the language develops.
 
 ## Roadmap

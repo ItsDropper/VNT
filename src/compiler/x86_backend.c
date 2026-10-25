@@ -123,7 +123,27 @@ static int float_label(HirGen *g,double d) {
     if(g->float_count==g->float_cap){size_t nc=g->float_cap?g->float_cap*2:8;HirFloat*p=realloc(g->floats,nc*sizeof(*p));if(!p){fail(g,"out of memory in float table.");return 0;}g->floats=p;g->float_cap=nc;}
     int l=label_new(g);g->floats[g->float_count++]=(HirFloat){d,l};return l;
 }
-static void call0(HirGen *g,const char *name) { fputs("    subq $32,%rsp\n    call ",g->out);fputs(name,g->out);fputs("\n    addq $32,%rsp\n",g->out); }
+static void call0(HirGen *g,const char *name) {
+    /*
+     * Expression evaluation can leave earlier arguments on the stack while
+     * later arguments are evaluated. Align every runtime call dynamically so
+     * nested calls obey the Microsoft x64 ABI on both Windows and SysV hosts.
+     */
+    int aligned = label_new(g), done = label_new(g);
+    fprintf(g->out,
+        "    testq $8,%%rsp\n"
+        "    jz .L%d\n"
+        "    subq $40,%%rsp\n"
+        "    call %s\n"
+        "    addq $40,%%rsp\n"
+        "    jmp .L%d\n"
+        ".L%d:\n"
+        "    subq $32,%%rsp\n"
+        "    call %s\n"
+        "    addq $32,%%rsp\n"
+        ".L%d:\n",
+        aligned, name, done, aligned, name, done);
+}
 static void emit_expr(HirGen *g,size_t i);
 static void emit_stmt(HirGen *g,size_t i);
 static void emit_stmt_role(HirGen *g,size_t i,VntIrEdgeRole role) {
@@ -167,7 +187,9 @@ static const char *builtin(const char *s,int *arity) {
       {"process_launch","vnt_process_launch",1},
       {"process_poll","vnt_process_poll",1},{"process_wait","vnt_process_wait",2},{"process_pid","vnt_process_pid",1},
       {"process_terminate","vnt_process_terminate",1},{"process_stdout","vnt_process_stdout",1},{"process_stderr","vnt_process_stderr",1},
-      {"process_exit_code","vnt_process_exit_code",1},{"gui_css","vnt_gui_css",1},{"gui_button","vnt_gui_button",3},
+      {"process_exit_code","vnt_process_exit_code",1},{"net_stream_start","vnt_net_stream_start",4},{"net_stream_read","vnt_net_stream_read",2},{"net_stream_done","vnt_net_stream_done",1},{"net_stream_status","vnt_net_stream_status",1},{"net_stream_cancel","vnt_net_stream_cancel",1},{"net_stream_release","vnt_net_stream_release",1},{"net_async_start","vnt_net_async_start",4},{"net_async_poll","vnt_net_async_poll",1},{"net_async_wait","vnt_net_async_wait",2},{"net_async_cancel","vnt_net_async_cancel",1},{"net_async_result","vnt_net_async_result",1},{"net_async_status","vnt_net_async_status",1},{"net_async_release","vnt_net_async_release",1},{"net_request","vnt_net_request",4},{"net_request_bytes","vnt_net_request_bytes",4},{"net_status","vnt_net_status",3},
+      {"net_download","vnt_net_download",3},{"net_url_encode","vnt_net_url_encode",1},
+      {"gui_css","vnt_gui_css",1},{"gui_button","vnt_gui_button",3},
       {"gui_button_sized","vnt_gui_button_sized",5},{"gui_textarea","vnt_gui_textarea",5},{"gui_input_set","vnt_gui_input_set",3},{"gui_textarea_set","vnt_gui_textarea_set",3},{"json_value_at","vnt_json_value_at",3},
       {"gui_panel_color","vnt_gui_panel_color",5},{"gui_text_style","vnt_gui_text_style",5},{"gui_input","vnt_gui_input",4},
       {"gui_checkbox","vnt_gui_checkbox",4},{"gui_progress","vnt_gui_progress",4},{"gui_separator","vnt_gui_separator",3},

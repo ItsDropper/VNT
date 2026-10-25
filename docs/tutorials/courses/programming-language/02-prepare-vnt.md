@@ -12,7 +12,7 @@ Windows, from the repository root:
 .\build.ps1
 ~~~
 
-On Linux, follow the repository's documented compiler build process. The CI workflow shows the exact source files used: [vnx-tests.yml](../../../../../.github/workflows/vnx-tests.yml).
+On Linux, follow the repository's documented compiler build process. The CI workflow shows the exact source files used: [vnx-tests.yml](../../../../.github/workflows/vnx-tests.yml).
 
 ## Step 2: compile the interpreter
 

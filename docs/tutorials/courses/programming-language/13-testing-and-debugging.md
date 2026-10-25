@@ -39,7 +39,7 @@ On Linux, use `printf 'vnx/tests/my-test.vnx\n' | vnx/build/vnx` for a program w
 
 ## Step 3: inspect CI
 
-Open [vnx-tests.yml](../../../../../.github/workflows/vnx-tests.yml). It builds VNT, compiles the interpreter, checks a string-indexing regression, runs the smoke test, tests game endings, and checks invalid syntax. See the [GitHub Actions workflow](https://github.com/ItsDropper/VNT/actions/workflows/vnx-tests.yml) for run history.
+Open [vnx-tests.yml](../../../../.github/workflows/vnx-tests.yml). It builds VNT, compiles the interpreter, checks a string-indexing regression, runs the smoke test, tests game endings, and checks invalid syntax. See the [GitHub Actions workflow](https://github.com/ItsDropper/VNT/actions/workflows/vnx-tests.yml) for run history.
 
 ## Debugging order
 

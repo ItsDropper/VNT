@@ -1,7 +1,20 @@
 # Copyright (c) 2026 ItsDropper
 # Licensed under the MIT License. See LICENSE in the repository root.
 
-# Inline assembly is limited to hardware I/O/control instructions and linker-symbol addresses.
+# VNTOS hardware I/O lives in VNT. Inline assembly is kept to port I/O,
+# VGA memory access, and CPU/linker operations.
+
+global vga_cursor = 0
+global vga_color = 15
+global mouse_x = 40
+global mouse_y = 12
+global mouse_buttons = 0
+global mouse_packet_index = 0
+global mouse_packet0 = 0
+global mouse_packet1 = 0
+global mouse_packet2 = 0
+global keyboard_shift = 0
+global keyboard_caps = 0
 
 fun serial_init() {
     unsafe {
@@ -17,10 +30,10 @@ fun serial_putc(value: int) {
     return 0
 }
 
-fun serial_getc() -> int {
-    let result: int = 0
+fun serial_try_getc() -> int {
+    let result: int = -1
     unsafe {
-        asm volatile("movw $0x3fd, %dx; 1: inb %dx, %al; testb $1, %al; jz 1b; movw $0x3f8, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp)")
+        asm volatile("movw $0x3fd, %dx; inb %dx, %al; testb $1, %al; jz 1f; movw $0x3f8, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp); jmp 2f; 1: movl $-1, -8(%rbp); 2:")
     }
     return result
 }
@@ -110,84 +123,368 @@ fun cpu_reboot() {
     return 0
 }
 
+# VGA color is the standard 4-bit foreground/background attribute.
+# The CRTC cursor is read/written so text output and the hardware cursor agree.
+fun vga_putc(value: int) {
+    let keep_cursor: int = vga_cursor
+    let keep_color: int = vga_color
+    unsafe {
+        asm volatile("movl -8(%rbp), %eax; movq vnt_global_vga_cursor(%rip), %rcx; cmpb $10, %al; je 1f; cmpb $13, %al; je 2f; cmpb $8, %al; je 3f; movabsq $0xb8000, %rdi; leaq (%rdi,%rcx,2), %rdi; movb %al, (%rdi); movq vnt_global_vga_color(%rip), %rax; movb %al, 1(%rdi); incq %rcx; jmp 4f; 1: movq %rcx, %rax; xorq %rdx, %rdx; movq $80, %rsi; divq %rsi; incq %rax; imulq $80, %rax, %rcx; jmp 4f; 2: movq %rcx, %rax; xorq %rdx, %rdx; movq $80, %rsi; divq %rsi; imulq $80, %rax, %rcx; jmp 4f; 3: testq %rcx, %rcx; jz 4f; decq %rcx; movabsq $0xb8000, %rdi; leaq (%rdi,%rcx,2), %rdi; movw $0x0f20, (%rdi); 4: cmpq $2000, %rcx; jb 5f; movabsq $0xb8000, %rsi; leaq 160(%rsi), %rsi; movabsq $0xb8000, %rdi; movl $3840, %ecx; rep movsb; movabsq $0xb8000, %rdi; addq $3840, %rdi; movl $80, %ecx; 6: movw $0x0f20, (%rdi); addq $2, %rdi; loop 6b; movq $1920, %rcx; 5: movq %rcx, vnt_global_vga_cursor(%rip); movw $0x3d4, %dx; movb $14, %al; outb %al, %dx; movw $0x3d5, %dx; movl %ecx, %eax; shrl $8, %eax; outb %al, %dx; movw $0x3d4, %dx; movb $15, %al; outb %al, %dx; movw $0x3d5, %dx; movl vnt_global_vga_cursor(%rip), %eax; outb %al, %dx")
+    }
+    return 0
+}
+
+fun vga_puts(text: string) {
+    let index: int = 0
+    while text[index] != 0 {
+        vga_putc(text[index])
+        index = index + 1
+    }
+    return 0
+}
+
+fun console_putc(value: int) {
+    vga_putc(value)
+    serial_putc(value)
+    return 0
+}
+
+fun console_puts(text: string) {
+    vga_puts(text)
+    serial_puts(text)
+    return 0
+}
+
+# 8042 controller polling. Timeouts prevent a missing PS/2 device from hanging boot.
+fun ps2_wait_input_clear() -> int {
+    let attempts: int = 0
+    let status: int = 0
+    while attempts < 100000 {
+        unsafe {
+            asm volatile("movw $0x64, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp)")
+        }
+        status = status
+        if (status & 2) == 0 {
+            return 1
+        }
+        attempts = attempts + 1
+    }
+    return 0
+}
+
+fun ps2_wait_output_full() -> int {
+    let attempts: int = 0
+    let status: int = 0
+    while attempts < 100000 {
+        unsafe {
+            asm volatile("movw $0x64, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp)")
+        }
+        if (status & 1) != 0 {
+            return 1
+        }
+        attempts = attempts + 1
+    }
+    return 0
+}
+
+fun ps2_write_command(value: int) {
+    ps2_wait_input_clear()
+    unsafe {
+        asm volatile("movl -8(%rbp), %eax; movw $0x64, %dx; outb %al, %dx")
+    }
+    return 0
+}
+
+fun ps2_write_data(value: int) {
+    ps2_wait_input_clear()
+    unsafe {
+        asm volatile("movl -8(%rbp), %eax; movw $0x60, %dx; outb %al, %dx")
+    }
+    return 0
+}
+
+fun ps2_read_data() -> int {
+    let result: int = -1
+    if ps2_wait_output_full() == 0 {
+        return -1
+    }
+    unsafe {
+        asm volatile("movw $0x60, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp)")
+    }
+    return result
+}
+
+fun ps2_mouse_command(value: int) {
+    ps2_write_command(0xd4)
+    ps2_write_data(value)
+    return 0
+}
+
+fun ps2_init() {
+    # Enable the auxiliary device port and request streaming reports.
+    ps2_write_command(0xa8)
+    ps2_mouse_command(0xf4)
+    ps2_write_data(0xf4)
+    # Drain ACK/RESEND bytes before starting input polling.
+    let count: int = 0
+    while count < 8 {
+        if ps2_wait_output_full() == 0 {
+            break
+        }
+        ps2_read_data()
+        count = count + 1
+    }
+    return 0
+}
+
+# Set-1 keyboard scan codes. Releases are filtered by the high bit.
+fun keyboard_translate(scan: int) -> int {
+    if scan == 0x02 { return 49 }
+    if scan == 0x03 { return 50 }
+    if scan == 0x04 { return 51 }
+    if scan == 0x05 { return 52 }
+    if scan == 0x06 { return 53 }
+    if scan == 0x07 { return 54 }
+    if scan == 0x08 { return 55 }
+    if scan == 0x09 { return 56 }
+    if scan == 0x0a { return 57 }
+    if scan == 0x0b { return 48 }
+    if scan == 0x10 { return 113 }
+    if scan == 0x11 { return 119 }
+    if scan == 0x12 { return 101 }
+    if scan == 0x13 { return 114 }
+    if scan == 0x14 { return 116 }
+    if scan == 0x15 { return 121 }
+    if scan == 0x16 { return 117 }
+    if scan == 0x17 { return 105 }
+    if scan == 0x18 { return 111 }
+    if scan == 0x19 { return 112 }
+    if scan == 0x1e { return 97 }
+    if scan == 0x1f { return 115 }
+    if scan == 0x20 { return 100 }
+    if scan == 0x21 { return 102 }
+    if scan == 0x22 { return 103 }
+    if scan == 0x23 { return 104 }
+    if scan == 0x24 { return 106 }
+    if scan == 0x25 { return 107 }
+    if scan == 0x26 { return 108 }
+    if scan == 0x2c { return 122 }
+    if scan == 0x2d { return 120 }
+    if scan == 0x2e { return 99 }
+    if scan == 0x2f { return 118 }
+    if scan == 0x30 { return 98 }
+    if scan == 0x31 { return 110 }
+    if scan == 0x32 { return 109 }
+    if scan == 0x39 { return 32 }
+    if scan == 0x1c { return 13 }
+    if scan == 0x0e { return 8 }
+    if scan == 0x0f { return 9 }
+    if scan == 0x2a || scan == 0x36 { keyboard_shift = 1; return -1 }
+    if scan == 0xaa || scan == 0xb6 { keyboard_shift = 0; return -1 }
+    if scan == 0x3a { keyboard_caps = 1 - keyboard_caps; return -1 }
+    return -1
+}
+
+fun keyboard_poll() -> int {
+    let status: int = 0
+    let scan: int = 0
+    unsafe {
+        asm volatile("movw $0x64, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp)")
+    }
+    if (status & 1) == 0 {
+        return -1
+    }
+    if (status & 0x20) != 0 {
+        return -1
+    }
+    unsafe {
+        asm volatile("movw $0x60, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp)")
+    }
+    scan = status
+    if scan == 0xe0 {
+        return -1
+    }
+    if scan >= 0x80 {
+        if scan == 0xaa || scan == 0xb6 { keyboard_shift = 0 }
+        return -1
+    }
+    let character: int = keyboard_translate(scan)
+    if character >= 97 && character <= 122 {
+        if keyboard_shift == 1 || keyboard_caps == 1 {
+            character = character - 32
+        }
+    }
+    if character >= 0 && character <= 255 {
+        return character
+    }
+    return -1
+}
+
+fun mouse_poll() {
+    let status: int = 0
+    let data: int = 0
+    unsafe {
+        asm volatile("movw $0x64, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp)")
+    }
+    if (status & 1) == 0 || (status & 0x20) == 0 {
+        return 0
+    }
+    unsafe {
+        asm volatile("movw $0x60, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp)")
+    }
+    data = status
+    if mouse_packet_index == 0 {
+        if (data & 8) == 0 { return 0 }
+        mouse_packet0 = data
+        mouse_packet_index = 1
+    } else if mouse_packet_index == 1 {
+        mouse_packet1 = data
+        mouse_packet_index = 2
+    } else {
+        mouse_packet2 = data
+        mouse_packet_index = 0
+        if (mouse_packet0 & 0x10) == 0 {
+            mouse_x = mouse_x + mouse_packet1
+        } else {
+            mouse_x = mouse_x - (256 - mouse_packet1)
+        }
+        if (mouse_packet0 & 0x20) == 0 {
+            mouse_y = mouse_y - mouse_packet2
+        } else {
+            mouse_y = mouse_y + (256 - mouse_packet2)
+        }
+        if mouse_x < 0 { mouse_x = 0 }
+        if mouse_x > 79 { mouse_x = 79 }
+        if mouse_y < 0 { mouse_y = 0 }
+        if mouse_y > 24 { mouse_y = 24 }
+        mouse_buttons = mouse_packet0 & 7
+    }
+    return 0
+}
+
 fun kernel_main() {
     serial_init()
-    serial_puts("VNTOS_BOOT_OK\r\nVNTOS - freestanding x86-64 serial shell\r\nType help for commands.\r\n")
+    vga_color = 0x0f
+    vga_cursor = 0
+    vga_puts("VNTOS\r\nVNT-compiled x86-64 kernel\r\n")
+    vga_puts("VGA console active. PS/2 keyboard and mouse polling enabled.\r\n")
+    vga_puts("Type help. Serial COM1 remains available for diagnostics.\r\n\r\n")
+    serial_puts("VNTOS_BOOT_OK\r\nVNTOS - freestanding x86-64 console\r\nType help for commands.\r\n")
+    ps2_init()
+    vga_puts("VNTOS> ")
     serial_puts("VNTOS> ")
-    serial_puts("VNTOS_COMMAND_LINE_READY\r\n")
-
     let buffer: string = ""
-    # Reserve a 128-byte command buffer in this function frame; no global symbol needed.
     unsafe {
         asm volatile("subq $128, %rsp; leaq -160(%rbp), %rax; movq %rax, -8(%rbp)")
     }
     let length: int = 0
-    let character: int = 0
+    let character: int = -1
     let handled: int = 0
 
     while 1 == 1 {
-        character = serial_getc()
+        mouse_poll()
+        character = keyboard_poll()
+        if character < 0 {
+            character = serial_try_getc()
+        }
+        if character < 0 {
+            continue
+        }
         if character == 13 || character == 10 {
             buffer[length] = 0
-            serial_putc(10)
+            console_puts("\r\n")
             handled = 0
-
             if str_eq(buffer, "help") {
-                serial_puts("Commands: help, about, clear, echo, mem, reboot, halt\r\n")
+                console_puts("Commands: help, about, clear, echo, mem, mouse, reboot, halt\r\n")
                 handled = 1
             }
             if str_eq(buffer, "about") {
-                serial_puts("VNTOS: VNT-compiled freestanding kernel on x86-64.\r\n")
+                console_puts("VNTOS: VNT-compiled freestanding x86-64 kernel.\r\n")
                 handled = 1
             }
             if str_eq(buffer, "clear") {
-                serial_putc(27)
-                serial_puts("[2J[H")
+                vga_cursor = 0
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_puts("                                                                                ")
+                vga_cursor = 0
+                console_puts("VNTOS screen cleared.\r\n")
                 handled = 1
             }
             if str_eq(buffer, "mem") {
-                serial_puts("Kernel start: ")
+                console_puts("Kernel start: ")
                 serial_hex(kernel_start_addr())
-                serial_puts("Kernel end: ")
+                console_puts("Kernel end: ")
                 serial_hex(kernel_end_addr())
-                serial_puts("Identity map: 0x0000000000000000-0x000000003fffffff (1 GiB)\r\n")
+                console_puts("Identity map: first 1 GiB\r\n")
+                handled = 1
+            }
+            if str_eq(buffer, "mouse") {
+                console_puts("PS/2 mouse x=")
+                serial_hex(mouse_x)
+                console_puts("y=")
+                serial_hex(mouse_y)
+                console_puts("buttons=")
+                serial_hex(mouse_buttons)
                 handled = 1
             }
             if starts_with(buffer, "echo ") {
-                serial_puts_offset(buffer, 5)
-                serial_puts("\r\n")
+                console_puts_offset(buffer, 5)
+                console_puts("\r\n")
                 handled = 1
             }
             if str_eq(buffer, "reboot") {
-                serial_puts("Rebooting...\r\n")
+                console_puts("Rebooting...\r\n")
                 cpu_reboot()
             }
             if str_eq(buffer, "halt") {
-                serial_puts("CPU halted.\r\n")
+                console_puts("CPU halted.\r\n")
                 cpu_halt()
             }
             if handled == 0 && length != 0 {
-                serial_puts("Unknown command. Type help.\r\n")
+                console_puts("Unknown command. Type help.\r\n")
             }
-
             length = 0
             buffer[0] = 0
-            serial_puts("VNTOS> ")
+            console_puts("VNTOS> ")
         } else if character == 8 || character == 127 {
             if length > 0 {
                 length = length - 1
                 buffer[length] = 0
-                serial_putc(8)
-                serial_putc(32)
-                serial_putc(8)
+                console_putc(8)
+                console_putc(32)
+                console_putc(8)
             }
         } else if character >= 32 && character != 127 {
             if length < 127 {
                 buffer[length] = character
                 length = length + 1
-                serial_putc(character)
+                console_putc(character)
             }
         }
+        character = -1
     }
     return 0
 }

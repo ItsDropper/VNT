@@ -70,6 +70,14 @@ static int check_fold_case(AstNode *expression, VntIrOpcode expected_opcode,
     }
 
     CHECK(vnt_ir_validate(&ir), "HIR validates after AST is freed");
+
+    /* Running the optimizer again must be structurally stable. */
+    size_t optimized_count = ir.node_count;
+    CHECK(vnt_ir_optimize(&ir), "optimization is safe to run repeatedly");
+    CHECK(ir.node_count == optimized_count,
+          "a second optimization pass does not change stable HIR");
+    CHECK(vnt_ir_validate(&ir), "HIR remains valid after repeated optimization");
+
     VntCfg cfg = {0};
     CHECK(vnt_cfg_build(&ir, &cfg), "CFG builds from optimized HIR");
     CHECK(vnt_cfg_validate(&cfg), "CFG validates after HIR optimization");

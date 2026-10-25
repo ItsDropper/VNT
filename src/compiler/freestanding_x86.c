@@ -141,13 +141,26 @@ static int emit_expression(FreestandingGen *g, size_t index) {
         if (!n->value.text) { fail(g, "call has no function name."); return 0; }
         const VntIrNode *target = find_function(g->ir, n->value.text);
         if (!target) { fail(g, "call to unknown freestanding function."); return 0; }
-        if (n->child_count != 0 || target->name_count != 0) {
-            fail(g, "freestanding function calls currently require zero arguments and zero parameters.");
+        if (n->child_count != target->name_count || target->name_count > 6) {
+            fail(g, "freestanding calls require matching arity and at most six register arguments.");
             return 0;
         }
+        static const char *arg_regs[] = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
+        size_t argc = target->name_count;
+        size_t area = ((argc + 1) & ~(size_t)1) * 8;
+        if (area) fprintf(g->out, "    subq $%zu, %%rsp\n", area);
+        size_t ai = 0;
+        for (size_t c = n->first_child; c != VNT_IR_NO_NODE; c = g->ir->nodes[c].next_sibling) {
+            if (g->ir->nodes[c].role != VNT_IR_EDGE_ARGUMENT) continue;
+            if (!emit_expression(g, c)) return 0;
+            fprintf(g->out, "    movq %%rax, %zu(%%rsp)\n", ai++ * 8);
+        }
+        for (size_t i = 0; i < argc; ++i)
+            fprintf(g->out, "    movq %zu(%%rsp), %s\n", i * 8, arg_regs[i]);
         fputs("    call ", g->out);
         emit_function_symbol(g->out, n->value.text);
-        fputs("\n", g->out);
+        fputc('\n', g->out);
+        if (area) fprintf(g->out, "    addq $%zu, %%rsp\n", area);
         return 1;
     }
     case VNT_IR_INTEGER:
@@ -409,8 +422,8 @@ int vnt_emit_freestanding_x86_64(const VntIrProgram *ir,
          fn = ir->nodes[fn].next_sibling) {
         const VntIrNode *function = &ir->nodes[fn];
         if (function->opcode != VNT_IR_FUNCTION) continue;
-        if (function->name_count != 0) {
-            fail(&g, "freestanding functions currently require zero parameters.");
+        if (function->name_count > 6) {
+            fail(&g, "freestanding functions support at most six parameters.");
             break;
         }
         for (size_t i = 0; i < g.variable_count; ++i) {
@@ -418,6 +431,13 @@ int vnt_emit_freestanding_x86_64(const VntIrProgram *ir,
             free(g.variable_types[i]);
         }
         g.variable_count = 0;
+        for (size_t p = 0; p < function->name_count; ++p) {
+            if (!add_variable(&g, function->names[p])) {
+                fail(&g, "out of memory collecting function parameters.");
+                break;
+            }
+        }
+        if (g.failed) break;
         collect_variables(&g, fn);
         if (g.failed) break;
         fputs(".globl ", out);
@@ -430,6 +450,9 @@ int vnt_emit_freestanding_x86_64(const VntIrProgram *ir,
         size_t frame = g.variable_count * 8;
         frame = (frame + 15) & ~(size_t)15;
         if (frame) fprintf(out, "    subq $%zu, %%rsp\n", frame);
+        static const char *arg_regs[] = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
+        for (size_t p = 0; p < function->name_count; ++p)
+            fprintf(out, "    movq %s, -%zu(%%rbp)\\n", arg_regs[p], (p + 1) * 8);
         for (size_t st = function->first_child; st != VNT_IR_NO_NODE;
              st = ir->nodes[st].next_sibling) {
             if (ir->nodes[st].role == VNT_IR_EDGE_BODY &&

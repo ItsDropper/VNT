@@ -22,6 +22,10 @@ static __declspec(thread) int vnt_native_http_disable_pool;
 static __thread int vnt_native_http_disable_pool;
 #endif
 
+extern int vnt_native_http_async_current_handle(void);
+extern void vnt_native_http_async_set_transport(int handle, intptr_t transport);
+extern int vnt_native_http_async_should_close_transport(int handle, intptr_t transport);
+
 static char *net_copy(const char *s, size_t n) {
     char *p = (char *)malloc(n + 1);
     if (!p) return NULL;
@@ -370,6 +374,8 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
         if (connection) WinHttpCloseHandle(connection);
         return NULL;
     }
+    int async_handle = vnt_native_http_async_current_handle();
+    if (async_handle) vnt_native_http_async_set_transport(async_handle, (intptr_t)request);
     DWORD redirect_policy = WINHTTP_OPTION_REDIRECT_POLICY_NEVER;
     WinHttpSetOption(request, WINHTTP_OPTION_REDIRECT_POLICY, &redirect_policy, sizeof(redirect_policy));
     if (headers && *headers) {
@@ -388,7 +394,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     }
     size_t body_size = body ? body_length : 0;
     if (body_size > MAXDWORD) {
-        WinHttpCloseHandle(request);
+        if (!async_handle || vnt_native_http_async_should_close_transport(async_handle, (intptr_t)request)) WinHttpCloseHandle(request);
         if (connection) WinHttpCloseHandle(connection);
         return NULL;
     }
@@ -412,7 +418,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
                 char *next_url = win_resolve_redirect(url, location);
                 free(location);
                 free(wide_location);
-                WinHttpCloseHandle(request);
+                if (!async_handle || vnt_native_http_async_should_close_transport(async_handle, (intptr_t)request)) WinHttpCloseHandle(request);
                 if (connection) WinHttpCloseHandle(connection);
                         if (!next_url) return NULL;
                 const char *next_method = method ? method : "GET";
@@ -463,7 +469,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     }
     if (result) result[used] = '\0';
     if (response_length) *response_length = used;
-    if (request) WinHttpCloseHandle(request);
+    if (request) if (!async_handle || vnt_native_http_async_should_close_transport(async_handle, (intptr_t)request)) WinHttpCloseHandle(request);
     if (connection) WinHttpCloseHandle(connection);
     if (!ok) { free(result); return NULL; }
     if (!result) result = net_copy("", 0);
@@ -954,6 +960,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
         }
     }
     int fd = -1, reused_pool = 0;
+    int async_handle = vnt_native_http_async_current_handle();
     SSL_CTX *ctx = NULL;
     SSL *ssl = NULL;
     if (!vnt_native_http_disable_pool && !use_proxy && vnt_http_pool_fd >= 0) {
@@ -982,18 +989,19 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     for (struct addrinfo *a = addresses; fd < 0 && a; a = a->ai_next) {
         fd = (int)socket(a->ai_family, a->ai_socktype, a->ai_protocol);
         if (fd < 0) continue;
+        if (async_handle) vnt_native_http_async_set_transport(async_handle, (intptr_t)fd + 1);
         struct timeval timeout = {30, 0};
         setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
         setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
         if (connect(fd, a->ai_addr, a->ai_addrlen) == 0) break;
-        close(fd); fd = -1;
+        if (vnt_native_http_async_should_close_transport(async_handle, (intptr_t)fd + 1)) if (vnt_native_http_async_should_close_transport(async_handle, (intptr_t)fd + 1)) close(fd); fd = -1;
     }
     if (addresses) freeaddrinfo(addresses);
     if (fd < 0) { free(proxy_url); parsed_url_free(&proxy); parsed_url_free(&u); return NULL; }
     if (use_proxy && u.tls) {
         size_t need = strlen(u.host) + strlen(u.port) + 128;
         char *connect_request = (char *)malloc(need);
-        if (!connect_request) { close(fd); free(proxy_url); parsed_url_free(&proxy); parsed_url_free(&u); return NULL; }
+        if (!connect_request) { if (vnt_native_http_async_should_close_transport(async_handle, (intptr_t)fd + 1)) close(fd); free(proxy_url); parsed_url_free(&proxy); parsed_url_free(&u); return NULL; }
         int cn = snprintf(connect_request, need, "CONNECT %s:%s HTTP/1.1\r\nHost: %s:%s\r\nProxy-Connection: keep-alive\r\n\r\n",
                           u.host, u.port, u.host, u.port);
         int sent = cn > 0 && (size_t)cn < need && write_all(fd, NULL, connect_request, (size_t)cn);
@@ -1013,7 +1021,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
         if (sscanf(response_headers, "HTTP/%*u.%*u %d", &proxy_status) != 1 ||
             proxy_status != 200 || hn < 4 ||
             memcmp(response_headers + hn - 4, "\r\n\r\n", 4) != 0) {
-            close(fd); free(proxy_url); parsed_url_free(&proxy); parsed_url_free(&u); return NULL;
+            if (vnt_native_http_async_should_close_transport(async_handle, (intptr_t)fd + 1)) close(fd); free(proxy_url); parsed_url_free(&proxy); parsed_url_free(&u); return NULL;
         }
     }
     free(proxy_url);
@@ -1145,7 +1153,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
             free(raw);
             if (ssl) { SSL_shutdown(ssl); SSL_free(ssl); }
             if (ctx) SSL_CTX_free(ctx);
-            close(fd); parsed_url_free(&u);
+            if (vnt_native_http_async_should_close_transport(async_handle, (intptr_t)fd + 1)) close(fd); parsed_url_free(&u);
             if (!next_url) return NULL;
             const char *next_method = method ? method : "GET";
             const char *next_body = body ? body : "";
@@ -1199,13 +1207,13 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     }
     if (ssl) { SSL_shutdown(ssl); SSL_free(ssl); }
     if (ctx) SSL_CTX_free(ctx);
-    if (fd >= 0) close(fd);
+    if (fd >= 0 && vnt_native_http_async_should_close_transport(async_handle, (intptr_t)fd + 1)) if (vnt_native_http_async_should_close_transport(async_handle, (intptr_t)fd + 1)) close(fd);
     parsed_url_free(&u);
     return result;
 fail:
     if (ssl) SSL_free(ssl);
     if (ctx) SSL_CTX_free(ctx);
-    if (fd >= 0) close(fd);
+    if (fd >= 0 && vnt_native_http_async_should_close_transport(async_handle, (intptr_t)fd + 1)) if (vnt_native_http_async_should_close_transport(async_handle, (intptr_t)fd + 1)) close(fd);
     if (reused_pool) vnt_http_pool_close();
     parsed_url_free(&u);
     return NULL;

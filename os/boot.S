@@ -121,7 +121,7 @@ os_shell:
     movw $0xe9, %dx
     movb $83, %al
     outb %al, %dx
-    call os_serial_init
+    call vnt_fn_serial_init
     leaq .Los_welcome(%rip), %rdi
     call os_puts
     leaq .Los_prompt(%rip), %rdi
@@ -289,31 +289,6 @@ os_shell:
     call os_puts
     jmp .Los_input
 .size os_shell, .-os_shell
-
-.type os_serial_init,@function
-os_serial_init:
-    movw $0x3f9, %dx
-    xorb %al, %al
-    outb %al, %dx
-    movw $0x3fb, %dx
-    movb $0x80, %al
-    outb %al, %dx
-    movw $0x3f8, %dx
-    movb $1, %al
-    outb %al, %dx
-    movw $0x3f9, %dx
-    xorb %al, %al
-    outb %al, %dx
-    movw $0x3fb, %dx
-    movb $3, %al
-    outb %al, %dx
-    movw $0x3fa, %dx
-    movb $0xc7, %al
-    outb %al, %dx
-    movw $0x3fc, %dx
-    movb $0x0b, %al
-    outb %al, %dx
-    ret
 
 .type os_puts,@function
 os_puts:

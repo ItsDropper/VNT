@@ -21,6 +21,8 @@ The project focuses on a small, understandable language, native execution, and a
 - [Native runtime APIs](#native-runtime-apis)
 - [API reference](docs/api-reference.md)
 - [Raw pointers and memory](docs/raw-memory.md)
+- [VNT programming courses and tutorials](docs/tutorials/README.md)
+- [VNTOS kernel walkthrough course](docs/tutorials/05-vntos-kernel-walkthrough.md)
 - [Advanced low-level systems programming course](docs/tutorials/10-low-level-systems-programming.md)
 - [Build and try the VNTOS bootable kernel](docs/tutorials/vntos-beginners.md)
 - [Examples and tutorials](#examples-and-tutorials)

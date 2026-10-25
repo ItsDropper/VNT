@@ -132,3 +132,24 @@ export fun async_status(handle) {
 export fun async_release(handle) {
     return net_async_release(handle)
 }
+
+# Caller-consumed response streaming. stream_read() blocks for data or EOF and
+# returns a byte buffer. The transport uses a bounded 64 KiB queue for backpressure.
+export fun stream_start(method, url, headers, body) {
+    return net_stream_start(method, url, headers, body)
+}
+export fun stream_read(handle, maximum_bytes) {
+    return net_stream_read(handle, maximum_bytes)
+}
+export fun stream_done(handle) {
+    return net_stream_done(handle)
+}
+export fun stream_status(handle) {
+    return net_stream_status(handle)
+}
+export fun stream_cancel(handle) {
+    return net_stream_cancel(handle)
+}
+export fun stream_release(handle) {
+    return net_stream_release(handle)
+}

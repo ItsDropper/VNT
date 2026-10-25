@@ -72,6 +72,7 @@ int main(int argc, char *argv[]) {
     if (!dump_ir && !emit_asm && !emit_freestanding && !compile) {
         printf("Usage: vnt --compile <file.vnt> -o <output.exe>\n");
         printf("       vnt --emit-asm <file.vnt> -o <output.s>\n");
+        printf("       vnt --emit-freestanding-asm <file.vnt> -o <kernel.s>\n");
         printf("       vnt --dump-ir <file.vnt>\n");
         return 1;
     }
@@ -108,11 +109,11 @@ int main(int argc, char *argv[]) {
     } else if (emit_asm) {
         result = compiler_compile(program, argv[4]) ? 0 : 1;
         if (result == 0)
-            printf("Assembly emitted without linking: %s\\n", argv[4]);
+            printf("Assembly emitted without linking: %s\n", argv[4]);
     } else if (emit_freestanding) {
         result = compiler_compile_freestanding(program, argv[4]) ? 0 : 1;
         if (result == 0)
-            printf("Freestanding x86-64 assembly emitted: %s\\n", argv[4]);
+            printf("Freestanding x86-64 assembly emitted: %s\n", argv[4]);
     } else {
         result = compile_native(program, argv[4]);
     }

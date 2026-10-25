@@ -219,7 +219,7 @@ jobs:
           echo 'Native i64 generated calls:'
           grep -nE 'movabsq|vnt_int|vnt_print|vnt_add|vnt_mul|vnt_fn_main|main:' vnt-i64-smoke.exe.s || true
           tr -d '\r' < vnt-i64-actual.txt > vnt-i64-actual-lf.txt
-          printf '6442450944\\n4294967296\\n12884901888\\nNATIVE_I64_OK\\n9007199254740992\\n9007199254740993\\n-9223372036854775808\\n' > vnt-i64-expected.txt
+          printf '6442450944\n4294967296\n12884901888\nNATIVE_I64_OK\n9007199254740992\n9007199254740993\n-9223372036854775808\n' > vnt-i64-expected.txt
           diff -u vnt-i64-expected.txt vnt-i64-actual-lf.txt
 
           set +e

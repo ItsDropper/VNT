@@ -28,7 +28,9 @@ typedef enum {
     AST_ASSIGNMENT,
 
     AST_BINARY_EXPRESSION,
-    AST_UNARY_EXPRESSION
+    AST_UNARY_EXPRESSION,
+    AST_UNSAFE_BLOCK,
+    AST_ASM_STATEMENT
 } AstNodeType;
 
 typedef struct AstNode {
@@ -60,6 +62,7 @@ typedef struct AstNode {
             char **parameter_types;
             int parameter_count;
             char *return_type;
+            int is_unsafe;
             struct AstNode *body;
         } function_declaration;
 
@@ -137,6 +140,15 @@ typedef struct AstNode {
             struct AstNode *operand;
             UnaryOperator operator;
         } unary_expression;
+
+        struct {
+            struct AstNode *statements;
+        } unsafe_block;
+
+        struct {
+            char *assembly;
+            int is_volatile;
+        } asm_statement;
     };
 
     struct AstNode *next;
@@ -166,6 +178,8 @@ AstNode *ast_create_member(AstNode *object, const char *member);
 AstNode *ast_create_assignment(AstNode *target, AstNode *value);
 AstNode *ast_create_binary(AstNode *left, AstNode *right, BinaryOperator operator);
 AstNode *ast_create_unary(AstNode *operand, UnaryOperator operator);
+AstNode *ast_create_unsafe_block(AstNode *statements);
+AstNode *ast_create_asm_statement(const char *assembly, int is_volatile);
 void ast_append(AstNode **list, AstNode *node);
 void ast_free(AstNode *node);
 

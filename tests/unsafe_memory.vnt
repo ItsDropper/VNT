@@ -1,0 +1,26 @@
+import "../lib/std/mem.vnt" as mem
+
+unsafe {
+    let first: ptr = mem.alloc(16)
+    let second: ptr = mem.alloc(16)
+
+    let wrote_first: bool = mem.write_u32(first, 0, 305419896)
+    let resized: ptr = mem.realloc(first, 32)
+    if !mem.is_null(resized) {
+        first = resized
+    }
+    print(mem.read_u32(first, 0))
+    let copied: bool = mem.copy(second, first, 4)
+    print(mem.read_u32(second, 0))
+
+    let filled: bool = mem.set(first, 255, 4)
+    print(mem.read_u8(first, 0))
+
+    let shifted: ptr = mem.offset(second, 4)
+    let wrote_shifted: bool = mem.write_u8(shifted, 0, 42)
+    print(mem.read_u8(second, 4))
+
+    let freed_first: bool = mem.free(first)
+    let freed_second: bool = mem.free(second)
+    print("RAW_MEMORY_OK")
+}

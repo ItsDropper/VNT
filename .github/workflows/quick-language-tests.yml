@@ -81,6 +81,54 @@ jobs:
             src/compiler/x86_backend.c \
             -o vnt
 
+      - name: Compile raw memory regression program
+        shell: bash
+        run: ./vnt --compile tests/unsafe_memory.vnt -o vnt-memory-smoke.exe
+
+      - name: Run raw memory regression program
+        shell: bash
+        run: |
+          ./vnt-memory-smoke.exe > vnt-memory-actual.txt
+          tr -d '\r' < vnt-memory-actual.txt > vnt-memory-actual-lf.txt
+          printf '305419896\n305419896\n255\n42\nRAW_MEMORY_OK\n' > vnt-memory-expected.txt
+          diff -u vnt-memory-expected.txt vnt-memory-actual-lf.txt
+
+      - name: Compile unsafe-block regression program
+        shell: bash
+        run: ./vnt --compile tests/unsafe_block.vnt -o vnt-unsafe-smoke.exe
+
+      - name: Run unsafe-block regression program
+        shell: bash
+        run: |
+          ./vnt-unsafe-smoke.exe > vnt-unsafe-actual.txt
+          tr -d '\r' < vnt-unsafe-actual.txt > vnt-unsafe-actual-lf.txt
+          printf '123456789\nUNSAFE_BLOCK_OK\n' > vnt-unsafe-expected.txt
+          diff -u vnt-unsafe-expected.txt vnt-unsafe-actual-lf.txt
+
+      - name: Reject raw memory outside unsafe
+        shell: bash
+        run: |
+          if ./vnt --compile tests/unsafe_context_rejected.vnt -o vnt-unsafe-invalid.exe; then
+            echo "Compiler incorrectly accepted raw memory outside unsafe."
+            exit 1
+          fi
+
+      - name: Reject unsafe library call outside unsafe
+        shell: bash
+        run: |
+          if ./vnt --compile tests/unsafe_function_rejected.vnt -o vnt-unsafe-function-invalid.exe; then
+            echo "Compiler incorrectly accepted an unsafe function call outside unsafe."
+            exit 1
+          fi
+
+      - name: Reject inline assembly outside unsafe
+        shell: bash
+        run: |
+          if ./vnt --compile tests/asm_context_rejected.vnt -o vnt-asm-invalid.exe; then
+            echo "Compiler incorrectly accepted inline assembly outside unsafe."
+            exit 1
+          fi
+
       - name: Compile VNT regression programs
         shell: bash
         run: |

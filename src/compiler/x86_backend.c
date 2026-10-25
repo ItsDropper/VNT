@@ -176,6 +176,9 @@ static void emit_user_call(HirGen *g,const VntIrNode*n,size_t i) {
 static const char *builtin(const char *s,int *arity) {
     struct Entry { const char *name,*target; int arity; };
     static const struct Entry e[]={
+      {"mem_alloc","vnt_mem_alloc",1},{"mem_free","vnt_mem_free",1},{"mem_is_null","vnt_mem_is_null",1},{"mem_realloc","vnt_mem_realloc",2},{"mem_ptr_add","vnt_mem_ptr_add",2},
+      {"mem_read_u8","vnt_mem_read_u8",2},{"mem_read_u32","vnt_mem_read_u32",2},{"mem_write_u8","vnt_mem_write_u8",3},{"mem_write_u32","vnt_mem_write_u32",3},
+      {"mem_copy","vnt_mem_copy",3},{"mem_set","vnt_mem_set",3},
       {"sqrt","vnt_sqrt",1},{"sin","vnt_sin",1},{"cos","vnt_cos",1},{"tan","vnt_tan",1},
       {"abs","vnt_abs",1},{"floor","vnt_floor",1},{"ceil","vnt_ceil",1},{"min","vnt_min",2},{"max","vnt_max",2},
       {"mod","vnt_mod",2},{"len","vnt_len",1},{"input","vnt_input",1},{"fs_exists","vnt_fs_exists",1},
@@ -480,6 +483,7 @@ static void emit_stmt(HirGen*g,size_t i) {
     const VntIrNode*n=node(g,i);if(!n||g->error)return;
     switch(n->opcode){
     case VNT_IR_PROGRAM:emit_stmt_role(g,i,VNT_IR_EDGE_STATEMENT);break;
+    case VNT_IR_ASM: fputs("    ",g->out); fputs(n->value.text,g->out); fputc('\n',g->out); break;
     case VNT_IR_PRINT:emit_expr(g,child(g,i,VNT_IR_EDGE_VALUE));fputs("    movq %rax,%rcx\n",g->out);call0(g,"vnt_print");break;
     case VNT_IR_VARIABLE_DECL:case VNT_IR_REASSIGN:{
         int vi=var_index(g->vars,g->var_count,n->value.text),gi=var_index(g->globals,g->global_count,n->value.text);

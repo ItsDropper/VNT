@@ -5,7 +5,7 @@
 
 typedef enum {
     TY_UNDECLARED, TY_UNKNOWN, TY_INT, TY_FLOAT, TY_BOOL, TY_STRING,
-    TY_ARRAY, TY_OBJECT, TY_REFERENCE, TY_VOID
+    TY_ARRAY, TY_OBJECT, TY_REFERENCE, TY_POINTER, TY_VOID
 } TypeKind;
 
 typedef struct { char *name; TypeKind type; int explicit_type; int dynamic; int scope_depth; } Symbol;
@@ -23,6 +23,7 @@ typedef struct {
     TypeKind expected_return;
     int in_function;
     int scope_depth;
+    int unsafe_depth;
 } TypeChecker;
 
 static void error(TypeChecker *tc, const char *message) {
@@ -163,6 +164,7 @@ static TypeKind type_from_name(const char *name) {
     if (!strcmp(name, "array")) return TY_ARRAY;
     if (!strcmp(name, "object")) return TY_OBJECT;
     if (!strcmp(name, "reference")) return TY_REFERENCE;
+    if (!strcmp(name, "ptr")) return TY_POINTER;
     if (!strcmp(name, "void")) return TY_VOID;
     return TY_UNDECLARED;
 }
@@ -182,6 +184,10 @@ static StructDef *find_struct(TypeChecker *tc, const char *name) {
 }
 
 static int builtin_arity(const char *name, int argc) {
+    if (!strcmp(name, "mem_alloc") || !strcmp(name, "mem_free") || !strcmp(name, "mem_is_null")) return argc == 1;
+    if (!strcmp(name, "mem_read_u8") || !strcmp(name, "mem_read_u32")) return argc == 2;
+    if (!strcmp(name, "mem_realloc") || !strcmp(name, "mem_ptr_add")) return argc == 2;
+    if (!strcmp(name, "mem_write_u8") || !strcmp(name, "mem_write_u32") || !strcmp(name, "mem_copy") || !strcmp(name, "mem_set")) return argc == 3;
     if (!strcmp(name, "range")) return argc >= 1 && argc <= 3;
     if (!strcmp(name, "sqrt") || !strcmp(name, "sin") ||
         !strcmp(name, "cos") || !strcmp(name, "tan") ||
@@ -313,7 +319,25 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
             (void)expr_type(tc, n->member_expression.object);
             return TY_UNKNOWN;
 
-        case AST_FUNCTION_CALL:
+        case AST_FUNCTION_CALL: {
+            FunctionDef *called_function = find_function(tc, n->function_call.name);
+            if (called_function && called_function->node &&
+                called_function->node->function_declaration.is_unsafe &&
+                tc->unsafe_depth == 0)
+                error(tc, "unsafe function calls must be inside an unsafe block.");
+            if ((!strcmp(n->function_call.name, "mem_alloc") ||
+                 !strcmp(n->function_call.name, "mem_free") ||
+                 !strcmp(n->function_call.name, "mem_is_null") ||
+                 !strcmp(n->function_call.name, "mem_realloc") ||
+                 !strcmp(n->function_call.name, "mem_ptr_add") ||
+                 !strcmp(n->function_call.name, "mem_read_u8") ||
+                 !strcmp(n->function_call.name, "mem_read_u32") ||
+                 !strcmp(n->function_call.name, "mem_write_u8") ||
+                 !strcmp(n->function_call.name, "mem_write_u32") ||
+                 !strcmp(n->function_call.name, "mem_copy") ||
+                 !strcmp(n->function_call.name, "mem_set")) &&
+                tc->unsafe_depth == 0)
+                error(tc, "raw memory builtins may only be called inside an unsafe block.");
             check_call(tc, n);
             if (find_struct(tc, n->function_call.name) &&
                 n->function_call.argument_count != 0)
@@ -330,6 +354,9 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 !strcmp(n->function_call.name, "floor") ||
                 !strcmp(n->function_call.name, "ceil"))
                 return TY_FLOAT;
+            if (!strcmp(n->function_call.name, "mem_alloc") || !strcmp(n->function_call.name, "mem_realloc") || !strcmp(n->function_call.name, "mem_ptr_add")) return TY_POINTER;
+            if (!strcmp(n->function_call.name, "mem_read_u8") || !strcmp(n->function_call.name, "mem_read_u32")) return TY_INT;
+            if (!strcmp(n->function_call.name, "mem_free") || !strcmp(n->function_call.name, "mem_is_null") || !strcmp(n->function_call.name, "mem_write_u8") || !strcmp(n->function_call.name, "mem_write_u32") || !strcmp(n->function_call.name, "mem_copy") || !strcmp(n->function_call.name, "mem_set")) return TY_BOOL;
             if (!strcmp(n->function_call.name, "process_start")) return TY_OBJECT;
             if (!strcmp(n->function_call.name, "process_launch")) return TY_BOOL;
             if (!strcmp(n->function_call.name, "process_stdout") ||
@@ -390,6 +417,7 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 }
             }
             return TY_UNKNOWN;
+        }
 
         case AST_UNARY_EXPRESSION: {
             TypeKind t = expr_type(tc, n->unary_expression.operand);
@@ -513,6 +541,8 @@ static void collect_declarations(TypeChecker *tc, AstNode *n) {
 static int statement_list_returns(AstNode *n) {
     for (; n; n = n->next) {
         if (n->type == AST_RETURN_STATEMENT) return 1;
+        if (n->type == AST_UNSAFE_BLOCK &&
+            statement_list_returns(n->unsafe_block.statements)) return 1;
         if (n->type == AST_IF_STATEMENT && n->if_statement.else_branch &&
             statement_list_returns(n->if_statement.then_branch) &&
             statement_list_returns(n->if_statement.else_branch)) return 1;
@@ -649,6 +679,22 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
             case AST_FUNCTION_CALL:
                 (void)expr_type(tc, n);
                 break;
+
+            case AST_ASM_STATEMENT:
+                if (tc->unsafe_depth == 0)
+                    error(tc, "inline assembly may only be used inside an unsafe block.");
+                break;
+
+            case AST_UNSAFE_BLOCK: {
+                int outer_count = tc->count;
+                tc->scope_depth++;
+                tc->unsafe_depth++;
+                check_statements(tc, n->unsafe_block.statements);
+                tc->unsafe_depth--;
+                discard_symbols_to(tc, outer_count);
+                tc->scope_depth--;
+                break;
+            }
 
             case AST_FUNCTION_DECLARATION: {
                 int old_count = tc->count;

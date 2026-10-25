@@ -1,0 +1,2 @@
+let pointer: ptr = mem_alloc(8)
+print("THIS_MUST_NOT_COMPILE")

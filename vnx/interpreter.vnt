@@ -91,7 +91,7 @@ fun lex(source: string) {
                             scanning_word = true
                             while i < len(source) && scanning_word {
                                 ch = source[i]
-                                if ch == " " || ch == "\\t" || ch == "\\r" || ch == "\\n" || ch == "=" || ch == "\\"" || ch == "#" {
+                                if is_delimiter(ch) {
                                     scanning_word = false
                                 } else {
                                     word = word + ch
@@ -113,6 +113,36 @@ fun lex(source: string) {
     }
     emit("EOF", "", line)
     current = tokens.next
+}
+fun is_delimiter(ch: string) -> bool {
+    if ch == " " {
+        return true
+    } else {
+        if ch == "\\t" {
+            return true
+        } else {
+            if ch == "\\r" {
+                return true
+            } else {
+                if ch == "\\n" {
+                    return true
+                } else {
+                    if ch == "=" {
+                        return true
+                    } else {
+                        if ch == "\\"" {
+                            return true
+                        } else {
+                            if ch == "#" {
+                                return true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return false
 }
 fun take() -> object {
     old = current

@@ -29,13 +29,13 @@ AstNode *parse_unary(Parser *parser) {
             char buffer[64];
             if (token.length > 0 && token.length < (int)sizeof(buffer)) {
                 memcpy(buffer, token.start, token.length);
-                buffer[token.length] = '\\0';
+                buffer[token.length] = '\0';
                 errno = 0;
                 char *end = NULL;
                 int base = (buffer[0] == '0' &&
                     (buffer[1] == 'x' || buffer[1] == 'X')) ? 16 : 10;
                 unsigned long long magnitude = strtoull(buffer, &end, base);
-                if (errno == 0 && end != buffer && *end == '\\0' &&
+                if (errno == 0 && end != buffer && *end == '\0' &&
                     magnitude == (unsigned long long)INT64_MAX + 1ULL) {
                     parser_advance(parser);
                     return ast_create_integer(INT64_MIN);

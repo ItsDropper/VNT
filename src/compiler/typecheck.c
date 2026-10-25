@@ -337,8 +337,10 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                  !strcmp(n->function_call.name, "mem_ptr_add") ||
                  !strcmp(n->function_call.name, "mem_read_u8") ||
                  !strcmp(n->function_call.name, "mem_read_u32") ||
+                 !strcmp(n->function_call.name, "mem_read_u64") ||
                  !strcmp(n->function_call.name, "mem_write_u8") ||
                  !strcmp(n->function_call.name, "mem_write_u32") ||
+                 !strcmp(n->function_call.name, "mem_write_u64") ||
                  !strcmp(n->function_call.name, "mem_copy") ||
                  !strcmp(n->function_call.name, "mem_set")) &&
                 tc->unsafe_depth == 0)

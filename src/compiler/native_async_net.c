@@ -25,9 +25,15 @@
 
 #define VNT_NET_ASYNC_WORKERS 4
 #define VNT_NET_ASYNC_CAPACITY 64
+#define VNT_NET_STREAM_CAPACITY (64u * 1024u)
 
+typedef int (*VntAsyncStreamSink)(const unsigned char *, size_t, void *);
 extern char *vnt_native_http_request_async(const char *, const char *,
                                           const char *, const char *,
+                                          int *, size_t *);
+extern char *vnt_native_http_request_stream_async(const char *, const char *,
+                                          const char *, const char *,
+                                          VntAsyncStreamSink, void *,
                                           int *, size_t *);
 
 enum { TASK_FREE, TASK_QUEUED, TASK_RUNNING, TASK_DONE, TASK_CANCELLED };
@@ -45,6 +51,10 @@ typedef struct {
     intptr_t active_transport;
     int worker_finished;
     int release_requested;
+    int mode; /* 0=buffered request, 1=caller-consumed stream */
+    unsigned char stream_buffer[VNT_NET_STREAM_CAPACITY];
+    size_t stream_head;
+    size_t stream_count;
 } VntAsyncTask;
 
 static VntAsyncTask tasks[VNT_NET_ASYNC_CAPACITY];
@@ -105,6 +115,36 @@ static VntAsyncTask *async_find_locked(int id) {
     return NULL;
 }
 
+static int async_stream_push_task(VntAsyncTask *t,
+                                  const unsigned char *data, size_t length) {
+    while (length) {
+        async_lock_acquire();
+        while (t->state == TASK_RUNNING && t->stream_count == VNT_NET_STREAM_CAPACITY)
+            async_wait_forever();
+        if (t->state != TASK_RUNNING) {
+            async_lock_release();
+            return 0;
+        }
+        size_t free_space = VNT_NET_STREAM_CAPACITY - t->stream_count;
+        size_t amount = length < free_space ? length : free_space;
+        size_t tail = (t->stream_head + t->stream_count) % VNT_NET_STREAM_CAPACITY;
+        size_t first = amount < VNT_NET_STREAM_CAPACITY - tail
+            ? amount : VNT_NET_STREAM_CAPACITY - tail;
+        memcpy(t->stream_buffer + tail, data, first);
+        if (amount > first) memcpy(t->stream_buffer, data + first, amount - first);
+        t->stream_count += amount;
+        async_wake_all();
+        async_lock_release();
+        data += amount;
+        length -= amount;
+    }
+    return 1;
+}
+
+static int async_stream_sink(const unsigned char *data, size_t length, void *context) {
+    return async_stream_push_task((VntAsyncTask *)context, data, length);
+}
+
 #ifdef _WIN32
 static DWORD WINAPI async_worker_main(LPVOID unused)
 #else
@@ -139,9 +179,13 @@ static void *async_worker_main(void *unused)
         async_current_handle = task->id;
         async_lock_release();
 
-        response = vnt_native_http_request_async(task->method, task->url,
-                                                  task->headers, task->body,
-                                                  &status, &length);
+        if (task->mode == 1) {
+            response = vnt_native_http_request_stream_async(task->method, task->url,
+                task->headers, task->body, async_stream_sink, task, &status, &length);
+        } else {
+            response = vnt_native_http_request_async(task->method, task->url,
+                task->headers, task->body, &status, &length);
+        }
         async_current_handle = 0;
 
         async_lock_acquire();
@@ -182,8 +226,8 @@ static int async_ensure_workers_locked(void) {
     return 1;
 }
 
-int vnt_native_http_async_start(const char *method, const char *url,
-                                const char *headers, const char *body) {
+static int async_start_impl(const char *method, const char *url,
+                            const char *headers, const char *body, int mode) {
     char *m = async_strdup(method), *u = async_strdup(url);
     char *h = async_strdup(headers), *b = async_strdup(body);
     if (!m || !u || !h || !b) {
@@ -221,6 +265,7 @@ int vnt_native_http_async_start(const char *method, const char *url,
     }
     t->id = candidate;
     t->method = m; t->url = u; t->headers = h; t->body = b;
+    t->mode = mode;
     t->state = TASK_QUEUED;
     queue[queue_tail] = slot;
     queue_tail = (queue_tail + 1u) % VNT_NET_ASYNC_CAPACITY;
@@ -229,6 +274,16 @@ int vnt_native_http_async_start(const char *method, const char *url,
     async_wake_all();
     async_lock_release();
     return id;
+}
+
+int vnt_native_http_async_start(const char *method, const char *url,
+                                const char *headers, const char *body) {
+    return async_start_impl(method, url, headers, body, 0);
+}
+
+int vnt_native_http_async_stream_start(const char *method, const char *url,
+                                       const char *headers, const char *body) {
+    return async_start_impl(method, url, headers, body, 1);
 }
 
 int vnt_native_http_async_poll(int id) {
@@ -345,7 +400,8 @@ int vnt_native_http_async_release(int id) {
     int result = 0;
     async_lock_acquire();
     VntAsyncTask *t = async_find_locked(id);
-    if (t && t->state == TASK_DONE) {
+    if (t && t->state == TASK_DONE &&
+        (t->mode != 1 || t->stream_count == 0)) {
         async_task_clear(t);
         result = 1;
     } else if (t && t->state == TASK_CANCELLED) {
@@ -403,4 +459,41 @@ int vnt_native_http_async_should_close_transport(int id, intptr_t transport) {
     }
     async_lock_release();
     return should_close;
+}
+
+unsigned char *vnt_native_http_async_stream_read(int id, size_t maximum, size_t *out_length) {
+    if (out_length) *out_length = 0;
+    if (!maximum || maximum > VNT_NET_STREAM_CAPACITY) maximum = VNT_NET_STREAM_CAPACITY;
+    unsigned char *out = (unsigned char *)malloc(maximum ? maximum : 1);
+    if (!out) return NULL;
+    async_lock_acquire();
+    VntAsyncTask *t = async_find_locked(id);
+    if (!t || t->mode != 1) {
+        async_lock_release();
+        free(out);
+        return NULL;
+    }
+    while (!t->stream_count && (t->state == TASK_QUEUED || t->state == TASK_RUNNING))
+        async_wait_forever();
+    size_t amount = t->stream_count < maximum ? t->stream_count : maximum;
+    size_t first = amount < VNT_NET_STREAM_CAPACITY - t->stream_head
+        ? amount : VNT_NET_STREAM_CAPACITY - t->stream_head;
+    if (first) memcpy(out, t->stream_buffer + t->stream_head, first);
+    if (amount > first) memcpy(out + first, t->stream_buffer, amount - first);
+    t->stream_head = (t->stream_head + amount) % VNT_NET_STREAM_CAPACITY;
+    t->stream_count -= amount;
+    if (out_length) *out_length = amount;
+    async_wake_all();
+    async_lock_release();
+    return out;
+}
+
+int vnt_native_http_async_stream_done(int id) {
+    int done = 1;
+    async_lock_acquire();
+    VntAsyncTask *t = async_find_locked(id);
+    if (t && t->mode == 1)
+        done = (t->state == TASK_DONE || t->state == TASK_CANCELLED) && t->stream_count == 0;
+    async_lock_release();
+    return done;
 }

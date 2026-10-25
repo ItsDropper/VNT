@@ -769,6 +769,12 @@ static int hir_propagate_statement(VntIrProgram *ir, size_t index,
          */
         hir_constants_clear(env);
         return 1;
+    } else if (node->opcode == VNT_IR_ASM) {
+        /* Inline assembly may read/write arbitrary locals and memory. Treat it
+           as a compiler barrier for constant propagation; otherwise freestanding
+           hardware I/O can be optimized using stale pre-assembly values. */
+        hir_constants_clear(env);
+        return 1;
     } else if (node->opcode == VNT_IR_FUNCTION) {
         size_t body = hir_child_role(ir, index, VNT_IR_EDGE_BODY);
         if (body != VNT_IR_NO_NODE && ir->nodes[body].opcode == VNT_IR_PROGRAM) {

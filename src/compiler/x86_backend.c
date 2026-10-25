@@ -445,9 +445,12 @@ static int emit_mutating_integer_assignment(HirGen *g,const char *target,size_t 
     fputs("    cmpl $1,0(%r9)\n",g->out); fprintf(g->out,"    jne .L%d\n",slow);
     fputs("    movq 8(%r9),%r10\n",g->out);
     if(right_int) {
-        fprintf(g->out,"    %sq $%lld,%%r10\n",
-            n->operation==BINARY_ADD?"add":n->operation==BINARY_SUBTRACT?"sub":"imul",
-            (long long)rn->value.integer);
+        if(n->operation==BINARY_ADD)
+            fprintf(g->out,"    addq $%lld,%%r10\n",(long long)rn->value.integer);
+        else if(n->operation==BINARY_SUBTRACT)
+            fprintf(g->out,"    subq $%lld,%%r10\n",(long long)rn->value.integer);
+        else
+            fprintf(g->out,"    imulq $%lld,%%r10,%%r10\n",(long long)rn->value.integer);
     } else {
         int ri=var_index(g->vars,g->var_count,rn->value.text);
         fprintf(g->out,"    movq -%d(%%rbp),%%r11\n",g->vars[ri].offset);

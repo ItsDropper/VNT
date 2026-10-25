@@ -126,6 +126,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._send(204, "")
         elif self.path == "/header":
             self._send(200, "HEADER_OK" if self.headers.get("X-VNT-Test") == "present" else "HEADER_MISSING")
+        elif self.path == "/oversized":
+            # Buffered requests must reject bodies beyond the documented 64 MiB ceiling.
+            self.send_response(200)
+            self.send_header("Content-Length", str(64 * 1024 * 1024 + 1))
+            self.send_header("Connection", "close")
+            self.end_headers()
+            block = b"x" * 65536
+            try:
+                for _ in range(1024):
+                    self.wfile.write(block)
+                self.wfile.write(b"x")
+            except (BrokenPipeError, ConnectionResetError):
+                pass
         elif self.path == "/binary":
             payload = bytes((0, 1, 255, 10, 13, 128))
             self.send_response(200)

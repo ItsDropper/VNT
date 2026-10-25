@@ -33,11 +33,12 @@ jobs:
       - name: Run language smoke test
         run: |
           printf 'vnx/tests/smoke.vnx\n' | vnx/build/vnx > vnx/build/smoke.out
+          cat vnx/build/smoke.out
           grep -F 'VNX_SMOKE_OK' vnx/build/smoke.out
           grep -F 'VNX_STATE_OK' vnx/build/smoke.out
       - name: Run scripted adventure route
         run: |
-          printf 'vnx/game/last_signal.vnx\nAda\n1\n1\n3\n2\n1\n5\n' | vnx/build/vnx > vnx/build/adventure.out
+          printf 'vnx/game/last_signal.vnx\nAda\n1\n1\n3\n2\n1\n3\n5\n' | vnx/build/vnx > vnx/build/adventure.out
           grep -F 'ENDING: HOMEWARD' vnx/build/adventure.out
       - name: Verify malformed source is rejected
         run: |

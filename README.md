@@ -67,6 +67,18 @@ To inspect the compiler's current high-level intermediate representation (HIR):
 
 The compiler prints the generated assembly path and keeps the assembly file beside the output executable. The native linker step uses GCC and the runtime sources in the repository.
 
+### Experimental freestanding assembly mode
+
+A separate, deliberately restricted mode can emit an ELF-oriented x86-64 entry object without linking the hosted VNT runtime:
+
+```bash
+./vnt --emit-freestanding-asm tests/freestanding_minimal.vnt -o kernel.s
+gcc -c -ffreestanding -fno-pic kernel.s -o kernel.o
+ld -nostdlib -static -e _start -o kernel.elf kernel.o
+```
+
+The initial freestanding subset requires a zero-argument `fun kernel_main()` and currently permits only inline assembly and bare `return` statements (including nested `unsafe` blocks). Hosted operations such as `print`, dynamic values, memory builtins, and general arithmetic are rejected rather than linked against the runtime. The generated ELF is a freestanding code-generation milestone, **not yet a bootable OS kernel**; boot protocol integration and QEMU boot/serial tests remain future work.
+
 ## Your first VNT program
 
 Create a file named `hello.vnt`:
@@ -295,7 +307,7 @@ The checks build VNT and exercise language features, module loading, and runtime
 ## Current limitations
 
 - VNT is experimental; syntax and semantics can change.
-- The native backend targets x86-64 and depends on GCC for assembly/linking.
+- The hosted native backend targets x86-64 and depends on GCC for assembly/linking. An experimental ELF-oriented freestanding backend exists for a strict inline-assembly-only `kernel_main` subset; it rejects hosted features and is not yet a bootable kernel.
 - Frontend parsing and type checking still use the AST before lowering; the HIR optimizer and native backend are designed to work without it.
 - Imports expand source before parsing and do not provide private symbol isolation or incremental compilation.
 - GUI APIs currently target Windows.

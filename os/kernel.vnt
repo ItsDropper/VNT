@@ -372,6 +372,7 @@ fun kernel_main() {
     serial_puts("VNTOS_BOOT_OK\r\nVNTOS - freestanding x86-64 console\r\nType help for commands.\r\n")
     ps2_init()
     vga_puts("VNTOS> ")
+    serial_puts("VNTOS_COMMAND_LINE_READY\r\n")
     serial_puts("VNTOS> ")
     let buffer: string = ""
     unsafe {

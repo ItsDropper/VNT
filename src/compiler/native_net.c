@@ -448,7 +448,19 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     if (status) *status = (int)code;
     char *result = NULL;
     size_t used = 0, capacity = 0;
-    if (ok) {
+    if (ok && sink) {
+        unsigned char buffer[65536];
+        for (;;) {
+            DWORD available = 0;
+            if (!WinHttpQueryDataAvailable(request, &available)) { ok = FALSE; break; }
+            if (!available) break;
+            DWORD request_size = available > sizeof(buffer) ? (DWORD)sizeof(buffer) : available;
+            DWORD received = 0;
+            if (!WinHttpReadData(request, buffer, request_size, &received)) { ok = FALSE; break; }
+            if (received && !sink(buffer, (size_t)received, sink_context)) { ok = FALSE; break; }
+            used += (size_t)received;
+        }
+    } else if (ok) {
         for (;;) {
             DWORD available = 0;
             if (!WinHttpQueryDataAvailable(request, &available) || !available) break;

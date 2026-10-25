@@ -12,7 +12,7 @@ static void clear_nodes(VntIrProgram *ir) {
         if (op == VNT_IR_STRING || op == VNT_IR_VARIABLE_DECL ||
             op == VNT_IR_REASSIGN || op == VNT_IR_VARIABLE ||
             op == VNT_IR_MEMBER || op == VNT_IR_CALL ||
-            op == VNT_IR_FUNCTION || op == VNT_IR_STRUCT)
+            op == VNT_IR_FUNCTION || op == VNT_IR_STRUCT || op == VNT_IR_ASM)
             free(ir->nodes[i].value.text);
         for (size_t j = 0; j < ir->nodes[i].name_count; ++j)
             free(ir->nodes[i].names[j]);
@@ -120,6 +120,7 @@ static int validate_node_shape(const VntIrProgram *ir, const VntIrNode *node) {
         case VNT_IR_FLOAT:
         case VNT_IR_BOOLEAN:
         case VNT_IR_VARIABLE:
+        case VNT_IR_ASM:
             return node->child_count == 0;
         case VNT_IR_CALL:
             return args == (int)node->child_count;
@@ -155,7 +156,7 @@ int vnt_ir_validate(const VntIrProgram *ir) {
 
     for (size_t i = 0; i < ir->node_count; ++i) {
         const VntIrNode *node = &ir->nodes[i];
-        if ((int)node->opcode < 0 || node->opcode > VNT_IR_REASSIGN ||
+        if ((int)node->opcode < 0 || node->opcode > VNT_IR_ASM ||
             (int)node->role < 0 || node->role > VNT_IR_EDGE_OPERAND ||
             (node->name_count && !node->names) ||
             ((node->opcode == VNT_IR_STRING ||
@@ -165,7 +166,8 @@ int vnt_ir_validate(const VntIrProgram *ir) {
               node->opcode == VNT_IR_MEMBER ||
               node->opcode == VNT_IR_CALL ||
               node->opcode == VNT_IR_FUNCTION ||
-              node->opcode == VNT_IR_STRUCT) && !node->value.text) ||
+              node->opcode == VNT_IR_STRUCT ||
+              node->opcode == VNT_IR_ASM) && !node->value.text) ||
             ((node->name_count != 0) &&
              node->opcode != VNT_IR_FUNCTION && node->opcode != VNT_IR_STRUCT) ||
             (node->type_name &&
@@ -258,7 +260,7 @@ static const char *opcode_name(VntIrOpcode opcode) {
         "program", "print", "if", "while", "function", "struct", "call",
         "return", "break", "continue", "string", "integer", "float",
         "boolean", "array", "variable_decl", "variable", "index", "member",
-        "assign", "binary", "unary", "reassign"
+        "assign", "binary", "unary", "reassign", "asm"
     };
     return (unsigned)opcode < sizeof(names) / sizeof(names[0]) ? names[opcode] : "invalid";
 }
@@ -313,7 +315,8 @@ void vnt_ir_dump(const VntIrProgram *ir, FILE *out) {
             case VNT_IR_MEMBER:
             case VNT_IR_CALL:
             case VNT_IR_FUNCTION:
-            case VNT_IR_STRUCT: fprintf(out, " name/text=\"%s\"", node->value.text); break;
+            case VNT_IR_STRUCT:
+            case VNT_IR_ASM: fprintf(out, " name/text=\"%s\"", node->value.text); break;
             case VNT_IR_BINARY:
             case VNT_IR_UNARY: fprintf(out, " op=%s", operation_name(node)); break;
             default: break;
@@ -438,7 +441,8 @@ static int hir_copy_node(const VntIrProgram *old, VntIrProgram *out,
     if (src->opcode == VNT_IR_STRING || src->opcode == VNT_IR_VARIABLE_DECL ||
         src->opcode == VNT_IR_REASSIGN || src->opcode == VNT_IR_VARIABLE ||
         src->opcode == VNT_IR_MEMBER || src->opcode == VNT_IR_CALL ||
-        src->opcode == VNT_IR_FUNCTION || src->opcode == VNT_IR_STRUCT) {
+        src->opcode == VNT_IR_FUNCTION || src->opcode == VNT_IR_STRUCT ||
+        src->opcode == VNT_IR_ASM) {
         dst->value.text = NULL;
         if (!copy_text(&dst->value.text, src->value.text)) return 0;
     }

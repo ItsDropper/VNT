@@ -182,7 +182,8 @@ typedef enum {
     VNT_BYTES,
     VNT_OBJECT,
     VNT_PROCESS,
-    VNT_REFERENCE
+    VNT_REFERENCE,
+    VNT_POINTER
 } VntType;
 
 typedef struct VntValue VntValue;
@@ -216,6 +217,7 @@ struct VntValue {
             char *type_name;
         } object;
         VntProcess *process;
+        void *pointer;
         struct {
             VntValue **slot;
         } reference;
@@ -2044,4 +2046,130 @@ VNT_NATIVE_ABI VntValue *vnt_net_url_encode(VntValue *text) {
     VntValue *result = vnt_string(encoded);
     free(encoded);
     return result;
+}
+
+
+/*
+ * Raw memory primitives for low-level VNT code.
+ * These APIs intentionally do not prove allocation bounds or pointer lifetime.
+ * Callers must only use pointers returned by mem_alloc/mem_realloc or otherwise
+ * obtained from a valid native allocation/mapping, and must respect its size.
+ */
+static VntValue *vnt_pointer_value(void *pointer) {
+    VntValue *value = alloc_value(VNT_POINTER);
+    value->pointer = pointer;
+    return value;
+}
+
+static void *vnt_require_pointer(VntValue *value) {
+    if (!value || value->type != VNT_POINTER) {
+        fprintf(stderr, "Runtime error: memory operation requires ptr.\n");
+        exit(1);
+    }
+    return value->pointer;
+}
+
+static size_t vnt_require_memory_size(VntValue *value, int allow_zero) {
+    if (!value || value->type != VNT_INT || value->integer < 0 ||
+        (!allow_zero && value->integer == 0)) {
+        fprintf(stderr, "Runtime error: memory size/offset must be a valid non-negative int.\n");
+        exit(1);
+    }
+    return (size_t)value->integer;
+}
+
+static void *vnt_memory_address(VntValue *pointer, VntValue *offset,
+                                size_t width) {
+    uintptr_t base = (uintptr_t)vnt_require_pointer(pointer);
+    size_t displacement = vnt_require_memory_size(offset, 1);
+    if (!base || displacement > UINTPTR_MAX - base ||
+        width > UINTPTR_MAX - (base + displacement)) {
+        fprintf(stderr, "Runtime error: null pointer or address overflow.\n");
+        exit(1);
+    }
+    return (void *)(base + displacement);
+}
+
+VNT_NATIVE_ABI VntValue *vnt_mem_alloc(VntValue *size_value) {
+    size_t size = vnt_require_memory_size(size_value, 0);
+    void *memory = calloc(1, size);
+    return vnt_pointer_value(memory);
+}
+
+VNT_NATIVE_ABI VntValue *vnt_mem_free(VntValue *pointer) {
+    free(vnt_require_pointer(pointer));
+    pointer->pointer = NULL;
+    return vnt_bool(1);
+}
+
+VNT_NATIVE_ABI VntValue *vnt_mem_realloc(VntValue *pointer, VntValue *size_value) {
+    void *old_memory = vnt_require_pointer(pointer);
+    size_t size = vnt_require_memory_size(size_value, 0);
+    void *memory = realloc(old_memory, size);
+    /* C realloc preserves old_memory on failure; expose null without losing it. */
+    return vnt_pointer_value(memory);
+}
+
+VNT_NATIVE_ABI VntValue *vnt_mem_ptr_add(VntValue *pointer, VntValue *offset_value) {
+    uintptr_t base = (uintptr_t)vnt_require_pointer(pointer);
+    int offset = offset_value && offset_value->type == VNT_INT
+        ? offset_value->integer : 0;
+    if (!offset_value || offset_value->type != VNT_INT ||
+        (offset > 0 && (uintptr_t)offset > UINTPTR_MAX - base) ||
+        (offset < 0 && (uintptr_t)(-(int64_t)offset) > base)) {
+        fprintf(stderr, "Runtime error: invalid pointer offset.\n");
+        exit(1);
+    }
+    return vnt_pointer_value((void *)(offset >= 0
+        ? base + (uintptr_t)offset
+        : base - (uintptr_t)(-(int64_t)offset)));
+}
+
+#define VNT_MEM_READ(name, ctype) \
+VNT_NATIVE_ABI VntValue *vnt_mem_read_##name(VntValue *pointer, VntValue *offset) { \
+    ctype value; memcpy(&value, vnt_memory_address(pointer, offset, sizeof(value)), sizeof(value)); \
+    return vnt_int((int)value); \
+}
+VNT_MEM_READ(u8, uint8_t)
+VNT_MEM_READ(u32, uint32_t)
+#undef VNT_MEM_READ
+
+#define VNT_MEM_WRITE(name, ctype) \
+VNT_NATIVE_ABI VntValue *vnt_mem_write_##name(VntValue *pointer, VntValue *offset, VntValue *input) { \
+    if (!input || input->type != VNT_INT) { \
+        fprintf(stderr, "Runtime error: memory write value must be int.\n"); exit(1); \
+    } \
+    ctype value = (ctype)input->integer; \
+    memcpy(vnt_memory_address(pointer, offset, sizeof(value)), &value, sizeof(value)); \
+    return vnt_bool(1); \
+}
+VNT_MEM_WRITE(u8, uint8_t)
+VNT_MEM_WRITE(u32, uint32_t)
+#undef VNT_MEM_WRITE
+
+VNT_NATIVE_ABI VntValue *vnt_mem_copy(VntValue *destination, VntValue *source,
+                                      VntValue *length_value) {
+    size_t length = vnt_require_memory_size(length_value, 1);
+    void *dst = vnt_memory_address(destination, vnt_int(0), length);
+    void *src = vnt_memory_address(source, vnt_int(0), length);
+    memmove(dst, src, length);
+    return vnt_bool(1);
+}
+
+VNT_NATIVE_ABI VntValue *vnt_mem_set(VntValue *destination, VntValue *byte_value,
+                                     VntValue *length_value) {
+    if (!byte_value || byte_value->type != VNT_INT ||
+        byte_value->integer < 0 || byte_value->integer > 255) {
+        fprintf(stderr, "Runtime error: mem_set byte must be in range 0..255.\n");
+        exit(1);
+    }
+    size_t length = vnt_require_memory_size(length_value, 1);
+    memset(vnt_memory_address(destination, vnt_int(0), length),
+           byte_value->integer, length);
+    return vnt_bool(1);
+}
+
+
+VNT_NATIVE_ABI VntValue *vnt_mem_is_null(VntValue *pointer) {
+    return vnt_bool(vnt_require_pointer(pointer) == NULL);
 }

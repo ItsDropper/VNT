@@ -419,6 +419,27 @@ AstNode *ast_create_unary(
     return node;
 }
 
+AstNode *ast_create_unsafe_block(AstNode *statements) {
+    AstNode *node = calloc(1, sizeof(*node));
+    if (!node) return NULL;
+    node->type = AST_UNSAFE_BLOCK;
+    node->unsafe_block.statements = statements;
+    return node;
+}
+
+AstNode *ast_create_asm_statement(const char *assembly, int is_volatile) {
+    AstNode *node = calloc(1, sizeof(*node));
+    if (!node) return NULL;
+    node->type = AST_ASM_STATEMENT;
+    node->asm_statement.assembly = copy_string(assembly);
+    node->asm_statement.is_volatile = !!is_volatile;
+    if (!node->asm_statement.assembly) {
+        free(node);
+        return NULL;
+    }
+    return node;
+}
+
 void ast_append(AstNode **list, AstNode *node) {
     if (node == NULL) {
         return;
@@ -550,6 +571,14 @@ void ast_free(AstNode *node) {
 
             case AST_UNARY_EXPRESSION:
                 ast_free(node->unary_expression.operand);
+                break;
+
+            case AST_UNSAFE_BLOCK:
+                ast_free(node->unsafe_block.statements);
+                break;
+
+            case AST_ASM_STATEMENT:
+                free(node->asm_statement.assembly);
                 break;
         }
 

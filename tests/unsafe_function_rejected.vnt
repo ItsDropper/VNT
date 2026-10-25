@@ -1,0 +1,2 @@
+import "../lib/std/mem.vnt" as mem
+let pointer: ptr = mem.alloc(8)

@@ -302,21 +302,23 @@ static int load_recursive(Loader *loader, const char *path, const char *namespac
             const char *emit_line = line;
             char *rewritten = NULL;
             while (isspace((unsigned char)*emit_line)) emit_line++;
-            if (strncmp(emit_line, "export fun ", 11) == 0) {
-                const char *declaration = emit_line + 11;
+            int unsafe_export = strncmp(emit_line, "export unsafe fun ", 18) == 0;
+            if (unsafe_export || strncmp(emit_line, "export fun ", 11) == 0) {
+                const char *declaration = emit_line + (unsafe_export ? 18 : 11);
                 if (!(isalpha((unsigned char)*declaration) || *declaration == '_')) {
                     fprintf(stderr, "Module error: expected exported function name in '%s'.\n", path);
                     free(line); free(source); pop_active(loader); return 0;
                 }
                 const char *name_end = declaration;
                 while (isalnum((unsigned char)*name_end) || *name_end == '_') name_end++;
-                size_t prefix_len = 4;
+                const char *declaration_prefix = unsafe_export ? "unsafe fun " : "fun ";
+                size_t prefix_len = strlen(declaration_prefix);
                 size_t name_len = (size_t)(name_end - declaration);
                 size_t tail_len = strlen(name_end);
                 size_t alias_len = namespace_name ? strlen(namespace_name) : 0;
                 rewritten = malloc(prefix_len + (namespace_name ? alias_len + 2 : 0) + name_len + tail_len + 1);
                 if (!rewritten) { free(line); free(source); pop_active(loader); return 0; }
-                memcpy(rewritten, "fun ", prefix_len);
+                memcpy(rewritten, declaration_prefix, prefix_len);
                 size_t pos = prefix_len;
                 if (namespace_name) { memcpy(rewritten + pos, namespace_name, alias_len); pos += alias_len; rewritten[pos++] = '_'; rewritten[pos++] = '_'; }
                 memcpy(rewritten + pos, declaration, name_len); pos += name_len;

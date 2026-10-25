@@ -8,6 +8,8 @@
 static VntIrOpcode opcode_for(AstNodeType type) {
     switch (type) {
         case AST_PROGRAM: return VNT_IR_PROGRAM;
+        case AST_UNSAFE_BLOCK: return VNT_IR_PROGRAM;
+        case AST_ASM_STATEMENT: return VNT_IR_ASM;
         case AST_PRINT_STATEMENT: return VNT_IR_PRINT;
         case AST_IF_STATEMENT: return VNT_IR_IF;
         case AST_WHILE_STATEMENT: return VNT_IR_WHILE;
@@ -39,7 +41,7 @@ static void clear_nodes(VntIrProgram *ir) {
         if (op == VNT_IR_STRING || op == VNT_IR_VARIABLE_DECL ||
             op == VNT_IR_REASSIGN || op == VNT_IR_VARIABLE ||
             op == VNT_IR_MEMBER || op == VNT_IR_CALL ||
-            op == VNT_IR_FUNCTION || op == VNT_IR_STRUCT)
+            op == VNT_IR_FUNCTION || op == VNT_IR_STRUCT || op == VNT_IR_ASM)
             free(ir->nodes[i].value.text);
         for (size_t j = 0; j < ir->nodes[i].name_count; ++j)
             free(ir->nodes[i].names[j]);
@@ -140,6 +142,8 @@ static int lower_node(VntIrProgram *ir, const AstNode *ast, size_t *result) {
         node->operation = (int)ast->binary_expression.operator;
     else if (ast->type == AST_UNARY_EXPRESSION)
         node->operation = (int)ast->unary_expression.operator;
+    else if (ast->type == AST_ASM_STATEMENT)
+        node->operation = ast->asm_statement.is_volatile;
 
     switch (ast->type) {
         case AST_INTEGER_LITERAL: node->value.integer = ast->integer_literal.value; break;
@@ -147,6 +151,9 @@ static int lower_node(VntIrProgram *ir, const AstNode *ast, size_t *result) {
         case AST_FLOAT_LITERAL: node->value.floating = ast->float_literal.value; break;
         case AST_STRING_LITERAL:
             if (!copy_text(&node->value.text, ast->string_literal.value)) return 0;
+            break;
+        case AST_ASM_STATEMENT:
+            if (!copy_text(&node->value.text, ast->asm_statement.assembly)) return 0;
             break;
         case AST_VARIABLE_DECLARATION:
             if (!copy_text(&node->value.text, ast->variable_declaration.name)) return 0;
@@ -175,6 +182,7 @@ static int lower_node(VntIrProgram *ir, const AstNode *ast, size_t *result) {
 
     switch (ast->type) {
         case AST_PROGRAM: return lower_list(ir, *result, ast->program.statements, VNT_IR_EDGE_STATEMENT);
+        case AST_UNSAFE_BLOCK: return lower_list(ir, *result, ast->unsafe_block.statements, VNT_IR_EDGE_STATEMENT);
         case AST_PRINT_STATEMENT: return lower_one(ir, *result, ast->print_statement.expression, VNT_IR_EDGE_VALUE);
         case AST_IF_STATEMENT:
             return lower_one(ir, *result, ast->if_statement.condition, VNT_IR_EDGE_CONDITION) &&

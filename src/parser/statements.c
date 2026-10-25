@@ -92,7 +92,54 @@ static AstNode *parse_let_declaration(Parser *parser) {
     return declaration;
 }
 
+static AstNode *parse_asm_statement(Parser *parser) {
+    parser_advance(parser); /* consume asm */
+    int is_volatile = 0;
+    if (parser_is_token(parser->current, "volatile")) {
+        is_volatile = 1;
+        parser_advance(parser);
+    }
+    if (!parser_consume(parser, TOKEN_LEFT_PAREN,
+                        "expected '(' after asm or asm volatile.")) return NULL;
+    if (!parser_consume(parser, TOKEN_STRING,
+                        "expected an assembly template string.")) return NULL;
+    char *assembly = parser_token_to_string(parser->previous);
+    if (!assembly) {
+        fprintf(stderr, "Parser error: out of memory.\n");
+        return NULL;
+    }
+    if (!parser_consume(parser, TOKEN_RIGHT_PAREN,
+                        "expected ')' after assembly template.")) {
+        free(assembly);
+        return NULL;
+    }
+    AstNode *node = ast_create_asm_statement(assembly, is_volatile);
+    free(assembly);
+    if (!node) fprintf(stderr, "Parser error: out of memory.\n");
+    return node;
+}
+
+static AstNode *parse_unsafe_block(Parser *parser) {
+    parser_advance(parser); /* consume unsafe */
+    if (parser_is_token(parser->current, "fun")) {
+        AstNode *function = parse_function(parser);
+        if (function) function->function_declaration.is_unsafe = 1;
+        return function;
+    }
+    if (!parser_consume(parser, TOKEN_LEFT_BRACE, "expected '{' or 'fun' after unsafe.")) return NULL;
+    AstNode *statements = parse_block(parser);
+    if (!statements && parser_check(parser, TOKEN_EOF)) return NULL;
+    AstNode *node = ast_create_unsafe_block(statements);
+    if (!node) {
+        ast_free(statements);
+        fprintf(stderr, "Parser error: out of memory.\n");
+    }
+    return node;
+}
+
 AstNode *parse_statement(Parser *parser) {
+    if (parser_is_token(parser->current, "unsafe")) return parse_unsafe_block(parser);
+    if (parser_is_token(parser->current, "asm")) return parse_asm_statement(parser);
     if (parser_is_token(parser->current, "let")) return parse_let_declaration(parser);
     if (parser_is_token(parser->current, "print")) return parse_print(parser);
     if (parser_is_token(parser->current, "return")) return parse_return(parser);

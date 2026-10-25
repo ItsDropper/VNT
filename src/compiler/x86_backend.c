@@ -177,7 +177,7 @@ static const char *builtin(const char *s,int *arity) {
     struct Entry { const char *name,*target; int arity; };
     static const struct Entry e[]={
       {"mem_alloc","vnt_mem_alloc",1},{"mem_free","vnt_mem_free",1},{"mem_is_null","vnt_mem_is_null",1},{"mem_realloc","vnt_mem_realloc",2},{"mem_ptr_add","vnt_mem_ptr_add",2},
-      {"mem_read_u8","vnt_mem_read_u8",2},{"mem_read_u32","vnt_mem_read_u32",2},{"mem_write_u8","vnt_mem_write_u8",3},{"mem_write_u32","vnt_mem_write_u32",3},
+      {"mem_read_u8","vnt_mem_read_u8",2},{"mem_read_u32","vnt_mem_read_u32",2},{"mem_read_u64","vnt_mem_read_u64",2},{"mem_write_u8","vnt_mem_write_u8",3},{"mem_write_u32","vnt_mem_write_u32",3},{"mem_write_u64","vnt_mem_write_u64",3},
       {"mem_copy","vnt_mem_copy",3},{"mem_set","vnt_mem_set",3},
       {"sqrt","vnt_sqrt",1},{"sin","vnt_sin",1},{"cos","vnt_cos",1},{"tan","vnt_tan",1},
       {"abs","vnt_abs",1},{"floor","vnt_floor",1},{"ceil","vnt_ceil",1},{"min","vnt_min",2},{"max","vnt_max",2},

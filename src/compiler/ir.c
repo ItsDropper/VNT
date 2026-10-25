@@ -365,6 +365,36 @@ static int hir_fold_node(VntIrProgram *ir, size_t index, size_t *changed) {
         else if (role == VNT_IR_EDGE_RIGHT) right = c;
         if (!hir_fold_node(ir, c, changed)) return 0;
     }
+    /*
+     * Fold unary operators only when the operand is a literal and the
+     * operation is defined. Reference and dereference are deliberately
+     * excluded: they carry memory semantics and must reach the backend.
+     */
+    if (n->opcode == VNT_IR_UNARY) {
+        size_t operand = hir_child_role(ir, index, VNT_IR_EDGE_OPERAND);
+        HirConstant value;
+        if (operand == VNT_IR_NO_NODE || !hir_constant(ir, operand, &value))
+            return 1;
+        if (n->operation == UNARY_NOT && value.kind == 2) {
+            n->opcode = VNT_IR_BOOLEAN;
+            n->value.boolean = !value.value.boolean;
+        } else if (n->operation == UNARY_NEGATE && value.kind == 1) {
+            if (value.value.integer == INT64_MIN) return 1;
+            n->opcode = VNT_IR_INTEGER;
+            n->value.integer = -value.value.integer;
+        } else if (n->operation == UNARY_NEGATE && value.kind == 3) {
+            double result = -value.value.floating;
+            if (!isfinite(result)) return 1;
+            n->opcode = VNT_IR_FLOAT;
+            n->value.floating = result;
+        } else {
+            return 1;
+        }
+        n->first_child = n->last_child = VNT_IR_NO_NODE;
+        n->child_count = 0;
+        ++*changed;
+        return 1;
+    }
     if (n->opcode != VNT_IR_BINARY || left == VNT_IR_NO_NODE || right == VNT_IR_NO_NODE)
         return 1;
     HirConstant a, b;

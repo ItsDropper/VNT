@@ -33,10 +33,22 @@ static int emit_statement(const VntIrProgram *ir, FILE *out, size_t index,
                 stmt->value.text ? stmt->value.text : "");
         return 1;
     }
-    if (stmt->opcode == VNT_IR_RETURN &&
-        !child_role(ir, index, VNT_IR_EDGE_VALUE)) {
-        fputs("    ret\n", out);
-        return 1;
+    if (stmt->opcode == VNT_IR_RETURN) {
+        const VntIrNode *value = child_role(ir, index, VNT_IR_EDGE_VALUE);
+        if (!value) {
+            fprintf(stderr, "Freestanding backend: explicit return requires an integer or boolean literal in this initial subset.\\n");
+            return 0;
+        }
+        if (value->opcode == VNT_IR_INTEGER) {
+            fprintf(out, "    movl $%d, %%eax\\n    ret\\n", value->value.integer);
+            return 1;
+        }
+        if (value->opcode == VNT_IR_BOOLEAN) {
+            fprintf(out, "    movl $%d, %%eax\\n    ret\\n", !!value->value.boolean);
+            return 1;
+        }
+        fprintf(stderr, "Freestanding backend: return expressions must be integer or boolean literals in this initial subset.\\n");
+        return 0;
     }
     fprintf(stderr,
         "Freestanding backend: function '%s' contains unsupported HIR opcode %d; no hosted fallback is allowed.\n",

@@ -123,14 +123,20 @@ jobs:
           readelf -h build/kernel.elf | grep -F 'ELF64'
           test -s build/vntos.iso
           set +e
-          timeout 10s qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -monitor none -serial file:build/serial.log -no-reboot -no-shutdown
+          timeout 10s qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -monitor none -serial file:build/serial.log -debugcon file:build/debug.log -global isa-debugcon.iobase=0xe9 -no-reboot -no-shutdown
           qemu_status=$?
           set -e
           if [ "$qemu_status" -ne 0 ] && [ "$qemu_status" -ne 124 ]; then
             echo "QEMU exited unexpectedly: $qemu_status"
             exit "$qemu_status"
           fi
-          grep -F 'VNTOS_BOOT_OK' build/serial.log
+          if ! grep -F 'VNTOS_BOOT_OK' build/serial.log; then
+            echo 'Serial boot marker missing; debugcon trace:'
+            cat build/debug.log || true
+            echo 'Serial output:'
+            cat build/serial.log || true
+            exit 1
+          fi
 
       - name: Compile raw memory regression program
         shell: bash

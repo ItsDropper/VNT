@@ -297,8 +297,11 @@ jobs:
           required = [
               "VNTOS_BOOT_OK",
               "VNTOS_COMMAND_LINE_READY",
-              "Commands: help, about, clear, echo, reboot, halt",
+              "Commands: help, about, clear, echo, mem, reboot, halt",
               "test",
+              "Kernel start: 0x",
+              "Kernel end: 0x",
+              "Identity map: 0x0000000000000000-0x000000003fffffff (1 GiB)",
               "Unknown command. Type help.",
               "CPU halted.",
           ]

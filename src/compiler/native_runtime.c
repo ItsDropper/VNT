@@ -2114,7 +2114,7 @@ VNT_NATIVE_ABI VntValue *vnt_mem_ptr_add(VntValue *pointer, VntValue *offset_val
     uintptr_t base = (uintptr_t)vnt_require_pointer(pointer);
     int offset = offset_value && offset_value->type == VNT_INT
         ? offset_value->integer : 0;
-    if (!offset_value || offset_value->type != VNT_INT ||
+    if (!base || !offset_value || offset_value->type != VNT_INT ||
         (offset > 0 && (uintptr_t)offset > UINTPTR_MAX - base) ||
         (offset < 0 && (uintptr_t)(-(int64_t)offset) > base)) {
         fprintf(stderr, "Runtime error: invalid pointer offset.\n");

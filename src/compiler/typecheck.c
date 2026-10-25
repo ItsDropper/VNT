@@ -210,7 +210,7 @@ static int builtin_arity(const char *name, int argc) {
         !strcmp(name, "sleep_ms") || !strcmp(name, "process_poll") ||
         !strcmp(name, "process_pid") || !strcmp(name, "process_terminate") ||
         !strcmp(name, "process_stdout") || !strcmp(name, "process_stderr") ||
-        !strcmp(name, "process_exit_code") || !strcmp(name, "process_launch") || !strcmp(name, "io_write") ||
+        !strcmp(name, "process_exit_code") || !strcmp(name, "process_exit") || !strcmp(name, "process_launch") || !strcmp(name, "io_write") ||
         !strcmp(name, "io_write_error")) return argc == 1;
     if (!strcmp(name, "process_wait") || !strcmp(name, "process_start")) return argc == 2;
     if (!strcmp(name, "net_stream_start")) return argc == 4;

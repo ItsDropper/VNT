@@ -81,7 +81,8 @@ static int variable_is_64(const FreestandingGen *g, int vi) {
     return vi >= 0 && (size_t)vi < g->variable_count &&
            g->variable_types[vi] &&
            (!strcmp(g->variable_types[vi], "int") ||
-            !strcmp(g->variable_types[vi], "i64"));
+            !strcmp(g->variable_types[vi], "i64") ||
+            !strcmp(g->variable_types[vi], "string"));
 }
 static int expression_is_64(const FreestandingGen *g, size_t i) {
     if (i >= g->ir->node_count) return 0;
@@ -281,7 +282,8 @@ static int emit_statement(FreestandingGen *g, size_t index) {
     }
     if (n->opcode == VNT_IR_VARIABLE_DECL || n->opcode == VNT_IR_REASSIGN) {
         if (n->type_name && strcmp(n->type_name, "int") &&
-            strcmp(n->type_name, "bool") && strcmp(n->type_name, "i64")) {
+            strcmp(n->type_name, "bool") && strcmp(n->type_name, "i64") &&
+            strcmp(n->type_name, "string")) {
             fail(g, "freestanding locals support int, bool, and i64.");
             return 0;
         }

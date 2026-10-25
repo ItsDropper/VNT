@@ -168,27 +168,28 @@ static int emit_expression(FreestandingGen *g, size_t index) {
             label_emit(g, done_label);
             return 1;
         }
+        int wide = expression_is_64(g, li) || expression_is_64(g, ri);
         if (!emit_expression(g, li)) return 0;
         fputs("    pushq %rax\n", g->out);
         if (!emit_expression(g, ri)) return 0;
-        fputs("    movl %eax, %ecx\n    popq %rax\n", g->out);
+        fputs(wide ? "    movq %rax, %rcx\n    popq %rax\n" : "    movl %eax, %ecx\n    popq %rax\n", g->out);
         switch (n->operation) {
         case BINARY_ADD:
-            fputs("    addl %ecx, %eax\n    jo .Lvnt_arithmetic_fault\n", g->out); return 1;
+            fputs(wide ? "    addq %rcx, %rax\n    jo .Lvnt_arithmetic_fault\n" : "    addl %ecx, %eax\n    jo .Lvnt_arithmetic_fault\n", g->out); return 1;
         case BINARY_SUBTRACT:
-            fputs("    subl %ecx, %eax\n    jo .Lvnt_arithmetic_fault\n", g->out); return 1;
+            fputs(wide ? "    subq %rcx, %rax\n    jo .Lvnt_arithmetic_fault\n" : "    subl %ecx, %eax\n    jo .Lvnt_arithmetic_fault\n", g->out); return 1;
         case BINARY_MULTIPLY:
-            fputs("    imull %ecx, %eax\n    jo .Lvnt_arithmetic_fault\n", g->out); return 1;
+            fputs(wide ? "    imulq %rcx, %rax\n    jo .Lvnt_arithmetic_fault\n" : "    imull %ecx, %eax\n    jo .Lvnt_arithmetic_fault\n", g->out); return 1;
         case BINARY_DIVIDE:
-            fputs("    cltd\n    idivl %ecx\n", g->out); return 1;
+            fputs(wide ? "    cqto\n    idivq %rcx\n" : "    cltd\n    idivl %ecx\n", g->out); return 1;
         case BINARY_MODULO:
-            fputs("    cltd\n    idivl %ecx\n    movl %edx, %eax\n", g->out); return 1;
-        case BINARY_EQUAL: fputs("    cmpl %ecx, %eax\n    sete %al\n", g->out); break;
-        case BINARY_NOT_EQUAL: fputs("    cmpl %ecx, %eax\n    setne %al\n", g->out); break;
-        case BINARY_GREATER: fputs("    cmpl %ecx, %eax\n    setg %al\n", g->out); break;
-        case BINARY_LESS: fputs("    cmpl %ecx, %eax\n    setl %al\n", g->out); break;
-        case BINARY_GREATER_EQUAL: fputs("    cmpl %ecx, %eax\n    setge %al\n", g->out); break;
-        case BINARY_LESS_EQUAL: fputs("    cmpl %ecx, %eax\n    setle %al\n", g->out); break;
+            fputs(wide ? "    cqto\n    idivq %rcx\n    movq %rdx, %rax\n" : "    cltd\n    idivl %ecx\n    movl %edx, %eax\n", g->out); return 1;
+        case BINARY_EQUAL: fputs(wide ? "    cmpq %rcx, %rax\n    sete %al\n" : "    cmpl %ecx, %eax\n    sete %al\n", g->out); break;
+        case BINARY_NOT_EQUAL: fputs(wide ? "    cmpq %rcx, %rax\n    setne %al\n" : "    cmpl %ecx, %eax\n    setne %al\n", g->out); break;
+        case BINARY_GREATER: fputs(wide ? "    cmpq %rcx, %rax\n    setg %al\n" : "    cmpl %ecx, %eax\n    setg %al\n", g->out); break;
+        case BINARY_LESS: fputs(wide ? "    cmpq %rcx, %rax\n    setl %al\n" : "    cmpl %ecx, %eax\n    setl %al\n", g->out); break;
+        case BINARY_GREATER_EQUAL: fputs(wide ? "    cmpq %rcx, %rax\n    setge %al\n" : "    cmpl %ecx, %eax\n    setge %al\n", g->out); break;
+        case BINARY_LESS_EQUAL: fputs(wide ? "    cmpq %rcx, %rax\n    setle %al\n" : "    cmpl %ecx, %eax\n    setle %al\n", g->out); break;
         default: fail(g, "unsupported binary operator."); return 0;
         }
         fputs("    movzbl %al, %eax\n", g->out);

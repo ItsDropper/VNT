@@ -78,7 +78,7 @@ A separate, deliberately restricted mode can emit an ELF-oriented x86-64 entry o
 
 For debugging the generated source separately, use `--emit-freestanding-asm`. The build command assembles without hosted startup/runtime objects and links with `ld -nostdlib -static` using [the x86-64 linker script](freestanding/x86_64.ld).
 
-The initial freestanding subset requires a zero-argument `fun kernel_main()`. It supports 32-bit `int`/`bool` values, local variables, arithmetic/comparisons, `if`, `while`, loop control, literal/ordinary integer returns, and inline assembly (including nested `unsafe` blocks). Signed arithmetic overflow traps with `ud2`. Hosted operations such as `print`, strings/floats, pointers, memory builtins, and function calls are rejected rather than linked against the runtime. The linker script emits a static ELF64 image with a private stack and `_start` entry; it is a freestanding compiler milestone, **not yet a bootable OS kernel**. Boot protocol integration and QEMU boot/serial tests remain future work.
+The initial freestanding subset requires a zero-argument `fun kernel_main()`. It supports 32-bit `int`/`bool` values, local variables, arithmetic/comparisons, `if`, `while`, loop control, literal/ordinary integer returns, and inline assembly (including nested `unsafe` blocks). Signed arithmetic overflow traps with `ud2`. Hosted operations such as `print`, strings/floats, pointers, memory builtins, and function calls are rejected rather than linked against the runtime. The linker script emits a static ELF64 image with a private stack and `_start` entry. The repository also contains a separate bootable learning kernel in [`os/`](os/README.md), with a Multiboot2 bootstrap and a serial shell; see the [beginner tutorial](docs/tutorials/vntos-beginners.md). The freestanding backend remains deliberately restricted and rejects hosted features it cannot support.
 
 ## Your first VNT program
 
@@ -308,7 +308,7 @@ The checks build VNT and exercise language features, module loading, and runtime
 ## Current limitations
 
 - VNT is experimental; syntax and semantics can change.
-- The hosted native backend targets x86-64 and depends on GCC for assembly/linking. An experimental ELF-oriented freestanding backend exists for a strict inline-assembly-only `kernel_main` subset; it rejects hosted features and is not yet a bootable kernel.
+- The hosted native backend targets x86-64 and depends on GCC for assembly/linking. An experimental ELF-oriented freestanding backend exists for a restricted `kernel_main` subset; hosted features are rejected when unsupported. A separate bootable x86-64 learning kernel is maintained under `os/`.
 - Frontend parsing and type checking still use the AST before lowering; the HIR optimizer and native backend are designed to work without it.
 - Imports expand source before parsing and do not provide private symbol isolation or incremental compilation.
 - GUI APIs currently target Windows.
@@ -356,15 +356,15 @@ VNT is licensed under the [MIT License](LICENSE). Copyright (c) 2026 ItsDropper.
 
 VNT can emit a freestanding x86-64 ELF kernel without linking the hosted runtime.
 A minimal bootable operating-system example with a Multiboot2 long-mode bootstrap,
-VGA text console, PS/2 keyboard input, and a small command shell lives in
-[os/](os/README.md).
+COM1 serial output, and an interactive serial command shell lives in
+[os/](os/README.md). See the [beginner tutorial](docs/tutorials/vntos-beginners.md).
 
 On Debian/Ubuntu/WSL, install `build-essential binutils grub-pc-bin grub-common
 xorriso mtools qemu-system-x86`, then run:
 
 ```sh
 bash os/build.sh
-qemu-system-x86_64 -cdrom build/vntos.iso -m 128M
+qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -serial stdio
 ```
 
 The native x86-64 runtime now stores signed integers as 64-bit values, with

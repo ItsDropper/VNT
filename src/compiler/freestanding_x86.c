@@ -126,7 +126,8 @@ static int emit_expression(FreestandingGen *g, size_t index) {
     case VNT_IR_VARIABLE: {
         int vi = variable_index(g, n->value.text);
         if (vi < 0) { fail(g, "unknown local variable."); return 0; }
-        fprintf(g->out, "    movl -%d(%%rbp), %%eax\n", (vi + 1) * 8);
+        if (variable_is_64(g, vi)) fprintf(g->out, "    movq -%d(%%rbp), %%rax\n", (vi + 1) * 8);
+        else fprintf(g->out, "    movl -%d(%%rbp), %%eax\n", (vi + 1) * 8);
         return 1;
     }
     case VNT_IR_UNARY: {
@@ -134,7 +135,8 @@ static int emit_expression(FreestandingGen *g, size_t index) {
         if (!operand || !emit_expression(g, (size_t)(operand - g->ir->nodes)))
             return 0;
         if (n->operation == UNARY_NEGATE) {
-            fputs("    negl %eax\n    jo .Lvnt_arithmetic_fault\n", g->out);
+            if (expression_is_64(g, (size_t)(operand - g->ir->nodes))) fputs("    negq %rax\n    jo .Lvnt_arithmetic_fault\n", g->out);
+            else fputs("    negl %eax\n    jo .Lvnt_arithmetic_fault\n", g->out);
             return 1;
         }
         if (n->operation == UNARY_NOT) {
@@ -216,18 +218,19 @@ static int emit_statement(FreestandingGen *g, size_t index) {
     }
     if (n->opcode == VNT_IR_VARIABLE_DECL || n->opcode == VNT_IR_REASSIGN) {
         if (n->type_name && strcmp(n->type_name, "int") &&
-            strcmp(n->type_name, "bool")) {
-            fail(g, "freestanding locals must be int or bool in this initial target.");
+            strcmp(n->type_name, "bool") && strcmp(n->type_name, "i64")) {
+            fail(g, "freestanding locals support int, bool, and i64.");
             return 0;
         }
         const VntIrNode *value = child_role(g->ir, index, VNT_IR_EDGE_VALUE);
         int vi = variable_index(g, n->value.text);
         if (!value || vi < 0 || !emit_expression(g, (size_t)(value - g->ir->nodes)))
             return 0;
-        fprintf(g->out, "    movl %%eax, -%d(%%rbp)\n", (vi + 1) * 8);
+        if (variable_is_64(g, vi)) fprintf(g->out, "    movq %%rax, -%d(%%rbp)\n", (vi + 1) * 8);
+        else fprintf(g->out, "    movl %%eax, -%d(%%rbp)\n", (vi + 1) * 8);
         return 1;
     }
-    if (n->opcode == VNT_IR_ASSIGN) {
+    if (n->opcode == VNT_IR_ASSIGN {
         const VntIrNode *target = child_role(g->ir, index, VNT_IR_EDGE_TARGET);
         const VntIrNode *value = child_role(g->ir, index, VNT_IR_EDGE_VALUE);
         if (!target || target->opcode != VNT_IR_VARIABLE || !value) {
@@ -237,10 +240,11 @@ static int emit_statement(FreestandingGen *g, size_t index) {
         int vi = variable_index(g, target->value.text);
         if (vi < 0 || !emit_expression(g, (size_t)(value - g->ir->nodes)))
             return 0;
-        fprintf(g->out, "    movl %%eax, -%d(%%rbp)\n", (vi + 1) * 8);
+        if (variable_is_64(g, vi)) fprintf(g->out, "    movq %%rax, -%d(%%rbp)\n", (vi + 1) * 8);
+        else fprintf(g->out, "    movl %%eax, -%d(%%rbp)\n", (vi + 1) * 8);
         return 1;
     }
-    if (n->opcode == VNT_IR_RETURN) {
+    if (n->opcode == VNT_IR_RETURN {
         const VntIrNode *value = child_role(g->ir, index, VNT_IR_EDGE_VALUE);
         if (value && !emit_expression(g, (size_t)(value - g->ir->nodes))) return 0;
         fputs("    leave\n    ret\n", g->out);
@@ -386,7 +390,8 @@ int vnt_emit_freestanding_x86_64(const VntIrProgram *ir,
     if (g.failed) remove(assembly_path);
 
 cleanup:
-    for (size_t i = 0; i < g.variable_count; ++i) free(g.variables[i]);
+    for (size_t i = 0; i < g.variable_count; ++i) { free(g.variables[i]); free(g.variable_types[i]); }
     free(g.variables);
+    free(g.variable_types);
     return !g.failed;
 }

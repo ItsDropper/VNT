@@ -64,7 +64,7 @@ static int build_freestanding(AstNode *program, const char *output_path) {
 #ifdef _WIN32
     (void)program;
     (void)output_path;
-    fprintf(stderr, "Freestanding ELF linking currently requires an ELF-targeting GNU ld environment; use Linux or WSL.\\n");
+    fprintf(stderr, "Freestanding ELF linking currently requires an ELF-targeting GNU ld environment; use Linux or WSL.\n");
     return 1;
 #else
     size_t length = strlen(output_path);
@@ -73,7 +73,7 @@ static int build_freestanding(AstNode *program, const char *output_path) {
     if (!assembly_path || !object_path) {
         free(assembly_path);
         free(object_path);
-        fprintf(stderr, "Could not allocate memory.\\n");
+        fprintf(stderr, "Could not allocate memory.\n");
         return 1;
     }
     snprintf(assembly_path, length + 3, "%s.s", output_path);
@@ -92,7 +92,7 @@ static int build_freestanding(AstNode *program, const char *output_path) {
         remove(assembly_path);
         free(assembly_path);
         free(object_path);
-        fprintf(stderr, "Could not allocate memory.\\n");
+        fprintf(stderr, "Could not allocate memory.\n");
         return 1;
     }
     snprintf(command, command_size,
@@ -105,10 +105,10 @@ static int build_freestanding(AstNode *program, const char *output_path) {
         remove(output_path);
         free(assembly_path);
         free(object_path);
-        fprintf(stderr, "Freestanding assembly/link failed; no hosted runtime was linked.\\n");
+        fprintf(stderr, "Freestanding assembly/link failed; no hosted runtime was linked.\n");
         return 1;
     }
-    printf("Freestanding ELF created: %s\\n", output_path);
+    printf("Freestanding ELF created: %s\n", output_path);
     free(assembly_path);
     free(object_path);
     return 0;

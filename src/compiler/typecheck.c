@@ -287,7 +287,9 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
     if (!n) return TY_UNKNOWN;
 
     switch (n->type) {
-        case AST_INTEGER_LITERAL: return TY_INT;
+        case AST_INTEGER_LITERAL:
+            return n->integer_literal.value < INT32_MIN ||
+                   n->integer_literal.value > INT32_MAX ? TY_I64 : TY_INT;
         case AST_FLOAT_LITERAL: return TY_FLOAT;
         case AST_BOOLEAN_LITERAL: return TY_BOOL;
         case AST_STRING_LITERAL: return TY_STRING;
@@ -492,7 +494,9 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 return TY_UNKNOWN;
             }
 
-            return left == TY_FLOAT || right == TY_FLOAT ? TY_FLOAT : TY_INT;
+            if (left == TY_FLOAT || right == TY_FLOAT) return TY_FLOAT;
+            if (left == TY_I64 || right == TY_I64) return TY_I64;
+            return TY_INT;
         }
 
         default:

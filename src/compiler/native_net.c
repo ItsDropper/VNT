@@ -88,7 +88,9 @@ static int has_request_header(const char *headers, const char *name) {
         const char *end = strchr(p, '\n');
         size_t n = end ? (size_t)(end-p) : strlen(p);
         if (n && p[n-1] == '\r') n--;
-        if (header_name_equals(p, (size_t)((const char *)memchr(p, ':', n)-p), name))
+        const char *colon = (const char *)memchr(p, ':', n);
+        /* Never subtract a NULL pointer for a malformed header line. */
+        if (colon && header_name_equals(p, (size_t)(colon-p), name))
             return 1;
         if (!end) break;
         p = end+1;

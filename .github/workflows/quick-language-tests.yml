@@ -182,6 +182,7 @@ jobs:
           ./vnt --compile tests/native_compiler.vnt -o vnt-native-smoke.exe
           ./vnt --compile tests/hir_constant_folding.vnt -o vnt-hir-smoke.exe
           ./vnt --compile tests/native_i64.vnt -o vnt-i64-smoke.exe
+          ./vnt --compile tests/native_i64_overflow.vnt -o vnt-i64-overflow-smoke.exe
           ./vnt --compile tests/native_memory_u64.vnt -o vnt-memory-u64-smoke.exe
 
       - name: Run native networking integration tests
@@ -233,6 +234,16 @@ jobs:
           tr -d '\r' < vnt-memory-u64-actual.txt > vnt-memory-u64-actual-lf.txt
           printf 'true\n81985529216486895\n239\n1\ntrue\ntrue\nMEM_U64_OK\n' > vnt-memory-u64-expected.txt
           diff -u vnt-memory-u64-expected.txt vnt-memory-u64-actual-lf.txt
+
+          set +e
+          ./vnt-i64-overflow-smoke.exe > vnt-i64-overflow-actual.txt 2> vnt-i64-overflow-stderr.txt
+          overflow_status=$?
+          set -e
+          if [ "$overflow_status" -eq 0 ]; then
+            echo "Signed 64-bit overflow incorrectly succeeded."
+            exit 1
+          fi
+          grep -F "Runtime error: signed 64-bit integer overflow in addition." vnt-i64-overflow-stderr.txt
 
       - name: Build and exercise VNTOS serial shell in QEMU (Linux)
         if: runner.os == 'Linux'

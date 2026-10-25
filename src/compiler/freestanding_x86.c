@@ -245,7 +245,7 @@ static int emit_statement(FreestandingGen *g, size_t index) {
         else fprintf(g->out, "    movl %%eax, -%d(%%rbp)\n", (vi + 1) * 8);
         return 1;
     }
-    if (n->opcode == VNT_IR_RETURN {
+    if (n->opcode == VNT_IR_RETURN) {
         const VntIrNode *value = child_role(g->ir, index, VNT_IR_EDGE_VALUE);
         if (value && !emit_expression(g, (size_t)(value - g->ir->nodes))) return 0;
         fputs("    leave\n    ret\n", g->out);

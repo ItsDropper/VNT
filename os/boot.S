@@ -111,3 +111,12 @@ gdt64_pointer:
     .word gdt64_end - gdt64 - 1
     .long gdt64
 
+
+.section .bss
+.balign 4096
+pml4_table: .skip 4096
+pdpt_table: .skip 4096
+page_directory: .skip 4096
+.balign 16
+boot_stack_bottom: .skip 16384
+boot_stack_top:

@@ -195,6 +195,7 @@ jobs:
         run: |
           ./vnt --compile tests/native_compiler.vnt -o vnt-native-smoke.exe
           ./vnt --compile tests/hir_constant_folding.vnt -o vnt-hir-smoke.exe
+          ./vnt --compile tests/native_i64.vnt -o vnt-i64-smoke.exe
 
       - name: Run native networking integration tests
         shell: bash
@@ -212,3 +213,8 @@ jobs:
           tr -d '\r' < vnt-hir-actual.txt > vnt-hir-actual-lf.txt
           printf '14\n4\nfalse\n3.75\n10\n3\ntrue\nHIR_CONSTANT_FOLDING_OK\n' > vnt-hir-expected.txt
           diff -u vnt-hir-expected.txt vnt-hir-actual-lf.txt
+
+          ./vnt-i64-smoke.exe > vnt-i64-actual.txt
+          tr -d '\r' < vnt-i64-actual.txt > vnt-i64-actual-lf.txt
+          printf '4294967296\n12884901888\nNATIVE_I64_OK\n' > vnt-i64-expected.txt
+          diff -u vnt-i64-expected.txt vnt-i64-actual-lf.txt

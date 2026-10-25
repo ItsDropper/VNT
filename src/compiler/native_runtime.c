@@ -767,12 +767,12 @@ VNT_NATIVE_ABI VntValue * vnt_input(VntValue *prompt) {
 /* Exit the current native VNT program with a conventional process status. */
 VNT_NATIVE_ABI VntValue * vnt_process_exit(VntValue *code) {
     if (!code || code->type != VNT_INT) {
-        fprintf(stderr, "Runtime error: process_exit() requires an integer status.\\n");
+        fprintf(stderr, "Runtime error: process_exit() requires an integer status.\n");
         exit(1);
     }
     int status = (int)code->integer;
     if (status < 0 || status > 255) {
-        fprintf(stderr, "Runtime error: process_exit() status must be between 0 and 255.\\n");
+        fprintf(stderr, "Runtime error: process_exit() status must be between 0 and 255.\n");
         exit(1);
     }
     exit(status);

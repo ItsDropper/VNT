@@ -120,3 +120,20 @@ page_directory: .skip 4096
 .balign 16
 boot_stack_bottom: .skip 16384
 boot_stack_top:
+
+
+/* Shared scalar state for the VNT-compiled VGA/PS2 drivers. */
+.balign 8
+.global vntos_state
+vntos_state:
+    .quad 0       /* VGA text cursor */
+    .quad 15      /* VGA color attribute */
+    .quad 40      /* Mouse X cell */
+    .quad 12      /* Mouse Y cell */
+    .quad 0       /* Mouse button bits */
+    .quad 0       /* Mouse packet index */
+    .quad 0       /* Mouse packet byte 0 */
+    .quad 0       /* Mouse packet byte 1 */
+    .quad 0       /* Mouse packet byte 2 */
+    .quad 0       /* Keyboard shift state */
+    .quad 0       /* Keyboard caps-lock state */

@@ -3,7 +3,7 @@ name: VNX VNT-Native Interpreter Tests
 on:
   push:
     branches: [feature/vnx-language-and-adventure]
-    paths: ["vnx/**", "src/**", "include/**", ".github/workflows/vnx-tests.yml"]
+    paths: ["vnx/**", "src/**", "include/**", "tests/**", ".github/workflows/vnx-tests.yml"]
   pull_request:
     paths: ["vnx/**", "src/**", "include/**", ".github/workflows/vnx-tests.yml"]
 
@@ -30,6 +30,11 @@ jobs:
         run: |
           mkdir -p vnx/build
           ./vnt --compile vnx/interpreter.vnt -o vnx/build/vnx
+      - name: Verify VNT string indexing types correctly
+        run: |
+          ./vnt --compile tests/native_types.vnt -o vnx/build/native-types
+          vnx/build/native-types > vnx/build/native-types.out
+          grep -F 'Vanta' vnx/build/native-types.out
       - name: Run language smoke test
         run: |
           printf 'vnx/tests/smoke.vnx\n' | vnx/build/vnx > vnx/build/smoke.out

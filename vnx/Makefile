@@ -1,14 +1,12 @@
 # Copyright (c) 2026 ItsDropper
 # Licensed under the MIT License.
-CC ?= cc
-CFLAGS ?= -std=c11 -Wall -Wextra -Wpedantic -O2
-TARGET := build/vnx
-.PHONY: all clean test
-all: $(TARGET)
-$(TARGET): src/vnx.c
-	mkdir -p build
-	$(CC) $(CFLAGS) src/vnx.c -o $(TARGET)
-test: $(TARGET)
-	sh tests/smoke.sh ./$(TARGET)
+# VNX must be built from VNT source; no C interpreter target is provided yet.
+.PHONY: all test clean
+all:
+	@echo "VNX interpreter migration to VNT is in progress; see docs/tutorials/courses/programming-language/"
+	@false
+test:
+	@echo "Tests require the VNT-native interpreter to be implemented."
+	@false
 clean:
 	rm -rf build

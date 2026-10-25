@@ -83,11 +83,13 @@ fun starts_with(text: string, prefix: string) -> bool {
 
 fun serial_hex(value: i64) {
     serial_puts("0x")
+    vga_puts("0x")
     let divisor: i64 = 1152921504606846976
     let count: int = 0
     while count < 16 {
         let digit: int = (value / divisor) % 16
         serial_putc("0123456789abcdef"[digit])
+        vga_putc("0123456789abcdef"[digit])
         value = value % divisor
         divisor = divisor / 16
         count = count + 1
@@ -132,8 +134,17 @@ fun vga_putc(value: int) {
     let keep_cursor: int = state_get(0)
     let keep_color: int = state_get(1)
     unsafe {
-        asm volatile("movl -8(%rbp), %eax; movq vntos_state(%rip), %rcx; cmpb $10, %al; je 1f; cmpb $13, %al; je 2f; cmpb $8, %al; je 3f; movabsq $0xb8000, %rdi; leaq (%rdi,%rcx,2), %rdi; movb %al, (%rdi); movq vntos_state+8(%rip), %rax; movb %al, 1(%rdi); incq %rcx; jmp 4f; 1: movq %rcx, %rax; xorq %rdx, %rdx; movq $80, %rsi; divq %rsi; incq %rax; imulq $80, %rax, %rcx; jmp 4f; 2: movq %rcx, %rax; xorq %rdx, %rdx; movq $80, %rsi; divq %rsi; imulq $80, %rax, %rcx; jmp 4f; 3: testq %rcx, %rcx; jz 4f; decq %rcx; movabsq $0xb8000, %rdi; leaq (%rdi,%rcx,2), %rdi; movw $0x0f20, (%rdi); 4: cmpq $2000, %rcx; jb 5f; movabsq $0xb8000, %rsi; leaq 160(%rsi), %rsi; movabsq $0xb8000, %rdi; movl $3840, %ecx; rep movsb; movabsq $0xb8000, %rdi; addq $3840, %rdi; movl $80, %ecx; 6: movw $0x0f20, (%rdi); addq $2, %rdi; loop 6b; movq $1920, %rcx; 5: movq %rcx, vnt_global_vga_cursor(%rip); movw $0x3d4, %dx; movb $14, %al; outb %al, %dx; movw $0x3d5, %dx; movl %ecx, %eax; shrl $8, %eax; outb %al, %dx; movw $0x3d4, %dx; movb $15, %al; outb %al, %dx; movw $0x3d5, %dx; movl vnt_global_vga_cursor(%rip), %eax; outb %al, %dx")
+        asm volatile("movl -8(%rbp), %eax; movq vntos_state(%rip), %rcx; cmpb $10, %al; je 1f; cmpb $13, %al; je 2f; cmpb $8, %al; je 3f; movabsq $0xb8000, %rdi; leaq (%rdi,%rcx,2), %rdi; movb %al, (%rdi); movq vntos_state+8(%rip), %rax; movb %al, 1(%rdi); incq %rcx; jmp 4f; 1: movq %rcx, %rax; xorq %rdx, %rdx; movq $80, %rsi; divq %rsi; incq %rax; imulq $80, %rax, %rcx; jmp 4f; 2: movq %rcx, %rax; xorq %rdx, %rdx; movq $80, %rsi; divq %rsi; imulq $80, %rax, %rcx; jmp 4f; 3: testq %rcx, %rcx; jz 4f; decq %rcx; movabsq $0xb8000, %rdi; leaq (%rdi,%rcx,2), %rdi; movw $0x0f20, (%rdi); 4: cmpq $2000, %rcx; jb 5f; movabsq $0xb8000, %rsi; leaq 160(%rsi), %rsi; movabsq $0xb8000, %rdi; movl $3840, %ecx; rep movsb; movabsq $0xb8000, %rdi; addq $3840, %rdi; movl $80, %ecx; 6: movw $0x0f20, (%rdi); addq $2, %rdi; loop 6b; movq $1920, %rcx; 5: movq %rcx, vntos_state(%rip); movw $0x3d4, %dx; movb $14, %al; outb %al, %dx; movw $0x3d5, %dx; movl %ecx, %eax; shrl $8, %eax; outb %al, %dx; movw $0x3d4, %dx; movb $15, %al; outb %al, %dx; movw $0x3d5, %dx; movl vntos_state(%rip), %eax; outb %al, %dx")
     }
+    return 0
+}
+
+# Clear all 80x25 VGA text cells and reset the visible hardware cursor.
+fun vga_clear() {
+    unsafe {
+        asm volatile("cld; movabsq $0xb8000, %rdi; movw $0x0f20, %ax; movl $2000, %ecx; rep stosw; movw $0x3d4, %dx; movb $14, %al; outb %al, %dx; movw $0x3d5, %dx; xorb %al, %al; outb %al, %dx; movw $0x3d4, %dx; movb $15, %al; outb %al, %dx; movw $0x3d5, %dx; xorb %al, %al; outb %al, %dx")
+    }
+    state_set(0, 0)
     return 0
 }
 
@@ -169,8 +180,8 @@ fun console_puts_offset(text: string, offset: int) {
 
 # 8042 controller polling. Timeouts prevent a missing PS/2 device from hanging boot.
 fun ps2_wait_input_clear() -> int {
-    let attempts: int = 0
     let status: int = 0
+    let attempts: int = 0
     while attempts < 100000 {
         unsafe {
             asm volatile("movw $0x64, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp)")
@@ -185,8 +196,8 @@ fun ps2_wait_input_clear() -> int {
 }
 
 fun ps2_wait_output_full() -> int {
-    let attempts: int = 0
     let status: int = 0
+    let attempts: int = 0
     while attempts < 100000 {
         unsafe {
             asm volatile("movw $0x64, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp)")
@@ -236,7 +247,6 @@ fun ps2_init() {
     # Enable the auxiliary device port and request streaming reports.
     ps2_write_command(0xa8)
     ps2_mouse_command(0xf4)
-    ps2_write_data(0xf4)
     # Drain ACK/RESEND bytes before starting input polling.
     let count: int = 0
     while count < 8 {
@@ -478,7 +488,7 @@ fun mouse_poll() {
 fun kernel_main() {
     serial_init()
     state_set(1, 15)
-    state_set(0, 0)
+    vga_clear()
     vga_puts("VNTOS\r\nVNT-compiled x86-64 kernel\r\n")
     vga_puts("VGA console active. PS/2 keyboard and mouse polling enabled.\r\n")
     vga_puts("Type help. Serial COM1 remains available for diagnostics.\r\n\r\n")
@@ -517,34 +527,8 @@ fun kernel_main() {
                 handled = 1
             }
             if str_eq(buffer, "clear") {
-                state_set(0, 0)
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                vga_puts("                                                                                ")
-                state_set(0, 0)
-                console_puts("VNTOS screen cleared.\r\n")
+                vga_clear()
+                console_puts("VNTOS screen cleared.\\r\\n")
                 handled = 1
             }
             if str_eq(buffer, "mem") {

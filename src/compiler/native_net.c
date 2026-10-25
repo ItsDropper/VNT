@@ -13,6 +13,9 @@
 #include <ctype.h>
 #include <stdint.h>
 
+/* Buffered convenience requests have an explicit ceiling. Large payloads must use a streaming API. */
+#define VNT_HTTP_MAX_BUFFERED_RESPONSE (64u * 1024u * 1024u)
+
 static char *net_copy(const char *s, size_t n) {
     char *p = (char *)malloc(n + 1);
     if (!p) return NULL;
@@ -433,7 +436,8 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
         for (;;) {
             DWORD available = 0;
             if (!WinHttpQueryDataAvailable(request, &available) || !available) break;
-            if ((size_t)available > SIZE_MAX - used - 1) { ok = FALSE; break; }
+            if ((size_t)available > SIZE_MAX - used - 1 ||
+                (size_t)available > VNT_HTTP_MAX_BUFFERED_RESPONSE - used) { ok = FALSE; break; }
             if (used + (size_t)available + 1 > capacity) {
                 size_t next = capacity ? capacity : 8192;
                 while (next < used + (size_t)available + 1) {
@@ -1065,9 +1069,10 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     raw[0] = '\0';
     for (;;) {
         if (used == cap) {
-            if (cap > SIZE_MAX / 2) { free(raw); goto fail; }
-            size_t next = cap * 2;
-            if (next <= cap || next == SIZE_MAX) { free(raw); goto fail; }
+            if (cap >= VNT_HTTP_MAX_BUFFERED_RESPONSE) { free(raw); goto fail; }
+            size_t next = cap > VNT_HTTP_MAX_BUFFERED_RESPONSE / 2
+                ? VNT_HTTP_MAX_BUFFERED_RESPONSE : cap * 2;
+            if (next <= cap || next > SIZE_MAX - 1) { free(raw); goto fail; }
             char *grown = (char *)realloc(raw, next + 1);
             if (!grown) { free(raw); goto fail; }
             raw = grown; cap = next;

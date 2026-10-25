@@ -145,9 +145,9 @@ static int emit_expression(FreestandingGen *g, size_t index) {
             fail(g, "freestanding function calls currently require zero arguments and zero parameters.");
             return 0;
         }
-        fputs("    subq $8, %rsp\n    call ", g->out);
+        fputs("    call ", g->out);
         emit_function_symbol(g->out, n->value.text);
-        fputs("\n    addq $8, %rsp\n", g->out);
+        fputs("\n", g->out);
         return 1;
     }
     case VNT_IR_INTEGER:
@@ -412,6 +412,10 @@ int vnt_emit_freestanding_x86_64(const VntIrProgram *ir,
         if (function->name_count != 0) {
             fail(&g, "freestanding functions currently require zero parameters.");
             break;
+        }
+        for (size_t i = 0; i < g.variable_count; ++i) {
+            free(g.variables[i]);
+            free(g.variable_types[i]);
         }
         g.variable_count = 0;
         collect_variables(&g, fn);

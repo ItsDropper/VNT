@@ -108,11 +108,14 @@ int main(int argc, char *argv[]) {
     } else if (emit_asm) {
         result = compiler_compile(program, argv[4]) ? 0 : 1;
         if (result == 0)
-            printf("Assembly emitted without linking: %s\n", argv[4]);
+            printf("Assembly emitted without linking: %s\\n", argv[4]);
+    } else if (emit_freestanding) {
+        result = compiler_compile_freestanding(program, argv[4]) ? 0 : 1;
+        if (result == 0)
+            printf("Freestanding x86-64 assembly emitted: %s\\n", argv[4]);
     } else {
         result = compile_native(program, argv[4]);
     }
-
     ast_free(program);
     free(source);
     return result;

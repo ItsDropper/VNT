@@ -602,7 +602,7 @@ VNT_NATIVE_ABI VntValue * vnt_mod(VntValue *a, VntValue *b) {
         exit(1);
     }
     if (a->integer == INT64_MIN && b->integer == -1) {
-        fprintf(stderr, "Runtime error: integer overflow in modulo.\\n");
+        fprintf(stderr, "Runtime error: integer overflow in modulo.\n");
         exit(1);
     }
     return vnt_int(a->integer % b->integer);

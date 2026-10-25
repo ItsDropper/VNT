@@ -14,6 +14,7 @@ PHDRS
 SECTIONS
 {
     . = 0x00100000;
+    __kernel_start = .;
     .multiboot ALIGN(8) : { KEEP(*(.multiboot)) } :text
     .boot32 ALIGN(16) : { KEEP(*(.boot32)) } :text
     .text ALIGN(0x1000) : { *(.text .text.*) } :text
@@ -23,5 +24,6 @@ SECTIONS
         *(COMMON)
         *(.bss .bss.*)
     } :data
+    __kernel_end = .;
     /DISCARD/ : { *(.comment) *(.eh_frame .eh_frame.*) *(.note .note.*) }
 }

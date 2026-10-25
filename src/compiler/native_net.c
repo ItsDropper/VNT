@@ -1734,3 +1734,14 @@ char *vnt_native_http_request_async(const char *method, const char *url,
     vnt_native_http_disable_pool = previous;
     return result;
 }
+char *vnt_native_http_request_stream_async(const char *method, const char *url,
+                                           const char *headers, const char *body,
+                                           VntHttpBodySink sink, void *sink_context,
+                                           int *status, size_t *response_length) {
+    int previous = vnt_native_http_disable_pool;
+    vnt_native_http_disable_pool = 1;
+    char *result = vnt_native_http_request_impl(method, url, headers, body,
+        body ? strlen(body) : 0, status, response_length, sink, sink_context, 0);
+    vnt_native_http_disable_pool = previous;
+    return result;
+}

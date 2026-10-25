@@ -1885,6 +1885,9 @@ extern int vnt_native_http_async_cancel(int handle);
 extern char *vnt_native_http_async_result(int handle, size_t *length);
 extern int vnt_native_http_async_status(int handle);
 extern int vnt_native_http_async_release(int handle);
+extern int vnt_native_http_async_stream_start(const char *method, const char *url, const char *headers, const char *body);
+extern unsigned char *vnt_native_http_async_stream_read(int handle, size_t maximum, size_t *out_length);
+extern int vnt_native_http_async_stream_done(int handle);
 
 static const char *vnt_net_string(VntValue *value, const char *function_name) {
     if (!value || value->type != VNT_STRING) {
@@ -2001,6 +2004,37 @@ VNT_NATIVE_ABI VntValue *vnt_net_async_status(VntValue *handle) {
     return vnt_int(vnt_native_http_async_status(handle && handle->type == VNT_INT ? handle->integer : 0));
 }
 VNT_NATIVE_ABI VntValue *vnt_net_async_release(VntValue *handle) {
+    return vnt_bool(vnt_native_http_async_release(handle && handle->type == VNT_INT ? handle->integer : 0));
+}
+VNT_NATIVE_ABI VntValue *vnt_net_stream_start(VntValue *method, VntValue *url,
+                                              VntValue *headers, VntValue *body) {
+    int handle = vnt_native_http_async_stream_start(vnt_net_string(method, "net_stream_start()"),
+        vnt_net_string(url, "net_stream_start()"),
+        vnt_net_string(headers, "net_stream_start()"),
+        vnt_net_string(body, "net_stream_start()"));
+    return vnt_int(handle);
+}
+VNT_NATIVE_ABI VntValue *vnt_net_stream_read(VntValue *handle, VntValue *maximum) {
+    size_t length = 0;
+    size_t amount = maximum && maximum->type == VNT_INT && maximum->integer > 0
+        ? (size_t)maximum->integer : 65536u;
+    if (amount > 65536u) amount = 65536u;
+    unsigned char *data = vnt_native_http_async_stream_read(
+        handle && handle->type == VNT_INT ? handle->integer : 0, amount, &length);
+    VntValue *result = vnt_bytes_new(data, data ? length : 0);
+    free(data);
+    return result;
+}
+VNT_NATIVE_ABI VntValue *vnt_net_stream_done(VntValue *handle) {
+    return vnt_bool(vnt_native_http_async_stream_done(handle && handle->type == VNT_INT ? handle->integer : 0));
+}
+VNT_NATIVE_ABI VntValue *vnt_net_stream_status(VntValue *handle) {
+    return vnt_int(vnt_native_http_async_status(handle && handle->type == VNT_INT ? handle->integer : 0));
+}
+VNT_NATIVE_ABI VntValue *vnt_net_stream_cancel(VntValue *handle) {
+    return vnt_bool(vnt_native_http_async_cancel(handle && handle->type == VNT_INT ? handle->integer : 0));
+}
+VNT_NATIVE_ABI VntValue *vnt_net_stream_release(VntValue *handle) {
     return vnt_bool(vnt_native_http_async_release(handle && handle->type == VNT_INT ? handle->integer : 0));
 }
 

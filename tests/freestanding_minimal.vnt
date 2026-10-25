@@ -2,5 +2,5 @@ fun kernel_main() {
     unsafe {
         asm volatile("nop")
     }
-    return
+    return 0
 }

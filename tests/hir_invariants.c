@@ -17,7 +17,7 @@ static int failures;
     } \
 } while (0)
 
-static AstNode *binary(int left, int right, BinaryOperator op) {
+static AstNode *binary(int64_t left, int64_t right, BinaryOperator op) {
     return ast_create_binary(ast_create_integer(left), ast_create_integer(right), op);
 }
 
@@ -468,11 +468,11 @@ int main(void) {
                     VNT_IR_BOOLEAN, 1, "boolean negation folds");
     check_fold_case(ast_create_unary(ast_create_integer(INT64_MIN), UNARY_NEGATE),
                     VNT_IR_UNARY, 0, "signed negation overflow is not folded");
-    check_fold_case(binary(INT_MAX, 1, BINARY_ADD), VNT_IR_BINARY, 0,
+    check_fold_case(binary(INT64_MAX, 1, BINARY_ADD), VNT_IR_BINARY, 0,
                     "integer overflow is not folded");
     check_fold_case(binary(1, 0, BINARY_DIVIDE), VNT_IR_BINARY, 0,
                     "integer division by zero is not folded");
-    check_fold_case(binary(INT_MIN, -1, BINARY_DIVIDE), VNT_IR_BINARY, 0,
+    check_fold_case(binary(INT64_MIN, -1, BINARY_DIVIDE), VNT_IR_BINARY, 0,
                     "signed division overflow is not folded");
     check_fold_case(ast_create_binary(ast_create_float(1.0), ast_create_float(0.0),
                                       BINARY_DIVIDE),

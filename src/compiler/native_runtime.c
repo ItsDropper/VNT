@@ -197,7 +197,7 @@ typedef struct {
 struct VntValue {
     VntType type;
     union {
-        int integer;
+        int64_t integer;
         double floating;
         int boolean;
         char *string;
@@ -321,7 +321,7 @@ VNT_NATIVE_ABI VntValue * vnt_ref_set(VntValue *ref, VntValue *value) {
     return value;
 }
 
-VNT_NATIVE_ABI VntValue * vnt_int(int x) {
+VNT_NATIVE_ABI VntValue * vnt_int(int64_t x) {
     VntValue *v = alloc_value(VNT_INT);
     v->integer = x;
     return v;
@@ -509,7 +509,7 @@ static char *value_to_concat_string(VntValue *v) {
     if (!v) return strdup("null");
     switch (v->type) {
         case VNT_STRING: text = v->string; break;
-        case VNT_INT: snprintf(buffer, sizeof(buffer), "%d", v->integer); text = buffer; break;
+        case VNT_INT: snprintf(buffer, sizeof(buffer), "%lld", (long long)v->integer); text = buffer; break;
         case VNT_FLOAT: snprintf(buffer, sizeof(buffer), "%.15g", v->floating); text = buffer; break;
         case VNT_BOOL: text = v->boolean ? "true" : "false"; break;
         default: return NULL;
@@ -546,35 +546,35 @@ VNT_NATIVE_ABI VntValue * vnt_add(VntValue *a, VntValue *b) {
     require_number(a, b);
     if (a->type == VNT_FLOAT || b->type == VNT_FLOAT)
         return vnt_float(number_value(a) + number_value(b));
-    int64_t result = (int64_t)a->integer + (int64_t)b->integer;
-    if (result < INT_MIN || result > INT_MAX) {
-        fprintf(stderr, "Runtime error: integer overflow in addition.\n");
+    int64_t result;
+    if (__builtin_add_overflow(a->integer, b->integer, &result)) {
+        fprintf(stderr, "Runtime error: signed 64-bit integer overflow in addition.\n");
         exit(1);
     }
-    return vnt_int((int)result);
+    return vnt_int(result);
 }
 VNT_NATIVE_ABI VntValue * vnt_sub(VntValue *a, VntValue *b) {
     require_number(a,b);
     if (a->type == VNT_FLOAT || b->type == VNT_FLOAT)
         return vnt_float(number_value(a) - number_value(b));
-    int64_t result = (int64_t)a->integer - (int64_t)b->integer;
-    if (result < INT_MIN || result > INT_MAX) {
-        fprintf(stderr, "Runtime error: integer overflow in subtraction.\n");
+    int64_t result;
+    if (__builtin_sub_overflow(a->integer, b->integer, &result)) {
+        fprintf(stderr, "Runtime error: signed 64-bit integer overflow in subtraction.\n");
         exit(1);
     }
-    return vnt_int((int)result);
+    return vnt_int(result);
 }
 
 VNT_NATIVE_ABI VntValue * vnt_mul(VntValue *a, VntValue *b) {
     require_number(a,b);
     if (a->type == VNT_FLOAT || b->type == VNT_FLOAT)
         return vnt_float(number_value(a) * number_value(b));
-    int64_t result = (int64_t)a->integer * (int64_t)b->integer;
-    if (result < INT_MIN || result > INT_MAX) {
-        fprintf(stderr, "Runtime error: integer overflow in multiplication.\n");
+    int64_t result;
+    if (__builtin_mul_overflow(a->integer, b->integer, &result)) {
+        fprintf(stderr, "Runtime error: signed 64-bit integer overflow in multiplication.\n");
         exit(1);
     }
-    return vnt_int((int)result);
+    return vnt_int(result);
 }
 
 VNT_NATIVE_ABI VntValue * vnt_div(VntValue *a, VntValue *b) {
@@ -585,7 +585,7 @@ VNT_NATIVE_ABI VntValue * vnt_div(VntValue *a, VntValue *b) {
     }
     if (a->type == VNT_FLOAT || b->type == VNT_FLOAT)
         return vnt_float(number_value(a) / number_value(b));
-    if (a->integer == INT_MIN && b->integer == -1) {
+    if (a->integer == INT64_MIN && b->integer == -1) {
         fprintf(stderr, "Runtime error: integer overflow in division.\n");
         exit(1);
     }
@@ -601,14 +601,14 @@ VNT_NATIVE_ABI VntValue * vnt_mod(VntValue *a, VntValue *b) {
         fprintf(stderr, "Runtime error: modulo by zero.\n");
         exit(1);
     }
-    if (a->integer == INT_MIN && b->integer == -1) return vnt_int(0);
+    if (a->integer == INT64_MIN && b->integer == -1) return vnt_int(0);
     return vnt_int(a->integer % b->integer);
 }
 
 VNT_NATIVE_ABI VntValue * vnt_neg(VntValue *a) {
     require_number(a, a);
     if (a->type == VNT_FLOAT) return vnt_float(-a->floating);
-    if (a->integer == INT_MIN) {
+    if (a->integer == INT64_MIN) {
         fprintf(stderr, "Runtime error: integer overflow in negation.\n");
         exit(1);
     }
@@ -648,6 +648,12 @@ VNT_NATIVE_ABI VntValue * vnt_ne(VntValue *a, VntValue *b) { return vnt_bool(!eq
 
 static int order(VntValue *a, VntValue *b, int op) {
     require_number(a,b);
+    if (a->type == VNT_INT && b->type == VNT_INT) {
+        if (op == 0) return a->integer > b->integer;
+        if (op == 1) return a->integer < b->integer;
+        if (op == 2) return a->integer >= b->integer;
+        return a->integer <= b->integer;
+    }
     double x=number_value(a), y=number_value(b);
     if (op == 0) return x > y;
     if (op == 1) return x < y;
@@ -680,7 +686,7 @@ static void print_value(VntValue *v) {
     if (!v) { printf("null"); return; }
     switch (v->type) {
         case VNT_NULL: printf("null"); break;
-        case VNT_INT: printf("%d", v->integer); break;
+        case VNT_INT: printf("%lld", (long long)v->integer); break;
         case VNT_FLOAT: printf("%.15g", v->floating); break;
         case VNT_BOOL: printf("%s", v->boolean ? "true" : "false"); break;
         case VNT_STRING: printf("%s", v->string); break;
@@ -724,14 +730,14 @@ VNT_NATIVE_ABI void vnt_print(VntValue *v) {
 }
 
 VNT_NATIVE_ABI VntValue * vnt_len(VntValue *v) {
-    if (v->type == VNT_STRING) return vnt_int((int)strlen(v->string));
+    if (v->type == VNT_STRING) return vnt_int((int64_t)strlen(v->string));
     if (v->type == VNT_ARRAY) return vnt_int(v->array.count);
     if (v->type == VNT_BYTES) {
-        if (v->bytes.length > INT_MAX) {
+        if (v->bytes.length > INT64_MAX) {
             fprintf(stderr, "Runtime error: byte buffer is too large for len().\n");
             exit(1);
         }
-        return vnt_int((int)v->bytes.length);
+        return vnt_int((int64_t)v->bytes.length);
     }
     if (v->type == VNT_OBJECT) return vnt_int(v->object.count);
     fprintf(stderr, "Runtime error: len() requires a string, array, or object.\n");
@@ -809,7 +815,7 @@ VNT_NATIVE_ABI VntValue * vnt_sqrt(VntValue *x) { require_number(x,x); return vn
 VNT_NATIVE_ABI VntValue * vnt_sin(VntValue *x) { require_number(x,x); return vnt_float(sin(number_value(x))); }
 VNT_NATIVE_ABI VntValue * vnt_cos(VntValue *x) { require_number(x,x); return vnt_float(cos(number_value(x))); }
 VNT_NATIVE_ABI VntValue * vnt_tan(VntValue *x) { require_number(x,x); return vnt_float(tan(number_value(x))); }
-VNT_NATIVE_ABI VntValue * vnt_abs(VntValue *x) { require_number(x,x); return x->type==VNT_FLOAT ? vnt_float(fabs(x->floating)) : vnt_int(abs(x->integer)); }
+VNT_NATIVE_ABI VntValue * vnt_abs(VntValue *x) { require_number(x,x); if (x->type==VNT_FLOAT) return vnt_float(fabs(x->floating)); if (x->integer==INT64_MIN) { fprintf(stderr,"Runtime error: integer overflow in abs().\n"); exit(1); } return vnt_int(x->integer<0?-x->integer:x->integer); }
 VNT_NATIVE_ABI VntValue * vnt_floor(VntValue *x) { require_number(x,x); return vnt_float(floor(number_value(x))); }
 VNT_NATIVE_ABI VntValue * vnt_ceil(VntValue *x) { require_number(x,x); return vnt_float(ceil(number_value(x))); }
 VNT_NATIVE_ABI VntValue * vnt_min(VntValue *a,VntValue *b) { require_number(a,b); return number_value(a)<number_value(b)?a:b; }

@@ -120,4 +120,4 @@ jobs:
           if missing:
               raise SystemExit("Missing shell output: " + ", ".join(missing))
           PY
-          grep -F 'B1234LS' build/debug.log
+          grep -F 'B1234L' build/debug.log

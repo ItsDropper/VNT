@@ -1,0 +1,55 @@
+name: VNX VNT-Native Interpreter Tests
+
+on:
+  push:
+    branches: [feature/vnx-language-and-adventure]
+    paths: ["vnx/**", "src/**", "include/**", "tests/**", ".github/workflows/vnx-tests.yml"]
+  pull_request:
+    paths: ["vnx/**", "src/**", "include/**", ".github/workflows/vnx-tests.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  vnx-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build VNT compiler from source
+        run: |
+          gcc -O2 -Iinclude -Isrc/compiler \
+            src/main.c src/modules.c src/lexer.c \
+            src/parser/parser.c src/parser/primary.c src/parser/unary.c \
+            src/parser/binary.c src/parser/functions.c src/parser/statements.c \
+            src/parser/simple_statements.c src/parser/control.c src/parser/loops.c \
+            src/parser/assignments.c src/ast.c src/compiler/compiler.c \
+            src/compiler/typecheck.c src/compiler/ir.c src/compiler/ir_lower.c \
+            src/compiler/cfg.c src/compiler/x86_backend.c src/compiler/freestanding_x86.c \
+            -o vnt
+      - name: Compile VNT-native interpreter
+        run: |
+          mkdir -p vnx/build
+          ./vnt --compile vnx/interpreter.vnt -o vnx/build/vnx
+      - name: Verify VNT string indexing types correctly
+        run: |
+          ./vnt --compile tests/native_types.vnt -o vnx/build/native-types
+          vnx/build/native-types > vnx/build/native-types.out
+          grep -F 'Vanta' vnx/build/native-types.out
+      - name: Run language smoke test
+        run: |
+          printf 'vnx/tests/smoke.vnx\n' | vnx/build/vnx > vnx/build/smoke.out
+          cat vnx/build/smoke.out
+          grep -F 'VNX_SMOKE_OK' vnx/build/smoke.out
+          grep -F 'VNX_STATE_OK' vnx/build/smoke.out
+      - name: Run scripted adventure route
+        run: |
+          printf 'vnx/game/last_signal.vnx\nAda\n1\n1\n3\n2\n1\n3\n5\n' | vnx/build/vnx > vnx/build/adventure.out
+          grep -F 'ENDING: HOMEWARD' vnx/build/adventure.out
+      - name: Run alternate signal ending
+        run: |
+          printf 'vnx/game/last_signal.vnx\nAda\n1\n1\n3\n2\n1\n3\n3\n1\n2\nyes\n3\n4\n' | vnx/build/vnx > vnx/build/signal.out
+          grep -F 'ENDING: THE SIGNAL' vnx/build/signal.out
+      - name: Verify malformed source is rejected
+        run: |
+          printf 'vnx/tests/invalid.vnx\n' | vnx/build/vnx > vnx/build/invalid.out
+          grep -F 'VNX parser error' vnx/build/invalid.out

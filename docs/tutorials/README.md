@@ -18,6 +18,10 @@ These tutorials teach VNT through small, practical projects. VNT is experimental
 9. [Build a complete local task tracker](09-build-a-project.md)
 10. [Low-level systems programming](10-low-level-systems-programming.md)
 
+## Programming-language implementation course
+
+[Build a programming language in VNT — 15 beginner lessons](courses/programming-language/README.md). Covers language design, lexing, tokens, ASTs, parsing, runtime values, control flow, a text adventure, testing, and extensions.
+
 ## Full operating-system development course
 
 [Build VNTOS from the ground up — 19 beginner-friendly lessons](courses/os/README.md). Starts with computer and OS fundamentals, then covers the build pipeline, GRUB/Multiboot2, x86-64 startup, paging, ELF/linking, freestanding VNT, serial I/O, debugging, testing, and a first kernel modification. Designed to explain the current `os/` implementation without claiming unimplemented subsystems exist.

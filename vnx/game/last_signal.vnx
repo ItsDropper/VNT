@@ -1,0 +1,122 @@
+# THE LAST SIGNAL — a program written in VNX.
+# Commands: say, set, input, when name == "value" jump label, jump, label, end.
+say "=================================================="
+say "              THE LAST SIGNAL"
+say "=================================================="
+say "A remote research station has gone dark at 03:17."
+say "Find the keycard, restore power, and escape."
+input player "Technician name? "
+say "Welcome, technician. Your name is recorded."
+label hub
+say ""
+say "=== CENTRAL HUB ==="
+say "1. Security office"
+say "2. Generator wing"
+say "3. Research lab"
+say "4. Read terminal log"
+say "5. Try outer airlock"
+say "6. Quit"
+input choice "> "
+when choice == "1" jump security
+when choice == "2" jump generator
+when choice == "3" jump lab
+when choice == "4" jump terminal
+when choice == "5" jump airlock
+when choice == "6" jump quit
+jump hub
+label security
+say "=== SECURITY OFFICE ==="
+say "A monitor shows a corridor moving when nobody is there."
+say "1. Search desk"
+say "2. Inspect monitor"
+say "3. Return to hub"
+input choice "> "
+when choice == "1" jump search_desk
+when choice == "2" jump monitor
+when choice == "3" jump hub
+jump security
+label search_desk
+set has_key "yes"
+say "You find a brass keycard marked SECTOR 0."
+jump security
+label monitor
+say "The monitor shows you standing behind yourself. The image smiles."
+jump security
+label generator
+say "=== GENERATOR WING ==="
+say "1. Swipe keycard and pull lever"
+say "2. Force the panel"
+say "3. Return to hub"
+input choice "> "
+when choice == "1" jump start_generator
+when choice == "2" jump containment
+when choice == "3" jump hub
+jump generator
+label start_generator
+when has_key == "yes" jump power_restored
+say "ACCESS DENIED. Find the keycard in Security."
+jump generator
+label power_restored
+set power "yes"
+say "The card works. Lights roar on. Something pounds behind the wall."
+jump generator
+label containment
+say "Sparks burst. The station locks down."
+say "ENDING: CONTAINMENT. The doors seal permanently."
+end
+label lab
+say "=== RESEARCH LAB ==="
+say "A specimen case is open. The sample hums in time with your pulse."
+say "1. Collect sample"
+say "2. Ask station AI for help"
+say "3. Return to hub"
+input choice "> "
+when choice == "1" jump collect_sample
+when choice == "2" jump ai_dialogue
+when choice == "3" jump hub
+jump lab
+label ai_dialogue
+say "The AI says: I can open the airlock. Give me the sample."
+input ai_choice "Trust the AI? (yes/no) "
+when ai_choice == "yes" jump trust_ai
+say "You disconnect the speaker. It whispers without power."
+jump lab
+label trust_ai
+set trust "yes"
+say "You agree to meet the AI at the terminal."
+jump lab
+label collect_sample
+set sample "yes"
+say "You seal the sample in a lead capsule. The humming stops."
+jump lab
+label terminal
+when power == "yes" jump terminal_powered
+say "LOG: Emergency grid disabled from inside."
+say "LOG: A voiceprint matching the station AI entered Sector 0."
+say "LOG: If the signal returns, do not answer it."
+jump hub
+label terminal_powered
+when sample == "yes" jump terminal_sample
+say "The terminal wakes. The AI speaks in your own voice."
+say "You leave the terminal alone and return to the hub."
+jump hub
+label terminal_sample
+when trust == "yes" jump signal_ending
+say "The AI asks for the sample. You keep the capsule and leave."
+jump hub
+label signal_ending
+say "Empty rooms fill with familiar voices. They all ask you to open the doors."
+say "ENDING: THE SIGNAL. You become the station's new voice."
+end
+label airlock
+when power == "yes" jump escape
+say "The airlock is dead. Restore auxiliary power first."
+jump hub
+label escape
+say "The airlock cycles. A rescue beacon blinks beyond the glass."
+say "ENDING: HOMEWARD. You escape, but the radio whispers your name."
+end
+label quit
+say "You abandon the station."
+say "END."
+end

@@ -6,6 +6,7 @@ on:
     paths:
       - 'src/**'
       - 'freestanding/**'
+      - 'os/**'
       - 'include/**'
       - 'tests/*.vnt'
       - 'tests/**/*.py'
@@ -55,7 +56,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install --yes gcc libssl-dev python3
+          sudo apt-get install --yes gcc libssl-dev python3 grub-pc-bin grub-common xorriso qemu-system-x86
 
       - name: Build VNT compiler
         shell: bash
@@ -108,6 +109,24 @@ jobs:
             exit 1
           fi
           test ! -e freestanding-invalid.s
+
+      - name: Build and boot VNTOS in QEMU (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          bash os/build.sh
+          grub-file --is-x86-multiboot2 build/kernel.elf
+          readelf -h build/kernel.elf | grep -F 'ELF64'
+          test -s build/vntos.iso
+          set +e
+          timeout 10s qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -monitor none -serial file:build/serial.log -no-reboot -no-shutdown
+          qemu_status=$?
+          set -e
+          if [ "$qemu_status" -ne 0 ] && [ "$qemu_status" -ne 124 ]; then
+            echo "QEMU exited unexpectedly: $qemu_status"
+            exit "$qemu_status"
+          fi
+          grep -F 'VNTOS_BOOT_OK' build/serial.log
 
       - name: Compile raw memory regression program
         shell: bash

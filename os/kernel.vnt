@@ -381,17 +381,17 @@ fun keyboard_translate(scan: int) -> int {
     }
     if scan == 0x2a || scan == 0x36 {
         state_set(9, 1)
-        return -1
+        return 256
     }
     if scan == 0xaa || scan == 0xb6 {
         state_set(9, 0)
-        return -1
+        return 256
     }
     if scan == 0x3a {
         state_set(10, 1 - state_get(10))
-        return -1
+        return 256
     }
-    return -1
+    return 256
 }
 
 fun keyboard_poll() -> int {
@@ -401,23 +401,23 @@ fun keyboard_poll() -> int {
         asm volatile("movw $0x64, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp)")
     }
     if status % 2 == 0 {
-        return -1
+        return 256
     }
     if status / 32 % 2 == 1 {
-        return -1
+        return 256
     }
     unsafe {
         asm volatile("movw $0x60, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp)")
     }
     scan = status
     if scan == 0xe0 {
-        return -1
+        return 256
     }
     if scan >= 0x80 {
         if scan == 0xaa || scan == 0xb6 {
             state_set(9, 0)
         }
-        return -1
+        return 256
     }
     let character: int = keyboard_translate(scan)
     if character >= 97 && character <= 122 {
@@ -425,10 +425,10 @@ fun keyboard_poll() -> int {
             character = character - 32
         }
     }
-    if character >= 0 && character <= 255 {
+    if character != 256 && character <= 255 {
         return character
     }
-    return -1
+    return 256
 }
 
 fun mouse_poll() {
@@ -506,7 +506,7 @@ fun kernel_main() {
     while 1 == 1 {
         mouse_poll()
         character = keyboard_poll()
-        if character < 0 {
+        if character == 256 {
             character = serial_try_getc()
         }
         if character < 0 {

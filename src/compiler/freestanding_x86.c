@@ -298,15 +298,31 @@ static int emit_statement(FreestandingGen *g, size_t index) {
     if (n->opcode == VNT_IR_ASSIGN) {
         const VntIrNode *target = child_role(g->ir, index, VNT_IR_EDGE_TARGET);
         const VntIrNode *value = child_role(g->ir, index, VNT_IR_EDGE_VALUE);
-        if (!target || target->opcode != VNT_IR_VARIABLE || !value) {
-            fail(g, "only assignment to local variables is supported.");
+        if (!target || !value) {
+            fail(g, "malformed assignment.");
+            return 0;
+        }
+        if (target->opcode == VNT_IR_INDEX) {
+            size_t ti = (size_t)(target - g->ir->nodes);
+            const VntIrNode *base = child_role(g->ir, ti, VNT_IR_EDGE_OBJECT);
+            const VntIrNode *offset = child_role(g->ir, ti, VNT_IR_EDGE_INDEX);
+            if (!base || !offset || !emit_expression(g, (size_t)(base - g->ir->nodes))) return 0;
+            fputs("    pushq %rax\\n    pushq $0\\n", g->out);
+            if (!emit_expression(g, (size_t)(offset - g->ir->nodes))) return 0;
+            fputs("    movq %rax, (%rsp)\\n", g->out);
+            if (!emit_expression(g, (size_t)(value - g->ir->nodes))) return 0;
+            fputs("    movq %rax, %r8\\n    popq %rcx\\n    popq %rdx\\n    movb %r8b, (%rdx,%rcx)\\n", g->out);
+            return 1;
+        }
+        if (target->opcode != VNT_IR_VARIABLE) {
+            fail(g, "assignment target must be a local variable or byte index.");
             return 0;
         }
         int vi = variable_index(g, target->value.text);
         if (vi < 0 || !emit_expression(g, (size_t)(value - g->ir->nodes)))
             return 0;
-        if (variable_is_64(g, vi)) fprintf(g->out, "    movq %%rax, -%d(%%rbp)\n", (vi + 1) * 8);
-        else fprintf(g->out, "    movl %%eax, -%d(%%rbp)\n", (vi + 1) * 8);
+        if (variable_is_64(g, vi)) fprintf(g->out, "    movq %%rax, -%d(%%rbp)\\n", (vi + 1) * 8);
+        else fprintf(g->out, "    movl %%eax, -%d(%%rbp)\\n", (vi + 1) * 8);
         return 1;
     }
     if (n->opcode == VNT_IR_RETURN) {

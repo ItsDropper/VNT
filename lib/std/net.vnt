@@ -108,3 +108,27 @@ export fun search_mods(query) {
     url = "https://api.modrinth.com/v2/search?query=" + encoded_query + "&facets=%5B%5B%22project_type%3Amod%22%5D%5D&limit=10"
     return net_request("GET", url, "Accept: application/json\nUser-Agent: ItsDropper/Vanta-One/0.1.0 (https://github.com/ItsDropper/VNT)", "")
 }
+
+# Bounded asynchronous requests. wait() returns false on timeout or invalid handle.
+# cancel() currently cancels queued requests only; it returns false after a worker starts.
+export fun async_start(method, url, headers, body) {
+    return net_async_start(method, url, headers, body)
+}
+export fun async_poll(handle) {
+    return net_async_poll(handle)
+}
+export fun async_wait(handle, timeout_ms) {
+    return net_async_wait(handle, timeout_ms)
+}
+export fun async_cancel(handle) {
+    return net_async_cancel(handle)
+}
+export fun async_result(handle) {
+    return net_async_result(handle)
+}
+export fun async_status(handle) {
+    return net_async_status(handle)
+}
+export fun async_release(handle) {
+    return net_async_release(handle)
+}

@@ -64,6 +64,9 @@ static int check_fold_case(AstNode *expression, VntIrOpcode expected_opcode,
         if (expected_opcode == VNT_IR_INTEGER)
             CHECK(ir.nodes[value].value.integer == expected_integer,
                   "folded integer has expected value");
+        else if (expected_opcode == VNT_IR_BOOLEAN)
+            CHECK(ir.nodes[value].value.boolean == expected_integer,
+                  "folded boolean has expected value");
     }
 
     CHECK(vnt_ir_validate(&ir), "HIR validates after AST is freed");
@@ -354,6 +357,12 @@ static void check_cfg_definite_assignment(void) {
 int main(void) {
     check_fold_case(binary(2, 3, BINARY_ADD), VNT_IR_INTEGER, 5,
                     "safe integer addition folds");
+    check_fold_case(ast_create_unary(ast_create_integer(7), UNARY_NEGATE),
+                    VNT_IR_INTEGER, -7, "safe unary integer negation folds");
+    check_fold_case(ast_create_unary(ast_create_boolean(0), UNARY_NOT),
+                    VNT_IR_BOOLEAN, 1, "boolean negation folds");
+    check_fold_case(ast_create_unary(ast_create_integer(INT64_MIN), UNARY_NEGATE),
+                    VNT_IR_UNARY, 0, "signed negation overflow is not folded");
     check_fold_case(binary(INT_MAX, 1, BINARY_ADD), VNT_IR_BINARY, 0,
                     "integer overflow is not folded");
     check_fold_case(binary(1, 0, BINARY_DIVIDE), VNT_IR_BINARY, 0,

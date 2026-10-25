@@ -36,7 +36,7 @@ fun serial_putc(value: int) {
 fun serial_try_getc() -> int {
     let result: int = -1
     unsafe {
-        asm volatile("movw $0x3fd, %dx; inb %dx, %al; testb $1, %al; jz 1f; movw $0x3f8, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp); jmp 2f; 1: movl $-1, -8(%rbp); 2:")
+        asm volatile("movw $0x3fd, %dx; inb %dx, %al; testb $1, %al; jz 1f; movw $0x3f8, %dx; inb %dx, %al; movzbl %al, %eax; movq %rax, -8(%rbp); jmp 2f; 1: movq $-1, -8(%rbp); 2:")
     }
     return result
 }
@@ -182,7 +182,7 @@ fun ps2_wait_input_clear() -> int {
     let attempts: int = 0
     while attempts < 100000 {
         unsafe {
-            asm volatile("movw $0x64, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp)")
+            asm volatile("movw $0x64, %dx; inb %dx, %al; movzbl %al, %eax; movq %rax, -8(%rbp)")
         }
         status = status
         if status % 4 < 2 {
@@ -198,7 +198,7 @@ fun ps2_wait_output_full() -> int {
     let attempts: int = 0
     while attempts < 100000 {
         unsafe {
-            asm volatile("movw $0x64, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp)")
+            asm volatile("movw $0x64, %dx; inb %dx, %al; movzbl %al, %eax; movq %rax, -8(%rbp)")
         }
         if status % 2 == 1 {
             return 1
@@ -230,7 +230,7 @@ fun ps2_read_data() -> int {
         return -1
     }
     unsafe {
-        asm volatile("movw $0x60, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp)")
+        asm volatile("movw $0x60, %dx; inb %dx, %al; movzbl %al, %eax; movq %rax, -8(%rbp)")
     }
     return result
 }
@@ -401,7 +401,7 @@ fun keyboard_poll() -> int {
     let status: int = 0
     let scan: int = 0
     unsafe {
-        asm volatile("movw $0x64, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp)")
+        asm volatile("movw $0x64, %dx; inb %dx, %al; movzbl %al, %eax; movq %rax, -8(%rbp)")
     }
     if status % 2 == 0 {
         return 256
@@ -410,7 +410,7 @@ fun keyboard_poll() -> int {
         return 256
     }
     unsafe {
-        asm volatile("movw $0x60, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp)")
+        asm volatile("movw $0x60, %dx; inb %dx, %al; movzbl %al, %eax; movq %rax, -8(%rbp)")
     }
     scan = status
     if scan == 0xe0 {
@@ -438,13 +438,13 @@ fun mouse_poll() {
     let status: int = 0
     let data: int = 0
     unsafe {
-        asm volatile("movw $0x64, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp)")
+        asm volatile("movw $0x64, %dx; inb %dx, %al; movzbl %al, %eax; movq %rax, -8(%rbp)")
     }
     if status % 2 == 0 || status / 32 % 2 == 0 {
         return 0
     }
     unsafe {
-        asm volatile("movw $0x60, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp)")
+        asm volatile("movw $0x60, %dx; inb %dx, %al; movzbl %al, %eax; movq %rax, -8(%rbp)")
     }
     data = status
     if state_get(5) == 0 {

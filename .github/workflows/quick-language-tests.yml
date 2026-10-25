@@ -225,12 +225,28 @@ jobs:
           printf '14\n4\nfalse\n3.75\n10\n3\ntrue\nHIR_CONSTANT_FOLDING_OK\n' > vnt-hir-expected.txt
           diff -u vnt-hir-expected.txt vnt-hir-actual-lf.txt
 
-          ./vnt-i64-smoke.exe > vnt-i64-actual.txt
+          set +e
+          ./vnt-i64-smoke.exe > vnt-i64-actual.txt 2> vnt-i64-stderr.txt
+          i64_status=$?
+          set -e
+          if [ "$i64_status" -ne 0 ]; then
+            cat vnt-i64-stderr.txt || true
+            cat vnt_crash.log || true
+            exit "$i64_status"
+          fi
           tr -d '\r' < vnt-i64-actual.txt > vnt-i64-actual-lf.txt
           printf '4294967296\n12884901888\nNATIVE_I64_OK\n' > vnt-i64-expected.txt
           diff -u vnt-i64-expected.txt vnt-i64-actual-lf.txt
 
-          ./vnt-memory-u64-smoke.exe > vnt-memory-u64-actual.txt
+          set +e
+          ./vnt-memory-u64-smoke.exe > vnt-memory-u64-actual.txt 2> vnt-memory-u64-stderr.txt
+          mem_u64_status=$?
+          set -e
+          if [ "$mem_u64_status" -ne 0 ]; then
+            cat vnt-memory-u64-stderr.txt || true
+            cat vnt_crash.log || true
+            exit "$mem_u64_status"
+          fi
           tr -d '\r' < vnt-memory-u64-actual.txt > vnt-memory-u64-actual-lf.txt
           printf 'true\n81985529216486895\n239\n1\ntrue\ntrue\nMEM_U64_OK\n' > vnt-memory-u64-expected.txt
           diff -u vnt-memory-u64-expected.txt vnt-memory-u64-actual-lf.txt

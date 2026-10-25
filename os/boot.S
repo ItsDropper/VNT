@@ -369,85 +369,14 @@ os_put_hex64:
 .Los_match_false:
     xorl %eax, %eax
     ret
-
-.section .rodata
-.Los_welcome:
-    .asciz "VNTOS_BOOT_OK\r\nVNTOS - freestanding x86-64 serial shell\r\nType help for commands.\r\n"
-.Los_prompt: .asciz "VNTOS> "
-.Los_ready: .asciz "VNTOS_COMMAND_LINE_READY\\r\\n"
-.Los_cmd_help: .asciz "help"
-.Los_cmd_about: .asciz "about"
-.Los_cmd_clear: .asciz "clear"
-.Los_cmd_reboot: .asciz "reboot"
-.Los_cmd_mem: .asciz "mem"
-.Los_cmd_halt: .asciz "halt"
-.Los_echo_prefix: .asciz "echo "
-.Los_help_text: .asciz "Commands: help, about, clear, echo, mem, reboot, halt\r\n"
-.Los_about_text: .asciz "VNTOS: VNT-compiled freestanding kernel on x86-64.\r\n"
-.Los_clear_text: .asciz "\033[2J\033[H"
-.Los_unknown: .asciz "Unknown command. Type help.\r\n"
-.Los_reboot_text: .asciz "Rebooting...\r\n"
-.Los_halt_text: .asciz "CPU halted.\r\n"
-
-.section .bss
-.balign 4096
-pml4_table: .skip 4096
-pdpt_table: .skip 4096
-page_directory: .skip 4096
-.balign 16
-boot_stack_bottom: .skip 16384
-boot_stack_top:
-os_command_length: .long 0
-os_command: .skip 128
-0', %edi
+.type os_put_hex64,@function
+os_put_hex64:
+    pushq %rbx
+    pushq %r12
+    movq %rdi, %r12
+    movl $'0', %edi
     call os_putc
-    movl 
-.Los_match_loop:
-    movzbl (%rdi), %eax
-    movzbl (%rsi), %edx
-    cmpl %edx, %eax
-    jne .Los_match_false
-    testl %eax, %eax
-    je .Los_match_true
-    incq %rdi
-    incq %rsi
-    jmp .Los_match_loop
-.Los_match_true:
-    movl $1, %eax
-    ret
-.Los_match_false:
-    xorl %eax, %eax
-    ret
-
-.section .rodata
-.Los_welcome:
-    .asciz "VNTOS_BOOT_OK\r\nVNTOS - freestanding x86-64 serial shell\r\nType help for commands.\r\n"
-.Los_prompt: .asciz "VNTOS> "
-.Los_ready: .asciz "VNTOS_COMMAND_LINE_READY\\r\\n"
-.Los_cmd_help: .asciz "help"
-.Los_cmd_about: .asciz "about"
-.Los_cmd_clear: .asciz "clear"
-.Los_cmd_reboot: .asciz "reboot"
-.Los_cmd_halt: .asciz "halt"
-.Los_echo_prefix: .asciz "echo "
-.Los_help_text: .asciz "Commands: help, about, clear, echo, reboot, halt\r\n"
-.Los_about_text: .asciz "VNTOS: VNT-compiled freestanding kernel on x86-64.\r\n"
-.Los_clear_text: .asciz "\033[2J\033[H"
-.Los_unknown: .asciz "Unknown command. Type help.\r\n"
-.Los_reboot_text: .asciz "Rebooting...\r\n"
-.Los_halt_text: .asciz "CPU halted.\r\n"
-
-.section .bss
-.balign 4096
-pml4_table: .skip 4096
-pdpt_table: .skip 4096
-page_directory: .skip 4096
-.balign 16
-boot_stack_bottom: .skip 16384
-boot_stack_top:
-os_command_length: .long 0
-os_command: .skip 128
-x', %edi
+    movl $'x', %edi
     call os_putc
     movl $60, %ebx
 .Los_hex_loop:
@@ -495,7 +424,7 @@ os_match:
 
 .section .rodata
 .Los_welcome:
-    .asciz "VNTOS_BOOT_OK\r\nVNTOS - freestanding x86-64 serial shell\r\nType help for commands.\r\n"
+    .asciz "VNTOS_BOOT_OK\\r\\nVNTOS - freestanding x86-64 serial shell\\r\\nType help for commands.\\r\\n"
 .Los_prompt: .asciz "VNTOS> "
 .Los_ready: .asciz "VNTOS_COMMAND_LINE_READY\\r\\n"
 .Los_cmd_help: .asciz "help"
@@ -503,13 +432,17 @@ os_match:
 .Los_cmd_clear: .asciz "clear"
 .Los_cmd_reboot: .asciz "reboot"
 .Los_cmd_halt: .asciz "halt"
+.Los_cmd_mem: .asciz "mem"
 .Los_echo_prefix: .asciz "echo "
-.Los_help_text: .asciz "Commands: help, about, clear, echo, reboot, halt\r\n"
-.Los_about_text: .asciz "VNTOS: VNT-compiled freestanding kernel on x86-64.\r\n"
-.Los_clear_text: .asciz "\033[2J\033[H"
-.Los_unknown: .asciz "Unknown command. Type help.\r\n"
-.Los_reboot_text: .asciz "Rebooting...\r\n"
-.Los_halt_text: .asciz "CPU halted.\r\n"
+.Los_help_text: .asciz "Commands: help, about, clear, echo, mem, reboot, halt\\r\\n"
+.Los_about_text: .asciz "VNTOS: VNT-compiled freestanding kernel on x86-64.\\r\\n"
+.Los_mem_start: .asciz "Kernel start: "
+.Los_mem_end: .asciz "Kernel end: "
+.Los_mem_map: .asciz "Identity map: 0x0000000000000000-0x000000003fffffff (1 GiB)\\r\\n"
+.Los_clear_text: .asciz "\\033[2J\\033[H"
+.Los_unknown: .asciz "Unknown command. Type help.\\r\\n"
+.Los_reboot_text: .asciz "Rebooting...\\r\\n"
+.Los_halt_text: .asciz "CPU halted.\\r\\n"
 
 .section .bss
 .balign 4096

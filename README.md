@@ -77,7 +77,7 @@ A separate, deliberately restricted mode can emit an ELF-oriented x86-64 entry o
 
 For debugging the generated source separately, use `--emit-freestanding-asm`. The build command assembles without hosted startup/runtime objects and links with `ld -nostdlib -static` using [the x86-64 linker script](freestanding/x86_64.ld).
 
-The initial freestanding subset requires a zero-argument `fun kernel_main()` and currently permits inline assembly plus integer/boolean literal return values (including nested `unsafe` blocks). Hosted operations such as `print`, dynamic values, memory builtins, and general arithmetic are rejected rather than linked against the runtime. The generated ELF is a freestanding code-generation milestone, **not yet a bootable OS kernel**; boot protocol integration and QEMU boot/serial tests remain future work.
+The initial freestanding subset requires a zero-argument `fun kernel_main()`. It supports 32-bit `int`/`bool` values, local variables, arithmetic/comparisons, `if`, `while`, loop control, literal/ordinary integer returns, and inline assembly (including nested `unsafe` blocks). Signed arithmetic overflow traps with `ud2`. Hosted operations such as `print`, strings/floats, pointers, memory builtins, and function calls are rejected rather than linked against the runtime. The linker script emits a static ELF64 image with a private stack and `_start` entry; it is a freestanding compiler milestone, **not yet a bootable OS kernel**. Boot protocol integration and QEMU boot/serial tests remain future work.
 
 ## Your first VNT program
 

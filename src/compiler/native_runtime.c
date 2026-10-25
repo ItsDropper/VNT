@@ -819,8 +819,18 @@ VNT_NATIVE_ABI VntValue * vnt_tan(VntValue *x) { require_number(x,x); return vnt
 VNT_NATIVE_ABI VntValue * vnt_abs(VntValue *x) { require_number(x,x); if (x->type==VNT_FLOAT) return vnt_float(fabs(x->floating)); if (x->integer==INT64_MIN) { fprintf(stderr,"Runtime error: integer overflow in abs().\n"); exit(1); } return vnt_int(x->integer<0?-x->integer:x->integer); }
 VNT_NATIVE_ABI VntValue * vnt_floor(VntValue *x) { require_number(x,x); return vnt_float(floor(number_value(x))); }
 VNT_NATIVE_ABI VntValue * vnt_ceil(VntValue *x) { require_number(x,x); return vnt_float(ceil(number_value(x))); }
-VNT_NATIVE_ABI VntValue * vnt_min(VntValue *a,VntValue *b) { require_number(a,b); return number_value(a)<number_value(b)?a:b; }
-VNT_NATIVE_ABI VntValue * vnt_max(VntValue *a,VntValue *b) { require_number(a,b); return number_value(a)>number_value(b)?a:b; }
+VNT_NATIVE_ABI VntValue * vnt_min(VntValue *a,VntValue *b) {
+    require_number(a,b);
+    if (a->type == VNT_INT && b->type == VNT_INT)
+        return a->integer < b->integer ? a : b;
+    return number_value(a) < number_value(b) ? a : b;
+}
+VNT_NATIVE_ABI VntValue * vnt_max(VntValue *a,VntValue *b) {
+    require_number(a,b);
+    if (a->type == VNT_INT && b->type == VNT_INT)
+        return a->integer > b->integer ? a : b;
+    return number_value(a) > number_value(b) ? a : b;
+}
 VNT_NATIVE_ABI VntValue * vnt_range(VntValue *a, VntValue *b, VntValue *c, int argc) {
     int64_t start=0,end=0,step=1;
     if (argc==1) { if(a->type!=VNT_INT) goto bad; end=a->integer; }

@@ -320,12 +320,6 @@ os_match:
 .Los_halt_text: .asciz "CPU halted.\r\n"
 
 .section .bss
-.balign 4096
-pml4_table: .skip 4096
-pdpt_table: .skip 4096
-page_directory: .skip 4096
 .balign 16
-boot_stack_bottom: .skip 16384
-boot_stack_top:
 os_command_length: .long 0
 os_command: .skip 128

@@ -1,9 +1,38 @@
 # Copyright (c) 2026 ItsDropper
 # Licensed under the MIT License. See LICENSE in the repository root.
 
+# COM1 initialization belongs to VNT. Only the actual port-I/O instructions
+# are inline x86-64 assembly because VNT's freestanding I/O intrinsics are
+# not implemented yet.
+fun serial_init() {
+    unsafe {
+        asm volatile("movw $0x3f9, %dx
+xorb %al, %al
+outb %al, %dx
+movw $0x3fb, %dx
+movb $0x80, %al
+outb %al, %dx
+movw $0x3f8, %dx
+movb $1, %al
+outb %al, %dx
+movw $0x3f9, %dx
+xorb %al, %al
+outb %al, %dx
+movw $0x3fb, %dx
+movb $3, %al
+outb %al, %dx
+movw $0x3fa, %dx
+movb $0xc7, %al
+outb %al, %dx
+movw $0x3fc, %dx
+movb $0x0b, %al
+outb %al, %dx")
+    }
+    return 0
+}
+
 fun kernel_main() {
-    # The boot/runtime assembly provides VGA, PS/2 keyboard polling and the
-    # shell loop. This call never returns.
+    serial_init()
     unsafe {
         asm volatile("call os_shell")
     }

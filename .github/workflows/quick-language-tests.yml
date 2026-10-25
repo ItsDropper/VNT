@@ -295,6 +295,8 @@ jobs:
           print("VNTOS serial transcript:")
           print(text)
           required = [
+              "VNTOS_BOOT_OK",
+              "VNTOS_COMMAND_LINE_READY",
               "Commands: help, about, clear, echo, reboot, halt",
               "test",
               "Unknown command. Type help.",

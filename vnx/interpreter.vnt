@@ -118,13 +118,13 @@ fun is_delimiter(ch: string) -> bool {
     if ch == " " {
         return true
     }
-    if ch == "\\t" {
+    if ch == "\t" {
         return true
     }
-    if ch == "\\r" {
+    if ch == "\r" {
         return true
     }
-    if ch == "\\n" {
+    if ch == "\n" {
         return true
     }
     if ch == "=" {

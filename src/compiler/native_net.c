@@ -927,6 +927,112 @@ static int parse_response_headers(const char *raw, size_t used, const char *meth
     return 1;
 }
 
+typedef struct {
+    int state; /* 0=size, 1=size LF, 2=data, 3=data CR, 4=data LF, 5=trailer, 6=trailer LF, 7=done */
+    char line[8193];
+    size_t line_length;
+    size_t chunk_remaining;
+} VntChunkStream;
+
+static int stream_emit(VntHttpBodySink sink, void *context,
+                       const unsigned char *data, size_t length,
+                       size_t *total) {
+    if (!length) return 1;
+    if (!sink || !sink(data, length, context)) return 0;
+    if (length > SIZE_MAX - *total) return 0;
+    *total += length;
+    return 1;
+}
+
+static int stream_parse_chunk_size(const char *line, size_t length, size_t *amount) {
+    size_t end = 0, value = 0;
+    while (end < length && line[end] != ';') end++;
+    if (end == 0) return 0;
+    for (size_t i = 0; i < end; ++i) {
+        unsigned char ch = (unsigned char)line[i];
+        unsigned int digit;
+        if (ch >= '0' && ch <= '9') digit = ch - '0';
+        else if (ch >= 'a' && ch <= 'f') digit = ch - 'a' + 10;
+        else if (ch >= 'A' && ch <= 'F') digit = ch - 'A' + 10;
+        else return 0;
+        if (value > (SIZE_MAX - digit) / 16) return 0;
+        value = value * 16 + digit;
+    }
+    *amount = value;
+    return 1;
+}
+
+static int stream_feed_chunked(VntChunkStream *decoder, VntHttpBodySink sink,
+                               void *context, const unsigned char *data,
+                               size_t length, size_t *total) {
+    size_t i = 0;
+    while (i < length && decoder->state != 7) {
+        unsigned char ch = data[i];
+        switch (decoder->state) {
+        case 0:
+            if (ch == '\r') decoder->state = 1;
+            else if (ch == '\n' || decoder->line_length >= 8192) return 0;
+            else decoder->line[decoder->line_length++] = (char)ch;
+            i++;
+            break;
+        case 1: {
+            if (ch != '\n') return 0;
+            size_t amount = 0;
+            if (!stream_parse_chunk_size(decoder->line, decoder->line_length, &amount)) return 0;
+            decoder->line_length = 0;
+            decoder->chunk_remaining = amount;
+            decoder->state = amount ? 2 : 5;
+            i++;
+            break;
+        }
+        case 2: {
+            size_t available = length - i;
+            size_t amount = available < decoder->chunk_remaining ? available : decoder->chunk_remaining;
+            if (!stream_emit(sink, context, data + i, amount, total)) return 0;
+            i += amount;
+            decoder->chunk_remaining -= amount;
+            if (!decoder->chunk_remaining) decoder->state = 3;
+            break;
+        }
+        case 3:
+            if (ch != '\r') return 0;
+            decoder->state = 4; i++;
+            break;
+        case 4:
+            if (ch != '\n') return 0;
+            decoder->state = 0; i++;
+            break;
+        case 5:
+            if (ch == '\r') decoder->state = 6;
+            else if (ch == '\n' || decoder->line_length >= 8192) return 0;
+            else decoder->line[decoder->line_length++] = (char)ch;
+            i++;
+            break;
+        case 6:
+            if (ch != '\n') return 0;
+            if (!decoder->line_length) {
+                decoder->state = 7;
+            } else {
+                const char *colon = (const char *)memchr(decoder->line, ':', decoder->line_length);
+                if (!colon || colon == decoder->line) return 0;
+                for (const char *p = decoder->line; p < colon; ++p)
+                    if (!http_token_char((unsigned char)*p)) return 0;
+                for (size_t j = (size_t)(colon - decoder->line) + 1; j < decoder->line_length; ++j) {
+                    unsigned char v = (unsigned char)decoder->line[j];
+                    if ((v < 0x20 && v != '\t') || v == 0x7f) return 0;
+                }
+                decoder->line_length = 0;
+                decoder->state = 5;
+            }
+            i++;
+            break;
+        default:
+            return 0;
+        }
+    }
+    return 1;
+}
+
 static int write_all(int fd, SSL *ssl, const char *data, size_t length) {
     size_t sent = 0;
     while (sent < length) {

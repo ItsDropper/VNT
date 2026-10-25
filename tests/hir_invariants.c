@@ -207,6 +207,42 @@ static void check_cfg_prunes_unreachable_statements(void) {
     ast_free(program);
 }
 
+static void check_cfg_constant_branch_pruning(void) {
+    AstNode *statements = NULL;
+    ast_append(&statements,
+        ast_create_if(ast_create_boolean(1),
+                      ast_create_print(ast_create_integer(11)),
+                      ast_create_print(ast_create_integer(22))));
+    AstNode *program = ast_create_program(statements);
+    VntIrProgram ir = {0};
+    CHECK(program != NULL, "constant-CFG-branch AST allocated");
+    if (!program) return;
+    CHECK(vnt_ir_lower(&ir, program), "constant-CFG-branch HIR lowering succeeds");
+    if (ir.nodes) {
+        VntCfg cfg = {0};
+        CHECK(vnt_cfg_build(&ir, &cfg),
+              "CFG simplifies literal boolean branch conditions");
+        if (cfg.blocks) {
+            CHECK(cfg.block_count == 3,
+                  "constant branch pruning removes the unreachable arm");
+            CHECK(vnt_cfg_validate(&cfg),
+                  "CFG remains valid after constant branch pruning");
+            int saw_synthetic_jump = 0;
+            for (size_t i = 0; i < cfg.block_count; ++i) {
+                const VntCfgBlock *block = &cfg.blocks[i];
+                if (block->terminator == VNT_CFG_JUMP &&
+                    block->instruction == VNT_IR_NO_NODE)
+                    saw_synthetic_jump = 1;
+            }
+            CHECK(saw_synthetic_jump,
+                  "folded branch is represented by a synthetic jump");
+        }
+        vnt_cfg_free(&cfg);
+    }
+    vnt_ir_free(&ir);
+    ast_free(program);
+}
+
 static void check_cfg_control_flow(void) {
     AstNode *statements = NULL;
     ast_append(&statements,
@@ -387,6 +423,7 @@ int main(void) {
     check_constant_propagation();
     check_rejects_disconnected_cycle();
     check_cfg_control_flow();
+    check_cfg_constant_branch_pruning();
     check_cfg_prunes_unreachable_statements();
     check_cfg_definite_assignment();
 

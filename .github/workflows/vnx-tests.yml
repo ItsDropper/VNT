@@ -1,0 +1,27 @@
+name: VNX Interpreter Tests
+
+on:
+  push:
+    branches:
+      - feature/vnx-language-and-adventure
+    paths:
+      - "vnx/**"
+      - ".github/workflows/vnx-tests.yml"
+  pull_request:
+    paths:
+      - "vnx/**"
+      - ".github/workflows/vnx-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  vnx-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Build VNX interpreter
+        run: make -C vnx
+      - name: Run interpreter and adventure smoke tests
+        run: make -C vnx test

@@ -282,14 +282,14 @@ jobs:
           # serial input rather than injecting PS/2 keyboard scancodes.
           time.sleep(0.5)
           drain(0.2)
-          serial.sendall(b"help\\r")
+          serial.sendall(b"help\r")
           drain(0.3)
           # Exercise line editing: erase X with DEL before submitting "test".
-          serial.sendall(b"echo tesX\\x7ft\\r")
+          serial.sendall(b"echo tesX\x7ft\r")
           drain(0.3)
-          serial.sendall(b"mem\\r")
+          serial.sendall(b"mem\r")
           drain(0.3)
-          serial.sendall(b"not-a-command\\r")
+          serial.sendall(b"not-a-command\r")
           drain(0.3)
           serial.sendall(b"halt\r")
           drain(0.5)

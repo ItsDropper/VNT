@@ -11,10 +11,12 @@ These tutorials teach the language by building small programs. They assume you h
 5. [Windows GUI basics](05-windows-gui.md)
 
 ### Advanced language and runtime
+
 6. [Arrays, structs, and references](06-arrays-structs-references.md)
 7. [Launching and managing child processes](07-native-processes.md)
 8. [HTTP APIs and external tools](08-http-apis.md)
 9. [Build a complete local task tracker](09-build-a-project.md)
+10. [Low-level systems programming: memory, unsafe code, assembly, and kernel roadmap](10-low-level-systems-programming.md)
 
 The [API reference](../api-reference.md) summarizes runtime APIs and their known limitations. The [compiler architecture guide](../compiler-architecture.md) covers compiler internals.
 

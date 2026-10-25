@@ -292,8 +292,8 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                     project_mode = "search"
                     request_count = request_count + 1
                     if project_response == "" {
-                        project_response = "No response received. Check that curl.exe is installed and internet access is available."
-                        status_message = "Modrinth search failed: empty response."
+                        project_response = "No response received. Check the URL and network connection."
+                        status_message = "Modrinth search failed: no response received. Check the URL and network connection."
                     } else {
                         status_message = "Modrinth search results loaded for: " + project_slug_input
                         activity_message = "Searched Modrinth mods: " + project_slug_input
@@ -310,7 +310,7 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                     project_mode = "details"
                     request_count = request_count + 1
                     if project_response == "" {
-                        project_response = "No response received. Check the project slug, curl.exe, and internet access."
+                        project_response = "No response received. Check the project slug and network connection."
                         status_message = "Project lookup failed: empty response."
                     } else {
                         status_message = "Project metadata loaded for: " + project_slug_input
@@ -329,7 +329,7 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                     project_mode = "versions"
                     request_count = request_count + 1
                     if project_response == "" {
-                        project_response = "No response received. Check the project slug, curl.exe, and internet access."
+                        project_response = "No response received. Check the project slug and network connection."
                         status_message = "Version lookup failed: empty response."
                     } else {
                         status_message = "Latest version metadata loaded for: " + project_slug_input
@@ -400,7 +400,7 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
             ui_call_79 = gui.vanta_surface(282, 150, 826, 190, 0x142138)
             ui_call_80 = gui.vanta_surface(282, 356, 826, 376, 0x142138)
             ui_call_81 = gui.vanta_text_style("DIRECT DOWNLOAD", 304, 170, 0x7E93B8, 11)
-            ui_call_82 = gui.vanta_text_style("Paste a direct HTTPS file URL. TLS verification remains enabled by curl.", 304, 198, 0xAAB9D2, 12)
+            ui_call_82 = gui.vanta_text_style("Paste a direct HTTPS file URL. TLS certificate verification remains enabled.", 304, 198, 0xAAB9D2, 12)
             download_url_input = gui.vanta_text_input("https://example.com/file.jar", 304, 222, 776)
             ui_call_83 = gui.vanta_text_style("DESTINATION PATH", 304, 270, 0x7E93B8, 11)
             download_path_input = gui.vanta_text_input("downloaded-file.jar", 304, 292, 530)
@@ -418,7 +418,7 @@ if gui.vanta_gui_start("Vanta One  |  Gaming, under your control", 1180, 790, "e
                         activity_message = "Downloaded file to " + download_path_input
                         ui_call_84 = log.info("Download completed: " + download_path_input)
                     } else {
-                        download_status = "Download failed. Check URL, path, permissions, and curl availability."
+                        download_status = "Download failed. Check the URL, path, permissions, and network connection."
                         status_message = download_status
                         ui_call_85 = log.warn("Download failed: " + download_url_input)
                     }

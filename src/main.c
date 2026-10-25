@@ -36,11 +36,11 @@ static int compile_native(AstNode *program, const char *output_path) {
 
 #ifdef _WIN32
     sprintf(command,
-        "gcc \"%s\" src/compiler/native_runtime.c -O3 -lgdi32 -luser32 -o \"%s\"",
+        "gcc \"%s\" src/compiler/native_runtime.c src/compiler/native_net.c -O3 -lgdi32 -luser32 -lwinhttp -lws2_32 -o \"%s\"",
         assembly_path, output_path);
 #else
     sprintf(command,
-        "gcc \"%s\" src/compiler/native_runtime.c -O3 -lm -ldl -o \"%s\"",
+        "gcc \"%s\" src/compiler/native_runtime.c src/compiler/native_net.c -O3 -lm -ldl -lssl -lcrypto -o \"%s\"",
         assembly_path, output_path);
 #endif
 

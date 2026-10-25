@@ -114,30 +114,6 @@ jobs:
           fi
           test ! -e freestanding-invalid.s
 
-      - name: Build and boot VNTOS in QEMU (Linux)
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          bash os/build.sh
-          grub-file --is-x86-multiboot2 build/kernel.elf
-          readelf -h build/kernel.elf | grep -F 'ELF64'
-          test -s build/vntos.iso
-          set +e
-          timeout 10s qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -monitor none -serial file:build/serial.log -debugcon file:build/debug.log -global isa-debugcon.iobase=0xe9 -no-reboot -no-shutdown
-          qemu_status=$?
-          set -e
-          if [ "$qemu_status" -ne 0 ] && [ "$qemu_status" -ne 124 ]; then
-            echo "QEMU exited unexpectedly: $qemu_status"
-            exit "$qemu_status"
-          fi
-          if ! grep -F 'VNTOS_BOOT_OK' build/serial.log; then
-            echo 'Serial boot marker missing; debugcon trace:'
-            cat build/debug.log || true
-            echo 'Serial output:'
-            cat build/serial.log || true
-            exit 1
-          fi
-
       - name: Compile raw memory regression program
         shell: bash
         run: ./vnt --compile tests/unsafe_memory.vnt -o vnt-memory-smoke.exe
@@ -250,3 +226,27 @@ jobs:
           tr -d '\r' < vnt-memory-u64-actual.txt > vnt-memory-u64-actual-lf.txt
           printf 'true\n81985529216486895\n239\n1\ntrue\ntrue\nMEM_U64_OK\n' > vnt-memory-u64-expected.txt
           diff -u vnt-memory-u64-expected.txt vnt-memory-u64-actual-lf.txt
+
+      - name: Build and boot VNTOS in QEMU (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          bash os/build.sh
+          grub-file --is-x86-multiboot2 build/kernel.elf
+          readelf -h build/kernel.elf | grep -F 'ELF64'
+          test -s build/vntos.iso
+          set +e
+          timeout 10s qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -monitor none -serial file:build/serial.log -debugcon file:build/debug.log -global isa-debugcon.iobase=0xe9 -no-reboot -no-shutdown
+          qemu_status=$?
+          set -e
+          if [ "$qemu_status" -ne 0 ] && [ "$qemu_status" -ne 124 ]; then
+            echo "QEMU exited unexpectedly: $qemu_status"
+            exit "$qemu_status"
+          fi
+          if ! grep -F 'VNTOS_BOOT_OK' build/serial.log; then
+            echo 'Serial boot marker missing; debugcon trace:'
+            cat build/debug.log || true
+            echo 'Serial output:'
+            cat build/serial.log || true
+            exit 1
+          fi

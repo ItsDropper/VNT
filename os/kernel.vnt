@@ -1,8 +1,8 @@
 # Copyright (c) 2026 ItsDropper
 # Licensed under the MIT License. See LICENSE in the repository root.
 
-# Only hardware I/O, raw buffer access, and CPU reset/halt remain inline
-# assembly. Command handling, text processing, and shell control flow are VNT.
+# Inline assembly is limited to UART I/O, obtaining the linker address of the
+# command buffer, declaring storage until VNT globals land, and CPU reset/halt.
 
 fun serial_init() {
     unsafe {

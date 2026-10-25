@@ -10,7 +10,17 @@ fun serial_init() {
     return 0
 }
 
+fun compiler_call_probe(value: int) {
+    if value != 42 {
+        unsafe {
+            asm volatile("ud2")
+        }
+    }
+    return 0
+}
+
 fun kernel_main() {
+    compiler_call_probe(42)
     serial_init()
     unsafe {
         asm volatile("call os_shell")

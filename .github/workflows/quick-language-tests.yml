@@ -206,8 +206,11 @@ jobs:
           i64_status=$?
           set -e
           if [ "$i64_status" -ne 0 ]; then
+            echo "native i64 test exited with status $i64_status"
             cat vnt-i64-stderr.txt || true
             cat vnt_crash.log || true
+            cat vnt-i64-actual.txt || true
+            grep -nE 'movabsq|vnt_int|vnt_print|vnt_add|vnt_mul|vnt_fn_main|main:' vnt-i64-smoke.exe.s || true
             exit "$i64_status"
           fi
           tr -d '\r' < vnt-i64-actual.txt > vnt-i64-actual-lf.txt

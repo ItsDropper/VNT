@@ -4,8 +4,8 @@
 #include <string.h>
 
 typedef enum {
-    TY_UNDECLARED, TY_UNKNOWN, TY_INT, TY_FLOAT, TY_BOOL, TY_STRING,
-    TY_ARRAY, TY_OBJECT, TY_REFERENCE, TY_POINTER, TY_VOID
+    TY_UNDECLARED, TY_UNKNOWN, TY_INT, TY_I64, TY_U64, TY_USIZE, TY_ISIZE,
+    TY_FLOAT, TY_BOOL, TY_STRING, TY_ARRAY, TY_OBJECT, TY_REFERENCE, TY_POINTER, TY_VOID
 } TypeKind;
 
 typedef struct { char *name; TypeKind type; int explicit_type; int dynamic; int scope_depth; } Symbol;
@@ -154,10 +154,14 @@ static void merge_branch_symbols(TypeChecker *tc, const SymbolState *before,
     }
 }
 
-static int numeric(TypeKind t) { return t == TY_INT || t == TY_FLOAT; }
+static int numeric(TypeKind t) { return t == TY_INT || t == TY_I64 || t == TY_U64 || t == TY_USIZE || t == TY_ISIZE || t == TY_FLOAT; }
 
 static TypeKind type_from_name(const char *name) {
     if (!strcmp(name, "int")) return TY_INT;
+    if (!strcmp(name, "i64")) return TY_I64;
+    if (!strcmp(name, "u64")) return TY_U64;
+    if (!strcmp(name, "usize")) return TY_USIZE;
+    if (!strcmp(name, "isize")) return TY_ISIZE;
     if (!strcmp(name, "float")) return TY_FLOAT;
     if (!strcmp(name, "bool")) return TY_BOOL;
     if (!strcmp(name, "string")) return TY_STRING;

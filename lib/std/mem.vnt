@@ -67,3 +67,15 @@ export unsafe fun set(destination: ptr, byte_value: int, length: int) -> bool {
         return mem_set(destination, byte_value, length)
     }
 }
+
+export unsafe fun read_u64(pointer: ptr, offset: int) -> i64 {
+    unsafe {
+        return mem_read_u64(pointer, offset)
+    }
+}
+
+export unsafe fun write_u64(pointer: ptr, offset: int, value: i64) -> bool {
+    unsafe {
+        return mem_write_u64(pointer, offset, value)
+    }
+}

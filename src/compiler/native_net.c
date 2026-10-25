@@ -1200,14 +1200,57 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     size_t cap = 8192, used = 0;
     size_t headerlen = 0, expected_body_length = 0;
     int has_expected_body_length = 0, code = 0, response_no_body = 0;
+    size_t stream_body_length = 0;
+    int stream_headers_done = 0, stream_is_chunked = 0, stream_complete = 0, stream_failed = 0;
+    VntChunkStream chunk_decoder = {0};
+    unsigned char stream_buffer[65536];
     char *raw = (char *)malloc(cap + 1);
     if (!raw) goto fail;
     raw[0] = '\0';
     for (;;) {
+        if (sink && stream_headers_done) {
+            int got = ssl ? SSL_read(ssl, stream_buffer, (int)sizeof(stream_buffer))
+                          : (int)recv(fd, stream_buffer, sizeof(stream_buffer), 0);
+            if (got <= 0) {
+                int eof = (!ssl && got == 0) ||
+                          (ssl && SSL_get_error(ssl, got) == SSL_ERROR_ZERO_RETURN) ||
+                          (ssl && SSL_get_error(ssl, got) == SSL_ERROR_SYSCALL && errno == 0);
+                if (got < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) continue;
+                if (ssl && got < 0 && SSL_get_error(ssl, got) == SSL_ERROR_WANT_READ) continue;
+                if (!eof) { stream_failed = 1; break; }
+                if (stream_is_chunked) stream_complete = chunk_decoder.state == 7;
+                else if (has_expected_body_length) stream_complete = stream_body_length >= expected_body_length;
+                else stream_complete = 1; /* EOF-delimited response body. */
+                if (!stream_complete) stream_failed = 1;
+                break;
+            }
+            size_t received = (size_t)got;
+            if (stream_is_chunked) {
+                if (!stream_feed_chunked(&chunk_decoder, sink, sink_context,
+                                         stream_buffer, received, &stream_body_length)) {
+                    stream_failed = 1; break;
+                }
+                if (chunk_decoder.state == 7) { stream_complete = 1; break; }
+            } else if (has_expected_body_length) {
+                size_t remaining = expected_body_length - stream_body_length;
+                size_t amount = received < remaining ? received : remaining;
+                if (!stream_emit(sink, sink_context, stream_buffer, amount, &stream_body_length)) {
+                    stream_failed = 1; break;
+                }
+                if (stream_body_length >= expected_body_length) { stream_complete = 1; break; }
+            } else {
+                if (!stream_emit(sink, sink_context, stream_buffer, received, &stream_body_length)) {
+                    stream_failed = 1; break;
+                }
+            }
+            continue;
+        }
+
         if (used == cap) {
-            if (cap >= VNT_HTTP_MAX_BUFFERED_RESPONSE) { free(raw); goto fail; }
-            size_t next = cap > VNT_HTTP_MAX_BUFFERED_RESPONSE / 2
-                ? VNT_HTTP_MAX_BUFFERED_RESPONSE : cap * 2;
+            if (sink && cap >= 65536) { free(raw); goto fail; }
+            if (!sink && cap >= VNT_HTTP_MAX_BUFFERED_RESPONSE) { free(raw); goto fail; }
+            size_t limit = sink ? 65536u : VNT_HTTP_MAX_BUFFERED_RESPONSE;
+            size_t next = cap > limit / 2 ? limit : cap * 2;
             if (next <= cap || next > SIZE_MAX - 1) { free(raw); goto fail; }
             char *grown = (char *)realloc(raw, next + 1);
             if (!grown) { free(raw); goto fail; }
@@ -1217,9 +1260,18 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
         int got = ssl ? SSL_read(ssl, raw+used, receive_size)
                       : (int)recv(fd, raw+used, (size_t)receive_size, 0);
         if (got <= 0) {
-            if (ssl && SSL_get_error(ssl, got) == SSL_ERROR_ZERO_RETURN) break;
-            if (!ssl && got == 0) break;
-            if (ssl && SSL_get_error(ssl, got) == SSL_ERROR_SYSCALL && errno == 0) break;
+            if (ssl && SSL_get_error(ssl, got) == SSL_ERROR_ZERO_RETURN) {
+                if (sink) { stream_failed = 1; break; }
+                break;
+            }
+            if (!ssl && got == 0) {
+                if (sink) { stream_failed = 1; break; }
+                break;
+            }
+            if (ssl && SSL_get_error(ssl, got) == SSL_ERROR_SYSCALL && errno == 0) {
+                if (sink) { stream_failed = 1; break; }
+                break;
+            }
             if (got < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) continue;
             if (ssl && SSL_get_error(ssl, got) == SSL_ERROR_WANT_READ) continue;
             if (got < 0) { free(raw); goto fail; }
@@ -1231,13 +1283,59 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
                                             &expected_body_length, &has_expected_body_length,
                                             &code, &response_no_body);
         if (parsed < 0) { free(raw); goto fail; }
-        int chunked_complete = parsed > 0 && http_header_has_token(raw, headerlen, "Transfer-Encoding", "chunked") &&
+        if (sink && parsed > 0) {
+            stream_is_chunked = http_header_has_token(raw, headerlen, "Transfer-Encoding", "chunked");
+            if ((code == 301 || code == 302 || code == 303 || code == 307 || code == 308) &&
+                redirect_count < 10) {
+                used = headerlen;
+                raw[used] = '\0';
+                stream_complete = 1;
+                break;
+            }
+            stream_headers_done = 1;
+            size_t initial_length = used - headerlen;
+            if (response_no_body) {
+                used = headerlen;
+                raw[used] = '\0';
+                stream_complete = 1;
+                break;
+            }
+            if (initial_length) {
+                const unsigned char *initial_body = (const unsigned char *)(raw + headerlen);
+                if (stream_is_chunked) {
+                    if (!stream_feed_chunked(&chunk_decoder, sink, sink_context,
+                                             initial_body, initial_length, &stream_body_length)) {
+                        stream_failed = 1; break;
+                    }
+                    if (chunk_decoder.state == 7) stream_complete = 1;
+                } else if (has_expected_body_length) {
+                    size_t amount = initial_length < expected_body_length ? initial_length : expected_body_length;
+                    if (!stream_emit(sink, sink_context, initial_body, amount, &stream_body_length)) {
+                        stream_failed = 1; break;
+                    }
+                    if (stream_body_length >= expected_body_length) stream_complete = 1;
+                } else {
+                    if (!stream_emit(sink, sink_context, initial_body, initial_length, &stream_body_length)) {
+                        stream_failed = 1; break;
+                    }
+                }
+            } else if (has_expected_body_length && expected_body_length == 0) {
+                stream_complete = 1;
+            }
+            used = headerlen;
+            raw[used] = '\0';
+            if (stream_complete) break;
+            continue;
+        }
+        int chunked_complete = parsed > 0 &&
+            http_header_has_token(raw, headerlen, "Transfer-Encoding", "chunked") &&
             chunked_body_complete(raw + headerlen, used - headerlen);
         if (parsed > 0 && (response_no_body ||
             (has_expected_body_length && used - headerlen >= expected_body_length) ||
             chunked_complete))
             break;
     }
+    if (sink && (stream_failed || !stream_complete)) { free(raw); goto fail; }
     raw[used] = '\0';
     int parsed = parse_response_headers(raw, used, method, &headerlen,
                                         &expected_body_length, &has_expected_body_length,

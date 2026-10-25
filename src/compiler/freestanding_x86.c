@@ -452,7 +452,7 @@ int vnt_emit_freestanding_x86_64(const VntIrProgram *ir,
         if (frame) fprintf(out, "    subq $%zu, %%rsp\n", frame);
         static const char *arg_regs[] = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
         for (size_t p = 0; p < function->name_count; ++p)
-            fprintf(out, "    movq %s, -%zu(%%rbp)\\n", arg_regs[p], (p + 1) * 8);
+            fprintf(out, "    movq %s, -%zu(%%rbp)\n", arg_regs[p], (p + 1) * 8);
         for (size_t st = function->first_child; st != VNT_IR_NO_NODE;
              st = ir->nodes[st].next_sibling) {
             if (ir->nodes[st].role == VNT_IR_EDGE_BODY &&

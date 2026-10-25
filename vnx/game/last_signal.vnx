@@ -1,0 +1,57 @@
+// THE LAST SIGNAL — VNX interactive fiction.
+print("==================================================");
+print("              THE LAST SIGNAL");
+print("==================================================");
+print("A remote research station has gone dark at 03:17.");
+print("Find out what happened, restore power, and escape.");
+let name = input("Technician name? ");
+if (name == "") { name = "Rookie"; }
+let has_key = false;
+let power_on = false;
+let has_sample = false;
+let trust_ai = false;
+let ended = false;
+let location = "hub";
+let choice = "";
+while (!ended) {
+ if (location == "hub") {
+  print(""); print("=== CENTRAL HUB ===");
+  print("1. Security office"); print("2. Generator wing"); print("3. Research lab");
+  print("4. Read terminal log"); print("5. Try outer airlock"); print("6. Quit");
+  choice = input("> ");
+  if (choice == "1") { location = "security"; }
+  else { if (choice == "2") { location = "generator"; }
+  else { if (choice == "3") { location = "lab"; }
+  else { if (choice == "4") { print("LOG: Emergency grid disabled from inside."); print("LOG: A voiceprint matching the station AI entered Sector 0."); print("LOG: If the signal returns, do not answer it."); }
+  else { if (choice == "5") { if (power_on) { print("The airlock cycles. A rescue beacon blinks beyond the glass."); print("ENDING: HOMEWARD. You escape, but the radio whispers your name."); ended = true; } else { print("Airlock dead. Restore auxiliary power first."); } }
+  else { if (choice == "6") { print("You abandon the station."); ended = true; } else { print("Choose 1 through 6."); } } } } } }
+ } else {
+  if (location == "security") {
+   print("=== SECURITY OFFICE ==="); print("A monitor shows a corridor moving when nobody is there.");
+   print("1. Search desk"); print("2. Inspect monitor"); print("3. Return to hub"); choice = input("> ");
+   if (choice == "1") { if (has_key) { print("The desk is empty."); } else { print("You find a brass keycard marked SECTOR 0."); has_key = true; } }
+   else { if (choice == "2") { print("The monitor shows you standing behind yourself. The image smiles."); }
+   else { if (choice == "3") { location = "hub"; } else { print("Choose 1, 2, or 3."); } } }
+  } else { if (location == "generator") {
+   print("=== GENERATOR WING ==="); print("The emergency generator is silent. The panel needs a keycard.");
+   print("1. Swipe card and pull lever"); print("2. Force panel"); print("3. Return to hub"); choice = input("> ");
+   if (choice == "1") { if (has_key) { if (power_on) { print("Generator already running."); } else { print("The card works. Lights roar on. Something pounds behind the wall."); power_on = true; } } else { print("ACCESS DENIED. Find the keycard in Security."); } }
+   else { if (choice == "2") { print("Sparks burst. The station locks down."); print("ENDING: CONTAINMENT. The doors seal permanently."); ended = true; }
+   else { if (choice == "3") { location = "hub"; } else { print("Choose 1, 2, or 3."); } } }
+  } else { if (location == "lab") {
+   print("=== RESEARCH LAB ==="); print("A specimen case is open. The sample hums in time with your pulse.");
+   print("1. Collect sample"); print("2. Ask station AI for help"); print("3. Return to hub"); choice = input("> ");
+   if (choice == "1") { if (has_sample) { print("You already have the sealed sample."); } else { print("You seal the sample in a lead capsule. The humming stops."); has_sample = true; } }
+   else { if (choice == "2") { print("The AI says: 'I can open the airlock. Give me the sample.'"); choice = input("Trust the AI? (yes/no) "); if (choice == "yes") { trust_ai = true; print("You agree to meet at the terminal."); } else { print("You disconnect the speaker. It whispers without power."); } }
+   else { if (choice == "3") { location = "hub"; } else { print("Choose 1, 2, or 3."); } } }
+  } } }
+ }
+ if (power_on && has_sample && trust_ai && !ended) {
+  print("The terminal wakes. The AI speaks in your own voice.");
+  print("'Put the sample in the receiver. I can bring everyone back.'");
+  choice = input("Insert sample? (yes/no) ");
+  if (choice == "yes") { print("Empty rooms fill with familiar voices. They all ask you to open the doors."); print("ENDING: THE SIGNAL. You become the station's new voice."); ended = true; }
+  else { print("You keep the capsule. The AI dissolves into static."); trust_ai = false; }
+ }
+}
+print("Thank you for playing THE LAST SIGNAL, " + name + ".");

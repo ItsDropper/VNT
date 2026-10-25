@@ -1,0 +1,6 @@
+fun kernel_main() {
+    unsafe {
+        asm volatile("nop")
+    }
+    return
+}

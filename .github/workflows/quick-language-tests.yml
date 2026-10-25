@@ -129,6 +129,10 @@ jobs:
             exit 1
           fi
 
+      - name: Compile complete task tracker example
+        shell: bash
+        run: ./vnt --compile examples/task_tracker.vnt -o vnt-task-tracker-smoke.exe
+
       - name: Compile VNT regression programs
         shell: bash
         run: |

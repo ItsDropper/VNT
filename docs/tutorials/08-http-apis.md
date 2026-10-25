@@ -24,8 +24,8 @@ if response == "" {
 Compile and run:
 
 ```powershell
-.\\vnt.exe --compile api_demo.vnt -o api_demo.exe
-.\\api_demo.exe
+.\vnt.exe --compile api_demo.vnt -o api_demo.exe
+.\api_demo.exe
 ```
 
 This sends a real network request when the program runs. Windows uses WinHTTP; Unix-like targets use native sockets with OpenSSL for HTTPS. TLS certificate and hostname verification are enabled.
@@ -43,7 +43,7 @@ print(response)
 
 created = net.post_json(
     "https://example.com/api",
-    "{\\"ready\\":true}"
+    "{\"ready\":true}"
 )
 print(created)
 ```
@@ -84,11 +84,11 @@ print(echoed)
 
 An HTTP server can return `404 Not Found` even though the connection worked. Use `net.status(url)` to inspect the HTTP status. The helper returns a three-digit string; `000` indicates that the transport failed before an HTTP status was received.
 
-Body helpers return an empty string on transport failure, so an empty response is ambiguous. `net.download` preserves binary bytes and streams successful 2xx bodies to disk in bounded chunks. Redirects are followed without switching to a response-sized in-memory buffer; Unix proxy-routed downloads also stream the response body. Use this for large files. The ordinary `get`/`request` APIs return a complete string, so those responses necessarily remain in memory.
+Body helpers return an empty string on transport failure, so an empty response is ambiguous. `net.download` preserves binary bytes and writes successful 2xx bodies to disk. Direct download responses stream in bounded chunks, but redirect/proxy fallback paths may buffer the response. Use it instead of `get`/`request` for large files. The ordinary `get`/`request` APIs return the complete response in memory, so response size is limited by available memory.
 
 ## 6. Behavior and remaining gaps
 
-The native transport supports HTTP and HTTPS, standard request methods, newline-separated headers, text request bodies, status codes, redirects, and binary-safe downloads. Redirect loops are capped at ten hops; cross-origin redirects strip `Authorization`, `Proxy-Authorization`, and `Cookie` headers. The in-memory `get`/`request` path is intentionally buffered because it returns a complete string; use `net.download` when bounded-memory transfer matters. Binary helpers return compact byte buffers that support `len()`, indexing, and reuse as a subsequent binary request body. Unix direct HTTP and verified HTTPS requests reuse eligible keep-alive connections; Windows shares a WinHTTP session for pooling. Unix-like requests honor HTTP_PROXY/HTTPS_PROXY (and lowercase equivalents), ALL_PROXY, and NO_PROXY. Windows delegates proxy selection to WinHTTP. Redirects strip Authorization, Proxy-Authorization, and Cookie headers when the origin changes.
+The native transport supports HTTP and HTTPS, standard request methods, newline-separated headers, text request bodies, status codes, redirects, and binary-safe downloads. Redirect loops are capped at ten hops; cross-origin redirects strip `Authorization`, `Proxy-Authorization`, and `Cookie` headers. The in-memory `get`/`request` path is buffered because it returns a complete response. Direct downloads stream in bounded chunks, while redirect/proxy fallback paths may buffer; do not assume every download route has constant memory use. Binary helpers return compact byte buffers that support `len()`, indexing, and reuse as a subsequent binary request body. Unix-like requests honor HTTP_PROXY/HTTPS_PROXY (and lowercase equivalents), ALL_PROXY, and NO_PROXY. Windows delegates proxy selection to WinHTTP.
 
 The Unix-like HTTPS implementation links against OpenSSL and verifies the peer certificate and hostname. Windows uses the platform WinHTTP stack and its certificate validation.
 

@@ -14,6 +14,9 @@ These tutorials teach the language by building small programs. They assume you h
 6. [Arrays, structs, and references](06-arrays-structs-references.md)
 7. [Launching and managing child processes](07-native-processes.md)
 8. [HTTP APIs and external tools](08-http-apis.md)
+9. [Build a complete local task tracker](09-build-a-project.md)
+
+The [API reference](../api-reference.md) summarizes runtime APIs and their known limitations. The [compiler architecture guide](../compiler-architecture.md) covers compiler internals.
 
 ## Compile and run a tutorial
 

@@ -289,7 +289,7 @@ jobs:
           except socket.timeout:
               pass
           for key in ("h", "e", "l", "p", "ret"):
-              monitor.sendall(("sendkey " + key + "\\n").encode("ascii"))
+              monitor.sendall(("sendkey " + key + "\n").encode("ascii"))
               time.sleep(0.15)
           time.sleep(0.3)
           monitor.close()

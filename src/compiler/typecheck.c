@@ -204,6 +204,10 @@ static int builtin_arity(const char *name, int argc) {
         !strcmp(name, "process_exit_code") || !strcmp(name, "process_launch") || !strcmp(name, "io_write") ||
         !strcmp(name, "io_write_error")) return argc == 1;
     if (!strcmp(name, "process_wait") || !strcmp(name, "process_start")) return argc == 2;
+    if (!strcmp(name, "net_stream_start")) return argc == 4;
+    if (!strcmp(name, "net_stream_read")) return argc == 2;
+    if (!strcmp(name, "net_stream_done") || !strcmp(name, "net_stream_status") ||
+        !strcmp(name, "net_stream_cancel") || !strcmp(name, "net_stream_release")) return argc == 1;
     if (!strcmp(name, "net_async_start")) return argc == 4;
     if (!strcmp(name, "net_async_poll") || !strcmp(name, "net_async_cancel") ||
         !strcmp(name, "net_async_result") || !strcmp(name, "net_async_status") ||

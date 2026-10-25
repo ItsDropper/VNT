@@ -16,6 +16,8 @@
 /* Buffered convenience requests have an explicit ceiling. Large payloads must use a streaming API. */
 #define VNT_HTTP_MAX_BUFFERED_RESPONSE (64u * 1024u * 1024u)
 
+typedef int (*VntHttpBodySink)(const unsigned char *data, size_t length, void *context);
+
 #ifdef _WIN32
 static __declspec(thread) int vnt_native_http_disable_pool;
 #else
@@ -314,7 +316,7 @@ static wchar_t *to_wide(const char *s) {
 
 static char *vnt_native_http_request_impl(const char *method, const char *url,
                       const char *headers, const char *body, size_t body_length,
-                      int *status, size_t *response_length, unsigned int redirect_count) {
+                      int *status, size_t *response_length, VntHttpBodySink sink, void *sink_context, unsigned int redirect_count) {
     if (status) *status = 0;
     if (response_length) *response_length = 0;
     if (!valid_http_method(method ? method : "GET") || !valid_http_url_chars(url) || !valid_request_headers(headers)) return NULL;
@@ -435,7 +437,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
                     next_headers = safe_headers;
                 }
                 char *redirected = vnt_native_http_request_impl(next_method, next_url, next_headers,
-                    next_body, next_body == body ? body_length : 0, status, response_length, redirect_count + 1);
+                    next_body, next_body == body ? body_length : 0, status, response_length, sink, sink_context, redirect_count + 1);
                 free(safe_headers);
                 free(next_url);
                 return redirected;
@@ -478,13 +480,13 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
 
 char *vnt_native_http_request(const char *method, const char *url,
                       const char *headers, const char *body, int *status, size_t *response_length) {
-    return vnt_native_http_request_impl(method, url, headers, body, body ? strlen(body) : 0, status, response_length, 0);
+    return vnt_native_http_request_impl(method, url, headers, body, body ? strlen(body) : 0, status, response_length, NULL, NULL, 0);
 }
 
 char *vnt_native_http_request_bytes(const char *method, const char *url,
                       const char *headers, const char *body, size_t body_length,
                       int *status, size_t *response_length) {
-    return vnt_native_http_request_impl(method, url, headers, body, body_length, status, response_length, 0);
+    return vnt_native_http_request_impl(method, url, headers, body, body_length, status, response_length, NULL, NULL, 0);
 }
 
 /* Stream successful downloads directly to disk, including followed redirects. */
@@ -936,7 +938,7 @@ static int write_all(int fd, SSL *ssl, const char *data, size_t length) {
 
 static char *vnt_native_http_request_impl(const char *method, const char *url,
                       const char *headers, const char *body, size_t body_length,
-                      int *status, size_t *response_length, unsigned int redirect_count) {
+                      int *status, size_t *response_length, VntHttpBodySink sink, void *sink_context, unsigned int redirect_count) {
     if (status) *status = 0;
     if (response_length) *response_length = 0;
     if (!valid_request_headers(headers)) return NULL;
@@ -1170,7 +1172,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
             }
             char *redirected = vnt_native_http_request_impl(next_method, next_url, next_headers, next_body,
                                                              next_body == body ? body_length : 0,
-                                                             status, response_length, redirect_count + 1);
+                                                             status, response_length, sink, sink_context, redirect_count + 1);
             free(safe_headers);
             free(next_url);
             return redirected;
@@ -1221,13 +1223,13 @@ fail:
 
 char *vnt_native_http_request(const char *method, const char *url,
                       const char *headers, const char *body, int *status, size_t *response_length) {
-    return vnt_native_http_request_impl(method, url, headers, body, body ? strlen(body) : 0, status, response_length, 0);
+    return vnt_native_http_request_impl(method, url, headers, body, body ? strlen(body) : 0, status, response_length, NULL, NULL, 0);
 }
 
 char *vnt_native_http_request_bytes(const char *method, const char *url,
                       const char *headers, const char *body, size_t body_length,
                       int *status, size_t *response_length) {
-    return vnt_native_http_request_impl(method, url, headers, body, body_length, status, response_length, 0);
+    return vnt_native_http_request_impl(method, url, headers, body, body_length, status, response_length, NULL, NULL, 0);
 }
 
 static int stream_read(int fd, SSL *ssl, char *buffer, size_t capacity, size_t *received) {

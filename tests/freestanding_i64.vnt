@@ -1,4 +1,8 @@
 fun kernel_main() {
+    let folded: i64 = 4294967296 + 2147483648
+    if folded != 6442450944 {
+        return 2
+    }
     let value: i64 = 4294967296
     value = value + 2147483648
     if value == 6442450944 {

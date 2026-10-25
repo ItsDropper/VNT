@@ -62,9 +62,13 @@ static int compile_native(AstNode *program, const char *output_path) {
 
 int main(int argc, char *argv[]) {
     int dump_ir = argc == 3 && strcmp(argv[1], "--dump-ir") == 0;
-    if (!dump_ir && (argc != 5 || strcmp(argv[1], "--compile") != 0 ||
-        strcmp(argv[3], "-o") != 0)) {
+    int emit_asm = argc == 5 && strcmp(argv[1], "--emit-asm") == 0 &&
+                   strcmp(argv[3], "-o") == 0;
+    int compile = argc == 5 && strcmp(argv[1], "--compile") == 0 &&
+                  strcmp(argv[3], "-o") == 0;
+    if (!dump_ir && !emit_asm && !compile) {
         printf("Usage: vnt --compile <file.vnt> -o <output.exe>\n");
+        printf("       vnt --emit-asm <file.vnt> -o <output.s>\n");
         printf("       vnt --dump-ir <file.vnt>\n");
         return 1;
     }
@@ -87,7 +91,7 @@ int main(int argc, char *argv[]) {
 
     int result;
     if (dump_ir) {
-        VntIrProgram ir;
+        VntIrProgram ir = {0};
         if (!vnt_ir_lower(&ir, program) ||
             !vnt_ir_optimize(&ir) ||
             !vnt_ir_validate(&ir)) {
@@ -98,6 +102,10 @@ int main(int argc, char *argv[]) {
             result = 0;
         }
         vnt_ir_free(&ir);
+    } else if (emit_asm) {
+        result = compiler_compile(program, argv[4]) ? 0 : 1;
+        if (result == 0)
+            printf("Assembly emitted without linking: %s\n", argv[4]);
     } else {
         result = compile_native(program, argv[4]);
     }

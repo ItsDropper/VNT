@@ -242,7 +242,10 @@ fun ps2_mouse_command(value: int) {
 }
 
 fun ps2_init() {
-    # Enable the auxiliary device port and request streaming reports.
+    # Enable keyboard port and keyboard scan reporting explicitly.
+    ps2_write_command(0xae)
+    ps2_write_data(0xf4)
+    # Enable auxiliary port and mouse streaming.
     ps2_write_command(0xa8)
     ps2_mouse_command(0xf4)
     # Drain ACK/RESEND bytes before starting input polling.

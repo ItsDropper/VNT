@@ -1,8 +1,7 @@
 # Copyright (c) 2026 ItsDropper
 # Licensed under the MIT License. See LICENSE in the repository root.
 
-# Inline assembly is limited to UART I/O, obtaining the linker address of the
-# command buffer, declaring storage until VNT globals land, and CPU reset/halt.
+# Inline assembly is limited to hardware I/O/control instructions and linker-symbol addresses.
 
 fun serial_init() {
     unsafe {
@@ -22,14 +21,6 @@ fun serial_getc() -> int {
     let result: int = 0
     unsafe {
         asm volatile("movw $0x3fd, %dx; 1: inb %dx, %al; testb $1, %al; jz 1b; movw $0x3f8, %dx; inb %dx, %al; movzbl %al, %eax; movl %eax, -8(%rbp)")
-    }
-    return result
-}
-
-fun buffer_ptr() -> string {
-    let result: string = ""
-    unsafe {
-        asm volatile("leaq os_command(%rip), %rax; movq %rax, -8(%rbp)")
     }
     return result
 }
@@ -120,16 +111,16 @@ fun cpu_reboot() {
 }
 
 fun kernel_main() {
-    # Storage is declared here in VNT; the bootstrap does not own shell state.
-    unsafe {
-        asm volatile(".comm os_command, 128, 16")
-    }
     serial_init()
     serial_puts("VNTOS_BOOT_OK\r\nVNTOS - freestanding x86-64 serial shell\r\nType help for commands.\r\n")
     serial_puts("VNTOS> ")
     serial_puts("VNTOS_COMMAND_LINE_READY\r\n")
 
-    let buffer: string = buffer_ptr()
+    let buffer: string = ""
+    # Reserve a 128-byte command buffer in this function frame; no global symbol needed.
+    unsafe {
+        asm volatile("subq $128, %rsp; leaq -160(%rbp), %rax; movq %rax, -8(%rbp)")
+    }
     let length: int = 0
     let character: int = 0
     let handled: int = 0

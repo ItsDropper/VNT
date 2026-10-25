@@ -352,23 +352,35 @@ os_put_hex64:
     pushq %rbx
     pushq %r12
     movq %rdi, %r12
-    movl 
-.Los_match_loop:
-    movzbl (%rdi), %eax
-    movzbl (%rsi), %edx
-    cmpl %edx, %eax
-    jne .Los_match_false
-    testl %eax, %eax
-    je .Los_match_true
-    incq %rdi
-    incq %rsi
-    jmp .Los_match_loop
-.Los_match_true:
-    movl $1, %eax
+    movl $'0', %edi
+    call os_putc
+    movl $'x', %edi
+    call os_putc
+    movl $60, %ebx
+.Los_hex_loop:
+    movq %r12, %rax
+    movl %ebx, %ecx
+    shrq %cl, %rax
+    andl $15, %eax
+    cmpl $9, %eax
+    ja .Los_hex_alpha
+    addl $48, %eax
+    jmp .Los_hex_emit
+.Los_hex_alpha:
+    addl $87, %eax
+.Los_hex_emit:
+    movl %eax, %edi
+    call os_putc
+    subl $4, %ebx
+    jns .Los_hex_loop
+    movl $13, %edi
+    call os_putc
+    movl $10, %edi
+    call os_putc
+    popq %r12
+    popq %rbx
     ret
-.Los_match_false:
-    xorl %eax, %eax
-    ret
+
 .type os_match,@function
 os_match:
 .Los_match_loop:

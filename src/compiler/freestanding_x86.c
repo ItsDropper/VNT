@@ -17,52 +17,38 @@ static void emit_symbol(FILE *out, const char *name) {
         fputc(isalnum(*p) || *p == '_' ? *p : '_', out);
 }
 
-static int emit_body(const VntIrProgram *ir, FILE *out, size_t function) {
-    const VntIrNode *fn = &ir->nodes[function];
-    const VntIrNode *body = child_role(ir, function, VNT_IR_EDGE_BODY);
-    if (!body) return 1;
-    for (size_t s = body->first_child; s != VNT_IR_NO_NODE;
-         s = ir->nodes[s].next_sibling) {
-        const VntIrNode *stmt = &ir->nodes[s];
-        if (stmt->opcode == VNT_IR_PROGRAM) {
-            for (size_t nested = stmt->first_child; nested != VNT_IR_NO_NODE;
-                 nested = ir->nodes[nested].next_sibling) {
-                const VntIrNode *inner = &ir->nodes[nested];
-                if (inner->opcode != VNT_IR_ASM) {
-                    fprintf(stderr,
-                        "Freestanding backend: function '%s' currently accepts only inline assembly and bare return statements; rejected HIR opcode %d.\n",
-                        fn->value.text, (int)inner->opcode);
-                    return 0;
-                }
-                fprintf(out, "    # VNT inline assembly follows\n    %s\n",
-                        inner->value.text ? inner->value.text : "");
-            }
-        } else if (stmt->opcode == VNT_IR_ASM) {
-            fprintf(out, "    # VNT inline assembly follows\n    %s\n",
-                    stmt->value.text ? stmt->value.text : "");
-        } else if (stmt->opcode == VNT_IR_RETURN &&
-                   !child_role(ir, s, VNT_IR_EDGE_VALUE)) {
-            fputs("    ret\n", out);
-            return 1;
-        } else {
-            fprintf(stderr,
-                "Freestanding backend: function '%s' contains unsupported HIR opcode %d; no hosted fallback is allowed.\n",
-                fn->value.text, (int)stmt->opcode);
-            return 0;
+static int emit_statement(const VntIrProgram *ir, FILE *out, size_t index,
+                          const char *function_name) {
+    const VntIrNode *stmt = &ir->nodes[index];
+    if (stmt->opcode == VNT_IR_PROGRAM) {
+        for (size_t c = stmt->first_child; c != VNT_IR_NO_NODE;
+             c = ir->nodes[c].next_sibling) {
+            if (ir->nodes[c].role != VNT_IR_EDGE_STATEMENT) continue;
+            if (!emit_statement(ir, out, c, function_name)) return 0;
         }
+        return 1;
     }
-    fputs("    ret\n", out);
-    return 1;
+    if (stmt->opcode == VNT_IR_ASM) {
+        fprintf(out, "    # VNT inline assembly follows\n    %s\n",
+                stmt->value.text ? stmt->value.text : "");
+        return 1;
+    }
+    if (stmt->opcode == VNT_IR_RETURN &&
+        !child_role(ir, index, VNT_IR_EDGE_VALUE)) {
+        fputs("    ret\n", out);
+        return 1;
+    }
+    fprintf(stderr,
+        "Freestanding backend: function '%s' contains unsupported HIR opcode %d; no hosted fallback is allowed.\n",
+        function_name, (int)stmt->opcode);
+    return 0;
 }
 
 /*
- * Deliberately strict first freestanding subset:
- * - System V x86-64 assembly output.
- * - one required zero-argument function named kernel_main.
- * - function bodies contain inline assembly and/or bare return.
- * - no VNT runtime, libc, dynamic allocation, or hosted entry point.
- *
- * Reject everything else rather than accidentally emitting hosted helpers.
+ * Strict initial freestanding subset: System V x86-64 assembly, a zero-argument
+ * kernel_main entry routine, and bodies containing only inline assembly, nested
+ * unsafe blocks, and bare return. No VNT runtime or libc references are emitted.
+ * Unsupported constructs are hard errors rather than hosted-runtime fallbacks.
  */
 int vnt_emit_freestanding_x86_64(const VntIrProgram *ir,
                                  const char *assembly_path) {
@@ -130,12 +116,17 @@ int vnt_emit_freestanding_x86_64(const VntIrProgram *ir,
         fputs(", @function\nvnt_fn_", out);
         emit_symbol(out, n->value.text);
         fputs(":\n", out);
-        if (!emit_body(ir, out, c)) {
-            fclose(out);
-            remove(assembly_path);
-            return 0;
+
+        for (size_t s = n->first_child; s != VNT_IR_NO_NODE;
+             s = ir->nodes[s].next_sibling) {
+            if (ir->nodes[s].role != VNT_IR_EDGE_BODY) continue;
+            if (!emit_statement(ir, out, s, n->value.text)) {
+                fclose(out);
+                remove(assembly_path);
+                return 0;
+            }
         }
-        fputs(".size vnt_fn_", out);
+        fputs("    ret\n.size vnt_fn_", out);
         emit_symbol(out, n->value.text);
         fputs(", .-vnt_fn_", out);
         emit_symbol(out, n->value.text);

@@ -827,8 +827,8 @@ VNT_NATIVE_ABI VntValue * vnt_range(VntValue *a, VntValue *b, VntValue *c, int a
     else { if(a->type!=VNT_INT||b->type!=VNT_INT||c->type!=VNT_INT) goto bad; start=a->integer; end=b->integer; step=c->integer; }
     if (!step) { fprintf(stderr,"Runtime error: range() step cannot be zero.\n"); exit(1); }
     VntValue *r=vnt_array_new();
-    if(step>0) for(int i=start;i<end;i+=step) vnt_array_push(r,vnt_int(i));
-    else for(int i=start;i>end;i+=step) vnt_array_push(r,vnt_int(i));
+    if(step>0) for(int64_t i=start;i<end;) { vnt_array_push(r,vnt_int(i)); if (i > INT64_MAX-step) break; i+=step; }
+    else for(int64_t i=start;i>end;) { vnt_array_push(r,vnt_int(i)); if (i < INT64_MIN-step) break; i+=step; }
     return r;
 bad:
     fprintf(stderr,"Runtime error: range() requires integer arguments.\n"); exit(1);
@@ -906,7 +906,7 @@ VNT_NATIVE_ABI VntValue * vnt_ffi_int(
         case 5: result = ((intptr_t (*)(intptr_t, intptr_t, intptr_t, intptr_t, intptr_t))proc)(args[0], args[1], args[2], args[3], args[4]); break;
         case 6: result = ((intptr_t (*)(intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t))proc)(args[0], args[1], args[2], args[3], args[4], args[5]); break;
     }
-    return vnt_int((int)result);
+    return vnt_int((int64_t)result);
 }
 
 
@@ -1495,8 +1495,11 @@ static VntGuiInputState vnt_gui_inputs[16];
 static int vnt_gui_input_count, vnt_gui_focused_input=-1;
 
 static VNT_NATIVE_ABI int vnt_gui_require_int(VntValue *v,const char *fn) {
-    if(!v || v->type!=VNT_INT) { fprintf(stderr,"Runtime error: %s expects integer arguments.\n",fn); exit(1); }
-    return v->integer;
+    if(!v || v->type!=VNT_INT || v->integer < INT_MIN || v->integer > INT_MAX) {
+        fprintf(stderr,"Runtime error: %s expects an integer in the platform UI range.\n",fn);
+        exit(1);
+    }
+    return (int)v->integer;
 }
 static COLORREF vnt_gui_color(int c) { return RGB((c>>16)&255,(c>>8)&255,c&255); }
 static VNT_NATIVE_ABI char * vnt_gui_trim(char *s) {

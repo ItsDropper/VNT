@@ -21,6 +21,7 @@ The project focuses on a small, understandable language, native execution, and a
 - [Native runtime APIs](#native-runtime-apis)
 - [API reference](docs/api-reference.md)
 - [Raw pointers and memory](docs/raw-memory.md)
+- [Advanced low-level systems programming course](docs/tutorials/10-low-level-systems-programming.md)
 - [Examples and tutorials](#examples-and-tutorials)
 - [Compiler pipeline](#compiler-pipeline)
 - [Project layout](#project-layout)
@@ -223,6 +224,8 @@ Process arguments are passed as an array of strings rather than interpreted as s
 Use the [VNT API reference](docs/api-reference.md) for the standard-library modules, runtime built-ins, return-value conventions, platform requirements, and known limitations. It links directly to the implementation in `lib/std/` and identifies areas where behavior is still experimental.
 
 ## Examples and tutorials
+
+The tutorial series covers language basics through a complete task tracker. For systems-level details, see the [advanced low-level systems programming course](docs/tutorials/10-low-level-systems-programming.md), which labels supported features and future work explicitly.
 
 Runnable sample programs are in [`examples/`](examples/). Start with:
 

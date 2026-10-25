@@ -51,7 +51,7 @@ jobs:
       - name: Boot guest and test interactive shell
         shell: bash
         run: |
-          qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -monitor none -serial unix:build/qemu-serial.sock,server,nowait -debugcon file:build/debug.log -global isa-debugcon.iobase=0xe9 -no-reboot -no-shutdown &
+          qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -monitor unix:build/qemu-keyboard-monitor.sock,server,nowait -serial unix:build/qemu-serial.sock,server,nowait -debugcon file:build/debug.log -global isa-debugcon.iobase=0xe9 -no-reboot -no-shutdown &
           qemu_pid=$!
           cleanup_qemu() {
             kill "$qemu_pid" 2>/dev/null || true
@@ -94,10 +94,33 @@ jobs:
               print(output.decode("ascii", errors="replace"))
               raise SystemExit("VNTOS did not reach its interactive command prompt")
 
-          for command in (b"help\r", b"about\r", b"echo tesX\x7ft\r",
-                          b"mem\r", b"mouse\r", b"not-a-command\r", b"halt\r"):
-              serial.sendall(command)
+          monitor = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+          monitor.settimeout(0.2)
+          for _ in range(100):
+              try:
+                  monitor.connect("build/qemu-keyboard-monitor.sock")
+                  break
+              except OSError:
+                  time.sleep(0.05)
+          else:
+              raise SystemExit("QEMU keyboard-test monitor socket did not become available")
+
+          def press(key):
+              if key == " ":
+                  key = "spc"
+              monitor.sendall(("sendkey " + key + "\n").encode("ascii"))
+              time.sleep(0.12)
+
+          def type_command(command):
+              for key in command:
+                  press(key)
+              press("ret")
               drain(0.35)
+
+          # Exercise the real PS/2 keyboard path, not only the serial RX path.
+          for command in ("help", "about", "echo test", "mem", "mouse", "badcommand", "clear", "halt"):
+              type_command(command)
+          monitor.close()
           drain(0.5)
           serial.close()
 
@@ -122,3 +145,70 @@ jobs:
               raise SystemExit("Missing shell output: " + ", ".join(missing))
           PY
           grep -F 'B1234L' build/debug.log
+
+      - name: Verify VGA banner and SeaBIOS cleanup in QEMU
+        shell: bash
+        run: |
+          qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -monitor unix:build/qemu-vga-monitor.sock,server,nowait -serial unix:build/qemu-vga-serial.sock,server,nowait -debugcon file:build/debug-vga.log -global isa-debugcon.iobase=0xe9 -no-reboot -no-shutdown &
+          qemu_pid=$!
+          cleanup_vga_qemu() {
+            kill "$qemu_pid" 2>/dev/null || true
+            wait "$qemu_pid" 2>/dev/null || true
+          }
+          trap cleanup_vga_qemu EXIT
+          python3 - <<'PY'
+          import os
+          import socket
+          import time
+
+          serial = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+          serial.settimeout(0.15)
+          for _ in range(150):
+              try:
+                  serial.connect("build/qemu-vga-serial.sock")
+                  break
+              except OSError:
+                  time.sleep(0.1)
+          else:
+              raise SystemExit("QEMU VGA-test serial socket did not become available")
+
+          output = bytearray()
+          deadline = time.monotonic() + 12
+          while b"VNTOS_COMMAND_LINE_READY" not in output and time.monotonic() < deadline:
+              try:
+                  chunk = serial.recv(4096)
+                  if chunk:
+                      output.extend(chunk)
+              except socket.timeout:
+                  pass
+          if b"VNTOS_COMMAND_LINE_READY" not in output:
+              raise SystemExit("VNTOS did not reach its prompt during VGA test")
+
+          monitor = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+          monitor.settimeout(0.2)
+          for _ in range(100):
+              try:
+                  monitor.connect("build/qemu-vga-monitor.sock")
+                  break
+              except OSError:
+                  time.sleep(0.05)
+          else:
+              raise SystemExit("QEMU VGA-test monitor socket did not become available")
+          monitor.sendall(b"pmemsave 0xb8000 4000 build/vga.bin\n")
+          deadline = time.monotonic() + 3
+          while not os.path.exists("build/vga.bin") and time.monotonic() < deadline:
+              time.sleep(0.05)
+          monitor.close()
+          serial.close()
+          if not os.path.exists("build/vga.bin") or os.path.getsize("build/vga.bin") != 4000:
+              raise SystemExit("Could not snapshot the VGA text buffer")
+          with open("build/vga.bin", "rb") as image:
+              vga = image.read()
+          vga_chars = vga[0::2]
+          if b"VNTOS" not in vga_chars:
+              raise SystemExit("VGA text buffer does not contain the VNTOS banner")
+          if b"Booting from DVD/CD..." in vga_chars:
+              raise SystemExit("SeaBIOS boot text remains in the VGA buffer")
+          print("VGA banner present; stale SeaBIOS boot text cleared.")
+          PY
+

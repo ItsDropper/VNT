@@ -14,7 +14,9 @@ On Debian/Ubuntu/WSL, install the build and ISO tools:
     bash os/build.sh
 
 The script builds the VNT compiler, compiles os/kernel.vnt, assembles the
-small CPU bootstrap, and links a freestanding ELF and bootable ISO.
+small CPU bootstrap, and links a freestanding ELF and bootable ISO. The CI QEMU test also snapshots the VGA text buffer and verifies that the VNTOS banner is visible and stale SeaBIOS boot text is gone. The VGA
+cursor references shared `vntos_state` storage, and PS/2 status polling uses
+a bounded retry counter whose stack slot is not overwritten by inline asm.
 
 ## Run
 
@@ -31,9 +33,11 @@ COM1 serial output remains enabled alongside VGA output.
 
 ## Hardware implementation
 
-- **VGA text console:** writes character/attribute cells to physical address
+- **VGA text console:** clears the 80×25 screen at kernel startup (removing
+  leftover SeaBIOS text), writes character/attribute cells to physical address
   0xB8000, updates the hardware text cursor through CRTC ports, handles
-  carriage return, newline, backspace, and scrolls the 80×25 text buffer.
+  carriage return, newline, backspace, and scrolls the text buffer. `clear`
+  blanks the screen, and `mem` prints hexadecimal addresses on VGA and serial.
 - **PS/2 keyboard:** polls the 8042 status/data ports, decodes a basic Set 1
   scan-code subset, and supports letters, digits, space, Enter, Backspace,
   Tab, Shift, and Caps Lock. It is a polling driver, not an interrupt-driven

@@ -371,7 +371,10 @@ static int hir_fold_node(VntIrProgram *ir, size_t index, size_t *changed) {
      * excluded: they carry memory semantics and must reach the backend.
      */
     if (n->opcode == VNT_IR_UNARY) {
-        size_t operand = hir_child_role(ir, index, VNT_IR_EDGE_OPERAND);
+        size_t operand = VNT_IR_NO_NODE;
+        for (size_t c = n->first_child; c != VNT_IR_NO_NODE;
+             c = ir->nodes[c].next_sibling)
+            if (ir->nodes[c].role == VNT_IR_EDGE_OPERAND) { operand = c; break; }
         HirConstant value;
         if (operand == VNT_IR_NO_NODE || !hir_constant(ir, operand, &value))
             return 1;

@@ -994,7 +994,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
         setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
         setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
         if (connect(fd, a->ai_addr, a->ai_addrlen) == 0) break;
-        if (vnt_native_http_async_should_close_transport(async_handle, (intptr_t)fd + 1)) if (vnt_native_http_async_should_close_transport(async_handle, (intptr_t)fd + 1)) close(fd); fd = -1;
+        if (vnt_native_http_async_should_close_transport(async_handle, (intptr_t)fd + 1)) close(fd); fd = -1;
     }
     if (addresses) freeaddrinfo(addresses);
     if (fd < 0) { free(proxy_url); parsed_url_free(&proxy); parsed_url_free(&u); return NULL; }
@@ -1207,13 +1207,13 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     }
     if (ssl) { SSL_shutdown(ssl); SSL_free(ssl); }
     if (ctx) SSL_CTX_free(ctx);
-    if (fd >= 0 && vnt_native_http_async_should_close_transport(async_handle, (intptr_t)fd + 1)) if (vnt_native_http_async_should_close_transport(async_handle, (intptr_t)fd + 1)) close(fd);
+    if (fd >= 0 && vnt_native_http_async_should_close_transport(async_handle, (intptr_t)fd + 1)) close(fd);
     parsed_url_free(&u);
     return result;
 fail:
     if (ssl) SSL_free(ssl);
     if (ctx) SSL_CTX_free(ctx);
-    if (fd >= 0 && vnt_native_http_async_should_close_transport(async_handle, (intptr_t)fd + 1)) if (vnt_native_http_async_should_close_transport(async_handle, (intptr_t)fd + 1)) close(fd);
+    if (fd >= 0 && vnt_native_http_async_should_close_transport(async_handle, (intptr_t)fd + 1)) close(fd);
     if (reused_pool) vnt_http_pool_close();
     parsed_url_free(&u);
     return NULL;

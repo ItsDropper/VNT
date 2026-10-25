@@ -43,3 +43,14 @@ sleep_ms(100)
 print(net.async_cancel(cancel_handle))
 print(net.async_wait(cancel_handle, 100))
 print(net.async_release(cancel_handle))
+
+# Caller-consumed streaming handles chunked response framing and backpressure.
+stream_handle = net.stream_start("GET", "http://127.0.0.1:18765/chunked", "", "")
+stream_total = 0
+while not net.stream_done(stream_handle) {
+    stream_part = net.stream_read(stream_handle, 65536)
+    stream_total = stream_total + len(stream_part)
+}
+print(stream_total)
+print(net.stream_status(stream_handle))
+print(net.stream_release(stream_handle))

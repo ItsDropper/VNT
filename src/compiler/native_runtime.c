@@ -727,6 +727,7 @@ static void print_value(VntValue *v) {
 VNT_NATIVE_ABI void vnt_print(VntValue *v) {
     print_value(v);
     putchar('\n');
+    fflush(stdout);
 }
 
 VNT_NATIVE_ABI VntValue * vnt_len(VntValue *v) {

@@ -163,6 +163,19 @@ static int emit_expression(FreestandingGen *g, size_t index) {
         if (area) fprintf(g->out, "    addq $%zu, %%rsp\n", area);
         return 1;
     }
+    case VNT_IR_STRING:
+        fprintf(g->out, "    leaq .Lvnt_str_%zu(%%rip), %%rax\n", index);
+        return 1;
+    case VNT_IR_INDEX: {
+        const VntIrNode *base = child_role(g->ir, index, VNT_IR_EDGE_OBJECT);
+        const VntIrNode *offset = child_role(g->ir, index, VNT_IR_EDGE_INDEX);
+        if (!base || !offset) { fail(g, "malformed byte-index expression."); return 0; }
+        if (!emit_expression(g, (size_t)(base - g->ir->nodes))) return 0;
+        fputs("    pushq %rax\n", g->out);
+        if (!emit_expression(g, (size_t)(offset - g->ir->nodes))) return 0;
+        fputs("    movq %rax, %rcx\n    popq %rax\n    movzbl (%rax,%rcx), %eax\n", g->out);
+        return 1;
+    }
     case VNT_IR_INTEGER:
         if (n->value.integer < INT32_MIN || n->value.integer > INT32_MAX)
             fprintf(g->out, "    movabsq $%lld, %%rax\n", (long long)n->value.integer);
@@ -467,8 +480,18 @@ int vnt_emit_freestanding_x86_64(const VntIrProgram *ir,
         if (g.failed) break;
     }
     fputs(".Lvnt_arithmetic_fault:\n    ud2\n"
-          ".section .bss\n"
-          ".balign 16\n"
+          ".section .rodata\n", out);
+    for (size_t i = 0; i < ir->node_count; ++i) {
+        const VntIrNode *node = &ir->nodes[i];
+        if (node->opcode != VNT_IR_STRING || !node->value.text) continue;
+        fprintf(out, ".Lvnt_str_%zu:\\n    .byte ", i);
+        const unsigned char *p = (const unsigned char *)node->value.text;
+        for (size_t j = 0; p[j]; ++j)
+            fprintf(out, "%s%u", j ? "," : "", (unsigned)p[j]);
+        fprintf(out, "%s0\\n", *node->value.text ? "," : "");
+    }
+    fputs(".section .bss\\n"
+          ".balign 16\\n"
           ".globl freestanding_stack_bottom\n"
           "freestanding_stack_bottom:\n"
           "    .skip 16384\n"

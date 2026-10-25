@@ -69,7 +69,7 @@ Expected output:
 42
 ```
 
-Struct declarations describe the available fields; `Vec2()` creates a value, and member assignment fills its fields. This is useful for coordinates, settings, or other values that naturally belong together.
+Struct declarations describe the available fields; `Vec2()` creates a value, and member assignment fills its fields. This is useful for coordinates, settings, or other values that naturally belong together. VNT currently has no separate `{ key: value }` object-literal syntax; use a declared struct when you need named fields.
 
 ## 4. References: access a variable indirectly
 

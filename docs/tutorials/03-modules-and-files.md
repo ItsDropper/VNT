@@ -46,7 +46,34 @@ Second note
 
 Running the program again appends another `Second note` line because the file already exists. Delete `tutorial_notes.txt` if you want to repeat the first-run behavior.
 
-## 3. Import other standard modules
+## 3. Export a function from your own module
+
+Create `tutorial_helpers.vnt` in the repository root:
+
+```vnt
+export fun double(value: int) -> int {
+    return value * 2
+}
+```
+
+Then create `module_demo.vnt` beside it:
+
+```vnt
+import "tutorial_helpers.vnt" as helpers
+
+print(helpers.double(21))
+```
+
+Compile and run the importing file:
+
+```powershell
+.\vnt.exe --compile module_demo.vnt -o module_demo.exe
+.\module_demo.exe
+```
+
+It prints `42`. The `export` keyword makes the function available through the import alias. The loader rewrites exported names internally and expands source before parsing; it does not provide isolated compilation units or private symbol isolation.
+
+## 4. Import other standard modules
 
 Other source-level modules include:
 

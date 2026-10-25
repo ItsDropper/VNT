@@ -19,6 +19,8 @@ The project focuses on a small, understandable language, native execution, and a
 - [Functions and types](#functions-and-types)
 - [Modules and standard library](#modules-and-standard-library)
 - [Native runtime APIs](#native-runtime-apis)
+- [API reference](docs/api-reference.md)
+- [Raw pointers and memory](docs/raw-memory.md)
 - [Examples and tutorials](#examples-and-tutorials)
 - [Compiler pipeline](#compiler-pipeline)
 - [Project layout](#project-layout)
@@ -91,7 +93,7 @@ Hello, VNT
 42
 ```
 
-VNT supports inferred assignments such as `score = 42` as well as explicit declarations such as `let score: int = 42`. Supported annotation names include `int`, `float`, `bool`, `string`, `array`, `object`, and `reference`. Explicit annotations are checked against the initializer; VNT does not silently convert a mismatched value.
+VNT supports inferred assignments such as `score = 42` as well as explicit declarations such as `let score: int = 42`. Supported annotation names include `int`, `float`, `bool`, `string`, `array`, `object`, `reference`, and `ptr`. Explicit annotations are checked against the initializer; VNT does not silently convert a mismatched value.
 
 ## Language overview
 
@@ -186,6 +188,7 @@ The source-level standard library lives in `lib/std/`. Available modules include
 | `log.vnt` | File and console logging |
 | `config.vnt` | Plain-text configuration helpers |
 | `json.vnt` | JSON-related source helpers |
+| `mem.vnt` | Raw pointer allocation, offset, read/write, copy, and fill primitives; see [raw-memory limits](docs/raw-memory.md) |
 
 Example filesystem usage:
 
@@ -200,7 +203,7 @@ fs.append_text(path, "Second line\n")
 print(fs.read_text(path))
 ```
 
-File operations handle text, not arbitrary binary data. Networking is implemented in the native C runtime: Windows uses WinHTTP, while Unix-like builds use sockets and OpenSSL. No `curl` executable is required. Use `net.request(method, url, headers, body)` for custom methods and headers. HTTP responses are returned as strings; status helpers return a three-digit status string and `000` indicates a transport failure. Downloads preserve binary bytes, stream successful direct responses to disk in bounded chunks, and accept only 2xx responses. Redirect and configured-proxy download fallbacks currently use the buffered request path. The ordinary response API has no fixed application-level size cap; practical limits are available memory and allocation success.
+File operations handle text, not arbitrary binary data. Networking is implemented in the native C runtime: Windows uses WinHTTP, while Unix-like builds use sockets and OpenSSL. No `curl` executable is required. Use `net.request(method, url, headers, body)` for custom methods and headers. HTTP responses are returned as strings; status helpers return a three-digit status string and `000` indicates a transport failure. Downloads preserve binary bytes, write successful 2xx responses to disk, and are the preferred API for large files. Direct download responses stream in bounded chunks; some redirect/proxy fallback paths may buffer the response. Ordinary request APIs return the complete response in memory and are therefore unsuitable for arbitrarily large bodies. See the [networking tutorial](docs/tutorials/08-http-apis.md) and [API reference](docs/api-reference.md) for details.
 
 ## Native runtime APIs
 
@@ -211,8 +214,13 @@ Generated executables link the VNT native runtime. Its built-ins include:
 - **Time:** `time_ms`, `sleep_ms`
 - **Processes:** `process_start`, `process_poll`, `process_wait`, `process_pid`, `process_terminate`, `process_stdout`, `process_stderr`, `process_exit_code`
 - **Math:** `sqrt`, `sin`, `cos`, `tan`, `abs`, `floor`, `ceil`, `min`, `max`
+- **Raw memory:** `mem_alloc`, `mem_free`, `mem_is_null`, `mem_realloc`, `mem_ptr_add`, `mem_read_u8`, `mem_read_u32`, `mem_write_u8`, `mem_write_u32`, `mem_copy`, `mem_set`
 
-Process arguments are passed as an array of strings rather than interpreted as shell commands. Process output is captured separately for stdout and stderr. Runtime and platform details are still evolving; consult the source-level modules and their implementation for behavior not described here.
+Process arguments are passed as an array of strings rather than interpreted as shell commands. Process output is captured separately for stdout and stderr. Runtime and platform details are still evolving; consult the source-level modules and [API reference](docs/api-reference.md) for behavior not described here.
+
+## API reference
+
+Use the [VNT API reference](docs/api-reference.md) for the standard-library modules, runtime built-ins, return-value conventions, platform requirements, and known limitations. It links directly to the implementation in `lib/std/` and identifies areas where behavior is still experimental.
 
 ## Examples and tutorials
 
@@ -223,10 +231,11 @@ Runnable sample programs are in [`examples/`](examples/). Start with:
 - [`vnt_focus.vnt`](examples/vnt_focus.vnt) — a Windows-only focus timer GUI
 - [`gui_demo.vnt`](examples/gui_demo.vnt) — basic Windows GUI and stylesheet demo
 - [`vanta_one.vnt`](examples/vanta_one.vnt) — larger Vanta GUI example
+- [`task_tracker.vnt`](examples/task_tracker.vnt) — complete local task tracker with persistence and checked file-operation results
 
 The GUI runtime is Windows-only. Its CSS-like styling is a small supported subset, not a browser engine or a complete cross-platform widget toolkit.
 
-Follow the [step-by-step coding tutorials](docs/tutorials/README.md), starting with a first program and progressing through control flow, modules and files, a terminal application, and a Windows GUI. The [compiler architecture document](docs/compiler-architecture.md) describes the AST-to-HIR boundary, the HIR-native backend, and the remaining compiler work.
+Follow the [step-by-step coding tutorials](docs/tutorials/README.md), progressing through control flow, modules and files, arrays/structs/references, child processes, networking, and a complete local task-tracker project. The tutorial index also links to the Windows GUI lesson. For runnable source, browse [`examples/`](examples/); for language/runtime contracts, use the [API reference](docs/api-reference.md) and [raw-memory guide](docs/raw-memory.md). The [compiler architecture document](docs/compiler-architecture.md) describes the AST-to-HIR boundary, the HIR-native backend, and the remaining compiler work.
 
 ## Compiler pipeline
 
@@ -290,6 +299,7 @@ The checks build VNT and exercise language features, module loading, and runtime
 - GUI styling implements a small CSS-like subset, not full CSS or browser behavior.
 - Text file APIs are not binary-safe.
 - Native HTTP/HTTPS support is still evolving. Ordinary response values are text-oriented; streaming downloads write directly to files for direct requests, while redirect/proxy download fallbacks are buffered. The Unix transport supports HTTP(S) proxy environment variables and NO_PROXY; Windows uses WinHTTP's system proxy behavior. Binary-safe request/response arrays are available, but a compact dedicated byte-buffer type and Unix TLS connection pooling remain unimplemented. Unix direct HTTP requests reuse a single keep-alive connection when response framing permits; Windows uses WinHTTP's shared connection pool. The Unix-like HTTPS path requires OpenSSL development/runtime libraries.
+- Raw `ptr` values and memory primitives are an initial low-level foundation. Direct raw memory builtins and calls to `unsafe fun` require an `unsafe { ... }` block. Bounds and lifetime remain the caller's responsibility; sizes/offsets are currently signed 32-bit integers and `u64` access is not available. See [raw-memory documentation](docs/raw-memory.md).
 - The standard library and runtime API may change as the language develops.
 
 ## Roadmap
@@ -305,6 +315,11 @@ The checks build VNT and exercise language features, module loading, and runtime
 - [x] HIR-native x86-64 code generation and AST-free optimization/codegen path
 - [ ] Remove remaining frontend/type-checker AST coupling where it is beneficial
 - [ ] Typed-value optimization and broader compiler verification
+- [x] Raw pointer type and explicit native memory primitives
+- [x] `unsafe { ... }` blocks, `unsafe fun` declarations, and call-site validation
+- [ ] `usize`/`isize` and full-width integer operations
+- [ ] Operand-aware inline assembly, register constraints, and memory clobbers
+- [ ] Freestanding compilation/linking and OS-development target
 - [ ] Game-oriented standard library
 - [ ] Cross-platform GUI backends
 

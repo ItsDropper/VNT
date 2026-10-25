@@ -1,0 +1,77 @@
+# VNT Standard Library and Runtime API Reference
+
+This page is a navigation reference to the current implementation, not a promise of stable APIs. VNT is experimental; check the linked source when exact signatures or failure behavior matter.
+
+## Build and execution
+
+- **Compiler:** C implementation targeting native x86-64 assembly.
+- **Linker/runtime:** GCC and VNT's native runtime.
+- **Windows build:** `.\build.ps1` from the repository root; compile with `.\vnt.exe --compile source.vnt -o program.exe`.
+- **Regression checks on Windows:** `.\tests\run_language_checks.ps1`.
+- **Networking:** Windows uses WinHTTP; Unix-like builds use sockets and OpenSSL for HTTPS.
+
+See [compiler architecture](compiler-architecture.md) for the pipeline and [tutorials](tutorials/README.md) for complete examples.
+
+## Source-level standard library
+
+The modules are imported by relative path, for example:
+
+```vnt
+import "lib/std/fs.vnt" as fs
+print(fs.exists("notes.txt"))
+```
+
+The import path is relative to the importing source file. Module functions are exported with `export fun`. The current module loader expands imported source before parsing; modules are not isolated compilation units and do not yet have private symbol isolation.
+
+| Module | Main capabilities | Contract / limitation | Source |
+| --- | --- | --- | --- |
+| `io.vnt` | Read a line, write stdout/stderr | `read_line(prompt)` returns text; input is line-oriented | [io.vnt](../lib/std/io.vnt) |
+| `fs.vnt` | Check paths, read/write/append text, remove/rename paths, create/list directories | Text-oriented; not a binary-safe file API. Check boolean write/delete results | [fs.vnt](../lib/std/fs.vnt) |
+| `math.vnt` | Math helpers and numeric wrappers | Use source for exact names and type behavior | [math.vnt](../lib/std/math.vnt) |
+| `time.vnt` | Millisecond clock and sleep | Clock values are runtime integers; sleep takes milliseconds | [time.vnt](../lib/std/time.vnt) |
+| `os.vnt` | Current directory and environment variables | Environment variables may be absent or platform-specific | [os.vnt](../lib/std/os.vnt) |
+| `process.vnt` | Start, poll, wait for, inspect, and terminate child processes; launch visible programs | Pass an executable and an array of string arguments. Arguments are not shell-parsed by VNT | [process.vnt](../lib/std/process.vnt) |
+| `net.vnt` | HTTP/HTTPS, custom methods/headers, status, binary request/response, downloads, async and stream helpers | Body helpers return an empty string on transport failure; status `000` means no HTTP status was received. Ordinary responses are buffered. Download fallback routes may buffer | [net.vnt](../lib/std/net.vnt) |
+| `log.vnt` | Console and file logging | Appends to `vnt.log` in the current working directory | [log.vnt](../lib/std/log.vnt) |
+| `config.vnt` | Load-or-create and save plain text | Not a TOML/JSON parser | [config.vnt](../lib/std/config.vnt) |
+| `json.vnt` | Read a simple JSON field occurrence | Not a full JSON DOM/parser | [json.vnt](../lib/std/json.vnt) |
+| `mem.vnt` | Raw pointer allocation and memory primitives | Requires explicit `unsafe { ... }`; no bounds/lifetime checking | [mem.vnt](../lib/std/mem.vnt) and [raw-memory guide](raw-memory.md) |
+
+## Error handling conventions
+
+VNT does not currently provide general-purpose exceptions or a standard `Result<T, E>` type. Use the return contract of each API:
+
+- **Filesystem operations:** check boolean results from writes, appends, deletes, renames, and directory creation. A read returning an empty string can mean an empty file or a failed read; check `exists` when the distinction matters.
+- **HTTP:** use `net.status(url)` or a status variant to distinguish an HTTP response from a transport failure. The result is a three-character string; `000` indicates no HTTP status was received. An empty body alone is ambiguous.
+- **Child processes:** inspect completion, stdout, stderr, and exit code separately. An empty stdout stream is not proof of success.
+- **Raw memory:** invalid pointer operations can terminate the program. Only use valid allocations and respect their size and lifetime.
+- **Logs:** `log.info`, `log.warn`, and `log.error` append to a local log file and also write to the console or standard error.
+
+These checks improve failure reporting but do not make every API failure recoverable. Consult the implementation before relying on undocumented edge cases.
+
+## Native runtime built-ins
+
+The compiler maps source-level helpers to native runtime functions. Current families include:
+
+- **Filesystem:** `fs_exists`, `fs_read`, `fs_write`, `fs_append`, `fs_delete`, `fs_rename`, `fs_is_file`, `fs_is_dir`, `fs_list`, `dir_create`.
+- **Environment and paths:** `cwd`, `env_get`, `env_set`.
+- **Time:** `time_ms`, `sleep_ms`.
+- **Processes:** `process_start`, `process_poll`, `process_wait`, `process_pid`, `process_terminate`, `process_stdout`, `process_stderr`, `process_exit_code`, `process_launch`.
+- **Math:** `sqrt`, `sin`, `cos`, `tan`, `abs`, `floor`, `ceil`, `min`, `max`.
+- **Networking:** `net_request`, `net_request_bytes`, `net_status`, `net_download`, `net_url_encode`, async and stream request operations.
+- **Memory:** `mem_alloc`, `mem_free`, `mem_is_null`, `mem_realloc`, `mem_ptr_add`, `mem_read_u8`, `mem_read_u32`, `mem_write_u8`, `mem_write_u32`, `mem_copy`, `mem_set`.
+- **GUI:** native GUI functions are Windows-only; inspect the [GUI demo](../examples/gui_demo.vnt) and the runtime for current signatures.
+
+Prefer the source-level modules for application code. Direct runtime built-ins are lower-level interfaces and may change as the language evolves.
+
+## Runnable examples and guides
+
+- [Tutorial index](tutorials/README.md)
+- [Complete local task tracker project](tutorials/09-build-a-project.md)
+- [Arrays, structs, and references](tutorials/06-arrays-structs-references.md)
+- [Child processes](tutorials/07-native-processes.md)
+- [HTTP/HTTPS](tutorials/08-http-apis.md)
+- [Raw pointers and unsafe operations](raw-memory.md)
+- [GUI demo](../examples/gui_demo.vnt)
+- [VNT Desk journal](../examples/vnt_desk.vnt)
+- [Compiler architecture](compiler-architecture.md)

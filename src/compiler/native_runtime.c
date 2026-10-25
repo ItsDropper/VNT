@@ -404,13 +404,13 @@ VNT_NATIVE_ABI VntValue * vnt_array_push(VntValue *a, VntValue *item) {
     return a;
 }
 
-VNT_NATIVE_ABI VntValue * vnt_array_get_int(VntValue *a, int index) {
+VNT_NATIVE_ABI VntValue * vnt_array_get_int(VntValue *a, int64_t index) {
     if (a && a->type == VNT_BYTES) {
-        if (index < 0 || (size_t)index >= a->bytes.length) {
+        if (index < 0 || (uint64_t)index >= a->bytes.length) {
             fprintf(stderr, "Runtime error: byte buffer index out of bounds.\n");
             exit(1);
         }
-        return vnt_int((int)a->bytes.data[index]);
+        return vnt_int((int64_t)a->bytes.data[(size_t)index]);
     }
     if (!a || a->type != VNT_ARRAY) {
         fprintf(stderr, "Runtime error: indexing requires an array or byte buffer.\n");
@@ -423,14 +423,14 @@ VNT_NATIVE_ABI VntValue * vnt_array_get_int(VntValue *a, int index) {
     return a->array.items[index];
 }
 
-VNT_NATIVE_ABI VntValue * vnt_array_set_int(VntValue *a, int index, VntValue *value) {
+VNT_NATIVE_ABI VntValue * vnt_array_set_int(VntValue *a, int64_t index, VntValue *value) {
     if (a && a->type == VNT_BYTES) {
         if (index < 0 || (size_t)index >= a->bytes.length || !value ||
             value->type != VNT_INT || value->integer < 0 || value->integer > 255) {
             fprintf(stderr, "Runtime error: byte buffer assignment requires an in-range index and byte integer.\n");
             exit(1);
         }
-        a->bytes.data[index] = (unsigned char)value->integer;
+        a->bytes.data[(size_t)index] = (unsigned char)value->integer;
         return value;
     }
     if (!a || a->type != VNT_ARRAY) {
@@ -459,12 +459,12 @@ VNT_NATIVE_ABI VntValue * vnt_array_get(VntValue *a, VntValue *index) {
         fprintf(stderr, "Runtime error: indexing requires an array/string and integer index.\n");
         exit(1);
     }
-    int i = index->integer;
+    int64_t i = index->integer;
     if (i < 0 || i >= a->array.count) {
         fprintf(stderr, "Runtime error: array index out of bounds.\n");
         exit(1);
     }
-    return a->array.items[i];
+    return a->array.items[(int)i];
 }
 
 VNT_NATIVE_ABI VntValue * vnt_array_set(VntValue *a, VntValue *index, VntValue *value) {
@@ -484,7 +484,7 @@ VNT_NATIVE_ABI VntValue * vnt_array_set(VntValue *a, VntValue *index, VntValue *
         fprintf(stderr, "Runtime error: array index out of bounds.\n");
         exit(1);
     }
-    a->array.items[i] = value;
+    a->array.items[(int)i] = value;
     return value;
 }
 
@@ -733,7 +733,7 @@ VNT_NATIVE_ABI VntValue * vnt_len(VntValue *v) {
     if (v->type == VNT_STRING) return vnt_int((int64_t)strlen(v->string));
     if (v->type == VNT_ARRAY) return vnt_int(v->array.count);
     if (v->type == VNT_BYTES) {
-        if (v->bytes.length > INT64_MAX) {
+        if (v->bytes.length > (uint64_t)INT64_MAX) {
             fprintf(stderr, "Runtime error: byte buffer is too large for len().\n");
             exit(1);
         }
@@ -821,7 +821,7 @@ VNT_NATIVE_ABI VntValue * vnt_ceil(VntValue *x) { require_number(x,x); return vn
 VNT_NATIVE_ABI VntValue * vnt_min(VntValue *a,VntValue *b) { require_number(a,b); return number_value(a)<number_value(b)?a:b; }
 VNT_NATIVE_ABI VntValue * vnt_max(VntValue *a,VntValue *b) { require_number(a,b); return number_value(a)>number_value(b)?a:b; }
 VNT_NATIVE_ABI VntValue * vnt_range(VntValue *a, VntValue *b, VntValue *c, int argc) {
-    int start=0,end=0,step=1;
+    int64_t start=0,end=0,step=1;
     if (argc==1) { if(a->type!=VNT_INT) goto bad; end=a->integer; }
     else if(argc==2) { if(a->type!=VNT_INT||b->type!=VNT_INT) goto bad; start=a->integer; end=b->integer; }
     else { if(a->type!=VNT_INT||b->type!=VNT_INT||c->type!=VNT_INT) goto bad; start=a->integer; end=b->integer; step=c->integer; }
@@ -2118,26 +2118,29 @@ VNT_NATIVE_ABI VntValue *vnt_mem_realloc(VntValue *pointer, VntValue *size_value
 
 VNT_NATIVE_ABI VntValue *vnt_mem_ptr_add(VntValue *pointer, VntValue *offset_value) {
     uintptr_t base = (uintptr_t)vnt_require_pointer(pointer);
-    int offset = offset_value && offset_value->type == VNT_INT
+    int64_t offset = offset_value && offset_value->type == VNT_INT
         ? offset_value->integer : 0;
+    uint64_t magnitude = offset < 0
+        ? (uint64_t)(-(offset + 1)) + 1u : (uint64_t)offset;
     if (!base || !offset_value || offset_value->type != VNT_INT ||
-        (offset > 0 && (uintptr_t)offset > UINTPTR_MAX - base) ||
-        (offset < 0 && (uintptr_t)(-(int64_t)offset) > base)) {
+        (offset >= 0 && magnitude > UINTPTR_MAX - base) ||
+        (offset < 0 && magnitude > base)) {
         fprintf(stderr, "Runtime error: invalid pointer offset.\n");
         exit(1);
     }
     return vnt_pointer_value((void *)(offset >= 0
-        ? base + (uintptr_t)offset
-        : base - (uintptr_t)(-(int64_t)offset)));
+        ? base + (uintptr_t)magnitude
+        : base - (uintptr_t)magnitude));
 }
 
 #define VNT_MEM_READ(name, ctype) \
 VNT_NATIVE_ABI VntValue *vnt_mem_read_##name(VntValue *pointer, VntValue *offset) { \
     ctype value; memcpy(&value, vnt_memory_address(pointer, offset, sizeof(value)), sizeof(value)); \
-    return vnt_int((int)value); \
+    return vnt_int((int64_t)value); \
 }
 VNT_MEM_READ(u8, uint8_t)
 VNT_MEM_READ(u32, uint32_t)
+VNT_MEM_READ(u64, uint64_t)
 #undef VNT_MEM_READ
 
 #define VNT_MEM_WRITE(name, ctype) \
@@ -2151,6 +2154,7 @@ VNT_NATIVE_ABI VntValue *vnt_mem_write_##name(VntValue *pointer, VntValue *offse
 }
 VNT_MEM_WRITE(u8, uint8_t)
 VNT_MEM_WRITE(u32, uint32_t)
+VNT_MEM_WRITE(u64, uint64_t)
 #undef VNT_MEM_WRITE
 
 VNT_NATIVE_ABI VntValue *vnt_mem_copy(VntValue *destination, VntValue *source,

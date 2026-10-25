@@ -36,3 +36,4 @@ print(net.async_wait(async_handle, 5000))
 print(net.async_result(async_handle))
 print(net.async_status(async_handle))
 print(net.async_release(async_handle))
+\n# Cancellation must interrupt a request already blocked on the transport.\ncancel_handle = net.async_start("GET", "http://127.0.0.1:18765/slow", "", "")\nsleep_ms(100)\nprint(net.async_cancel(cancel_handle))\nprint(net.async_wait(cancel_handle, 100))\nprint(net.async_release(cancel_handle))\n

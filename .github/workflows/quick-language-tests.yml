@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'src/**'
+      - 'freestanding/**'
       - 'include/**'
       - 'tests/*.vnt'
       - 'tests/**/*.py'
@@ -93,12 +94,11 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          ./vnt --emit-freestanding-asm tests/freestanding_minimal.vnt -o freestanding-kernel.s
-          gcc -c -ffreestanding -fno-pic freestanding-kernel.s -o freestanding-kernel.o
-          ld -nostdlib -static -e _start -o freestanding-kernel.elf freestanding-kernel.o
+          ./vnt --build-freestanding tests/freestanding_minimal.vnt -o freestanding-kernel.elf
           test -z "$(nm -u freestanding-kernel.elf)"
           readelf -h freestanding-kernel.elf | grep -F 'ELF64'
           readelf -h freestanding-kernel.elf | grep -F 'Entry point address'
+          readelf -l freestanding-kernel.elf | grep -F 'LOAD'
           if ./vnt --emit-freestanding-asm tests/freestanding_hosted_rejected.vnt -o freestanding-invalid.s; then
             echo "Freestanding backend incorrectly accepted a hosted print operation."
             exit 1

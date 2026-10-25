@@ -349,6 +349,8 @@ os_putc:
 
 .type os_put_hex64,@function
 os_put_hex64:
+    /* Keep RSP 16-byte aligned before calls under the SysV ABI. */
+    subq $8, %rsp
     pushq %rbx
     pushq %r12
     movq %rdi, %r12
@@ -379,6 +381,7 @@ os_put_hex64:
     call os_putc
     popq %r12
     popq %rbx
+    addq $8, %rsp
     ret
 
 .type os_match,@function

@@ -72,10 +72,10 @@ The compiler prints the generated assembly path and keeps the assembly file besi
 A separate, deliberately restricted mode can emit an ELF-oriented x86-64 entry object without linking the hosted VNT runtime:
 
 ```bash
-./vnt --emit-freestanding-asm tests/freestanding_minimal.vnt -o kernel.s
-gcc -c -ffreestanding -fno-pic kernel.s -o kernel.o
-ld -nostdlib -static -e _start -o kernel.elf kernel.o
+./vnt --build-freestanding tests/freestanding_minimal.vnt -o kernel.elf
 ```
+
+For debugging the generated source separately, use `--emit-freestanding-asm`. The build command assembles without hosted startup/runtime objects and links with `ld -nostdlib -static` using [the x86-64 linker script](freestanding/x86_64.ld).
 
 The initial freestanding subset requires a zero-argument `fun kernel_main()` and currently permits inline assembly plus integer/boolean literal return values (including nested `unsafe` blocks). Hosted operations such as `print`, dynamic values, memory builtins, and general arithmetic are rejected rather than linked against the runtime. The generated ELF is a freestanding code-generation milestone, **not yet a bootable OS kernel**; boot protocol integration and QEMU boot/serial tests remain future work.
 

@@ -510,13 +510,15 @@ os_scancode_ascii:
 .Los_cmd_halt: .asciz "halt"
 .Los_echo_prefix: .asciz "echo "
 .Los_help_text:
-    .asciz "Commands: help, about, clear, reboot\n"
+    .asciz "Commands: help, about, clear, echo, reboot, halt\n"
 .Los_about_text:
     .asciz "VNTOS: freestanding x86-64 kernel compiled from VNT.\n"
 .Los_unknown:
     .asciz "Unknown command. Type help.\n"
 .Los_reboot_text:
     .asciz "Rebooting...\n"
+.Los_halt_text:
+    .asciz "CPU halted.\n"
 
 .section .bss
 .balign 4096

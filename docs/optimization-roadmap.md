@@ -9,12 +9,16 @@ This document tracks implementation work against observable compiler behavior. I
 - Integer/boolean/floating-point constant folding where semantics are defined.
 - Conservative constant propagation, including invalidation at control-flow merges, loops, calls, and indirect writes.
 - Constant-branch simplification and pruning after unconditional terminators.
+- Explicit CFG construction/validation and definite-assignment analysis (`include/vnt/cfg.h`, `src/compiler/cfg.c`).
 - Direct HIR traversal by the x86-64 backend.
+- **Implemented on this branch:** safe literal unary folding for boolean NOT and integer/floating negation; integer minimum negation and unsupported/memory-affecting unary operations are intentionally left unfolded. Regression tests cover boolean NOT, integer negation, and signed-negation overflow.
 - Runtime benchmark harness in `benchmarks/run.ps1`, including output checks, warmups, repeated timing, medians, and CSV output.
 
 ## Implementation sequence
 
 ### Phase 0 — correctness and measurement (current gate)
+
+Current branch delta: safe unary literal folding is implemented and covered by HIR invariant tests. CFG already exists in the repository; the next architectural task is to extend it with verified analysis data rather than duplicate its builder.
 
 - Keep every optimization covered by both HIR-level invariants and compile-and-run tests.
 - Preserve overflow behavior: never fold signed overflow into a wrapped result when the language traps or leaves the operation unfolderable.

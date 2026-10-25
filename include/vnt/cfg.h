@@ -34,6 +34,24 @@ int vnt_cfg_validate(const VntCfg *cfg);
 /* Forward must-analysis: rejects reads not initialized on every incoming path. */
 int vnt_cfg_check_definite_assignment(const VntIrProgram *ir, const VntCfg *cfg,
                                       char *diagnostic, size_t diagnostic_capacity);
+/* Backward may-analysis used by later dead-store elimination and register allocation.
+   names point into the supplied HIR and remain valid only while it is alive. */
+typedef struct {
+    const char **names;
+    size_t variable_count;
+    size_t block_count;
+    unsigned char *live_in;  /* row-major [block_count][variable_count], bytes are 0/1 */
+    unsigned char *live_out;
+} VntCfgLiveness;
+
+int vnt_cfg_compute_liveness(const VntIrProgram *ir, const VntCfg *cfg,
+                             VntCfgLiveness *result);
+int vnt_cfg_variable_live_in(const VntCfgLiveness *analysis, size_t block,
+                             const char *name);
+int vnt_cfg_variable_live_out(const VntCfgLiveness *analysis, size_t block,
+                              const char *name);
+void vnt_cfg_liveness_free(VntCfgLiveness *analysis);
+
 void vnt_cfg_free(VntCfg *cfg);
 
 #endif

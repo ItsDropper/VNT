@@ -201,6 +201,25 @@ static int prune_unreachable_blocks(VntCfg *cfg) {
     return 1;
 }
 
+/* Fold only branches whose condition is already a boolean literal.
+   The literal has no side effects, so selecting an edge preserves semantics. */
+static void simplify_constant_branches(const VntIrProgram *ir, VntCfg *cfg) {
+    for (size_t i = 0; i < cfg->block_count; ++i) {
+        VntCfgBlock *block = &cfg->blocks[i];
+        if (block->terminator != VNT_CFG_BRANCH ||
+            block->condition >= ir->node_count) continue;
+        const VntIrNode *condition = &ir->nodes[block->condition];
+        if (condition->opcode != VNT_IR_BOOLEAN) continue;
+        size_t selected = condition->value.boolean
+            ? block->true_successor : block->false_successor;
+        block->terminator = VNT_CFG_JUMP;
+        block->instruction = VNT_IR_NO_NODE;
+        block->condition = VNT_IR_NO_NODE;
+        block->true_successor = selected;
+        block->false_successor = VNT_IR_NO_NODE;
+    }
+}
+
 int vnt_cfg_build(const VntIrProgram *ir, VntCfg *cfg) {
     if (!ir || !cfg || !vnt_ir_validate(ir)) return 0;
     memset(cfg, 0, sizeof(*cfg));
@@ -220,6 +239,7 @@ int vnt_cfg_build(const VntIrProgram *ir, VntCfg *cfg) {
                                       VNT_IR_NO_NODE, VNT_IR_NO_NODE, 0);
         if (b.failed || !add_entry(cfg, entry)) goto fail;
     }
+    simplify_constant_branches(ir, cfg);
     if (!prune_unreachable_blocks(cfg) || !vnt_cfg_validate(cfg)) goto fail;
     return 1;
 
@@ -247,16 +267,25 @@ int vnt_cfg_validate(const VntCfg *cfg) {
                 b->false_successor == VNT_IR_NO_NODE ||
                 b->instruction != VNT_IR_NO_NODE) return 0;
         } else if (b->terminator == VNT_CFG_EXIT) {
-            if (i != cfg->exit_block || b->true_successor != VNT_IR_NO_NODE ||
+            if (i != cfg->exit_block || b->instruction != VNT_IR_NO_NODE ||
+                b->condition != VNT_IR_NO_NODE ||
+                b->true_successor != VNT_IR_NO_NODE ||
                 b->false_successor != VNT_IR_NO_NODE) return 0;
         } else if (b->terminator == VNT_CFG_RETURN) {
             if (b->instruction == VNT_IR_NO_NODE ||
+                b->condition != VNT_IR_NO_NODE ||
                 b->true_successor != cfg->exit_block ||
                 b->false_successor != VNT_IR_NO_NODE) return 0;
-        } else {
-            if (b->true_successor == VNT_IR_NO_NODE ||
-                b->false_successor != VNT_IR_NO_NODE ||
-                b->condition != VNT_IR_NO_NODE) return 0;
+        } else if (b->terminator == VNT_CFG_JUMP) {
+            if (b->instruction == VNT_IR_NO_NODE ||
+                b->condition != VNT_IR_NO_NODE ||
+                b->true_successor == VNT_IR_NO_NODE ||
+                b->false_successor != VNT_IR_NO_NODE) return 0;
+        } else { /* VNT_CFG_FALLTHROUGH */
+            if (b->instruction == VNT_IR_NO_NODE ||
+                b->condition != VNT_IR_NO_NODE ||
+                b->true_successor == VNT_IR_NO_NODE ||
+                b->false_successor != VNT_IR_NO_NODE) return 0;
         }
     }
     return 1;

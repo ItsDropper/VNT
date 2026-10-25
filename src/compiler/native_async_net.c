@@ -286,6 +286,9 @@ int vnt_native_http_async_wait(int id, unsigned int timeout_ms) {
 
 int vnt_native_http_async_cancel(int id) {
     int result = 0;
+#ifdef _WIN32
+    HINTERNET abort_request = NULL;
+#endif
     async_lock_acquire();
     VntAsyncTask *t = async_find_locked(id);
     if (t && t->state == TASK_QUEUED) {
@@ -296,10 +299,8 @@ int vnt_native_http_async_cancel(int id) {
         result = 1;
         if (t->active_transport) {
 #ifdef _WIN32
-            HINTERNET request = (HINTERNET)t->active_transport;
+            abort_request = (HINTERNET)t->active_transport;
             t->active_transport = 0;
-            /* Closing the active WinHTTP request aborts its synchronous I/O. */
-            WinHttpCloseHandle(request);
 #else
             int fd = (int)(t->active_transport - 1);
             /* shutdown() interrupts a blocked socket read/write; worker owns close(). */
@@ -309,6 +310,10 @@ int vnt_native_http_async_cancel(int id) {
     }
     async_wake_all();
     async_lock_release();
+#ifdef _WIN32
+    /* Do not hold the queue lock while aborting a synchronous WinHTTP request. */
+    if (abort_request) WinHttpCloseHandle(abort_request);
+#endif
     return result;
 }
 
@@ -360,18 +365,27 @@ int vnt_native_http_async_current_handle(void) {
 
 void vnt_native_http_async_set_transport(int id, intptr_t transport) {
     if (!id || !transport) return;
+#ifdef _WIN32
+    HINTERNET abort_request = NULL;
+#endif
+    int abort_socket = 0;
     async_lock_acquire();
     VntAsyncTask *t = async_find_locked(id);
     if (t && t->state == TASK_RUNNING) {
         t->active_transport = transport;
     } else if (t && t->state == TASK_CANCELLED) {
 #ifdef _WIN32
-        WinHttpCloseHandle((HINTERNET)transport);
+        abort_request = (HINTERNET)transport;
 #else
-        shutdown((int)(transport - 1), SHUT_RDWR);
+        abort_socket = (int)(transport - 1);
 #endif
     }
     async_lock_release();
+#ifdef _WIN32
+    if (abort_request) WinHttpCloseHandle(abort_request);
+#else
+    if (abort_socket) shutdown(abort_socket, SHUT_RDWR);
+#endif
 }
 
 int vnt_native_http_async_should_close_transport(int id, intptr_t transport) {

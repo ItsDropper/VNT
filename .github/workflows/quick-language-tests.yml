@@ -79,6 +79,7 @@ jobs:
             src/compiler/ir_lower.c \
             src/compiler/cfg.c \
             src/compiler/x86_backend.c \
+            src/compiler/freestanding_x86.c \
             -o vnt
 
       - name: Emit assembly without invoking the hosted linker
@@ -87,6 +88,22 @@ jobs:
           ./vnt --emit-asm examples/global_variables.vnt -o vnt-assembly-only.s
           test -s vnt-assembly-only.s
           grep -F '.globl main' vnt-assembly-only.s
+
+      - name: Build freestanding x86-64 ELF without hosted runtime (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          ./vnt --emit-freestanding-asm tests/freestanding_minimal.vnt -o freestanding-kernel.s
+          gcc -c -ffreestanding -fno-pic freestanding-kernel.s -o freestanding-kernel.o
+          ld -nostdlib -static -e _start -o freestanding-kernel.elf freestanding-kernel.o
+          test -z "$(nm -u freestanding-kernel.elf)"
+          readelf -h freestanding-kernel.elf | grep -F 'ELF64'
+          readelf -h freestanding-kernel.elf | grep -F 'Entry point address'
+          if ./vnt --emit-freestanding-asm tests/freestanding_hosted_rejected.vnt -o freestanding-invalid.s; then
+            echo "Freestanding backend incorrectly accepted a hosted print operation."
+            exit 1
+          fi
+          test ! -e freestanding-invalid.s
 
       - name: Compile raw memory regression program
         shell: bash

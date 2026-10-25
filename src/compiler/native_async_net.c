@@ -193,19 +193,18 @@ int vnt_native_http_async_start(const char *method, const char *url,
 
     VntAsyncTask *t = &tasks[slot];
     memset(t, 0, sizeof(*t));
-    t->id = next_handle++;
-    if (next_handle <= 0) next_handle = 1;
-    /* Do not reuse an identifier that is still live after integer wraparound. */
-    while (async_find_locked(t->id) != t) {
-        t->id = next_handle++;
+    int candidate;
+    for (;;) {
+        candidate = next_handle++;
         if (next_handle <= 0) next_handle = 1;
-        if (!t->id) continue;
+        if (candidate <= 0) continue;
         int duplicate = 0;
         for (int i = 0; i < VNT_NET_ASYNC_CAPACITY; ++i)
-            if (&tasks[i] != t && tasks[i].state != TASK_FREE &&
-                tasks[i].id == t->id) duplicate = 1;
+            if (tasks[i].state != TASK_FREE && tasks[i].id == candidate)
+                duplicate = 1;
         if (!duplicate) break;
     }
+    t->id = candidate;
     t->method = m; t->url = u; t->headers = h; t->body = b;
     t->state = TASK_QUEUED;
     queue[queue_tail] = slot;

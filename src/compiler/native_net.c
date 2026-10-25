@@ -1341,12 +1341,15 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
                                         &expected_body_length, &has_expected_body_length,
                                         &code, &response_no_body);
     if (parsed <= 0) { free(raw); goto fail; }
-    if (has_expected_body_length && used - headerlen < expected_body_length) {
+    if (!sink && has_expected_body_length && used - headerlen < expected_body_length) {
+        free(raw); goto fail;
+    }
+    if (sink && has_expected_body_length && stream_body_length < expected_body_length) {
         free(raw); goto fail;
     }
     char *sep = strstr(raw, "\r\n\r\n");
-    size_t bodylen_read = response_no_body ? 0 : used - headerlen;
-    if (has_expected_body_length && bodylen_read > expected_body_length)
+    size_t bodylen_read = sink || response_no_body ? 0 : used - headerlen;
+    if (!sink && has_expected_body_length && bodylen_read > expected_body_length)
         bodylen_read = expected_body_length;
 
     /* Follow standard redirects, with a hard loop limit and relative URL support. */
@@ -1397,7 +1400,10 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     }
     if (status) *status = code;
     char *result = NULL;
-    if (http_header_has_token(raw, headerlen, "Transfer-Encoding", "chunked") && bodylen_read) {
+    if (sink) {
+        result = net_copy("", 0);
+        if (response_length) *response_length = stream_body_length;
+    } else if (http_header_has_token(raw, headerlen, "Transfer-Encoding", "chunked") && bodylen_read) {
         result = decode_chunked(sep+4, bodylen_read, response_length);
     } else {
         result = net_copy(sep+4, bodylen_read);

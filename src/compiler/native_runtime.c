@@ -479,7 +479,7 @@ VNT_NATIVE_ABI VntValue * vnt_array_set(VntValue *a, VntValue *index, VntValue *
         fprintf(stderr, "Runtime error: array assignment requires an array and integer index.\n");
         exit(1);
     }
-    int i = index->integer;
+    int64_t i = index->integer;
     if (i < 0 || i >= a->array.count) {
         fprintf(stderr, "Runtime error: array index out of bounds.\n");
         exit(1);
@@ -493,13 +493,13 @@ VNT_NATIVE_ABI VntValue * vnt_string_get(VntValue *s, VntValue *index) {
         fprintf(stderr, "Runtime error: string indexing requires a string and integer index.\n");
         exit(1);
     }
-    int i = index->integer;
-    int len = (int)strlen(s->string);
-    if (i < 0 || i >= len) {
+    int64_t i = index->integer;
+    size_t len = strlen(s->string);
+    if (i < 0 || (uint64_t)i >= len) {
         fprintf(stderr, "Runtime error: string index out of bounds.\n");
         exit(1);
     }
-    char out[2] = { s->string[i], '\0' };
+    char out[2] = { s->string[(size_t)i], '\0' };
     return vnt_string(out);
 }
 

@@ -1,33 +1,63 @@
-# 00 — Start Here
+# 00 — Start Here: Make Something Run
 
-## Your mission
+## Goal
 
-Build a small programming language from scratch, with VNT as the implementation language. You will learn how a program can read another program, understand its structure, and execute it.
+Compile and run a VNT program yourself. This is the toolchain you will use for the interpreter.
 
-There are two languages involved:
+## Step 1: create the file
 
-- **VNT**: the language used to write the interpreter.
-- **Your language**: the language your interpreter reads, such as files ending in `.vnx`.
+Create `lesson00.vnt` in the repository root:
 
-Do not confuse the implementation with the language it implements. A VNT compiler compiles the interpreter source; the resulting executable then reads your language's source files.
+~~~vnt
+# Lesson 00: this is a comment
+print("The compiler runs this program.")
+name = "Ada"
+print("Hello, " + name)
+~~~
 
-## What you will build
+Save it.
 
-A small interpreted language with text output, variables, input, conditions, and a loop or equivalent control-flow mechanism. Then use it to make a branching text adventure.
+## Step 2: compile and run
 
-You are not trying to beat C, Rust, or Python in this course. You are trying to understand every layer and finish a small implementation that actually runs.
+Windows PowerShell:
 
-## Vocabulary
+~~~powershell
+.\build.ps1
+.\vnt.exe --compile lesson00.vnt -o lesson00.exe
+.\lesson00.exe
+~~~
 
-- **Source code**: text written by a programmer.
-- **Token**: a meaningful unit such as an identifier, keyword, or string literal.
-- **Lexer**: turns characters into tokens.
-- **Parser**: checks how tokens fit the grammar.
-- **AST**: abstract syntax tree; structured data representing the program.
-- **Interpreter**: executes the parsed program.
-- **Runtime state**: values that exist while a program runs.
-- **Diagnostic**: a useful explanation of an error.
+If you already built the compiler from the current source, you can skip the first command. Linux, after building the compiler:
+
+~~~sh
+./vnt --compile lesson00.vnt -o lesson00
+./lesson00
+~~~
+
+Expected output:
+
+~~~text
+The compiler runs this program.
+Hello, Ada
+~~~
+
+## Step 3: make a change
+
+Change `Ada` to a different name, save, compile again, and run again. The new output should contain the changed name.
+
+## The two source files
+
+- `vnx/interpreter.vnt` is VNT source. VNT compiles it to an executable.
+- `vnx/game/last_signal.vnx` is VNX source. The executable produced from the interpreter reads and runs it.
+
+The VNT compiler does not directly understand VNX commands. The VNX interpreter does.
 
 ## Checkpoint
 
-Explain this sentence in your own words: “VNT runs the interpreter; the interpreter runs the adventure.” If those are still indistinguishable, reread the two-language distinction before coding.
+Which file is compiled by VNT? Which file is read by the interpreter? Explain the difference before continuing.
+
+## Common problems
+
+- **File not found:** run the commands from the repository root.
+- **VNT syntax error:** compare your file to the four lines above.
+- **Old output:** recompile after saving; the old executable cannot include edits you have not compiled.

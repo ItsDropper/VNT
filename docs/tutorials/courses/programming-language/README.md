@@ -1,68 +1,98 @@
-# Build a Programming Language in VNT
+# Build a Programming Language in VNT — Hands-on Course
 
-A complete beginner course on building a small interpreted language **using VNT as the implementation language**. You do not need prior compiler knowledge. You should be able to read basic variables, conditions, loops, functions, and strings in VNT.
+This is a practical course. Each lesson tells you **which file to create or open, what to type, how to run it, and what result to expect**. Work through the lessons in order.
 
-> Important distinction: VNT is the implementation language for the interpreter. The language you create is the language being interpreted. A file written in your new language is not a `.vnt` file.
+You will make small working experiments, inspect the real VNX interpreter, then change a language program and its text adventure. **VNT** is the implementation language. **VNX** is the language being interpreted.
 
-## Learning path
+## Before starting
 
-| Lesson | Topic | Result |
-|---|---|---|
-| [00](00-start-here.md) | Start here | Understand the project and finish line |
-| [01](01-what-is-a-language.md) | What is a programming language? | Separate source, interpreter, and program |
-| [02](02-prepare-vnt.md) | Prepare your tools | Build and run VNT programs |
-| [03](03-design-the-language.md) | Design before coding | Write a tiny language specification |
-| [04](04-source-and-characters.md) | Read source text | Work with strings and character positions |
-| [05](05-lexer.md) | Lexer and tokens | Turn characters into meaningful tokens |
-| [06](06-ast.md) | AST and nodes | Represent program structure as data |
-| [07](07-parser.md) | Parser | Turn tokens into a syntax tree |
-| [08](08-values-and-variables.md) | Values and variables | Store and retrieve runtime values |
-| [09](09-expressions.md) | Evaluate expressions | Implement operators and precedence |
-| [10](10-statements-and-control-flow.md) | Statements and control flow | Run blocks, conditions, and loops |
-| [11](11-input-output-and-errors.md) | I/O and diagnostics | Build usable programs and readable errors |
-| [12](12-build-a-text-adventure.md) | Text adventure | Make a complete interactive game |
-| [13](13-testing-and-debugging.md) | Testing | Prove language behavior with regression tests |
-| [14](14-extensions-and-graduation.md) | Extensions | Plan functions, arrays, and future features |
+- A checkout of this repository.
+- A working VNT compiler.
+- A terminal opened at the repository root.
+- Basic familiarity with VNT variables, strings, conditions, and functions.
 
-## The architecture
+## First working program
 
-```text
-source file
-    |
-    v
-lexer -- characters become tokens
-    |
-    v
-parser -- tokens become an AST
-    |
-    v
-interpreter -- AST nodes execute against runtime state
-    |
-    v
-output / input / program result
-```
+Create `lesson.vnt` in the repository root and type:
 
-The course is intentionally incremental. Do not begin with a large language, bytecode VM, optimizer, or native compiler. First make a tiny language whose behavior you can explain and test.
+~~~vnt
+print("Hello from the language workshop.")
+name = "Ada"
+print("Welcome, " + name)
+~~~
+
+On Windows PowerShell, compile and run:
+
+~~~powershell
+.\build.ps1
+.\vnt.exe --compile lesson.vnt -o lesson.exe
+.\lesson.exe
+~~~
+
+On Linux, after building the compiler with the repository's build process:
+
+~~~sh
+./vnt --compile lesson.vnt -o lesson
+./lesson
+~~~
+
+Expected output:
+
+~~~text
+Hello from the language workshop.
+Welcome, Ada
+~~~
+
+Fix the toolchain first if this example does not run.
+
+## The 15 lessons
+
+| Lesson | What you will do |
+|---|---|
+| [00 — Start here](00-start-here.md) | Compile your first VNT program |
+| [01 — What is a language?](01-what-is-a-language.md) | Run VNT and VNX separately |
+| [02 — Prepare VNT](02-prepare-vnt.md) | Compile the real interpreter |
+| [03 — Design](03-design-the-language.md) | Write a tiny language specification |
+| [04 — Source text](04-source-and-characters.md) | Scan a string by character index |
+| [05 — Lexer](05-lexer.md) | Create token objects and link them |
+| [06 — AST](06-ast.md) | Represent instructions as nodes |
+| [07 — Parser](07-parser.md) | Recognize commands and trace parsing |
+| [08 — Values and variables](08-values-and-variables.md) | Track state and variable lookup |
+| [09 — Expressions](09-expressions.md) | Understand comparisons and operator rules |
+| [10 — Control flow](10-statements-and-control-flow.md) | Make a branching program |
+| [11 — I/O and errors](11-input-output-and-errors.md) | Handle input and diagnose invalid code |
+| [12 — Text adventure](12-build-a-text-adventure.md) | Build and extend a game |
+| [13 — Testing](13-testing-and-debugging.md) | Add repeatable regression tests |
+| [14 — Extensions](14-extensions-and-graduation.md) | Plan a feature from syntax to tests |
+
+## Architecture
+
+~~~text
+VNX source text
+   |
+   v
+lexer: characters -> tokens
+   |
+   v
+parser: tokens -> AST instruction nodes
+   |
+   v
+interpreter: nodes + runtime state -> behavior
+   |
+   v
+output, input, or an error
+~~~
+
+Read the actual implementation alongside the lessons: [vnx/interpreter.vnt](../../../../vnx/interpreter.vnt). The current VNX v0 language supports string values, labels, jumps, conditional jumps, input, output, and termination. Do not assume it supports arithmetic expressions, functions, arrays, or static typing.
 
 ## Ground rules
 
-- Implement the interpreter in **VNT source**. Do not silently replace it with a C, Python, or Java implementation.
-- Keep the example language separate from VNT source files.
-- Each feature needs a syntax rule, implementation, tests, and documentation.
-- Make one small change at a time and run the regression suite.
-- Never call a feature implemented merely because a README describes it.
+1. Type and run the examples; do not just read them.
+2. Change one thing at a time and rerun.
+3. Separate VNT compiler errors from VNX lexer, parser, and runtime errors.
+4. Every new feature needs an implementation and a test.
+5. Documentation is not proof that a feature exists.
 
-## Prerequisites
+## Finish line
 
-You need basic familiarity with VNT variables, strings, `if`, `while`, and functions. If those are unfamiliar, read the introductory lessons linked from [the tutorial index](../../README.md) first.
-
-## Completion checklist
-
-- [ ] A VNT program reads a source file for the language.
-- [ ] A lexer emits tokens and useful locations.
-- [ ] A parser constructs a representation of program structure.
-- [ ] An interpreter executes the parsed program.
-- [ ] Variables and control flow work.
-- [ ] The text adventure runs in the created language.
-- [ ] Tests cover valid programs and invalid syntax.
-- [ ] The language reference documents supported syntax and limitations.
+You should be able to trace source text into tokens, tokens into nodes, and nodes into runtime behavior; write a new VNX program without changing the interpreter; and test both valid and invalid programs.

@@ -1,33 +1,67 @@
 # 08 — Runtime Values and Variables
 
-Parsing a declaration does not create the variable's runtime value. That happens when the interpreter executes the declaration node.
+## Goal
 
-A runtime environment maps names to values. Conceptually, `score = 7` creates or updates a binding from the name `score` to the integer value `7`.
+Distinguish the variable name written in source from the value stored while a program runs.
 
-## Value representation
+## Step 1: experiment with VNT variables
 
-A simple dynamically typed language might have values for integers, booleans, strings, and a null-like value. Each value should have an explicit type tag. Do not guess whether a value is a string by inspecting its contents.
+Create `lesson08.vnt`:
 
-An object can represent a value record, but make sure each operation checks the tag before reading the corresponding payload. For example, addition between integers can mean numeric addition, while addition between strings may mean concatenation if the specification says so.
+~~~vnt
+name = "Ada"
+score = 7
+print(name)
+print(score)
+score = score + 3
+print(score)
+~~~
 
-## Lookup and assignment
+Expected output:
 
-Variable lookup should search the environment for a matching name. If no binding exists, report an “unknown variable” error. Assignment should update the intended binding and should not accidentally create misspelled variables unless that is explicitly the language's rule.
+~~~text
+Ada
+7
+10
+~~~
 
-Decide whether blocks create local scopes. A first language can use one global environment, but document that limitation. Adding block scope later changes semantics and requires tests.
+These are VNT variables. VNX variables are stored by the interpreter while it runs the VNX program.
+
+## Step 2: trace VNX state
+
+In `vnx/tests/smoke.vnx`:
+
+~~~text
+set answer "42"
+when answer == "42" jump passed
+~~~
+
+When `set` executes, VNX stores the string `42` under the name `answer`. When `when` executes, the runtime looks up that name and compares its stored value with the string.
+
+## Step 3: write a variable program
+
+Create `vnx/tests/variable-demo.vnx`:
+
+~~~text
+set hero "Ada"
+say hero
+set hero "Morgan"
+say hero
+end
+~~~
+
+Run it. It should print `Ada`, then `Morgan`. The second assignment updates the existing value.
+
+## Step 4: inspect the implementation
+
+Find `SET`, `SAYVAR`, and `WHEN` handling in `vnx/interpreter.vnt`. Follow the variable name from the AST node into the runtime environment.
+
+VNX v0 stores strings. `set score "7"` does not create a numeric value; it stores text. Arithmetic is not yet part of VNX v0.
 
 ## Exercise
 
-Trace this program by hand:
-
-```text
-let score = 4
-score = score + 3
-say score
-```
-
-Write down the environment after each statement.
+Rename `hero` to `ship_name` everywhere and rerun. Then change only one occurrence and observe why consistent variable names matter.
 
 ## Checkpoint
 
-What is the difference between the identifier token `score` and the runtime value stored under that name?
+A token spelling `hero` is source text. The runtime value is the string associated with that name.

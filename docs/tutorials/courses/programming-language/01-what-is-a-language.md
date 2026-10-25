@@ -1,33 +1,71 @@
 # 01 — What Is a Programming Language?
 
-A programming language is a set of rules for writing instructions and a defined meaning for those instructions. Syntax says what programs look like. Semantics says what they mean.
+## Goal
 
-For example:
+Run one program written in VNT and another written in VNX, then see the difference.
 
-```text
-say "Hello"
-```
+## Step 1: write VNT
 
-A syntax rule might say that `say` must be followed by a string. The semantic rule says that executing this statement writes the string to the output.
+Create `hello.vnt`:
 
-## Three different programs
+~~~vnt
+print("I am written in VNT.")
+~~~
 
-1. The **VNT compiler** reads VNT source and creates a native executable.
-2. Your **interpreter**, written in VNT, reads the source of your new language.
-3. A **program in your language** tells the interpreter what to do.
+Compile and run it using Lesson 00. Expected output:
 
-The interpreter can be compiled once and then run many different source files. That is why the source program and interpreter should be separate files.
+~~~text
+I am written in VNT.
+~~~
 
-## Interpreter versus compiler
+## Step 2: inspect VNX
 
-An interpreter executes a program according to its meaning. A compiler translates a program into another representation, such as machine code. Real systems often combine both approaches; these labels describe the main execution strategy, not a strict law.
+Open `vnx/tests/smoke.vnx`. Its contents are:
 
-For this course, choose a tree-walking interpreter: parse the source into nodes, then visit those nodes to execute them. It is approachable because the implementation follows the structure of the language.
+~~~text
+say "VNX_SMOKE_OK"
+set answer "42"
+when answer == "42" jump passed
+say "VNX_SMOKE_FAILED"
+end
+label passed
+say "VNX_STATE_OK"
+end
+~~~
+
+These are VNX commands. VNT itself does not define `say` or `jump`.
+
+## Step 3: compile the interpreter
+
+From the repository root:
+
+~~~powershell
+.\build.ps1
+New-Item -ItemType Directory -Force vnx\build
+.\vnt.exe --compile vnx\interpreter.vnt -o vnx\build\vnx.exe
+.\vnx\build\vnx.exe
+~~~
+
+Enter this path at the prompt:
+
+~~~text
+vnx/tests/smoke.vnx
+~~~
+
+The output should include `VNX_SMOKE_OK` and `VNX_STATE_OK@. Linux equivalents are `mkdir -p vnx/build`, `./vnt --compile vnx/interpreter.vnt -o vnx/build/vnx`, and `vnx/build/vnx`.
+
+## Follow the pipeline
+
+1. You write `smoke.vnx`.
+2. VNT compiles `interpreter.vnt`.
+3. The generated executable reads `smoke.vnx`.
+4. The lexer makes tokens and the parser makes instruction nodes.
+5. The runtime executes the nodes.
 
 ## Exercise
 
-Draw three boxes labeled “VNT source”, “interpreter executable”, and “language source”. Add arrows to show which program reads or runs which file.
+Copy `smoke.vnx` to `my-smoke.vnx@, change `VNX_SMOKE_OK` to `MY_FIRST_LANGUAGE`, and run your copy. You changed a VNX program without changing the interpreter.
 
 ## Checkpoint
 
-Why is writing a lexer in VNT not the same as writing the lexer in the language you are creating?
+Why should the story live in a .vnx file instead of being hard-coded into the interpreter? Because the same interpreter should be able to run many different programs.

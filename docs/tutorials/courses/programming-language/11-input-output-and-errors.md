@@ -1,34 +1,55 @@
-# 11 — Input, Output, and Diagnostics
+# 11 — Input, Output, and Errors
 
-A language becomes useful when programs can communicate with the user. Output and input should be implemented as explicit runtime operations, not special cases scattered through the parser.
+## Goal
 
-## Output
+Make the program interact with a user and distinguish syntax errors from runtime errors.
 
-Evaluate the output argument, convert the value to the language's display form, and write it. Specify whether output automatically adds a newline. Consistent output makes both programs and tests easier to read.
+## Step 1: type an input program
 
-## Input
+Create `vnx/tests/input-demo.vnx`:
 
-Input is usually text. If you later add numbers, decide how text is converted and what happens when the input is invalid. Do not pretend arbitrary text is an integer.
+~~~text
+input player "What is your name? "
+say "Hello, technician."
+say player
+end
+~~~
 
-## Diagnostics
+Run it and enter `Ada`. It should print the greeting and then `Ada`. `say "text"` prints a literal; `say player` looks up a variable.
 
-There are several kinds of failure:
+## Step 2: create a parser error
 
-- **Lexical error**: an unexpected character or unterminated string.
-- **Syntax error**: tokens do not match the grammar.
-- **Runtime error**: a program references an unknown variable or performs an invalid operation.
-- **Toolchain error**: the VNT compiler cannot compile the interpreter itself.
+Create `vnx/tests/invalid-demo.vnx`:
 
-Keep these layers distinct. A broken VNT interpreter build is not a syntax error in a program written in your new language.
+~~~text
+set player
+end
+~~~
 
-## Error format
+Run it. The parser should report that `set` needs a variable name and a quoted value.
 
-A useful diagnostic includes the file name, line number, error category, and a concise explanation. When possible, include the offending token or expected form.
+## Step 3: create a runtime error
+
+Create `vnx/tests/missing-label.vnx`:
+
+~~~text
+jump nowhere
+end
+~~~
+
+Run it. The command has the right form, but the destination does not exist, so the runtime should report an unknown label.
+
+## Four error layers
+
+- **Toolchain error:** VNT cannot compile `interpreter.vnt`.
+- **Lexical error:** source contains a character or string the lexer cannot handle.
+- **Parser error:** tokens do not match the required command form.
+- **Runtime error:** a valid command refers to missing state, such as a label.
 
 ## Exercise
 
-Create one test for each error category. Confirm invalid programs return a failure status rather than pretending they succeeded.
+Copy a failing example and fix it. Then make another copy with a different error. Keep one error per file so you know which layer rejected it.
 
 ## Checkpoint
 
-Why should errors be reported at the layer that understands their meaning?
+A useful diagnostic explains what went wrong and where. “Expected a quoted value after set player” is more actionable than “program failed”.

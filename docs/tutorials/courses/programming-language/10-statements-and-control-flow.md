@@ -1,29 +1,47 @@
 # 10 — Statements and Control Flow
 
-Statements perform actions. Expressions produce values. Keeping this distinction clear makes the interpreter easier to reason about.
+## Goal
 
-An output statement evaluates its expression and writes the result. A declaration evaluates an initializer and stores a value. A conditional evaluates its condition and executes exactly one branch. A loop repeatedly evaluates its condition and executes its body while the condition remains true.
+Write a branching program and trace how the interpreter changes its instruction pointer.
 
-## Blocks
+VNX v0 uses `label`, `jump`, and `when` instead of structured `if` and `while` statements.
 
-A block is an ordered list of statements. Execute its children in source order. If a runtime error occurs, stop or propagate it according to your documented error policy.
+## Step 1: type a branching program
 
-## Conditions
+Create `vnx/tests/branch-demo.vnx`:
 
-The condition's runtime value must follow the language's boolean rules. Do not accidentally treat a missing variable as false; an unknown name should normally be a diagnostic.
+~~~text
+say "Choose a door: red or blue"
+input door "Door? "
+when door == "red" jump red_door
+when door == "blue" jump blue_door
+say "That is not a valid door."
+end
+label red_door
+say "The red door opens."
+end
+label blue_door
+say "The blue door opens."
+end
+~~~
 
-## Loops and runaway code
+Run it. Enter `red`; it should print `The red door opens.`. Run it again and enter `blue`. Enter something else to test the invalid-choice path.
 
-An accidental infinite loop can hang tests. A step counter or instruction budget is a useful first safety measure for a learning interpreter. It is not a full sandbox and does not make untrusted programs safe.
+## Step 2: understand the instruction pointer
 
-## Alternative control-flow design
+Imagine `pc` points at the current instruction node.
 
-A very small language can use labels and jumps instead of structured loops, but then it must define what happens when a label is missing or a jump repeats forever. Structured `if` and `while` are more familiar to many beginners.
+- Normal command: execute it, then advance `pc`.
+- `jump red_door`: find the label and set `pc` to the instruction after it.
+- `when door == "red" jump red_door`: jump only if the stored value matches.
+- `end`: stop the execution loop.
 
-## Exercise
+Find label and jump handling in `execute()` in `vnx/interpreter.vnt`.
 
-Write a countdown and a condition that selects between two outputs. Test both branches. If your language supports loops, also test a loop that executes zero times and one that executes several times.
+## Step 3: add an option
+
+Add a third choice, `green`. Add the matching `when` line and a `label green_door` section that prints a message and ends. Test all three routes plus invalid input.
 
 ## Checkpoint
 
-What makes a loop terminate, and how can your interpreter protect tests from a mistaken infinite loop?
+A jump can loop forever if it returns to a label without changing state or asking for input. Every loop needs a reason it can eventually stop.

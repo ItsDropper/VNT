@@ -1,39 +1,60 @@
-# 13 — Testing and Debugging
+# 13 — Test Your Language
 
-A language implementation needs tests for each layer. One successful game run does not prove the lexer, parser, evaluator, or error handling is correct.
+## Goal
 
-## Layered tests
+Make tests repeatable and check behavior, not just whether the program starts.
 
-- **Lexer tests**: keywords, identifiers, operators, comments, escapes, EOF, invalid characters.
-- **Parser tests**: valid statement forms, precedence, missing delimiters, unexpected tokens.
-- **Runtime tests**: arithmetic, variable lookup, assignment, conditions, input/output, invalid operations.
-- **Program tests**: complete game paths and ending conditions.
-- **Toolchain tests**: build the VNT compiler, compile the VNT interpreter, run the interpreter, and assert expected output.
+## Step 1: create a test program
 
-## Test behavior, not just process exit
+Create `vnx/tests/my-test.vnx`:
 
-A program can exit successfully while producing the wrong answer. Compare expected output, assert important state transitions through visible results, and check that invalid programs fail.
+~~~text
+say "TEST_START"
+set result "ok"
+when result == "ok" jump passed
+say "TEST_FAILED"
+end
+label passed
+say "TEST_PASSED"
+end
+~~~
 
-Use deterministic tests for CI. Interactive prompts should be supplied with scripted input when possible, rather than relying on a human to type during automation.
+Run it through the interpreter. Confirm that `TEST_PASSED` appears and `TEST_FAILED` does not.
 
-## Regression tests
+## Step 2: automate input
 
-Whenever you fix a bug, add a test that would have failed before the fix. Otherwise the same bug can return later.
+For a program with no input after the source path, PowerShell can pipe the path:
 
-## Debugging sequence
+~~~powershell
+"vnx/tests/my-test.vnx" | .\vnx\build\vnx.exe
+~~~
 
-1. Reduce the failure to the smallest source file.
-2. Determine which layer owns the bug.
-3. Inspect tokens if the issue is lexical.
-4. Inspect the AST if the issue is grammatical or precedence-related.
-5. Trace runtime state if the structure is correct but the result is wrong.
-6. Add a regression test.
-7. Run the full suite.
+For the adventure, provide the path and each answer as separate lines:
+
+~~~powershell
+@("vnx/game/last_signal.vnx", "Ada", "1", "1", "3", "2", "1", "3", "5") | .\vnx\build\vnx.exe
+~~~
+
+On Linux, use `printf 'vnx/tests/my-test.vnx\n' | vnx/build/vnx` for a program with no further input.
+
+## Step 3: inspect CI
+
+Open [vnx-tests.yml](../../../../../.github/workflows/vnx-tests.yml). It builds VNT, compiles the interpreter, checks a string-indexing regression, runs the smoke test, tests game endings, and checks invalid syntax. See the [GitHub Actions workflow](https://github.com/ItsDropper/VNT/actions/workflows/vnx-tests.yml) for run history.
+
+## Debugging order
+
+1. Can VNT compile the interpreter?
+2. Can the executable read the VNX file?
+3. Did the lexer emit the right token kinds?
+4. Did the parser create the expected node?
+5. Is the variable present at runtime?
+6. Does the jump label exist?
+7. Does output match the expected result?
 
 ## Exercise
 
-Break one feature on purpose, observe which test catches it, restore it, and add a new edge case.
+Temporarily change `TEST_PASSED` to `TEST_BROKEN` and confirm a test that searches for the expected text would catch the regression. Restore it. Add a second test for an invalid program.
 
 ## Checkpoint
 
-Why is “the program did not crash” a weaker assertion than “the program printed the expected result and returned the expected status”?
+A passing build proves the source compiled. A passing behavior test proves a particular feature produced the expected result.

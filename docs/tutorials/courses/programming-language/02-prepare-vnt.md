@@ -1,47 +1,59 @@
-# 02 — Prepare VNT
+# 02 — Prepare VNT and Compile the Interpreter
 
-Use the repository's normal VNT build process. On Windows, build the compiler from the repository root with:
+## Goal
 
-```powershell
+Compile the real VNT-native interpreter and run a VNX source file.
+
+## Step 1: build the compiler
+
+Windows, from the repository root:
+
+~~~powershell
 .\build.ps1
-```
+~~~
 
-Then compile a VNT program:
+On Linux, follow the repository's documented compiler build process. The CI workflow shows the exact source files used: [vnx-tests.yml](../../../../../.github/workflows/vnx-tests.yml).
 
-```powershell
-.\vnt.exe --compile examples\global_variables.vnt -o example.exe
-.\example.exe
-```
+## Step 2: compile the interpreter
 
-On a supported Unix-like environment, use the repository's documented build process and invoke the resulting `vnt` compiler with the same `--compile source.vnt -o output` pattern.
+~~~powershell
+New-Item -ItemType Directory -Force vnx\build
+.\vnt.exe --compile vnx\interpreter.vnt -o vnx\build\vnx.exe
+~~~
 
-## Start with a tiny implementation
+This creates a native executable; it is not the game itself.
 
-Create a VNT file that prints a fixed message, compile it, and run it. Then change the message and repeat. This proves the toolchain works before you add parsing complexity.
+Linux:
 
-```vnt
-print("My interpreter is written in VNT.")
-```
+~~~sh
+mkdir -p vnx/build
+./vnt --compile vnx/interpreter.vnt -o vnx/build/vnx
+~~~
 
-Do not make the interpreter depend on a second, unrelated implementation written in another language. Build automation may use shell or PowerShell to invoke tools, but the language implementation itself belongs in VNT source.
+## Step 3: run the smoke program
 
-## Project organization
+~~~powershell
+.\vnx\build\vnx.exe
+~~~
 
-Keep different concerns separate:
+Enter `vnx/tests/smoke.vnx` when prompted. Expect `VNX_SMOKE_OK` and `VNX_STATE_OK@.
 
-- lexer code: characters and tokens;
-- parser code: token order and syntax;
-- runtime code: values and execution;
-- example programs: source in your new language;
-- tests: expected behavior;
-- course and reference: explanations for humans.
+## Step 4: find the entry point
 
-Splitting files is useful only if the VNT module and compiler workflow can load them reliably. If imports are expanded as source, remember that this is not the same as isolated module compilation.
+Open [interpreter.vnt](../../../../vnx/interpreter.vnt). Find the prompt for a source path and then the calls to `lex(source)`, `parse()`, and `execute()`.
+
+- `lex` scans source text and creates tokens.
+- `parse` consumes tokens and creates instruction nodes.
+- `execute` follows the nodes and changes runtime state.
+
+The entry point checks for errors between phases. Do not execute a program if lexing or parsing failed.
 
 ## Exercise
 
-Compile and run a one-line VNT program. Record the exact command and expected output in your notes.
+Compile the same source to `vnx/build/vnx-debug.exe` and run it. This demonstrates that a source file and its compiled executable are different things.
 
-## Checkpoint
+## Troubleshooting
 
-If the compiler fails, determine whether the error is in the VNT compiler invocation, the interpreter's VNT syntax, or the example language source. Those are three different failure layers.
+- Compiler rejects `interpreter.vnt`: VNT toolchain or VNT syntax issue.
+- Interpreter cannot read the source path: check your working directory.
+- Lexer/parser error: inspect the VNX source, not the VNT compiler command.

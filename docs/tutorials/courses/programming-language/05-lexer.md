@@ -1,41 +1,69 @@
-# 05 — Build a Lexer
+# 05 — Build Token Objects
 
-The lexer converts raw source characters into tokens. A token typically has a kind, the text or value it represents, and a source location.
+## Goal
 
-For example, a statement such as `say "Hi"` could produce:
+Create one token object, link it to another token, and inspect the real lexer.
 
-```text
-KEYWORD_SAY  line 1
-STRING       "Hi"  line 1
-EOF          line 1
-```
+## Step 1: type one token
 
-The exact token names are an implementation choice. Consistency matters more than naming style.
+Create `lesson05.vnt`:
 
-## Token representation
+~~~vnt
+token = object()
+token.kind = "STRING"
+token.text = "Hello"
+token.line = 1
 
-In VNT, you can represent each token with an object containing fields such as `kind`, `text`, and `line`. If you use a linked list, include a `next` field. If you use arrays, verify the VNT array operations you need before designing the whole lexer around them.
+print(token.kind)
+print(token.text)
+print(token.line)
+~~~
 
-Do not assume a VNT feature exists because another language has it. Check the VNT examples and compiler tests, then write a tiny experiment.
+Compile and run. Expected output:
 
-## Scanning identifiers
+~~~text
+STRING
+Hello
+1
+~~~
 
-Start at a letter or underscore, then consume letters, digits, or underscores. After collecting the text, compare it against the keyword list. If it matches a keyword, emit the keyword token; otherwise emit an identifier token.
+The `object()` function creates a dynamic object. Properties store fields on it.
 
-## Scanning strings
+## Step 2: link a second token
 
-On an opening quote, remember the starting line, then consume characters until the matching unescaped quote. Handle escapes according to your specification. If the file ends first, report an unterminated string at the opening line.
+Add these lines to the same file:
 
-## Errors and EOF
+~~~vnt
+next_token = object()
+next_token.kind = "EOF"
+next_token.text = ""
+next_token.line = 1
+token.next = next_token
 
-Always emit an end-of-file token. This lets the parser detect the end of input without indexing beyond the token collection.
+print(token.next.kind)
+~~~
 
-A lexer should reject unknown punctuation, unterminated strings, and any configured token/source limit. Do not silently discard bad characters.
+The final line should be `EOF`. A `next` property points to the next token. Repeating this forms a linked list.
+
+## Step 3: inspect the implementation
+
+Open [interpreter.vnt](../../../../vnx/interpreter.vnt) and find `make_token`, `emit`, and `lex`.
+
+- `make_token` creates a token and initializes its fields.
+- `emit` appends a token to the list.
+- `lex` scans characters and emits tokens.
+- The final EOF token gives the parser a clear stopping point.
+
+The actual token fields are `kind`, `text`, `line`, and `next`.
+
+## Step 4: predict the tokens
+
+For the line `say "Hello"`, the lexer emits a command-word token, a string token, a newline token, and eventually EOF. Check the exact token names in the implementation.
 
 ## Exercise
 
-Add a token-dump mode or temporary debug output. Feed it one valid statement, one comment, one escaped string, and one invalid character. Compare the output to your predictions.
+Set `token.kind` to `"IDENTIFIER"` and `token.text` to `"say"`. Add a third linked token of kind `STRING` and print `token.next.next.kind`.
 
 ## Checkpoint
 
-Why should the lexer distinguish the two-character operator `==` from two adjacent assignment tokens?
+The lexer describes source structure. It should not perform the output operation itself; that belongs to the runtime.

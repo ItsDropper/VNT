@@ -1,46 +1,59 @@
-# 07 — Build a Parser
+# 07 — Recognize Commands with a Parser
 
-The parser consumes tokens and checks whether they match the grammar. It then builds AST nodes that represent the program.
+## Goal
 
-A recursive-descent parser uses a function for each grammar rule. For example, `parse_statement` chooses between statement forms, while `parse_primary` recognizes literals, variable references, and parenthesized expressions.
+Write a tiny command recognizer, then trace how the real parser consumes tokens.
 
-## Parsing statements
+## Step 1: create a recognizer
 
-A typical statement parser examines the next token:
+Create `lesson07.vnt`:
 
-- output keyword → parse an output statement;
-- declaration keyword → parse a declaration;
-- conditional keyword → parse a condition and branches;
-- loop keyword → parse its condition and body;
-- opening brace → parse a block;
-- otherwise → report an unexpected token.
+~~~vnt
+source = "say"
+if source == "say" {
+    print("Recognized output command")
+} else {
+    print("Unknown command")
+}
+~~~
 
-The parser must consume tokens when it succeeds. On failure, it should either stop with an error or recover in a deliberate way, such as skipping to the next statement boundary. Accidental non-advancement can create an infinite loop.
+Compile and run. Expected output:
 
-## Parsing expressions
+~~~text
+Recognized output command
+~~~
 
-If you add arithmetic, use a precedence hierarchy. One common structure is:
+Change `source` to `"jump"` and run it again. It should print `Unknown command`.
 
-```text
-expression -> equality
-equality   -> comparison (("==" | "!=") comparison)*
-comparison -> term (("<" | "<=" | ">" | ">=") term)*
-term       -> factor (("+" | "-") factor)*
-factor     -> unary (("*" | "/") unary)*
-unary      -> ("!" | "-") unary | primary
-primary    -> literal | identifier | "(" expression ")"
-```
+This is only a warm-up: it compares a whole string, whereas a real parser consumes a sequence of tokens.
 
-This is an example grammar. Do not document these operators as supported until the lexer, parser, and runtime all implement them.
+## Step 2: inspect parser helpers
 
-## Error messages
+In `vnx/interpreter.vnt`, find:
 
-An error should name the source file, line, and what was expected. “Expected closing parenthesis” is actionable; “parse error” usually is not.
+- `take()` returns the current token and advances.
+- `expect(kind, description)` checks the token kind and reports a parser error on mismatch.
+- `skip_lines()` skips newline tokens.
+- `parse()` recognizes statements and appends nodes.
+
+## Step 3: trace one line
+
+For `say "VNX_SMOKE_OK"` in `vnx/tests/smoke.vnx`:
+
+1. Lexer emits the `say` word token.
+2. Lexer emits a string token containing `VNX_SMOKE_OK`.
+3. Parser recognizes the command.
+4. Parser consumes the string and creates a `SAY` node.
+5. Runtime later prints the node's stored text.
+
+## Step 4: trigger a parser error
+
+Run `vnx/tests/invalid.vnx` through the interpreter. It intentionally contains `set answer` without a quoted value. The parser should reject it.
 
 ## Exercise
 
-Intentionally remove a closing quote, brace, or parenthesis from a test program. Improve the diagnostic so a beginner can find the problem.
+Copy the smoke file to `vnx/tests/my-test.vnx`, change the first output string, and run it. Then remove the value from `set` and observe the error.
 
 ## Checkpoint
 
-Explain why a parser needs both a grammar and a consistent token stream.
+A parser must reject malformed token sequences. Otherwise the runtime receives a program whose meaning is unclear.

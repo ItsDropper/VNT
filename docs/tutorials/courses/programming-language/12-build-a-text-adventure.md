@@ -1,42 +1,54 @@
 # 12 — Build a Text Adventure
 
-A text adventure is an excellent first substantial program because it uses state, input, branching, and repeated decisions without needing graphics.
+## Goal
 
-## Model the game
+Make a small game, then compare it with the larger game in the repository.
 
-Start with a small map of locations and a list of game-state variables. For example:
+## Step 1: type the first game
 
-- current room;
-- whether the player found a key;
-- whether power is restored;
-- whether the player has collected an item;
-- whether the game has ended.
+Create `vnx/game/my_first_adventure.vnx`:
 
-Write the state transitions down before implementing the dialogue. A room should not only print text; player decisions should change state and affect later options.
+~~~text
+say "THE LOCKED ROOM"
+say "Choose: 1) window  2) door"
+input choice "> "
+when choice == "1" jump window
+when choice == "2" jump door
+say "That is not a valid choice."
+end
+label window
+say "The window opens onto a safe ledge. You escape."
+end
+label door
+say "The door leads into a dark corridor."
+say "ENDING: THE CORRIDOR"
+end
+~~~
 
-## Separate story from engine
+Run the interpreter and enter `1`. Run it again and enter `2`. Test an invalid answer too.
 
-The interpreter is the engine: it parses and executes language constructs. The adventure is a program written in the language. Do not hard-code each room into the interpreter; that would make the game logic part of the language implementation.
+## Step 2: add state
 
-## Make endings reachable
+Add this near the beginning:
 
-For every ending, write a route through the game. Also test impossible routes: for example, an exit that requires power should remain closed until the player restores it.
+~~~text
+set has_key "no"
+~~~
 
-A simple state table helps:
+Create a `label desk` section that says you found a key, sets `has_key` to `"yes"`, then jumps back to the menu. Add a `3) desk` option and a condition that jumps to `desk` when choice is `"3"`.
 
-| State | Action | Expected change |
-|---|---|---|
-| No key | Search security | Key becomes available |
-| Has key | Activate generator | Power becomes active |
-| No power | Try airlock | Exit remains locked |
-| Power active | Try airlock | Escape ending is reachable |
+Now make a locked-door route. If `has_key` equals `"yes"`, jump to an unlocked-door label; otherwise print that it is locked. Test both routes.
 
-Adapt this table to the exact rules of your game.
+## Step 3: inspect the full game
+
+Open [The Last Signal](../../../../vnx/game/last_signal.vnx). It uses output, input, variables, comparisons, labels, and jumps to create multiple rooms and endings. The story is in the .vnx file, not hard-coded into the interpreter.
+
+The existing endings are `ENDING: HOMEWARD`, `ENDING: CONTAINMENT`, and `ENDING: THE SIGNAL`. The CI workflow contains scripted routes to test endings.
 
 ## Exercise
 
-Add one room, one state variable, and one decision that affects a later room. Then add a test proving the decision matters.
+Add a secret label and a state variable. Make an ending reachable only after a specific choice, then write down the exact input sequence that reaches it.
 
 ## Checkpoint
 
-Can the same interpreter run a second, unrelated source program without any changes to the interpreter itself?
+Can the game run on the same interpreter without changing `interpreter.vnt`? If yes, story logic is separate from the language engine.

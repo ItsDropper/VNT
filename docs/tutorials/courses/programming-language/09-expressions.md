@@ -1,31 +1,64 @@
-# 09 — Evaluate Expressions
+# 09 — Expressions, Comparisons, and Operator Rules
 
-An expression produces a value. An interpreter evaluates the AST recursively: a literal returns its value, a variable reads its binding, and a binary operator evaluates its operands and applies the operator.
+## Goal
 
-## Operator semantics
+Understand expression evaluation and the importance of documenting only operators that really work.
 
-Define each operator before implementing it. Decide whether `+` supports numbers, strings, or both. Decide whether comparisons require matching types. Decide what division by zero does. Do not let accidental host-language behavior define your language.
+VNT supports arithmetic, but **VNX v0 does not support general arithmetic expressions**. Use VNT experiments to learn evaluation and VNX to test its supported string comparison.
 
-## Precedence and associativity
+## Step 1: run arithmetic in VNT
 
-Precedence determines which operator groups first. Associativity determines how operators of equal precedence group. For example, subtraction is commonly left-associative: `10 - 3 - 2` means `(10 - 3) - 2`.
+Create `lesson09.vnt`:
 
-A precedence-based parser naturally builds a tree with the intended grouping. Parentheses let the programmer override the default grouping.
+~~~vnt
+a = 10
+b = 3
+print(a + b)
+print(a - b)
+print(a * b)
+print("Ada" + " Lovelace")
+~~~
 
-## Boolean logic
+Expected output:
 
-Conditions should evaluate to a defined boolean value, or the language must clearly define truthiness. Avoid silently treating arbitrary strings or numbers as booleans unless that is a deliberate design choice.
+~~~text
+13
+7
+30
+Ada Lovelace
+~~~
 
-Short-circuit behavior is also a semantic decision: with `false && rhs`, should `rhs` be evaluated? If the language uses conventional short-circuit logic, it should not be evaluated when the left side already determines the result.
+## Step 2: test VNX equality
 
-## Runtime safety
+Create `vnx/tests/compare-demo.vnx`:
 
-Check invalid operand types and division by zero. Report the source location of the operator where possible. Do not rely on undefined behavior or crashes as an error-handling strategy.
+~~~text
+set answer "42"
+when answer == "42" jump matched
+say "Comparison failed"
+end
+label matched
+say "Comparison matched"
+end
+~~~
+
+Run it with the interpreter. Expected output includes `Comparison matched`.
+
+## What an evaluator must define
+
+Before implementing an operator, decide:
+1. Which value types it accepts.
+2. What result type it returns.
+3. What happens when operand types are invalid.
+4. Where precedence is enforced.
+5. Which error appears for invalid input.
+
+For example, `1 + 2 * 3` usually means `1 + (2 * 3)`. The parser must build that grouping correctly.
 
 ## Exercise
 
-For each expression in your language reference, write at least one expected result and one invalid operand combination.
+Change the comparison to `answer == "7"`. It should take the failure route. Then change the stored value to `7` and confirm the matching route works.
 
-## Checkpoint
+## Important limitation
 
-If the lexer recognizes `+` but the evaluator does not implement it, is addition a supported language feature? Explain.
+Do not expect `say 1 + 2` to calculate in VNX. VNX v0 supports `say "text"` or `say variable`, and `when` compares a variable to a string. Arithmetic requires changes to the lexer, parser, AST, evaluator, tests, and reference.

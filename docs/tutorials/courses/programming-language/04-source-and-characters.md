@@ -1,35 +1,55 @@
-# 04 — Source Text and Character Positions
+# 04 — Read Source Text One Character at a Time
 
-A lexer begins with source text, usually a string loaded from a file. Its job is to inspect the text from left to right and recognize meaningful units.
+## Goal
 
-A useful lexer tracks a current position. At each step it should either:
+Write a tiny scanner and learn why its character index must advance.
 
-1. skip whitespace;
-2. skip a comment;
-3. recognize an identifier or keyword;
-4. recognize a number;
-5. recognize a quoted string;
-6. recognize punctuation or an operator;
-7. report an unexpected character.
+## Step 1: create the scanner
 
-Every successful branch must advance the position. Otherwise the lexer can become stuck forever on one character.
+Create `lesson04.vnt`:
 
-## Lookahead
+~~~vnt
+source = "say \"Hi\""
+i = 0
+while i < len(source) {
+    print(source[i])
+    i = i + 1
+}
+~~~
 
-Some tokens share a first character. For example, `=` and `==` are different tokens. The lexer looks at the current character and, when needed, the next character before deciding which token to emit.
+Compile and run:
 
-This is called lookahead. It does not require a complicated parser; one character of lookahead is enough for many operators.
+~~~powershell
+.\vnt.exe --compile lesson04.vnt -o lesson04.exe
+.\lesson04.exe
+~~~
 
-## Strings
+It prints one character per line: s, a, y, a space, a quote, H, i, and a quote.
 
-A string scanner must distinguish the closing quote from an escaped quote. If your language supports escapes such as `\n` and `\t`, specify exactly how they are translated.
+## Step 2: print the position too
 
-Track line numbers while consuming newlines, including newlines inside strings if your language permits them. Error locations are far more useful than a generic “invalid program” message.
+Replace the loop body with:
+
+~~~vnt
+print(i)
+print(source[i])
+i = i + 1
+~~~
+
+There must be exactly one increment each iteration. The position tells you which character the scanner is inspecting.
+
+## Step 3: understand lookahead
+
+Open `vnx/interpreter.vnt` and find the check for `=` followed by another `=`. The lexer examines the next character before emitting the equality token for `==`. That is lookahead.
 
 ## Exercise
 
-Write a table for every character category in your language and state how the scanner handles it. Trace a sample input one character at a time.
+Change the source value to `"jump door"`. Predict the number of loop iterations, then run it and count the characters.
+
+## Common bug
+
+If you remove `i = i + 1`, the loop repeatedly prints the same character. A lexer must consume input or report an error on every pass.
 
 ## Checkpoint
 
-What happens if a lexer branch detects an invalid character but does not advance the input position?
+Why is `i < len(source)` important? It prevents reading beyond the end of the string.

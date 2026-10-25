@@ -1,35 +1,75 @@
-# 06 — Abstract Syntax Trees
+# 06 — Represent Instructions as AST Nodes
 
-Tokens preserve the spelling of the source. An abstract syntax tree (AST) preserves the program's meaningful structure.
+## Goal
 
-For the expression `1 + 2 * 3`, multiplication has higher precedence, so the tree should represent `1 + (2 * 3)`, not `(1 + 2) * 3`.
+Use VNT objects to represent an instruction before executing it.
 
-```text
-       ADD
-      /   \
-   NUMBER  MULTIPLY
-    (1)     /   \
-         (2)   (3)
-```
+VNX is line-oriented, so its AST is a linked sequence of instruction nodes rather than a large arithmetic-expression tree. The same principle applies: store program structure as data.
 
-## Node design
+## Step 1: type a node
 
-A node can be an object with a `kind` field and fields for its children or payload. A number node needs a number value; a string node needs string content; a binary operator node needs an operator and left/right children.
+Create `lesson06.vnt`:
 
-Statement nodes may represent output, declaration, assignment, conditional, loop, or a block. Keep node kinds explicit rather than trying to infer a node's role from whichever fields happen to be populated.
+~~~vnt
+node = object()
+node.kind = "SAY"
+node.text = "Hello from a node"
+node.line = 1
 
-## AST versus concrete syntax
+print(node.kind)
+print(node.text)
+print(node.line)
+~~~
 
-The AST usually omits details that do not affect execution, such as extra parentheses. It can retain line and column information for diagnostics. You do not need to store every whitespace character.
+Expected output:
 
-## Memory and limits
+~~~text
+SAY
+Hello from a node
+1
+~~~
 
-A tree needs a clear ownership strategy. For a first interpreter, use a simple representation and reasonable source/token/node limits. Avoid building a complicated garbage collector before the basic language works.
+## Step 2: connect another instruction
+
+Add:
+
+~~~vnt
+second = object()
+second.kind = "END"
+second.text = ""
+second.line = 2
+node.next = second
+
+print(node.next.kind)
+~~~
+
+The final line should be `END`.
+
+## Step 3: find the real node builder
+
+In `vnx/interpreter.vnt`, find `make_node`, `add_node`, and `parse`.
+
+- `make_node` creates a node with a kind, source line, payload fields, and next link.
+- `add_node` appends it to the program.
+- `parse` chooses a node kind based on the command.
+- `say "hello"` becomes a `SAY` node; `say player` becomes a `SAYVAR` node.
+
+## Step 4: draw the sequence
+
+For this program:
+
+~~~text
+say "First"
+say "Second"
+end
+~~~
+
+Draw three boxes in order. Label them `SAY`, `SAY`, and `END`. Put the text payload in the first two.
 
 ## Exercise
 
-Draw the tree for a conditional with an output statement in each branch. Label every child pointer or field.
+Create a node with kind `SET` and text `Ada`. Connect it after your first node and print `node.next.kind`.
 
 ## Checkpoint
 
-Why is a syntax tree a better representation for execution than repeatedly searching the original source text for keywords?
+Source keyword `say`, AST kind `SAY`, and the runtime effect of printing text are three separate things.

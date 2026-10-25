@@ -1,43 +1,63 @@
-# 14 — Extensions and Graduation Project
+# 14 — Extend the Language and Graduate
 
-After the core interpreter works, extend it one feature at a time. For each feature, update the language specification, lexer, parser, AST, runtime, tests, and reference as needed.
+## Goal
 
-## Good next features
+Plan a feature from syntax to tests instead of randomly editing the parser.
 
-- **Functions**: define call syntax, parameters, argument evaluation, return values, and call-stack behavior.
-- **Arrays**: define indexing, bounds errors, mutation, and value semantics.
-- **Block scope**: decide how nested environments search and update variables.
-- **Better diagnostics**: store source columns and point to the exact offending token.
-- **Bytecode VM**: compile the AST into a compact instruction sequence and execute it in a virtual machine.
-- **Static types**: define types and type-checking rules before runtime.
-- **Native compilation**: only after the language semantics are stable, design a backend and calling convention.
+## Step 1: write a feature proposal
 
-Do not add features merely because another language has them. Add them when they solve a problem and you can implement and test them properly.
+Create `feature-plan.md`:
+
+~~~text
+# Proposed feature: repeat
+
+## Example syntax
+repeat 3
+say "Hello"
+endrepeat
+
+## Intended behavior
+Print Hello three times.
+
+## Implementation areas
+- lexer: recognize repeat and endrepeat
+- parser: represent a repeat block
+- AST: store the count and body
+- runtime: execute the body the requested number of times
+- errors: reject invalid counts
+- tests: check 0, 1, and 3 repetitions
+- docs: update the language reference
+~~~
+
+This is a design exercise only. VNX v0 does not support `repeat` or `endrepeat`.
+
+## Step 2: write tests before coding
+
+Specify expected output for counts 0, 1, and 3, plus a malformed count and a missing closing command. Decide the behavior before implementing it.
+
+## Step 3: trace the implementation path
+
+For a real VNX extension, inspect these functions in `vnx/interpreter.vnt`:
+
+- `lex` and `emit`: source to tokens.
+- `parse` and `make_node`: tokens to instructions.
+- `execute`: instructions to runtime behavior.
+- Error handling: malformed programs must be rejected.
+
+Then update `vnx/README.md`, add tests under `vnx/tests/`, update `.github/workflows/vnx-tests.yml`, and run CI.
 
 ## Graduation project
 
-Build a language program that:
+Build a game or interactive tool that prints instructions, reads input, stores at least two state variables, branches on prior choices, has two reachable endings, handles invalid choices, and has a scripted test for each ending.
 
-1. prints a title and instructions;
-2. reads player input;
-3. stores at least three pieces of state;
-4. makes decisions based on earlier actions;
-5. contains a repeatable interaction or a clear multi-step route;
-6. offers at least two distinct endings;
-7. rejects invalid choices gracefully.
+## Final checklist
 
-Then submit a short design note describing the grammar, AST node types, runtime values, limitations, and tests.
+- [ ] I can compile and run VNT.
+- [ ] I can compile the VNT-native interpreter.
+- [ ] I can explain tokens, nodes, runtime state, and the instruction pointer.
+- [ ] I can write VNX without changing the interpreter.
+- [ ] I can diagnose invalid syntax and a missing label.
+- [ ] I can plan a feature and test it before implementation.
+- [ ] The docs distinguish implemented features from planned ones.
 
-## Final review
-
-- [ ] The interpreter implementation is written in VNT.
-- [ ] The language source is separate from interpreter source.
-- [ ] The lexer always advances and emits EOF.
-- [ ] The parser reports malformed syntax.
-- [ ] The AST preserves operator precedence.
-- [ ] Runtime errors are explicit.
-- [ ] Tests cover both successful and failing programs.
-- [ ] The adventure runs without interpreter-specific hardcoding.
-- [ ] Documentation matches the actual implementation.
-
-Finishing a small language correctly is more valuable than claiming a large language with unimplemented features.
+A small language you understand is more valuable than a large language with imaginary features.

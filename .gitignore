@@ -4,3 +4,4 @@ vnt.exe
 .vscode/
 .idea/
 benchmarks/out/
+lowlevel_test.vnt

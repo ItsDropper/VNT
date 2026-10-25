@@ -8,6 +8,7 @@ import ssl
 import sys
 import tempfile
 import threading
+import time
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 HOST = "127.0.0.1"
@@ -126,6 +127,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._send(204, "")
         elif self.path == "/header":
             self._send(200, "HEADER_OK" if self.headers.get("X-VNT-Test") == "present" else "HEADER_MISSING")
+        elif self.path == "/slow":
+            time.sleep(2)
+            try:
+                self._send(200, "SLOW_OK")
+            except (BrokenPipeError, ConnectionResetError):
+                pass
         elif self.path == "/oversized":
             # Buffered requests must reject bodies beyond the documented 64 MiB ceiling.
             self.send_response(200)
@@ -207,7 +214,7 @@ def main():
                     '[0, 1, 255, 10, 13, 128]\n6\n255\ntrue\n' + conflicting_length_result +
                     '[0, 1, 255, 10, 13, 128]\n'
                     'AUTH_STRIPPED\n204\nHEADER_OK\n\nPOST_OK:{"native":true}\n'
-                    'POST_OK:SAFE_BODY\n404\ntrue\n\ntrue\nVNT_NATIVE_HTTP_OK\n200\ntrue\n')
+                    'POST_OK:SAFE_BODY\n404\ntrue\n\ntrue\nVNT_NATIVE_HTTP_OK\n200\ntrue\ntrue\nfalse\ntrue\n')
         if result.stdout != expected:
             sys.stderr.write("Unexpected native networking output.\nExpected:\n" + expected +
                              "Actual:\n" + result.stdout + result.stderr)

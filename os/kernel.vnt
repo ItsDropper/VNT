@@ -34,21 +34,6 @@ fun buffer_ptr() -> string {
     return result
 }
 
-fun buffer_get(index: int) -> int {
-    let result: int = 0
-    unsafe {
-        asm volatile("movq -8(%rbp), %rcx; leaq os_command(%rip), %rdx; movzbl (%rdx,%rcx), %eax; movq %rax, -16(%rbp)")
-    }
-    return result
-}
-
-fun buffer_set(index: int, value: int) {
-    unsafe {
-        asm volatile("movq -8(%rbp), %rax; movq -16(%rbp), %rcx; leaq os_command(%rip), %rdx; movb %cl, (%rdx,%rax)")
-    }
-    return 0
-}
-
 fun serial_puts(text: string) {
     let index: int = 0
     while text[index] != 0 {
@@ -152,7 +137,7 @@ fun kernel_main() {
     while 1 == 1 {
         character = serial_getc()
         if character == 13 || character == 10 {
-            buffer_set(length, 0)
+            buffer[length] = 0
             serial_putc(10)
             handled = 0
 
@@ -195,19 +180,19 @@ fun kernel_main() {
             }
 
             length = 0
-            buffer_set(0, 0)
+            buffer[0] = 0
             serial_puts("VNTOS> ")
         } else if character == 8 || character == 127 {
             if length > 0 {
                 length = length - 1
-                buffer_set(length, 0)
+                buffer[length] = 0
                 serial_putc(8)
                 serial_putc(32)
                 serial_putc(8)
             }
         } else if character >= 32 && character != 127 {
             if length < 127 {
-                buffer_set(length, character)
+                buffer[length] = character
                 length = length + 1
                 serial_putc(character)
             }

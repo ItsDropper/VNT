@@ -368,7 +368,7 @@ void vnt_native_http_async_set_transport(int id, intptr_t transport) {
 #ifdef _WIN32
     HINTERNET abort_request = NULL;
 #endif
-    int abort_socket = 0;
+    int abort_socket = -1;
     async_lock_acquire();
     VntAsyncTask *t = async_find_locked(id);
     if (t && t->state == TASK_RUNNING) {
@@ -384,7 +384,7 @@ void vnt_native_http_async_set_transport(int id, intptr_t transport) {
 #ifdef _WIN32
     if (abort_request) WinHttpCloseHandle(abort_request);
 #else
-    if (abort_socket) shutdown(abort_socket, SHUT_RDWR);
+    if (abort_socket >= 0) shutdown(abort_socket, SHUT_RDWR);
 #endif
 }
 

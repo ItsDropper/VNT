@@ -304,4 +304,4 @@ jobs:
           if missing:
               raise SystemExit("Missing serial shell output: " + ", ".join(missing))
           PY
-          grep -F 'BL12L' build/debug.log
+          grep -F 'B1234LS' build/debug.log

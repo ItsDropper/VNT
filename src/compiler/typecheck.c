@@ -317,7 +317,8 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
             if (container != TY_ARRAY && container != TY_STRING &&
                 container != TY_UNKNOWN && container != TY_OBJECT)
                 error(tc, "indexing requires an array, string, or object.");
-            return container == TY_STRING ? TY_STRING : TY_UNKNOWN;
+            /* A string index is one byte/character, not another string pointer. */
+            return container == TY_STRING ? TY_INT : TY_UNKNOWN;
         }
 
         case AST_MEMBER_EXPRESSION:

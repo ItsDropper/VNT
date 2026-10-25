@@ -472,3 +472,5 @@ boot_stack_top:
 os_cursor: .long 0
 os_command_length: .long 0
 os_command: .skip 64
+
+.section .note.GNU-stack,"",@progbits

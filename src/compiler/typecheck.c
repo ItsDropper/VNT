@@ -4,7 +4,7 @@
 #include <string.h>
 
 typedef enum {
-    TY_UNDECLARED, TY_UNKNOWN, TY_INT, TY_FLOAT, TY_BOOL, TY_STRING,
+    TY_UNDECLARED, TY_UNKNOWN, TY_INT, TY_I64, TY_FLOAT, TY_BOOL, TY_STRING,
     TY_ARRAY, TY_OBJECT, TY_REFERENCE, TY_POINTER, TY_VOID
 } TypeKind;
 
@@ -154,10 +154,11 @@ static void merge_branch_symbols(TypeChecker *tc, const SymbolState *before,
     }
 }
 
-static int numeric(TypeKind t) { return t == TY_INT || t == TY_FLOAT; }
+static int numeric(TypeKind t) { return t == TY_INT || t == TY_I64 || t == TY_FLOAT; }
 
 static TypeKind type_from_name(const char *name) {
     if (!strcmp(name, "int")) return TY_INT;
+    if (!strcmp(name, "i64")) return TY_I64;
     if (!strcmp(name, "float")) return TY_FLOAT;
     if (!strcmp(name, "bool")) return TY_BOOL;
     if (!strcmp(name, "string")) return TY_STRING;

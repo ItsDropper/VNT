@@ -1,4 +1,6 @@
 fun main() {
+    let folded: i64 = 4294967296 + 2147483648
+    print(folded)
     let value: i64 = 4294967296
     print(value)
     value = value * 3

@@ -207,7 +207,7 @@ def main():
                     '[0, 1, 255, 10, 13, 128]\n6\n255\ntrue\n' + conflicting_length_result +
                     '[0, 1, 255, 10, 13, 128]\n'
                     'AUTH_STRIPPED\n204\nHEADER_OK\nPOST_OK:{"native":true}\n'
-                    'POST_OK:SAFE_BODY\n404\ntrue\n')
+                    'POST_OK:SAFE_BODY\n404\ntrue\n' + '\n')
         if result.stdout != expected:
             sys.stderr.write("Unexpected native networking output.\nExpected:\n" + expected +
                              "Actual:\n" + result.stdout + result.stderr)

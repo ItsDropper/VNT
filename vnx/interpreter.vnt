@@ -332,17 +332,15 @@ fun execute() {
         }
     }
 }
-fun main() {
-    print("VNX interpreter (implemented in VNT)")
-    path = input("VNX source file [vnx/game/last_signal.vnx]: ")
-    if path == "" {
-        path = "vnx/game/last_signal.vnx"
-    }
-    source = fs_read(path)
-    if source == "" {
-        print("VNX error: could not read source file: " + path)
-        return
-    }
+print("VNX interpreter (implemented in VNT)")
+path = input("VNX source file [vnx/game/last_signal.vnx]: ")
+if path == "" {
+    path = "vnx/game/last_signal.vnx"
+}
+source = fs_read(path)
+if source == "" {
+    print("VNX error: could not read source file: " + path)
+} else {
     failed = false
     halted = false
     steps = 0
@@ -354,4 +352,3 @@ fun main() {
         execute()
     }
 }
-main()

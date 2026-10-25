@@ -1345,6 +1345,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
         free(raw); goto fail;
     }
     if (sink && has_expected_body_length && stream_body_length < expected_body_length &&
+        !response_no_body &&
         !((code == 301 || code == 302 || code == 303 || code == 307 || code == 308) &&
           redirect_count < 10)) {
         free(raw); goto fail;

@@ -100,6 +100,9 @@ jobs:
           readelf -h freestanding-kernel.elf | grep -F 'ELF64'
           readelf -h freestanding-kernel.elf | grep -F 'Entry point address'
           readelf -l freestanding-kernel.elf | grep -F 'LOAD'
+          ./vnt --emit-freestanding-asm tests/freestanding_i64.vnt -o freestanding-i64.s
+          grep -F 'addq %rcx, %rax' freestanding-i64.s
+          grep -F 'cmpq %rcx, %rax' freestanding-i64.s
           if ./vnt --emit-freestanding-asm tests/freestanding_hosted_rejected.vnt -o freestanding-invalid.s; then
             echo "Freestanding backend incorrectly accepted a hosted print operation."
             exit 1

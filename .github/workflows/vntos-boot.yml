@@ -106,7 +106,7 @@ jobs:
               raise SystemExit("QEMU keyboard-test monitor socket did not become available")
 
           def press(key):
-              monitor.sendall(("sendkey " + key + "\\n").encode("ascii"))
+              monitor.sendall(("sendkey " + key + "\n").encode("ascii"))
               time.sleep(0.12)
 
           def type_command(command):

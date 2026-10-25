@@ -367,6 +367,7 @@ if path == "" {
 source = fs_read(path)
 if source == "" {
     print("VNX error: could not read source file: " + path)
+    process_exit(1)
 } else {
     failed = false
     halted = false
@@ -377,5 +378,8 @@ if source == "" {
     }
     if !failed {
         execute()
+    }
+    if failed {
+        process_exit(1)
     }
 }

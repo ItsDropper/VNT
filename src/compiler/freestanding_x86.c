@@ -304,6 +304,7 @@ int vnt_emit_freestanding_x86_64(const VntIrProgram *ir,
     FILE *out = fopen(assembly_path, "wb");
     if (!out) {
         fprintf(stderr, "Freestanding backend: cannot create '%s'.\n", assembly_path);
+        g.failed = 1;
         goto cleanup;
     }
     g.out = out;
@@ -344,7 +345,9 @@ int vnt_emit_freestanding_x86_64(const VntIrProgram *ir,
           ".globl freestanding_stack_top\n"
           "freestanding_stack_top:\n"
           ".section .note.GNU-stack,\"\",@progbits\n", out);
-    if (ferror(out) || fclose(out) != 0) g.failed = 1;
+    int write_failed = ferror(out);
+    if (fclose(out) != 0) write_failed = 1;
+    if (write_failed) g.failed = 1;
     if (g.failed) remove(assembly_path);
 
 cleanup:

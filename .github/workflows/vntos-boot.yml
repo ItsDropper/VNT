@@ -107,7 +107,7 @@ jobs:
                   time.sleep(0.05)
           else:
               raise SystemExit("QEMU monitor socket did not become available")
-          monitor.sendall(b"pmemsave 0xb8000 4000 build/vga.bin\\n")
+          monitor.sendall(b"pmemsave 0xb8000 4000 build/vga.bin\n")
           deadline = time.monotonic() + 3
           while not os.path.exists("build/vga.bin") and time.monotonic() < deadline:
               time.sleep(0.05)

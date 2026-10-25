@@ -155,6 +155,15 @@ fun console_puts(text: string) {
     return 0
 }
 
+fun console_puts_offset(text: string, offset: int) {
+    let index: int = 0
+    while text[index + offset] != 0 {
+        console_putc(text[index + offset])
+        index = index + 1
+    }
+    return 0
+}
+
 # 8042 controller polling. Timeouts prevent a missing PS/2 device from hanging boot.
 fun ps2_wait_input_clear() -> int {
     let attempts: int = 0

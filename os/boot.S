@@ -126,18 +126,22 @@ os_shell:
     call os_puts
 
 .Los_keyboard_poll:
-    inb $0x64, %al
+    /* COM1 receive-data-ready: this is a serial console, not PS/2 input. */
+    movw $0x3fd, %dx
+    inb %dx, %al
     testb $1, %al
     jz .Los_keyboard_poll
-    inb $0x60, %al
-    testb $0x80, %al
-    jnz .Los_keyboard_poll
-    cmpb $0x1c, %al
+    movw $0x3f8, %dx
+    inb %dx, %al
+    cmpb $'\r', %al
     je .Los_enter
-    cmpb $0x0e, %al
+    cmpb $'\n', %al
+    je .Los_enter
+    cmpb $8, %al
     je .Los_backspace
-    call os_scancode_ascii
-    testl %eax, %eax
+    cmpb $127, %al
+    je .Los_backspace
+    testb %al, %al
     jz .Los_keyboard_poll
     movb %al, %r13b
     movl os_command_length(%rip), %eax
@@ -167,6 +171,13 @@ os_shell:
     leaq 0xb8000(,%rax,2), %rdx
     movb $' ', (%rdx)
     movb $0x0f, 1(%rdx)
+    /* Erase the character on the serial terminal too. */
+    movl $8, %edi
+    call os_putc
+    movl $' ', %edi
+    call os_putc
+    movl $8, %edi
+    call os_putc
     jmp .Los_keyboard_poll
 
 .Los_enter:

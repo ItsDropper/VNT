@@ -1,0 +1,8 @@
+fun kernel_main() {
+    let value: i64 = 2147483647
+    value = value + 1
+    if value > 2147483647 {
+        return 0
+    }
+    return 1
+}

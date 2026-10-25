@@ -18,6 +18,10 @@ These tutorials teach VNT through small, practical projects. VNT is experimental
 9. [Build a complete local task tracker](09-build-a-project.md)
 10. [Low-level systems programming](10-low-level-systems-programming.md)
 
+## Full operating-system development course
+
+[Build VNTOS from the ground up — 19 beginner-friendly lessons](courses/os/README.md). Starts with computer and OS fundamentals, then covers the build pipeline, GRUB/Multiboot2, x86-64 startup, paging, ELF/linking, freestanding VNT, serial I/O, debugging, testing, and a first kernel modification. Designed to explain the current `os/` implementation without claiming unimplemented subsystems exist.
+
 ## Systems programming course
 
 11. [Native memory fundamentals](04-native-memory.md) — pointers, allocation lifetime, and unsafe blocks.
@@ -38,4 +42,4 @@ For a source file called `lesson.vnt` in the repository root:
 
 The compiler also keeps generated assembly beside the output executable. GUI examples require Windows. If an example fails, confirm the compiler was built from the current repository revision and run `.\\tests\\run_language_checks.ps1`.
 
-For kernel experiments, use QEMU and follow the [VNTOS walkthrough](05-vntos-kernel-walkthrough.md). Do not write an experimental kernel image to a disk containing important data.
+For kernel experiments, use QEMU and follow the [complete VNTOS course](courses/os/README.md) or the [short kernel walkthrough](05-vntos-kernel-walkthrough.md). Do not write an experimental kernel image to a disk containing important data.

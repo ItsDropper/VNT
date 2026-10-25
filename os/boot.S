@@ -380,7 +380,7 @@ os_put_hex64:
 .Los_cmd_mem: .asciz "mem"
 .Los_cmd_halt: .asciz "halt"
 .Los_echo_prefix: .asciz "echo "
-.Los_help_text: .asciz "Commands: help, about, clear, echo, reboot, halt\r\n"
+.Los_help_text: .asciz "Commands: help, about, clear, echo, mem, reboot, halt\r\n"
 .Los_about_text: .asciz "VNTOS: VNT-compiled freestanding kernel on x86-64.\r\n"
 .Los_clear_text: .asciz "\033[2J\033[H"
 .Los_unknown: .asciz "Unknown command. Type help.\r\n"

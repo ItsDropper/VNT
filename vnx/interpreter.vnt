@@ -87,17 +87,17 @@ fun lex(source: string) {
                             emit("EQ", "==", line)
                             i = i + 2
                         } else {
-                            if (ch >= "a" && ch <= "z") || (ch >= "A" && ch <= "Z") || ch == "_" {
-                                word = ""
-                                while i < len(source) && (((source[i] >= "a" && source[i] <= "z") || (source[i] >= "A" && source[i] <= "Z") || (source[i] >= "0" && source[i] <= "9") || source[i] == "_")) {
-                                    word = word + source[i]
-                                    i = i + 1
-                                }
-                                emit("ID", word, line)
-                            } else {
-                                print("VNX lexer error at line " + line + ": unexpected character " + ch)
+                            word = ""
+                            while i < len(source) && source[i] != " " && source[i] != "\\t" && source[i] != "\\r" && source[i] != "\\n" && source[i] != "=" && source[i] != "\\"" && source[i] != "#" {
+                                word = word + source[i]
+                                i = i + 1
+                            }
+                            if word == "" {
+                                print("VNX lexer error: unexpected character")
                                 failed = true
                                 i = i + 1
+                            } else {
+                                emit("ID", word, line)
                             }
                         }
                     }

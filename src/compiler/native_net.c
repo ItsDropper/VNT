@@ -16,6 +16,12 @@
 /* Buffered convenience requests have an explicit ceiling. Large payloads must use a streaming API. */
 #define VNT_HTTP_MAX_BUFFERED_RESPONSE (64u * 1024u * 1024u)
 
+#ifdef _WIN32
+static __declspec(thread) int vnt_native_http_disable_pool;
+#else
+static __thread int vnt_native_http_disable_pool;
+#endif
+
 static char *net_copy(const char *s, size_t n) {
     char *p = (char *)malloc(n + 1);
     if (!p) return NULL;
@@ -950,7 +956,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     int fd = -1, reused_pool = 0;
     SSL_CTX *ctx = NULL;
     SSL *ssl = NULL;
-    if (!use_proxy && vnt_http_pool_fd >= 0) {
+    if (!vnt_native_http_disable_pool && !use_proxy && vnt_http_pool_fd >= 0) {
         if (vnt_http_pool_host && vnt_http_pool_port &&
             vnt_http_pool_tls == u.tls &&
             !strcmp(vnt_http_pool_host, u.host) && !strcmp(vnt_http_pool_port, u.port)) {
@@ -1175,7 +1181,7 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     int connection_close = http_header_has_token(raw, headerlen, "Connection", "close");
     int http11 = !strncmp(raw, "HTTP/1.1 ", 9);
     int explicit_keepalive = http_header_has_token(raw, headerlen, "Connection", "keep-alive");
-    int reusable = !use_proxy && !connection_close && (http11 || explicit_keepalive) &&
+    int reusable = !vnt_native_http_disable_pool && !use_proxy && !connection_close && (http11 || explicit_keepalive) &&
                    (response_no_body || has_expected_body_length || chunked_response);
     free(raw);
     if (reusable && result) {
@@ -1485,3 +1491,14 @@ int vnt_native_http_download_stream(const char *url, const char *destination,
     return vnt_native_http_download_stream_impl(url, destination, headers, status, 0);
 }
 #endif
+
+/* Async workers bypass the process-global Unix keep-alive slot. */
+char *vnt_native_http_request_async(const char *method, const char *url,
+                                    const char *headers, const char *body,
+                                    int *status, size_t *response_length) {
+    int previous = vnt_native_http_disable_pool;
+    vnt_native_http_disable_pool = 1;
+    char *result = vnt_native_http_request(method, url, headers, body, status, response_length);
+    vnt_native_http_disable_pool = previous;
+    return result;
+}

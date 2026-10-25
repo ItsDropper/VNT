@@ -1878,6 +1878,13 @@ extern char *vnt_native_http_request_bytes(const char *method, const char *url,
 extern int vnt_native_http_download_stream(const char *url, const char *destination,
                                            const char *headers, int *status);
 extern char *vnt_native_url_encode(const char *text);
+extern int vnt_native_http_async_start(const char *method, const char *url, const char *headers, const char *body);
+extern int vnt_native_http_async_poll(int handle);
+extern int vnt_native_http_async_wait(int handle, unsigned int timeout_ms);
+extern int vnt_native_http_async_cancel(int handle);
+extern char *vnt_native_http_async_result(int handle, size_t *length);
+extern int vnt_native_http_async_status(int handle);
+extern int vnt_native_http_async_release(int handle);
 
 static const char *vnt_net_string(VntValue *value, const char *function_name) {
     if (!value || value->type != VNT_STRING) {
@@ -1961,6 +1968,40 @@ VNT_NATIVE_ABI VntValue *vnt_net_download(VntValue *url, VntValue *destination,
         vnt_net_string(destination, "net_download()"),
         vnt_net_string(headers, "net_download()"), &status);
     return vnt_bool(ok);
+}
+
+VNT_NATIVE_ABI VntValue *vnt_net_async_start(VntValue *method, VntValue *url,
+                                                    VntValue *headers, VntValue *body) {
+    int handle = vnt_native_http_async_start(vnt_net_string(method, "net_async_start()"),
+        vnt_net_string(url, "net_async_start()"),
+        vnt_net_string(headers, "net_async_start()"),
+        vnt_net_string(body, "net_async_start()"));
+    return vnt_int(handle);
+}
+VNT_NATIVE_ABI VntValue *vnt_net_async_poll(VntValue *handle) {
+    return vnt_int(vnt_native_http_async_poll(handle && handle->type == VNT_INT ? handle->integer : 0));
+}
+VNT_NATIVE_ABI VntValue *vnt_net_async_wait(VntValue *handle, VntValue *timeout) {
+    unsigned int ms = timeout && timeout->type == VNT_INT && timeout->integer > 0
+        ? (unsigned int)timeout->integer : 0;
+    return vnt_bool(vnt_native_http_async_wait(handle && handle->type == VNT_INT ? handle->integer : 0, ms) == 1);
+}
+VNT_NATIVE_ABI VntValue *vnt_net_async_cancel(VntValue *handle) {
+    return vnt_bool(vnt_native_http_async_cancel(handle && handle->type == VNT_INT ? handle->integer : 0));
+}
+VNT_NATIVE_ABI VntValue *vnt_net_async_result(VntValue *handle) {
+    size_t length = 0;
+    char *response = vnt_native_http_async_result(handle && handle->type == VNT_INT ? handle->integer : 0, &length);
+    if (!response) return vnt_string("");
+    VntValue *result = vnt_string(response);
+    free(response);
+    return result;
+}
+VNT_NATIVE_ABI VntValue *vnt_net_async_status(VntValue *handle) {
+    return vnt_int(vnt_native_http_async_status(handle && handle->type == VNT_INT ? handle->integer : 0));
+}
+VNT_NATIVE_ABI VntValue *vnt_net_async_release(VntValue *handle) {
+    return vnt_bool(vnt_native_http_async_release(handle && handle->type == VNT_INT ? handle->integer : 0));
 }
 
 VNT_NATIVE_ABI VntValue *vnt_net_url_encode(VntValue *text) {

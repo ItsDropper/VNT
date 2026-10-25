@@ -201,6 +201,25 @@ static int prune_unreachable_blocks(VntCfg *cfg) {
     return 1;
 }
 
+/* Fold only branches whose condition is already a boolean literal.
+   The literal has no side effects, so selecting an edge preserves semantics. */
+static void simplify_constant_branches(const VntIrProgram *ir, VntCfg *cfg) {
+    for (size_t i = 0; i < cfg->block_count; ++i) {
+        VntCfgBlock *block = &cfg->blocks[i];
+        if (block->terminator != VNT_CFG_BRANCH ||
+            block->condition >= ir->node_count) continue;
+        const VntIrNode *condition = &ir->nodes[block->condition];
+        if (condition->opcode != VNT_IR_BOOLEAN) continue;
+        size_t selected = condition->value.boolean
+            ? block->true_successor : block->false_successor;
+        block->terminator = VNT_CFG_JUMP;
+        block->instruction = VNT_IR_NO_NODE;
+        block->condition = VNT_IR_NO_NODE;
+        block->true_successor = selected;
+        block->false_successor = VNT_IR_NO_NODE;
+    }
+}
+
 int vnt_cfg_build(const VntIrProgram *ir, VntCfg *cfg) {
     if (!ir || !cfg || !vnt_ir_validate(ir)) return 0;
     memset(cfg, 0, sizeof(*cfg));
@@ -220,6 +239,7 @@ int vnt_cfg_build(const VntIrProgram *ir, VntCfg *cfg) {
                                       VNT_IR_NO_NODE, VNT_IR_NO_NODE, 0);
         if (b.failed || !add_entry(cfg, entry)) goto fail;
     }
+    simplify_constant_branches(ir, cfg);
     if (!prune_unreachable_blocks(cfg) || !vnt_cfg_validate(cfg)) goto fail;
     return 1;
 
@@ -247,16 +267,26 @@ int vnt_cfg_validate(const VntCfg *cfg) {
                 b->false_successor == VNT_IR_NO_NODE ||
                 b->instruction != VNT_IR_NO_NODE) return 0;
         } else if (b->terminator == VNT_CFG_EXIT) {
-            if (i != cfg->exit_block || b->true_successor != VNT_IR_NO_NODE ||
+            if (i != cfg->exit_block || b->instruction != VNT_IR_NO_NODE ||
+                b->condition != VNT_IR_NO_NODE ||
+                b->true_successor != VNT_IR_NO_NODE ||
                 b->false_successor != VNT_IR_NO_NODE) return 0;
         } else if (b->terminator == VNT_CFG_RETURN) {
             if (b->instruction == VNT_IR_NO_NODE ||
+                b->condition != VNT_IR_NO_NODE ||
                 b->true_successor != cfg->exit_block ||
                 b->false_successor != VNT_IR_NO_NODE) return 0;
-        } else {
-            if (b->true_successor == VNT_IR_NO_NODE ||
-                b->false_successor != VNT_IR_NO_NODE ||
-                b->condition != VNT_IR_NO_NODE) return 0;
+        } else if (b->terminator == VNT_CFG_JUMP) {
+            /* A jump may be sourced by break/continue or synthesized by a
+               constant-branch fold; both forms have no condition. */
+            if (b->condition != VNT_IR_NO_NODE ||
+                b->true_successor == VNT_IR_NO_NODE ||
+                b->false_successor != VNT_IR_NO_NODE) return 0;
+        } else { /* VNT_CFG_FALLTHROUGH */
+            if (b->instruction == VNT_IR_NO_NODE ||
+                b->condition != VNT_IR_NO_NODE ||
+                b->true_successor == VNT_IR_NO_NODE ||
+                b->false_successor != VNT_IR_NO_NODE) return 0;
         }
     }
     return 1;
@@ -518,6 +548,95 @@ allocation_failure:
     return 0;
 }
 
+
+
+static size_t liveness_variable_index(const VntCfgLiveness *a, const char *name) {
+    if (!a || !name) return VNT_IR_NO_NODE;
+    for (size_t i = 0; i < a->variable_count; ++i)
+        if (a->names[i] && strcmp(a->names[i], name) == 0) return i;
+    return VNT_IR_NO_NODE;
+}
+
+int vnt_cfg_compute_liveness(const VntIrProgram *ir, const VntCfg *cfg,
+                             VntCfgLiveness *result) {
+    if (!result) return 0;
+    memset(result, 0, sizeof(*result));
+    if (!ir || !cfg || !vnt_ir_validate(ir) || !vnt_cfg_validate(cfg)) return 0;
+    VariableSet variables = {0};
+    if (!collect_variables(ir, &variables)) goto fail;
+    size_t blocks = cfg->block_count, vars = variables.count;
+    if (vars && blocks > (size_t)-1 / vars) goto fail;
+    size_t cells = blocks * vars, alloc_cells = cells ? cells : 1;
+    unsigned char *uses = calloc(alloc_cells, 1);
+    unsigned char *defs = calloc(alloc_cells, 1);
+    unsigned char *in = calloc(alloc_cells, 1);
+    unsigned char *out = calloc(alloc_cells, 1);
+    if (!uses || !defs || !in || !out) {
+        free(uses); free(defs); free(in); free(out);
+        goto fail;
+    }
+    for (size_t b = 0; b < blocks; ++b) {
+        const VntCfgBlock *block = &cfg->blocks[b];
+        if ((block->instruction != VNT_IR_NO_NODE && block->instruction >= ir->node_count) ||
+            (block->condition != VNT_IR_NO_NODE && block->condition >= ir->node_count)) {
+            free(uses); free(defs); free(in); free(out);
+            goto fail;
+        }
+        collect_block_effects(ir, block, &variables, uses + b * vars, defs + b * vars);
+    }
+    /* OUT[b] = union(IN[successors]); IN[b] = USE[b] | (OUT[b] - DEF[b]). */
+    int changed;
+    do {
+        changed = 0;
+        for (size_t rev = blocks; rev > 0; --rev) {
+            size_t b = rev - 1;
+            for (size_t v = 0; v < vars; ++v) {
+                unsigned char next_out = 0;
+                size_t succ[2] = {cfg->blocks[b].true_successor,
+                                  cfg->blocks[b].false_successor};
+                for (size_t e = 0; e < 2; ++e)
+                    if (succ[e] != VNT_IR_NO_NODE)
+                        next_out |= in[succ[e] * vars + v];
+                unsigned char next_in = (unsigned char)(
+                    uses[b * vars + v] || (next_out && !defs[b * vars + v]));
+                if (out[b * vars + v] != next_out) {
+                    out[b * vars + v] = next_out; changed = 1;
+                }
+                if (in[b * vars + v] != next_in) {
+                    in[b * vars + v] = next_in; changed = 1;
+                }
+            }
+        }
+    } while (changed);
+    free(uses); free(defs);
+    result->names = variables.names;
+    result->variable_count = vars;
+    result->block_count = blocks;
+    result->live_in = in;
+    result->live_out = out;
+    return 1;
+fail:
+    free(variables.names);
+    return 0;
+}
+
+int vnt_cfg_variable_live_in(const VntCfgLiveness *a, size_t block, const char *name) {
+    if (!a || !a->live_in || block >= a->block_count) return 0;
+    size_t v = liveness_variable_index(a, name);
+    return v != VNT_IR_NO_NODE && a->live_in[block * a->variable_count + v] != 0;
+}
+
+int vnt_cfg_variable_live_out(const VntCfgLiveness *a, size_t block, const char *name) {
+    if (!a || !a->live_out || block >= a->block_count) return 0;
+    size_t v = liveness_variable_index(a, name);
+    return v != VNT_IR_NO_NODE && a->live_out[block * a->variable_count + v] != 0;
+}
+
+void vnt_cfg_liveness_free(VntCfgLiveness *a) {
+    if (!a) return;
+    free(a->names); free(a->live_in); free(a->live_out);
+    memset(a, 0, sizeof(*a));
+}
 
 void vnt_cfg_free(VntCfg *cfg) {
     if (!cfg) return;

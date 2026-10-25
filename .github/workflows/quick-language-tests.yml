@@ -89,6 +89,15 @@ jobs:
             src/compiler/freestanding_x86.c \
             -o vnt
 
+      - name: Build and run HIR/CFG invariant tests
+        shell: bash
+        run: |
+          gcc -O2 -Wall -Wextra -Iinclude \
+            tests/hir_invariants.c src/ast.c src/compiler/ir.c \
+            src/compiler/ir_lower.c src/compiler/cfg.c \
+            -o hir-invariants
+          ./hir-invariants
+
       - name: Emit assembly without invoking the hosted linker
         shell: bash
         run: |
@@ -199,7 +208,7 @@ jobs:
 
           ./vnt-hir-smoke.exe > vnt-hir-actual.txt
           tr -d '\r' < vnt-hir-actual.txt > vnt-hir-actual-lf.txt
-          printf '14\n4\nfalse\n3.75\n10\n3\ntrue\nHIR_CONSTANT_FOLDING_OK\n' > vnt-hir-expected.txt
+          printf '14\n4\nfalse\n3.75\n10\n3\ntrue\n-7\ntrue\n-2.5\nHIR_CONSTANT_FOLDING_OK\n' > vnt-hir-expected.txt
           diff -u vnt-hir-expected.txt vnt-hir-actual-lf.txt
 
           set +e

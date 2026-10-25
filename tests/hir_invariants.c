@@ -17,7 +17,7 @@ static int failures;
     } \
 } while (0)
 
-static AstNode *binary(int left, int right, BinaryOperator op) {
+static AstNode *binary(int64_t left, int64_t right, BinaryOperator op) {
     return ast_create_binary(ast_create_integer(left), ast_create_integer(right), op);
 }
 
@@ -64,9 +64,20 @@ static int check_fold_case(AstNode *expression, VntIrOpcode expected_opcode,
         if (expected_opcode == VNT_IR_INTEGER)
             CHECK(ir.nodes[value].value.integer == expected_integer,
                   "folded integer has expected value");
+        else if (expected_opcode == VNT_IR_BOOLEAN)
+            CHECK(ir.nodes[value].value.boolean == expected_integer,
+                  "folded boolean has expected value");
     }
 
     CHECK(vnt_ir_validate(&ir), "HIR validates after AST is freed");
+
+    /* Running the optimizer again must be structurally stable. */
+    size_t optimized_count = ir.node_count;
+    CHECK(vnt_ir_optimize(&ir), "optimization is safe to run repeatedly");
+    CHECK(ir.node_count == optimized_count,
+          "a second optimization pass does not change stable HIR");
+    CHECK(vnt_ir_validate(&ir), "HIR remains valid after repeated optimization");
+
     VntCfg cfg = {0};
     CHECK(vnt_cfg_build(&ir, &cfg), "CFG builds from optimized HIR");
     CHECK(vnt_cfg_validate(&cfg), "CFG validates after HIR optimization");
@@ -196,6 +207,54 @@ static void check_cfg_prunes_unreachable_statements(void) {
     ast_free(program);
 }
 
+static void check_cfg_constant_branch_pruning(void) {
+    AstNode *statements = NULL;
+    ast_append(&statements,
+        ast_create_if(ast_create_boolean(1),
+                      ast_create_print(ast_create_integer(11)),
+                      ast_create_print(ast_create_integer(22))));
+    AstNode *program = ast_create_program(statements);
+    VntIrProgram ir = {0};
+    CHECK(program != NULL, "constant-CFG-branch AST allocated");
+    if (!program) return;
+    CHECK(vnt_ir_lower(&ir, program), "constant-CFG-branch HIR lowering succeeds");
+    if (ir.nodes) {
+        VntCfg cfg = {0};
+        CHECK(vnt_cfg_build(&ir, &cfg),
+              "CFG simplifies literal boolean branch conditions");
+        if (cfg.blocks) {
+            CHECK(cfg.block_count == 3,
+                  "constant branch pruning removes the unreachable arm");
+            CHECK(vnt_cfg_validate(&cfg),
+                  "CFG remains valid after constant branch pruning");
+            int saw_synthetic_jump = 0;
+            for (size_t i = 0; i < cfg.block_count; ++i) {
+                const VntCfgBlock *block = &cfg.blocks[i];
+                if (block->terminator == VNT_CFG_JUMP &&
+                    block->instruction == VNT_IR_NO_NODE)
+                    saw_synthetic_jump = 1;
+            }
+            CHECK(saw_synthetic_jump,
+                  "folded branch is represented by a synthetic jump");
+            for (size_t i = 0; i < cfg.block_count; ++i) {
+                VntCfgBlock *block = &cfg.blocks[i];
+                if (block->terminator != VNT_CFG_FALLTHROUGH) continue;
+                size_t saved_instruction = block->instruction;
+                block->instruction = VNT_IR_NO_NODE;
+                CHECK(!vnt_cfg_validate(&cfg),
+                      "CFG validator rejects fallthrough blocks without instructions");
+                block->instruction = saved_instruction;
+                break;
+            }
+            CHECK(vnt_cfg_validate(&cfg),
+                  "restored CFG validates after malformed-graph negative test");
+        }
+        vnt_cfg_free(&cfg);
+    }
+    vnt_ir_free(&ir);
+    ast_free(program);
+}
+
 static void check_cfg_control_flow(void) {
     AstNode *statements = NULL;
     ast_append(&statements,
@@ -246,13 +305,62 @@ static int remove_initialization(VntIrNode *node) {
     return 1;
 }
 
+
+static void check_cfg_liveness(void) {
+    AstNode *statements = NULL;
+    ast_append(&statements, ast_create_variable_declaration("live_x", ast_create_integer(41)));
+    ast_append(&statements, ast_create_print(ast_create_variable("live_x")));
+    AstNode *program = ast_create_program(statements);
+    VntIrProgram ir = {0};
+    CHECK(program != NULL, "liveness AST allocated");
+    if (!program) return;
+    CHECK(vnt_ir_lower(&ir, program), "liveness HIR lowering succeeds");
+    if (ir.nodes) {
+        VntCfg cfg = {0};
+        CHECK(vnt_cfg_build(&ir, &cfg), "liveness CFG builds");
+        VntCfgLiveness analysis = {0};
+        if (cfg.blocks) {
+            CHECK(vnt_cfg_compute_liveness(&ir, &cfg, &analysis),
+                  "backward variable liveness analysis succeeds");
+            if (analysis.live_in && analysis.live_out) {
+                size_t decl = find_role(&ir, ir.root, VNT_IR_EDGE_STATEMENT);
+                size_t print = decl == VNT_IR_NO_NODE ? VNT_IR_NO_NODE
+                    : ir.nodes[decl].next_sibling;
+                size_t decl_block = VNT_IR_NO_NODE, print_block = VNT_IR_NO_NODE;
+                for (size_t b = 0; b < cfg.block_count; ++b) {
+                    if (cfg.blocks[b].instruction == decl) decl_block = b;
+                    if (cfg.blocks[b].instruction == print) print_block = b;
+                }
+                CHECK(decl != VNT_IR_NO_NODE && print != VNT_IR_NO_NODE &&
+                      decl_block != VNT_IR_NO_NODE && print_block != VNT_IR_NO_NODE,
+                      "liveness statements map to CFG blocks");
+                if (decl_block != VNT_IR_NO_NODE && print_block != VNT_IR_NO_NODE) {
+                    const char *name = ir.nodes[decl].value.text;
+                    CHECK(!vnt_cfg_variable_live_in(&analysis, decl_block, name),
+                          "defined variable is not live before its declaration");
+                    CHECK(vnt_cfg_variable_live_out(&analysis, decl_block, name),
+                          "variable remains live after declaration until its read");
+                    CHECK(vnt_cfg_variable_live_in(&analysis, print_block, name),
+                          "variable is live into the block that reads it");
+                    CHECK(!vnt_cfg_variable_live_out(&analysis, print_block, name),
+                          "variable is dead after its final read");
+                }
+            }
+            vnt_cfg_liveness_free(&analysis);
+            vnt_cfg_free(&cfg);
+        }
+    }
+    vnt_ir_free(&ir);
+    ast_free(program);
+}
+
 static void check_cfg_definite_assignment(void) {
     /* A value assigned on only one incoming branch must not count as
        definitely initialized after the merge. */
     AstNode *statements = NULL;
     ast_append(&statements, ast_create_variable_declaration("x", ast_create_integer(1)));
     ast_append(&statements,
-        ast_create_if(ast_create_boolean(1),
+        ast_create_if(ast_create_binary(ast_create_integer(1), ast_create_integer(2), BINARY_LESS),
                       ast_create_variable_declaration("x", ast_create_integer(2)),
                       ast_create_print(ast_create_integer(3))));
     ast_append(&statements, ast_create_print(ast_create_variable("x")));
@@ -302,7 +410,7 @@ static void check_cfg_definite_assignment(void) {
     statements = NULL;
     ast_append(&statements, ast_create_variable_declaration("x", ast_create_integer(1)));
     ast_append(&statements,
-        ast_create_if(ast_create_boolean(1),
+        ast_create_if(ast_create_binary(ast_create_integer(1), ast_create_integer(2), BINARY_LESS),
                       ast_create_variable_declaration("x", ast_create_integer(2)),
                       ast_create_variable_declaration("x", ast_create_integer(3))));
     ast_append(&statements, ast_create_print(ast_create_variable("x")));
@@ -354,11 +462,17 @@ static void check_cfg_definite_assignment(void) {
 int main(void) {
     check_fold_case(binary(2, 3, BINARY_ADD), VNT_IR_INTEGER, 5,
                     "safe integer addition folds");
-    check_fold_case(binary(INT_MAX, 1, BINARY_ADD), VNT_IR_BINARY, 0,
+    check_fold_case(ast_create_unary(ast_create_integer(7), UNARY_NEGATE),
+                    VNT_IR_INTEGER, -7, "safe unary integer negation folds");
+    check_fold_case(ast_create_unary(ast_create_boolean(0), UNARY_NOT),
+                    VNT_IR_BOOLEAN, 1, "boolean negation folds");
+    check_fold_case(ast_create_unary(ast_create_integer(INT64_MIN), UNARY_NEGATE),
+                    VNT_IR_UNARY, 0, "signed negation overflow is not folded");
+    check_fold_case(binary(INT64_MAX, 1, BINARY_ADD), VNT_IR_BINARY, 0,
                     "integer overflow is not folded");
     check_fold_case(binary(1, 0, BINARY_DIVIDE), VNT_IR_BINARY, 0,
                     "integer division by zero is not folded");
-    check_fold_case(binary(INT_MIN, -1, BINARY_DIVIDE), VNT_IR_BINARY, 0,
+    check_fold_case(binary(INT64_MIN, -1, BINARY_DIVIDE), VNT_IR_BINARY, 0,
                     "signed division overflow is not folded");
     check_fold_case(ast_create_binary(ast_create_float(1.0), ast_create_float(0.0),
                                       BINARY_DIVIDE),
@@ -370,8 +484,10 @@ int main(void) {
     check_constant_propagation();
     check_rejects_disconnected_cycle();
     check_cfg_control_flow();
+    check_cfg_constant_branch_pruning();
     check_cfg_prunes_unreachable_statements();
     check_cfg_definite_assignment();
+    check_cfg_liveness();
 
     if (failures) {
         fprintf(stderr, "%d HIR invariant test(s) failed.\n", failures);

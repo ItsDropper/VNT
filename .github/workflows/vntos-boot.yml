@@ -51,7 +51,7 @@ jobs:
       - name: Boot guest and test interactive shell
         shell: bash
         run: |
-          qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -monitor none -serial unix:build/qemu-serial.sock,server,nowait -debugcon file:build/debug.log -global isa-debugcon.iobase=0xe9 -no-reboot -no-shutdown &
+          qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -monitor unix:build/qemu-monitor.sock,server,nowait -serial unix:build/qemu-serial.sock,server,nowait -debugcon file:build/debug.log -global isa-debugcon.iobase=0xe9 -no-reboot -no-shutdown &
           qemu_pid=$!
           cleanup_qemu() {
             kill "$qemu_pid" 2>/dev/null || true
@@ -59,6 +59,7 @@ jobs:
           }
           trap cleanup_qemu EXIT
           python3 - <<'PY'
+          import os
           import socket
           import time
 
@@ -93,6 +94,33 @@ jobs:
           if b"VNTOS_COMMAND_LINE_READY" not in output:
               print(output.decode("ascii", errors="replace"))
               raise SystemExit("VNTOS did not reach its interactive command prompt")
+
+          # Snapshot VGA text memory before shell output scrolls the banner away.
+          monitor = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+          monitor.settimeout(0.2)
+          monitor_path = "build/qemu-monitor.sock"
+          for _ in range(100):
+              try:
+                  monitor.connect(monitor_path)
+                  break
+              except OSError:
+                  time.sleep(0.05)
+          else:
+              raise SystemExit("QEMU monitor socket did not become available")
+          monitor.sendall(b"pmemsave 0xb8000 4000 build/vga.bin\\n")
+          deadline = time.monotonic() + 3
+          while not os.path.exists("build/vga.bin") and time.monotonic() < deadline:
+              time.sleep(0.05)
+          monitor.close()
+          if not os.path.exists("build/vga.bin") or os.path.getsize("build/vga.bin") != 4000:
+              raise SystemExit("Could not snapshot the VGA text buffer")
+          with open("build/vga.bin", "rb") as image:
+              vga = image.read()
+          vga_chars = vga[0::2]
+          if b"VNTOS" not in vga_chars:
+              raise SystemExit("VGA text buffer does not contain the VNTOS banner")
+          if b"Booting from DVD/CD..." in vga_chars:
+              raise SystemExit("SeaBIOS boot text remains in the VGA buffer")
 
           for command in (b"help\r", b"about\r", b"echo tesX\x7ft\r",
                           b"mem\r", b"mouse\r", b"not-a-command\r", b"halt\r"):

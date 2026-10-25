@@ -14,7 +14,7 @@ On Debian/Ubuntu/WSL, install the build and ISO tools:
     bash os/build.sh
 
 The script builds the VNT compiler, compiles os/kernel.vnt, assembles the
-small CPU bootstrap, and links a freestanding ELF and bootable ISO. The VGA
+small CPU bootstrap, and links a freestanding ELF and bootable ISO. The CI QEMU test also snapshots the VGA text buffer and verifies that the VNTOS banner is visible and stale SeaBIOS boot text is gone. The VGA
 cursor references shared `vntos_state` storage, and PS/2 status polling uses
 a bounded retry counter whose stack slot is not overwritten by inline asm.
 

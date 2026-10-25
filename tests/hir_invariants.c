@@ -236,6 +236,18 @@ static void check_cfg_constant_branch_pruning(void) {
             }
             CHECK(saw_synthetic_jump,
                   "folded branch is represented by a synthetic jump");
+            for (size_t i = 0; i < cfg.block_count; ++i) {
+                VntCfgBlock *block = &cfg.blocks[i];
+                if (block->terminator != VNT_CFG_FALLTHROUGH) continue;
+                size_t saved_instruction = block->instruction;
+                block->instruction = VNT_IR_NO_NODE;
+                CHECK(!vnt_cfg_validate(&cfg),
+                      "CFG validator rejects fallthrough blocks without instructions");
+                block->instruction = saved_instruction;
+                break;
+            }
+            CHECK(vnt_cfg_validate(&cfg),
+                  "restored CFG validates after malformed-graph negative test");
         }
         vnt_cfg_free(&cfg);
     }

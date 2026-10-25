@@ -117,30 +117,21 @@ fun lex(source: string) {
 fun is_delimiter(ch: string) -> bool {
     if ch == " " {
         return true
-    } else {
-        if ch == "\\t" {
-            return true
-        } else {
-            if ch == "\\r" {
-                return true
-            } else {
-                if ch == "\\n" {
-                    return true
-                } else {
-                    if ch == "=" {
-                        return true
-                    } else {
-                        if ch == "\\"" {
-                            return true
-                        } else {
-                            if ch == "#" {
-                                return true
-                            }
-                        }
-                    }
-                }
-            }
-        }
+    }
+    if ch == "\\t" {
+        return true
+    }
+    if ch == "\\r" {
+        return true
+    }
+    if ch == "\\n" {
+        return true
+    }
+    if ch == "=" {
+        return true
+    }
+    if ch == "#" {
+        return true
     }
     return false
 }

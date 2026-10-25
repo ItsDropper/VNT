@@ -1344,7 +1344,9 @@ static char *vnt_native_http_request_impl(const char *method, const char *url,
     if (!sink && has_expected_body_length && used - headerlen < expected_body_length) {
         free(raw); goto fail;
     }
-    if (sink && has_expected_body_length && stream_body_length < expected_body_length) {
+    if (sink && has_expected_body_length && stream_body_length < expected_body_length &&
+        !((code == 301 || code == 302 || code == 303 || code == 307 || code == 308) &&
+          redirect_count < 10)) {
         free(raw); goto fail;
     }
     char *sep = strstr(raw, "\r\n\r\n");

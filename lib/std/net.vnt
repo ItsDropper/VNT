@@ -110,7 +110,7 @@ export fun search_mods(query) {
 }
 
 # Bounded asynchronous requests. wait() returns false on timeout or invalid handle.
-# cancel() currently cancels queued requests only; it returns false after a worker starts.
+# cancel() cancels queued requests or interrupts an active transport.
 export fun async_start(method, url, headers, body) {
     return net_async_start(method, url, headers, body)
 }

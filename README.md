@@ -22,6 +22,7 @@ The project focuses on a small, understandable language, native execution, and a
 - [API reference](docs/api-reference.md)
 - [Raw pointers and memory](docs/raw-memory.md)
 - [Advanced low-level systems programming course](docs/tutorials/10-low-level-systems-programming.md)
+- [Build and try the VNTOS bootable kernel](docs/tutorials/vntos-beginners.md)
 - [Examples and tutorials](#examples-and-tutorials)
 - [Compiler pipeline](#compiler-pipeline)
 - [Project layout](#project-layout)

@@ -5,7 +5,7 @@
 # assembly until the freestanding target exposes dedicated I/O intrinsics.
 fun serial_init() {
     unsafe {
-        asm volatile("movw $0x3f9, %dx\nxorb %al, %al\noutb %al, %dx\nmovw $0x3fb, %dx\nmovb $0x80, %al\noutb %al, %dx\nmovw $0x3f8, %dx\nmovb $1, %al\noutb %al, %dx\nmovw $0x3f9, %dx\nxorb %al, %al\noutb %al, %dx\nmovw $0x3fb, %dx\nmovb $3, %al\noutb %al, %dx\nmovw $0x3fa, %dx\nmovb $0xc7, %al\noutb %al, %dx\nmovw $0x3fc, %dx\nmovb $0x0b, %al\noutb %al, %dx")
+        asm volatile("movw $0x3f9, %dx; xorb %al, %al; outb %al, %dx; movw $0x3fb, %dx; movb $0x80, %al; outb %al, %dx; movw $0x3f8, %dx; movb $1, %al; outb %al, %dx; movw $0x3f9, %dx; xorb %al, %al; outb %al, %dx; movw $0x3fb, %dx; movb $3, %al; outb %al, %dx; movw $0x3fa, %dx; movb $0xc7, %al; outb %al, %dx; movw $0x3fc, %dx; movb $0x0b, %al; outb %al, %dx")
     }
     return 0
 }

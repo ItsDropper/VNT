@@ -109,8 +109,26 @@ static void fail(FreestandingGen *g, const char *message) {
     g->failed = 1;
 }
 
+static void emit_symbol(FILE *out, const char *name);
 static int emit_expression(FreestandingGen *g, size_t index);
 static int emit_statement(FreestandingGen *g, size_t index);
+
+static const VntIrNode *find_function(const VntIrProgram *ir, const char *name) {
+    if (!ir || !name || ir->root >= ir->node_count) return NULL;
+    const VntIrNode *root = &ir->nodes[ir->root];
+    for (size_t c = root->first_child; c != VNT_IR_NO_NODE;
+         c = ir->nodes[c].next_sibling) {
+        const VntIrNode *n = &ir->nodes[c];
+        if (n->opcode == VNT_IR_FUNCTION && n->value.text &&
+            !strcmp(n->value.text, name)) return n;
+    }
+    return NULL;
+}
+
+static void emit_function_symbol(FILE *out, const char *name) {
+    fputs("vnt_fn_", out);
+    emit_symbol(out, name);
+}
 
 static int emit_expression(FreestandingGen *g, size_t index) {
     if (index >= g->ir->node_count) {
@@ -119,6 +137,19 @@ static int emit_expression(FreestandingGen *g, size_t index) {
     }
     const VntIrNode *n = &g->ir->nodes[index];
     switch (n->opcode) {
+    case VNT_IR_CALL: {
+        if (!n->value.text) { fail(g, "call has no function name."); return 0; }
+        const VntIrNode *target = find_function(g->ir, n->value.text);
+        if (!target) { fail(g, "call to unknown freestanding function."); return 0; }
+        if (n->child_count != 0 || target->name_count != 0) {
+            fail(g, "freestanding function calls currently require zero arguments and zero parameters.");
+            return 0;
+        }
+        fputs("    subq $8, %rsp\n    call ", g->out);
+        emit_function_symbol(g->out, n->value.text);
+        fputs("\n    addq $8, %rsp\n", g->out);
+        return 1;
+    }
     case VNT_IR_INTEGER:
         if (n->value.integer < INT32_MIN || n->value.integer > INT32_MAX)
             fprintf(g->out, "    movabsq $%lld, %%rax\n", (long long)n->value.integer);
@@ -216,6 +247,7 @@ static int emit_statement(FreestandingGen *g, size_t index) {
         }
         return 1;
     }
+    if (n->opcode == VNT_IR_CALL) return emit_expression(g, index);
     if (n->opcode == VNT_IR_ASM) {
         fprintf(g->out, "    # VNT inline assembly follows\n    %s\n",
                 n->value.text ? n->value.text : "");
@@ -319,8 +351,11 @@ int vnt_emit_freestanding_x86_64(const VntIrProgram *ir,
     const VntIrNode *kernel_main = NULL;
     for (size_t c = root->first_child; c != VNT_IR_NO_NODE; c = ir->nodes[c].next_sibling) {
         const VntIrNode *n = &ir->nodes[c];
-        if (n->opcode == VNT_IR_FUNCTION && n->value.text &&
-            !strcmp(n->value.text, "kernel_main")) {
+        if (n->opcode != VNT_IR_FUNCTION || !n->value.text) {
+            fprintf(stderr, "Freestanding backend: only function declarations are allowed at top level.\n");
+            return 0;
+        }
+        if (!strcmp(n->value.text, "kernel_main")) {
             if (n->name_count != 0) {
                 fprintf(stderr, "Freestanding backend: kernel_main must take zero arguments.\n");
                 return 0;
@@ -330,9 +365,14 @@ int vnt_emit_freestanding_x86_64(const VntIrProgram *ir,
                 return 0;
             }
             kernel_main = n;
-        } else {
-            fprintf(stderr, "Freestanding backend: only kernel_main() is allowed at top level in this initial target.\n");
-            return 0;
+        }
+        for (size_t d = ir->nodes[c].next_sibling; d != VNT_IR_NO_NODE; d = ir->nodes[d].next_sibling) {
+            const VntIrNode *other = &ir->nodes[d];
+            if (other->opcode == VNT_IR_FUNCTION && other->value.text &&
+                !strcmp(other->value.text, n->value.text)) {
+                fprintf(stderr, "Freestanding backend: duplicate function name.\n");
+                return 0;
+            }
         }
     }
     if (!kernel_main) {
@@ -342,9 +382,6 @@ int vnt_emit_freestanding_x86_64(const VntIrProgram *ir,
 
     FreestandingGen g = {0};
     g.ir = ir;
-    collect_variables(&g, (size_t)(kernel_main - ir->nodes));
-    if (g.failed) goto cleanup;
-
     FILE *out = fopen(assembly_path, "wb");
     if (!out) {
         fprintf(stderr, "Freestanding backend: cannot create '%s'.\n", assembly_path);
@@ -360,27 +397,49 @@ int vnt_emit_freestanding_x86_64(const VntIrProgram *ir,
           "    cli\n"
           "    lea freestanding_stack_top(%rip), %rsp\n"
           "    andq $-16, %rsp\n"
-          "    call vnt_fn_kernel_main\n"
-          ".Lvnt_halt_forever:\n"
+          "    call ", out);
+    emit_function_symbol(out, "kernel_main");
+    fputs("\n.Lvnt_halt_forever:\n"
           "    cli\n"
           "    hlt\n"
           "    jmp .Lvnt_halt_forever\n"
-          ".size _start, .-_start\n\n"
-          ".globl vnt_fn_kernel_main\n"
-          ".type vnt_fn_kernel_main, @function\n"
-          "vnt_fn_kernel_main:\n"
-          "    pushq %rbp\n"
-          "    movq %rsp, %rbp\n", out);
-    size_t frame = g.variable_count * 8;
-    frame = (frame + 15) & ~(size_t)15;
-    if (frame) fprintf(out, "    subq $%zu, %%rsp\n", frame);
-    for (size_t s = kernel_main->first_child; s != VNT_IR_NO_NODE; s = ir->nodes[s].next_sibling) {
-        if (ir->nodes[s].role == VNT_IR_EDGE_BODY &&
-            !emit_statement(&g, s)) break;
+          ".size _start, .-_start\n\n", out);
+
+    for (size_t fn = root->first_child; fn != VNT_IR_NO_NODE;
+         fn = ir->nodes[fn].next_sibling) {
+        const VntIrNode *function = &ir->nodes[fn];
+        if (function->opcode != VNT_IR_FUNCTION) continue;
+        if (function->name_count != 0) {
+            fail(&g, "freestanding functions currently require zero parameters.");
+            break;
+        }
+        g.variable_count = 0;
+        collect_variables(&g, fn);
+        if (g.failed) break;
+        fputs(".globl ", out);
+        emit_function_symbol(out, function->value.text);
+        fputs("\n.type ", out);
+        emit_function_symbol(out, function->value.text);
+        fputs(", @function\n", out);
+        emit_function_symbol(out, function->value.text);
+        fputs(":\n    pushq %rbp\n    movq %rsp, %rbp\n", out);
+        size_t frame = g.variable_count * 8;
+        frame = (frame + 15) & ~(size_t)15;
+        if (frame) fprintf(out, "    subq $%zu, %%rsp\n", frame);
+        for (size_t st = function->first_child; st != VNT_IR_NO_NODE;
+             st = ir->nodes[st].next_sibling) {
+            if (ir->nodes[st].role == VNT_IR_EDGE_BODY &&
+                !emit_statement(&g, st)) break;
+        }
+        if (!g.failed) fputs("    leave\n    ret\n", out);
+        fputs(".size ", out);
+        emit_function_symbol(out, function->value.text);
+        fputs(", .-", out);
+        emit_function_symbol(out, function->value.text);
+        fputc('\n', out);
+        if (g.failed) break;
     }
-    if (!g.failed) fputs("    leave\n    ret\n", out);
     fputs(".Lvnt_arithmetic_fault:\n    ud2\n"
-          ".size vnt_fn_kernel_main, .-vnt_fn_kernel_main\n"
           ".section .bss\n"
           ".balign 16\n"
           ".globl freestanding_stack_bottom\n"

@@ -93,6 +93,16 @@ jobs:
           printf '305419896\n305419896\n255\n42\nRAW_MEMORY_OK\n' > vnt-memory-expected.txt
           diff -u vnt-memory-expected.txt vnt-memory-actual-lf.txt
 
+      - name: Reject pointer arithmetic on a null pointer
+        shell: bash
+        run: |
+          ./vnt --compile tests/unsafe_null_offset_rejected.vnt -o vnt-null-offset.exe
+          if ./vnt-null-offset.exe > vnt-null-offset-output.txt 2>&1; then
+            echo "Compiler runtime incorrectly accepted pointer arithmetic on null."
+            exit 1
+          fi
+          grep -F "Runtime error: invalid pointer offset." vnt-null-offset-output.txt
+
       - name: Compile unsafe-block regression program
         shell: bash
         run: ./vnt --compile tests/unsafe_block.vnt -o vnt-unsafe-smoke.exe

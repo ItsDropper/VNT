@@ -29,3 +29,10 @@ print(net.download("http://127.0.0.1:18765/binary", "vnt-network-binary.test"))
 
 # Oversized buffered responses must fail instead of growing memory without bound.
 print(net.get("http://127.0.0.1:18765/oversized"))
+
+# Async requests run on a bounded native worker pool.
+async_handle = net.async_start("GET", "http://127.0.0.1:18765/hello", "", "")
+print(net.async_wait(async_handle, 5000))
+print(net.async_result(async_handle))
+print(net.async_status(async_handle))
+print(net.async_release(async_handle))

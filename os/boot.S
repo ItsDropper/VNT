@@ -199,6 +199,12 @@ os_shell:
     jnz .Los_clear
 
     leaq os_command(%rip), %rdi
+    leaq .Los_cmd_mem(%rip), %rsi
+    call os_match
+    testl %eax, %eax
+    jnz .Los_mem
+
+    leaq os_command(%rip), %rdi
     leaq .Los_cmd_reboot(%rip), %rsi
     call os_match
     testl %eax, %eax
@@ -237,6 +243,18 @@ os_shell:
     jmp .Los_next_prompt
 .Los_about:
     leaq .Los_about_text(%rip), %rdi
+    call os_puts
+    jmp .Los_next_prompt
+.Los_mem:
+    leaq .Los_mem_start(%rip), %rdi
+    call os_puts
+    leaq __kernel_start(%rip), %rdi
+    call os_put_hex64
+    leaq .Los_mem_end(%rip), %rdi
+    call os_puts
+    leaq __kernel_end(%rip), %rdi
+    call os_put_hex64
+    leaq .Los_mem_map(%rip), %rdi
     call os_puts
     jmp .Los_next_prompt
 .Los_clear:
@@ -323,6 +341,133 @@ os_putc:
     movw $0x3f8, %dx
     movb %r12b, %al
     outb %al, %dx
+    popq %r12
+    popq %rbx
+    ret
+
+.type os_put_hex64,@function
+os_put_hex64:
+    pushq %rbx
+    pushq %r12
+    movq %rdi, %r12
+    movl 
+.Los_match_loop:
+    movzbl (%rdi), %eax
+    movzbl (%rsi), %edx
+    cmpl %edx, %eax
+    jne .Los_match_false
+    testl %eax, %eax
+    je .Los_match_true
+    incq %rdi
+    incq %rsi
+    jmp .Los_match_loop
+.Los_match_true:
+    movl $1, %eax
+    ret
+.Los_match_false:
+    xorl %eax, %eax
+    ret
+
+.section .rodata
+.Los_welcome:
+    .asciz "VNTOS_BOOT_OK\r\nVNTOS - freestanding x86-64 serial shell\r\nType help for commands.\r\n"
+.Los_prompt: .asciz "VNTOS> "
+.Los_ready: .asciz "VNTOS_COMMAND_LINE_READY\\r\\n"
+.Los_cmd_help: .asciz "help"
+.Los_cmd_about: .asciz "about"
+.Los_cmd_clear: .asciz "clear"
+.Los_cmd_reboot: .asciz "reboot"
+.Los_cmd_mem: .asciz "mem"
+.Los_cmd_halt: .asciz "halt"
+.Los_echo_prefix: .asciz "echo "
+.Los_help_text: .asciz "Commands: help, about, clear, echo, reboot, halt\r\n"
+.Los_about_text: .asciz "VNTOS: VNT-compiled freestanding kernel on x86-64.\r\n"
+.Los_clear_text: .asciz "\033[2J\033[H"
+.Los_unknown: .asciz "Unknown command. Type help.\r\n"
+.Los_reboot_text: .asciz "Rebooting...\r\n"
+.Los_halt_text: .asciz "CPU halted.\r\n"
+
+.section .bss
+.balign 4096
+pml4_table: .skip 4096
+pdpt_table: .skip 4096
+page_directory: .skip 4096
+.balign 16
+boot_stack_bottom: .skip 16384
+boot_stack_top:
+os_command_length: .long 0
+os_command: .skip 128
+0', %edi
+    call os_putc
+    movl 
+.Los_match_loop:
+    movzbl (%rdi), %eax
+    movzbl (%rsi), %edx
+    cmpl %edx, %eax
+    jne .Los_match_false
+    testl %eax, %eax
+    je .Los_match_true
+    incq %rdi
+    incq %rsi
+    jmp .Los_match_loop
+.Los_match_true:
+    movl $1, %eax
+    ret
+.Los_match_false:
+    xorl %eax, %eax
+    ret
+
+.section .rodata
+.Los_welcome:
+    .asciz "VNTOS_BOOT_OK\r\nVNTOS - freestanding x86-64 serial shell\r\nType help for commands.\r\n"
+.Los_prompt: .asciz "VNTOS> "
+.Los_ready: .asciz "VNTOS_COMMAND_LINE_READY\\r\\n"
+.Los_cmd_help: .asciz "help"
+.Los_cmd_about: .asciz "about"
+.Los_cmd_clear: .asciz "clear"
+.Los_cmd_reboot: .asciz "reboot"
+.Los_cmd_halt: .asciz "halt"
+.Los_echo_prefix: .asciz "echo "
+.Los_help_text: .asciz "Commands: help, about, clear, echo, reboot, halt\r\n"
+.Los_about_text: .asciz "VNTOS: VNT-compiled freestanding kernel on x86-64.\r\n"
+.Los_clear_text: .asciz "\033[2J\033[H"
+.Los_unknown: .asciz "Unknown command. Type help.\r\n"
+.Los_reboot_text: .asciz "Rebooting...\r\n"
+.Los_halt_text: .asciz "CPU halted.\r\n"
+
+.section .bss
+.balign 4096
+pml4_table: .skip 4096
+pdpt_table: .skip 4096
+page_directory: .skip 4096
+.balign 16
+boot_stack_bottom: .skip 16384
+boot_stack_top:
+os_command_length: .long 0
+os_command: .skip 128
+x', %edi
+    call os_putc
+    movl $60, %ebx
+.Los_hex_loop:
+    movq %r12, %rax
+    movl %ebx, %ecx
+    shrq %cl, %rax
+    andl $15, %eax
+    cmpl $9, %eax
+    ja .Los_hex_alpha
+    addl $48, %eax
+    jmp .Los_hex_emit
+.Los_hex_alpha:
+    addl $87, %eax
+.Los_hex_emit:
+    movl %eax, %edi
+    call os_putc
+    subl $4, %ebx
+    jns .Los_hex_loop
+    movl $13, %edi
+    call os_putc
+    movl $10, %edi
+    call os_putc
     popq %r12
     popq %rbx
     ret

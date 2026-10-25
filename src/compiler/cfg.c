@@ -277,8 +277,9 @@ int vnt_cfg_validate(const VntCfg *cfg) {
                 b->true_successor != cfg->exit_block ||
                 b->false_successor != VNT_IR_NO_NODE) return 0;
         } else if (b->terminator == VNT_CFG_JUMP) {
-            if (b->instruction == VNT_IR_NO_NODE ||
-                b->condition != VNT_IR_NO_NODE ||
+            /* A jump may be sourced by break/continue or synthesized by a
+               constant-branch fold; both forms have no condition. */
+            if (b->condition != VNT_IR_NO_NODE ||
                 b->true_successor == VNT_IR_NO_NODE ||
                 b->false_successor != VNT_IR_NO_NODE) return 0;
         } else { /* VNT_CFG_FALLTHROUGH */

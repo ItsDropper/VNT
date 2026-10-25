@@ -93,6 +93,6 @@ if printf 'does-not-exist.vnx\n' | "$VNX" > "$TMP/missing-file.out" 2>&1; then
     echo "missing source file unexpectedly succeeded" >&2
     exit 1
 fi
-grep -F 'could not read source file' "$TMP/missing-file.out"
+grep -F 'fs_read() could not open' "$TMP/missing-file.out"
 
 echo "VNX smoke tests and adventure route checks passed."

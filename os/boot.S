@@ -507,6 +507,8 @@ os_scancode_ascii:
 .Los_cmd_about: .asciz "about"
 .Los_cmd_clear: .asciz "clear"
 .Los_cmd_reboot: .asciz "reboot"
+.Los_cmd_halt: .asciz "halt"
+.Los_echo_prefix: .asciz "echo "
 .Los_help_text:
     .asciz "Commands: help, about, clear, reboot\n"
 .Los_about_text:

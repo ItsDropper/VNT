@@ -8,7 +8,7 @@
 #define TM 20000
 #define NM 20000
 #define VM 512
-#define SZ 4096
+#define SZ 256
 #define STEPS 1000000
 typedef enum{EOF_T,ID,NUM,STR,LET,IF,ELSE,WHILE,TRUE_T,FALSE_T,LP,RP,LB,RB,SEMI,PLUS,MINUS,STAR,SLASH,EQ,EQEQ,NEQ,LT,LTE,GT,GTE,BANG,AND,OR}K;
 typedef struct{K k;char s[SZ];int line;}Tok;static Tok ts[TM];static int nt,at,errors;static const char*file="<source>";

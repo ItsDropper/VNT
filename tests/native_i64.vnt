@@ -1,0 +1,12 @@
+fun main() {
+    let value: i64 = 4294967296
+    print(value)
+    value = value * 3
+    print(value)
+    if value == 12884901888 {
+        print("NATIVE_I64_OK")
+    } else {
+        print("NATIVE_I64_FAIL")
+    }
+    return 0
+}

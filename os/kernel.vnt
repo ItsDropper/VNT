@@ -81,24 +81,6 @@ fun starts_with(text: string, prefix: string) -> bool {
     return true
 }
 
-fun serial_hex(value: i64) {
-    serial_puts("0x")
-    vga_puts("0x")
-    let divisor: i64 = 1152921504606846976
-    let count: int = 0
-    while count < 16 {
-        let digit: int = (value / divisor) % 16
-        serial_putc("0123456789abcdef"[digit])
-        vga_putc("0123456789abcdef"[digit])
-        value = value % divisor
-        divisor = divisor / 16
-        count = count + 1
-    }
-    serial_puts("\r\n")
-    vga_puts("\r\n")
-    return 0
-}
-
 fun kernel_start_addr() -> i64 {
     let result: i64 = 0
     unsafe {
@@ -180,6 +162,21 @@ fun console_puts_offset(text: string, offset: int) {
 }
 
 # 8042 controller polling. Timeouts prevent a missing PS/2 device from hanging boot.
+fun console_hex(value: i64) {
+    console_puts("0x")
+    let divisor: i64 = 1152921504606846976
+    let count: int = 0
+    while count < 16 {
+        let digit: int = (value / divisor) % 16
+        console_putc("0123456789abcdef"[digit])
+        value = value % divisor
+        divisor = divisor / 16
+        count = count + 1
+    }
+    console_puts("\r\n")
+    return 0
+}
+
 fun ps2_wait_input_clear() -> int {
     let status: int = 0
     let attempts: int = 0
@@ -534,19 +531,19 @@ fun kernel_main() {
             }
             if str_eq(buffer, "mem") {
                 console_puts("Kernel start: ")
-                serial_hex(kernel_start_addr())
+                console_hex(kernel_start_addr())
                 console_puts("Kernel end: ")
-                serial_hex(kernel_end_addr())
+                console_hex(kernel_end_addr())
                 console_puts("Identity map: first 1 GiB\r\n")
                 handled = 1
             }
             if str_eq(buffer, "mouse") {
                 console_puts("PS/2 mouse x=")
-                serial_hex(state_get(2))
+                console_hex(state_get(2))
                 console_puts("y=")
-                serial_hex(state_get(3))
+                console_hex(state_get(3))
                 console_puts("buttons=")
-                serial_hex(state_get(4))
+                console_hex(state_get(4))
                 handled = 1
             }
             if starts_with(buffer, "echo ") {

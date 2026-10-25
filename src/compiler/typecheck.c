@@ -70,7 +70,9 @@ static void set_symbol(TypeChecker *tc, const char *name, TypeKind type,
             TypeKind old = symbol->type;
             if (old != TY_UNKNOWN && type != TY_UNKNOWN &&
                 old != type && !(old == TY_INT && type == TY_FLOAT) &&
-                !(old == TY_FLOAT && type == TY_INT)) {
+                !(old == TY_FLOAT && type == TY_INT) &&
+                !(old == TY_I64 && type == TY_INT) &&
+                !(old == TY_INT && type == TY_I64)) {
                 if (symbol->explicit_type || explicit_type) {
                     error(tc, "variable type changed incompatibly.");
                     return;

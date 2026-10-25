@@ -1,0 +1,123 @@
+name: VNTOS Boot and Serial Shell
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'os/**'
+      - 'src/**'
+      - 'include/**'
+      - 'freestanding/**'
+      - '.github/workflows/vntos-boot.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'os/**'
+      - 'src/**'
+      - 'include/**'
+      - 'freestanding/**'
+      - '.github/workflows/vntos-boot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vntos-boot-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  boot-and-shell:
+    name: Build VNTOS and test serial shell in QEMU
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install boot and emulator tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes gcc binutils grub-pc-bin grub-common xorriso mtools qemu-system-x86 python3
+
+      - name: Build the freestanding VNTOS image
+        run: |
+          bash os/build.sh
+          grub-file --is-x86-multiboot2 build/kernel.elf
+          readelf -h build/kernel.elf | grep -F 'ELF64'
+          test -s build/vntos.iso
+          test -z "$(nm -u build/kernel.elf)"
+
+      - name: Boot guest and test interactive shell
+        shell: bash
+        run: |
+          qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -monitor none -serial unix:build/qemu-serial.sock,server,nowait -debugcon file:build/debug.log -global isa-debugcon.iobase=0xe9 -no-reboot -no-shutdown &
+          qemu_pid=$!
+          cleanup_qemu() {
+            kill "$qemu_pid" 2>/dev/null || true
+            wait "$qemu_pid" 2>/dev/null || true
+          }
+          trap cleanup_qemu EXIT
+          python3 - <<'PY'
+          import socket
+          import time
+
+          serial = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+          serial.settimeout(0.15)
+          path = "build/qemu-serial.sock"
+          for _ in range(150):
+              try:
+                  serial.connect(path)
+                  break
+              except OSError:
+                  time.sleep(0.1)
+          else:
+              raise SystemExit("QEMU serial socket did not become available")
+
+          output = bytearray()
+          def drain(seconds=0.2):
+              deadline = time.monotonic() + seconds
+              while time.monotonic() < deadline:
+                  try:
+                      data = serial.recv(4096)
+                      if not data:
+                          break
+                      output.extend(data)
+                  except socket.timeout:
+                      pass
+
+          # Wait for the guest's ready marker before sending any input.
+          deadline = time.monotonic() + 12
+          while b"VNTOS_COMMAND_LINE_READY" not in output and time.monotonic() < deadline:
+              drain(0.15)
+          if b"VNTOS_COMMAND_LINE_READY" not in output:
+              print(output.decode("ascii", errors="replace"))
+              raise SystemExit("VNTOS did not reach its interactive command prompt")
+
+          for command in (b"help\r", b"about\r", b"echo tesX\x7ft\r",
+                          b"mem\r", b"not-a-command\r", b"halt\r"):
+              serial.sendall(command)
+              drain(0.35)
+          drain(0.5)
+          serial.close()
+
+          transcript = output.decode("ascii", errors="replace")
+          print("VNTOS serial transcript:")
+          print(transcript)
+          required = [
+              "VNTOS_BOOT_OK",
+              "VNTOS_COMMAND_LINE_READY",
+              "Commands: help, about, clear, echo, mem, reboot, halt",
+              "VNTOS: VNT-compiled freestanding kernel on x86-64.",
+              "test",
+              "Kernel start: 0x",
+              "Kernel end: 0x",
+              "Identity map: 0x0000000000000000-0x000000003fffffff (1 GiB)",
+              "Unknown command. Type help.",
+              "CPU halted.",
+          ]
+          missing = [item for item in required if item not in transcript]
+          if missing:
+              raise SystemExit("Missing shell output: " + ", ".join(missing))
+          PY
+          grep -F 'B1234LS' build/debug.log

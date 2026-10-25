@@ -30,10 +30,10 @@ boot32_entry:
     cld
     movl $boot_stack_top, %esp
 
-    movl $pml4_table, %eax
+    movl $pdpt_table, %eax
     orl $3, %eax
     movl %eax, pml4_table
-    movl $pdpt_table, %eax
+    movl $page_directory, %eax
     orl $3, %eax
     movl %eax, pdpt_table
 

@@ -188,9 +188,9 @@ static StructDef *find_struct(TypeChecker *tc, const char *name) {
 
 static int builtin_arity(const char *name, int argc) {
     if (!strcmp(name, "mem_alloc") || !strcmp(name, "mem_free") || !strcmp(name, "mem_is_null")) return argc == 1;
-    if (!strcmp(name, "mem_read_u8") || !strcmp(name, "mem_read_u32")) return argc == 2;
+    if (!strcmp(name, "mem_read_u8") || !strcmp(name, "mem_read_u32") || !strcmp(name, "mem_read_u64")) return argc == 2;
     if (!strcmp(name, "mem_realloc") || !strcmp(name, "mem_ptr_add")) return argc == 2;
-    if (!strcmp(name, "mem_write_u8") || !strcmp(name, "mem_write_u32") || !strcmp(name, "mem_copy") || !strcmp(name, "mem_set")) return argc == 3;
+    if (!strcmp(name, "mem_write_u8") || !strcmp(name, "mem_write_u32") || !strcmp(name, "mem_write_u64") || !strcmp(name, "mem_copy") || !strcmp(name, "mem_set")) return argc == 3;
     if (!strcmp(name, "range")) return argc >= 1 && argc <= 3;
     if (!strcmp(name, "sqrt") || !strcmp(name, "sin") ||
         !strcmp(name, "cos") || !strcmp(name, "tan") ||
@@ -361,7 +361,8 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 return TY_FLOAT;
             if (!strcmp(n->function_call.name, "mem_alloc") || !strcmp(n->function_call.name, "mem_realloc") || !strcmp(n->function_call.name, "mem_ptr_add")) return TY_POINTER;
             if (!strcmp(n->function_call.name, "mem_read_u8") || !strcmp(n->function_call.name, "mem_read_u32")) return TY_INT;
-            if (!strcmp(n->function_call.name, "mem_free") || !strcmp(n->function_call.name, "mem_is_null") || !strcmp(n->function_call.name, "mem_write_u8") || !strcmp(n->function_call.name, "mem_write_u32") || !strcmp(n->function_call.name, "mem_copy") || !strcmp(n->function_call.name, "mem_set")) return TY_BOOL;
+             if (!strcmp(n->function_call.name, "mem_read_u64")) return TY_I64;
+            if (!strcmp(n->function_call.name, "mem_free") || !strcmp(n->function_call.name, "mem_is_null") || !strcmp(n->function_call.name, "mem_write_u8") || !strcmp(n->function_call.name, "mem_write_u32") || !strcmp(n->function_call.name, "mem_write_u64") || !strcmp(n->function_call.name, "mem_copy") || !strcmp(n->function_call.name, "mem_set")) return TY_BOOL;
             if (!strcmp(n->function_call.name, "process_start")) return TY_OBJECT;
             if (!strcmp(n->function_call.name, "process_launch")) return TY_BOOL;
             if (!strcmp(n->function_call.name, "process_stdout") ||

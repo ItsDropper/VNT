@@ -251,46 +251,126 @@ fun ps2_init() {
 
 # Set-1 keyboard scan codes. Releases are filtered by the high bit.
 fun keyboard_translate(scan: int) -> int {
-    if scan == 0x02 { return 49 }
-    if scan == 0x03 { return 50 }
-    if scan == 0x04 { return 51 }
-    if scan == 0x05 { return 52 }
-    if scan == 0x06 { return 53 }
-    if scan == 0x07 { return 54 }
-    if scan == 0x08 { return 55 }
-    if scan == 0x09 { return 56 }
-    if scan == 0x0a { return 57 }
-    if scan == 0x0b { return 48 }
-    if scan == 0x10 { return 113 }
-    if scan == 0x11 { return 119 }
-    if scan == 0x12 { return 101 }
-    if scan == 0x13 { return 114 }
-    if scan == 0x14 { return 116 }
-    if scan == 0x15 { return 121 }
-    if scan == 0x16 { return 117 }
-    if scan == 0x17 { return 105 }
-    if scan == 0x18 { return 111 }
-    if scan == 0x19 { return 112 }
-    if scan == 0x1e { return 97 }
-    if scan == 0x1f { return 115 }
-    if scan == 0x20 { return 100 }
-    if scan == 0x21 { return 102 }
-    if scan == 0x22 { return 103 }
-    if scan == 0x23 { return 104 }
-    if scan == 0x24 { return 106 }
-    if scan == 0x25 { return 107 }
-    if scan == 0x26 { return 108 }
-    if scan == 0x2c { return 122 }
-    if scan == 0x2d { return 120 }
-    if scan == 0x2e { return 99 }
-    if scan == 0x2f { return 118 }
-    if scan == 0x30 { return 98 }
-    if scan == 0x31 { return 110 }
-    if scan == 0x32 { return 109 }
-    if scan == 0x39 { return 32 }
-    if scan == 0x1c { return 13 }
-    if scan == 0x0e { return 8 }
-    if scan == 0x0f { return 9 }
+    if scan == 0x02 {
+        return 49
+    }
+    if scan == 0x03 {
+        return 50
+    }
+    if scan == 0x04 {
+        return 51
+    }
+    if scan == 0x05 {
+        return 52
+    }
+    if scan == 0x06 {
+        return 53
+    }
+    if scan == 0x07 {
+        return 54
+    }
+    if scan == 0x08 {
+        return 55
+    }
+    if scan == 0x09 {
+        return 56
+    }
+    if scan == 0x0a {
+        return 57
+    }
+    if scan == 0x0b {
+        return 48
+    }
+    if scan == 0x10 {
+        return 113
+    }
+    if scan == 0x11 {
+        return 119
+    }
+    if scan == 0x12 {
+        return 101
+    }
+    if scan == 0x13 {
+        return 114
+    }
+    if scan == 0x14 {
+        return 116
+    }
+    if scan == 0x15 {
+        return 121
+    }
+    if scan == 0x16 {
+        return 117
+    }
+    if scan == 0x17 {
+        return 105
+    }
+    if scan == 0x18 {
+        return 111
+    }
+    if scan == 0x19 {
+        return 112
+    }
+    if scan == 0x1e {
+        return 97
+    }
+    if scan == 0x1f {
+        return 115
+    }
+    if scan == 0x20 {
+        return 100
+    }
+    if scan == 0x21 {
+        return 102
+    }
+    if scan == 0x22 {
+        return 103
+    }
+    if scan == 0x23 {
+        return 104
+    }
+    if scan == 0x24 {
+        return 106
+    }
+    if scan == 0x25 {
+        return 107
+    }
+    if scan == 0x26 {
+        return 108
+    }
+    if scan == 0x2c {
+        return 122
+    }
+    if scan == 0x2d {
+        return 120
+    }
+    if scan == 0x2e {
+        return 99
+    }
+    if scan == 0x2f {
+        return 118
+    }
+    if scan == 0x30 {
+        return 98
+    }
+    if scan == 0x31 {
+        return 110
+    }
+    if scan == 0x32 {
+        return 109
+    }
+    if scan == 0x39 {
+        return 32
+    }
+    if scan == 0x1c {
+        return 13
+    }
+    if scan == 0x0e {
+        return 8
+    }
+    if scan == 0x0f {
+        return 9
+    }
     if scan == 0x2a || scan == 0x36 {
         state_set(9, 1)
         return -1
@@ -378,10 +458,18 @@ fun mouse_poll() {
         } else {
             state_set(3, state_get(3) + (256 - state_get(8)))
         }
-        if state_get(2) < 0 { state_set(2, 0) }
-        if state_get(2) > 79 { state_set(2, 79) }
-        if state_get(3) < 0 { state_set(3, 0) }
-        if state_get(3) > 24 { state_set(3, 24) }
+        if state_get(2) < 0 {
+            state_set(2, 0)
+        }
+        if state_get(2) > 79 {
+            state_set(2, 79)
+        }
+        if state_get(3) < 0 {
+            state_set(3, 0)
+        }
+        if state_get(3) > 24 {
+            state_set(3, 24)
+        }
         state_set(4, state_get(6) % 8)
     }
     return 0

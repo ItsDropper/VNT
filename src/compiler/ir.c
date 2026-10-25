@@ -305,7 +305,7 @@ void vnt_ir_dump(const VntIrProgram *ir, FILE *out) {
         }
         fputc(']', out);
         switch (node->opcode) {
-            case VNT_IR_INTEGER: fprintf(out, " value=%d", node->value.integer); break;
+            case VNT_IR_INTEGER: fprintf(out, " value=%lld", (long long)node->value.integer); break;
             case VNT_IR_BOOLEAN: fprintf(out, " value=%s", node->value.boolean ? "true" : "false"); break;
             case VNT_IR_FLOAT: fprintf(out, " value=%.17g", node->value.floating); break;
             case VNT_IR_STRING:

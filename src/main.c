@@ -64,9 +64,12 @@ int main(int argc, char *argv[]) {
     int dump_ir = argc == 3 && strcmp(argv[1], "--dump-ir") == 0;
     int emit_asm = argc == 5 && strcmp(argv[1], "--emit-asm") == 0 &&
                    strcmp(argv[3], "-o") == 0;
+    int emit_freestanding = argc == 5 &&
+        strcmp(argv[1], "--emit-freestanding-asm") == 0 &&
+        strcmp(argv[3], "-o") == 0;
     int compile = argc == 5 && strcmp(argv[1], "--compile") == 0 &&
                   strcmp(argv[3], "-o") == 0;
-    if (!dump_ir && !emit_asm && !compile) {
+    if (!dump_ir && !emit_asm && !emit_freestanding && !compile) {
         printf("Usage: vnt --compile <file.vnt> -o <output.exe>\n");
         printf("       vnt --emit-asm <file.vnt> -o <output.s>\n");
         printf("       vnt --dump-ir <file.vnt>\n");

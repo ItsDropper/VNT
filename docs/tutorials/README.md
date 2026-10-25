@@ -16,13 +16,14 @@ These tutorials teach VNT through small, practical projects. VNT is experimental
 7. [Launching and managing child processes](07-native-processes.md)
 8. [HTTP APIs and external tools](08-http-apis.md)
 9. [Build a complete local task tracker](09-build-a-project.md)
-10. [Arrays, functions, and modules](03-arrays-and-modules.md)
+10. [Low-level systems programming](10-low-level-systems-programming.md)
 
 ## Systems programming course
 
 11. [Native memory fundamentals](04-native-memory.md) — pointers, allocation lifetime, and unsafe blocks.
 12. [Build the VNTOS learning kernel](05-vntos-kernel-walkthrough.md) — how `os/` boots, how the VNT kernel is built, and how to test it in QEMU.
-13. [Low-level systems programming](10-low-level-systems-programming.md) — memory, unsafe code, assembly, and the kernel roadmap.
+13. [Arrays, functions, and modules](03-arrays-and-modules.md) — a supplemental practice lesson.
+14. [Low-level systems programming](10-low-level-systems-programming.md) — memory, unsafe code, assembly, and the kernel roadmap.
 
 The [API reference](../api-reference.md) summarizes runtime APIs. The [raw-memory guide](../raw-memory.md) and [compiler architecture guide](../compiler-architecture.md) cover lower-level details.
 

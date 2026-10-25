@@ -95,7 +95,7 @@ jobs:
               raise SystemExit("VNTOS did not reach its interactive command prompt")
 
           for command in (b"help\r", b"about\r", b"echo tesX\x7ft\r",
-                          b"mem\r", b"not-a-command\r", b"halt\r"):
+                          b"mem\r", b"mouse\r", b"not-a-command\r", b"halt\r"):
               serial.sendall(command)
               drain(0.35)
           drain(0.5)
@@ -107,12 +107,13 @@ jobs:
           required = [
               "VNTOS_BOOT_OK",
               "VNTOS_COMMAND_LINE_READY",
-              "Commands: help, about, clear, echo, mem, reboot, halt",
-              "VNTOS: VNT-compiled freestanding kernel on x86-64.",
+              "Commands: help, about, clear, echo, mem, mouse, reboot, halt",
+              "VNTOS: VNT-compiled freestanding x86-64 kernel.",
               "test",
               "Kernel start: 0x",
               "Kernel end: 0x",
-              "Identity map: 0x0000000000000000-0x000000003fffffff (1 GiB)",
+              "Identity map: first 1 GiB",
+              "PS/2 mouse x=",
               "Unknown command. Type help.",
               "CPU halted.",
           ]

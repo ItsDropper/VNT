@@ -158,7 +158,7 @@ fun make_node(kind: string, line: int) -> object {
     n.b = ""
     n.c = ""
     n.next = object()
-    n.next.kind = "END"
+    n.next.kind = "SENTINEL"
     return n
 }
 fun add_node(n: object) {
@@ -278,8 +278,7 @@ fun store_value(name: string, value: string) {
 }
 fun find_label(name: string) -> object {
     n = program.next
-    while n.kind != "END" {
-        print("DEBUG LABEL SCAN " + n.kind + " " + n.a)
+    while n.kind != "SENTINEL" {
         if n.kind == "LABEL" && n.a == name {
             return n
         }
@@ -295,7 +294,7 @@ fun execute() {
     environment = object()
     environment.kind = "HEAD"
     pc = program.next
-    while pc.kind != "END" && !halted && !failed {
+    while pc.kind != "SENTINEL" && !halted && !failed {
         steps = steps + 1
         if steps > 100000 {
             print("VNX runtime error: instruction limit exceeded")

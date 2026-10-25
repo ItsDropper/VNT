@@ -349,3 +349,24 @@ The checks build VNT and exercise language features, module loading, and runtime
 ## License
 
 VNT is licensed under the [MIT License](LICENSE). Copyright (c) 2026 ItsDropper.
+
+
+## Freestanding x86-64 and VNTOS
+
+VNT can emit a freestanding x86-64 ELF kernel without linking the hosted runtime.
+A minimal bootable operating-system example with a Multiboot2 long-mode bootstrap,
+VGA text console, PS/2 keyboard input, and a small command shell lives in
+[os/](os/README.md).
+
+On Debian/Ubuntu/WSL, install `build-essential binutils grub-pc-bin grub-common
+xorriso mtools qemu-system-x86`, then run:
+
+```sh
+bash os/build.sh
+qemu-system-x86_64 -cdrom build/vntos.iso -m 128M
+```
+
+The native x86-64 runtime now stores signed integers as 64-bit values, with
+overflow checks on signed addition, subtraction, multiplication, division, and
+negation. The freestanding backend uses 64-bit integer arithmetic as well.
+Unsigned integer types and complete unsigned arithmetic are still future work.

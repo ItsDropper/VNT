@@ -10,6 +10,13 @@ fun serial_init() {
     return 0
 }
 
+fun serial_putc(value: int) {
+    unsafe {
+        asm volatile("movl -8(%rbp), %eax; movw $0x3fd, %dx; 1: inb %dx, %al; testb $0x20, %al; jz 1b; movw $0x3f8, %dx; movl -8(%rbp), %eax; outb %al, %dx")
+    }
+    return 0
+}
+
 fun compiler_call_probe(value: int) {
     if value != 42 {
         unsafe {

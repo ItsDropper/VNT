@@ -124,6 +124,8 @@ os_shell:
     call os_puts
     leaq .Los_prompt(%rip), %rdi
     call os_puts
+    leaq .Los_ready(%rip), %rdi
+    call os_puts
 
 .Los_input:
     /* COM1 line-status register bit 0 means receive data is ready. */
@@ -348,6 +350,7 @@ os_match:
 .Los_welcome:
     .asciz "VNTOS_BOOT_OK\r\nVNTOS - freestanding x86-64 serial shell\r\nType help for commands.\r\n"
 .Los_prompt: .asciz "VNTOS> "
+.Los_ready: .asciz "VNTOS_COMMAND_LINE_READY\\r\\n"
 .Los_cmd_help: .asciz "help"
 .Los_cmd_about: .asciz "about"
 .Los_cmd_clear: .asciz "clear"

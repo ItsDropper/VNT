@@ -8,6 +8,7 @@ typedef struct {
     const VntIrProgram *ir;
     FILE *out;
     char **variables;
+    char **variable_types;
     size_t variable_count;
     size_t variable_capacity;
     int next_label;
@@ -40,10 +41,14 @@ static int add_variable(FreestandingGen *g, const char *name) {
         char **variables = realloc(g->variables, capacity * sizeof(*variables));
         if (!variables) return 0;
         g->variables = variables;
+        char **types = realloc(g->variable_types, capacity * sizeof(*types));
+        if (!types) return 0;
+        g->variable_types = types;
         g->variable_capacity = capacity;
     }
     g->variables[g->variable_count] = strdup(name);
-    if (!g->variables[g->variable_count]) return 0;
+    g->variable_types[g->variable_count] = strdup("int");
+    if (!g->variables[g->variable_count] || !g->variable_types[g->variable_count]) return 0;
     ++g->variable_count;
     return 1;
 }
@@ -58,11 +63,40 @@ static void collect_variables(FreestandingGen *g, size_t index) {
         g->failed = 1;
         return;
     }
+    if (n->opcode == VNT_IR_VARIABLE_DECL && n->type_name) {
+        int vi = variable_index(g, n->value.text);
+        if (vi >= 0) { char *copy = strdup(n->type_name); if (!copy) { g->failed = 1; return; } free(g->variable_types[vi]); g->variable_types[vi] = copy; }
+    }
     for (size_t c = n->first_child; c != VNT_IR_NO_NODE;
          c = g->ir->nodes[c].next_sibling)
         collect_variables(g, c);
 }
 
+static int variable_is_64(const FreestandingGen *g, int vi) {
+    if (vi < 0 || (size_t)vi >= g->variable_count || !g->variable_types[vi]) return 0;
+    const char *t = g->variable_types[vi];
+    return !strcmp(t,"i64") || !strcmp(t,"u64") || !strcmp(t,"usize") || !strcmp(t,"isize");
+}
+static int variable_is_unsigned(const FreestandingGen *g, int vi) {
+    if (vi < 0 || (size_t)vi >= g->variable_count || !g->variable_types[vi]) return 0;
+    const char *t = g->variable_types[vi]; return !strcmp(t,"u64") || !strcmp(t,"usize");
+}
+static int expression_is_64(const FreestandingGen *g, size_t i) {
+    if (i >= g->ir->node_count) return 0;
+    const VntIrNode *n=&g->ir->nodes[i];
+    if(n->opcode==VNT_IR_VARIABLE) return variable_is_64(g,variable_index(g,n->value.text));
+    if(n->opcode==VNT_IR_UNARY){const VntIrNode*c=child_role(g->ir,i,VNT_IR_EDGE_OPERAND);return c&&expression_is_64(g,(size_t)(c-g->ir->nodes));}
+    if(n->opcode==VNT_IR_BINARY){const VntIrNode*l=child_role(g->ir,i,VNT_IR_EDGE_LEFT),*r=child_role(g->ir,i,VNT_IR_EDGE_RIGHT);return(l&&expression_is_64(g,(size_t)(l-g->ir->nodes)))||(r&&expression_is_64(g,(size_t)(r-g->ir->nodes)));}
+    return 0;
+}
+static int expression_is_unsigned(const FreestandingGen *g, size_t i) {
+    if (i >= g->ir->node_count) return 0;
+    const VntIrNode*n=&g->ir->nodes[i];
+    if(n->opcode==VNT_IR_VARIABLE)return variable_is_unsigned(g,variable_index(g,n->value.text));
+    if(n->opcode==VNT_IR_UNARY){const VntIrNode*c=child_role(g->ir,i,VNT_IR_EDGE_OPERAND);return c&&expression_is_unsigned(g,(size_t)(c-g->ir->nodes));}
+    if(n->opcode==VNT_IR_BINARY){const VntIrNode*l=child_role(g->ir,i,VNT_IR_EDGE_LEFT),*r=child_role(g->ir,i,VNT_IR_EDGE_RIGHT);return(l&&expression_is_unsigned(g,(size_t)(l-g->ir->nodes)))||(r&&expression_is_unsigned(g,(size_t)(r-g->ir->nodes)));}
+    return 0;
+}
 static int label_new(FreestandingGen *g) { return g->next_label++; }
 static void label_emit(FreestandingGen *g, int label) {
     fprintf(g->out, ".Lvnt_free_%d:\n", label);
@@ -91,7 +125,8 @@ static int emit_expression(FreestandingGen *g, size_t index) {
     case VNT_IR_VARIABLE: {
         int vi = variable_index(g, n->value.text);
         if (vi < 0) { fail(g, "unknown local variable."); return 0; }
-        fprintf(g->out, "    movl -%d(%%rbp), %%eax\n", (vi + 1) * 8);
+        if (variable_is_64(g, vi)) fprintf(g->out, "    movq -%d(%%rbp), %%rax\n", (vi + 1) * 8);
+        else fprintf(g->out, "    movl -%d(%%rbp), %%eax\n", (vi + 1) * 8);
         return 1;
     }
     case VNT_IR_UNARY: {
@@ -99,7 +134,8 @@ static int emit_expression(FreestandingGen *g, size_t index) {
         if (!operand || !emit_expression(g, (size_t)(operand - g->ir->nodes)))
             return 0;
         if (n->operation == UNARY_NEGATE) {
-            fputs("    negl %eax\n    jo .Lvnt_arithmetic_fault\n", g->out);
+            if (expression_is_64(g, (size_t)(operand - g->ir->nodes))) fputs("    negq %rax\n    jo .Lvnt_arithmetic_fault\n", g->out);
+            else fputs("    negl %eax\n    jo .Lvnt_arithmetic_fault\n", g->out);
             return 1;
         }
         if (n->operation == UNARY_NOT) {
@@ -117,44 +153,27 @@ static int emit_expression(FreestandingGen *g, size_t index) {
         size_t ri = (size_t)(right - g->ir->nodes);
         if (n->operation == BINARY_AND || n->operation == BINARY_OR) {
             int short_label = label_new(g), done_label = label_new(g);
-            if (!emit_expression(g, li)) return 0;
-            fputs("    testl %eax, %eax\n", g->out);
-            fprintf(g->out, n->operation == BINARY_AND
-                    ? "    jz .Lvnt_free_%d\n" : "    jnz .Lvnt_free_%d\n",
-                    short_label);
-            if (!emit_expression(g, ri)) return 0;
-            fputs("    testl %eax, %eax\n    setne %al\n    movzbl %al, %eax\n", g->out);
-            fprintf(g->out, "    jmp .Lvnt_free_%d\n", done_label);
-            label_emit(g, short_label);
-            fprintf(g->out, "    movl $%d, %%eax\n",
-                    n->operation == BINARY_AND ? 0 : 1);
-            label_emit(g, done_label);
-            return 1;
+            int wide=expression_is_64(g,li)||expression_is_64(g,ri);
+        int uns=expression_is_unsigned(g,li)||expression_is_unsigned(g,ri);
+        if(!emit_expression(g,li))return 0;
+        fputs("    pushq %rax\n",g->out);
+        if(!emit_expression(g,ri))return 0;
+        fputs(wide?"    movq %rax, %rcx\n    popq %rax\n":"    movl %eax, %ecx\n    popq %rax\n",g->out);
+        switch(n->operation){
+        case BINARY_ADD:fputs(wide?(uns?"    addq %rcx, %rax\n":"    addq %rcx, %rax\n    jo .Lvnt_arithmetic_fault\n"):"    addl %ecx, %eax\n    jo .Lvnt_arithmetic_fault\n",g->out);return 1;
+        case BINARY_SUBTRACT:fputs(wide?(uns?"    subq %rcx, %rax\n":"    subq %rcx, %rax\n    jo .Lvnt_arithmetic_fault\n"):"    subl %ecx, %eax\n    jo .Lvnt_arithmetic_fault\n",g->out);return 1;
+        case BINARY_MULTIPLY:fputs(wide?(uns?"    imulq %rcx, %rax\n":"    imulq %rcx, %rax\n    jo .Lvnt_arithmetic_fault\n"):"    imull %ecx, %eax\n    jo .Lvnt_arithmetic_fault\n",g->out);return 1;
+        case BINARY_DIVIDE:if(wide&&uns)fputs("    xorq %rdx, %rdx\n    divq %rcx\n",g->out);else if(wide)fputs("    cqto\n    idivq %rcx\n",g->out);else fputs("    cltd\n    idivl %ecx\n",g->out);return 1;
+        case BINARY_MODULO:if(wide&&uns)fputs("    xorq %rdx, %rdx\n    divq %rcx\n    movq %rdx, %rax\n",g->out);else if(wide)fputs("    cqto\n    idivq %rcx\n    movq %rdx, %rax\n",g->out);else fputs("    cltd\n    idivl %ecx\n    movl %edx, %eax\n",g->out);return 1;
+        case BINARY_EQUAL:fputs(wide?"    cmpq %rcx, %rax\n    sete %al\n":"    cmpl %ecx, %eax\n    sete %al\n",g->out);break;
+        case BINARY_NOT_EQUAL:fputs(wide?"    cmpq %rcx, %rax\n    setne %al\n":"    cmpl %ecx, %eax\n    setne %al\n",g->out);break;
+        case BINARY_GREATER:fputs(wide?(uns?"    cmpq %rcx, %rax\n    seta %al\n":"    cmpq %rcx, %rax\n    setg %al\n"):"    cmpl %ecx, %eax\n    setg %al\n",g->out);break;
+        case BINARY_LESS:fputs(wide?(uns?"    cmpq %rcx, %rax\n    setb %al\n":"    cmpq %rcx, %rax\n    setl %al\n"):"    cmpl %ecx, %eax\n    setl %al\n",g->out);break;
+        case BINARY_GREATER_EQUAL:fputs(wide?(uns?"    cmpq %rcx, %rax\n    setae %al\n":"    cmpq %rcx, %rax\n    setge %al\n"):"    cmpl %ecx, %eax\n    setge %al\n",g->out);break;
+        case BINARY_LESS_EQUAL:fputs(wide?(uns?"    cmpq %rcx, %rax\n    setbe %al\n":"    cmpq %rcx, %rax\n    setle %al\n"):"    cmpl %ecx, %eax\n    setle %al\n",g->out);break;
+        default:fail(g,"unsupported binary operator.");return 0;
         }
-        if (!emit_expression(g, li)) return 0;
-        fputs("    pushq %rax\n", g->out);
-        if (!emit_expression(g, ri)) return 0;
-        fputs("    movl %eax, %ecx\n    popq %rax\n", g->out);
-        switch (n->operation) {
-        case BINARY_ADD:
-            fputs("    addl %ecx, %eax\n    jo .Lvnt_arithmetic_fault\n", g->out); return 1;
-        case BINARY_SUBTRACT:
-            fputs("    subl %ecx, %eax\n    jo .Lvnt_arithmetic_fault\n", g->out); return 1;
-        case BINARY_MULTIPLY:
-            fputs("    imull %ecx, %eax\n    jo .Lvnt_arithmetic_fault\n", g->out); return 1;
-        case BINARY_DIVIDE:
-            fputs("    cltd\n    idivl %ecx\n", g->out); return 1;
-        case BINARY_MODULO:
-            fputs("    cltd\n    idivl %ecx\n    movl %edx, %eax\n", g->out); return 1;
-        case BINARY_EQUAL: fputs("    cmpl %ecx, %eax\n    sete %al\n", g->out); break;
-        case BINARY_NOT_EQUAL: fputs("    cmpl %ecx, %eax\n    setne %al\n", g->out); break;
-        case BINARY_GREATER: fputs("    cmpl %ecx, %eax\n    setg %al\n", g->out); break;
-        case BINARY_LESS: fputs("    cmpl %ecx, %eax\n    setl %al\n", g->out); break;
-        case BINARY_GREATER_EQUAL: fputs("    cmpl %ecx, %eax\n    setge %al\n", g->out); break;
-        case BINARY_LESS_EQUAL: fputs("    cmpl %ecx, %eax\n    setle %al\n", g->out); break;
-        default: fail(g, "unsupported binary operator."); return 0;
-        }
-        fputs("    movzbl %al, %eax\n", g->out);
+        fputs("    movzbl %al, %eax\n",g->out);
         return 1;
     }
     default:
@@ -180,16 +199,16 @@ static int emit_statement(FreestandingGen *g, size_t index) {
         return 1;
     }
     if (n->opcode == VNT_IR_VARIABLE_DECL || n->opcode == VNT_IR_REASSIGN) {
-        if (n->type_name && strcmp(n->type_name, "int") &&
-            strcmp(n->type_name, "bool")) {
-            fail(g, "freestanding locals must be int or bool in this initial target.");
+        if (n->type_name && strcmp(n->type_name, "int") && strcmp(n->type_name, "bool") && strcmp(n->type_name, "i64") && strcmp(n->type_name, "u64") && strcmp(n->type_name, "usize") && strcmp(n->type_name, "isize")) {
+            fail(g, "freestanding locals support int, bool, i64, u64, usize, and isize.");
             return 0;
         }
         const VntIrNode *value = child_role(g->ir, index, VNT_IR_EDGE_VALUE);
         int vi = variable_index(g, n->value.text);
         if (!value || vi < 0 || !emit_expression(g, (size_t)(value - g->ir->nodes)))
             return 0;
-        fprintf(g->out, "    movl %%eax, -%d(%%rbp)\n", (vi + 1) * 8);
+        if (variable_is_64(g, vi)) fprintf(g->out, "    movq %%rax, -%d(%%rbp)\n", (vi + 1) * 8);
+        else fprintf(g->out, "    movl %%eax, -%d(%%rbp)\n", (vi + 1) * 8);
         return 1;
     }
     if (n->opcode == VNT_IR_ASSIGN) {
@@ -202,7 +221,8 @@ static int emit_statement(FreestandingGen *g, size_t index) {
         int vi = variable_index(g, target->value.text);
         if (vi < 0 || !emit_expression(g, (size_t)(value - g->ir->nodes)))
             return 0;
-        fprintf(g->out, "    movl %%eax, -%d(%%rbp)\n", (vi + 1) * 8);
+        if (variable_is_64(g, vi)) fprintf(g->out, "    movq %%rax, -%d(%%rbp)\n", (vi + 1) * 8);
+        else fprintf(g->out, "    movl %%eax, -%d(%%rbp)\n", (vi + 1) * 8);
         return 1;
     }
     if (n->opcode == VNT_IR_RETURN) {
@@ -351,7 +371,8 @@ int vnt_emit_freestanding_x86_64(const VntIrProgram *ir,
     if (g.failed) remove(assembly_path);
 
 cleanup:
-    for (size_t i = 0; i < g.variable_count; ++i) free(g.variables[i]);
+    for (size_t i = 0; i < g.variable_count; ++i) { free(g.variables[i]); free(g.variable_types[i]); }
     free(g.variables);
+    free(g.variable_types);
     return !g.failed;
 }

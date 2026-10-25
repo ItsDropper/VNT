@@ -56,7 +56,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install --yes gcc libssl-dev python3 grub-pc-bin grub-common xorriso qemu-system-x86
+          sudo apt-get install --yes gcc libssl-dev python3 grub-pc-bin grub-common xorriso mtools qemu-system-x86
 
       - name: Build VNT compiler
         shell: bash

@@ -231,7 +231,7 @@ static int emit_statement(FreestandingGen *g, size_t index) {
         else fprintf(g->out, "    movl %%eax, -%d(%%rbp)\n", (vi + 1) * 8);
         return 1;
     }
-    if (n->opcode == VNT_IR_ASSIGN {
+    if (n->opcode == VNT_IR_ASSIGN) {
         const VntIrNode *target = child_role(g->ir, index, VNT_IR_EDGE_TARGET);
         const VntIrNode *value = child_role(g->ir, index, VNT_IR_EDGE_VALUE);
         if (!target || target->opcode != VNT_IR_VARIABLE || !value) {

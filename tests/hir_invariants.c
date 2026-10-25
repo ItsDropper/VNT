@@ -360,7 +360,7 @@ static void check_cfg_definite_assignment(void) {
     AstNode *statements = NULL;
     ast_append(&statements, ast_create_variable_declaration("x", ast_create_integer(1)));
     ast_append(&statements,
-        ast_create_if(ast_create_boolean(1),
+        ast_create_if(ast_create_binary(ast_create_integer(1), ast_create_integer(2), BINARY_LESS),
                       ast_create_variable_declaration("x", ast_create_integer(2)),
                       ast_create_print(ast_create_integer(3))));
     ast_append(&statements, ast_create_print(ast_create_variable("x")));
@@ -410,7 +410,7 @@ static void check_cfg_definite_assignment(void) {
     statements = NULL;
     ast_append(&statements, ast_create_variable_declaration("x", ast_create_integer(1)));
     ast_append(&statements,
-        ast_create_if(ast_create_boolean(1),
+        ast_create_if(ast_create_binary(ast_create_integer(1), ast_create_integer(2), BINARY_LESS),
                       ast_create_variable_declaration("x", ast_create_integer(2)),
                       ast_create_variable_declaration("x", ast_create_integer(3))));
     ast_append(&statements, ast_create_print(ast_create_variable("x")));

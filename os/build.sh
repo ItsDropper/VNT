@@ -12,7 +12,7 @@ sources=(
   src/compiler/typecheck.c src/compiler/ir.c src/compiler/ir_lower.c
   src/compiler/cfg.c src/compiler/x86_backend.c src/compiler/freestanding_x86.c
 )
-gcc -O2 -std=c11 -Iinclude -Isrc/compiler "${sources[@]}" -o build/vnt
+gcc -O2 -std=gnu11 -Iinclude -Isrc/compiler "${sources[@]}" -o build/vnt
 ./build/vnt --emit-freestanding-asm os/kernel.vnt -o build/kernel.s
 gcc -c -m64 -ffreestanding -fno-pic -fno-stack-protector -mno-red-zone build/kernel.s -o build/kernel.o
 gcc -c -m64 -ffreestanding -fno-pic -fno-stack-protector -mno-red-zone os/boot.S -o build/boot.o

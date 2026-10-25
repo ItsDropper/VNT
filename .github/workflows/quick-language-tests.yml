@@ -242,14 +242,24 @@ jobs:
           grub-file --is-x86-multiboot2 build/kernel.elf
           readelf -h build/kernel.elf | grep -F 'ELF64'
           test -s build/vntos.iso
-          set +e
-          timeout 10s qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -monitor none -serial file:build/serial.log -debugcon file:build/debug.log -global isa-debugcon.iobase=0xe9 -no-reboot -no-shutdown
-          qemu_status=$?
-          set -e
-          if [ "$qemu_status" -ne 0 ] && [ "$qemu_status" -ne 124 ]; then
-            echo "QEMU exited unexpectedly: $qemu_status"
-            exit "$qemu_status"
-          fi
+          qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -monitor unix:build/qemu-monitor.sock,server,nowait -serial file:build/serial.log -debugcon file:build/debug.log -global isa-debugcon.iobase=0xe9 -no-reboot -no-shutdown &
+          qemu_pid=$!
+          cleanup_qemu() {
+            kill "$qemu_pid" 2>/dev/null || true
+            wait "$qemu_pid" 2>/dev/null || true
+          }
+          trap cleanup_qemu EXIT
+
+          for attempt in $(seq 1 100); do
+            if grep -Fq 'VNTOS_BOOT_OK' build/serial.log 2>/dev/null; then break; fi
+            if ! kill -0 "$qemu_pid" 2>/dev/null; then
+              echo 'QEMU exited before the kernel boot marker.'
+              cat build/debug.log || true
+              cat build/serial.log || true
+              exit 1
+            fi
+            sleep 0.1
+          done
           if ! grep -F 'VNTOS_BOOT_OK' build/serial.log; then
             echo 'Serial boot marker missing; debugcon trace:'
             cat build/debug.log || true
@@ -257,3 +267,38 @@ jobs:
             cat build/serial.log || true
             exit 1
           fi
+
+          python3 - <<'PY'
+          import socket
+          import time
+
+          path = "build/qemu-monitor.sock"
+          monitor = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+          monitor.settimeout(1.0)
+          for _ in range(100):
+              try:
+                  monitor.connect(path)
+                  break
+              except OSError:
+                  time.sleep(0.1)
+          else:
+              raise SystemExit("QEMU monitor socket did not become available")
+
+          try:
+              monitor.recv(4096)
+          except socket.timeout:
+              pass
+          for key in ("h", "e", "l", "p", "ret"):
+              monitor.sendall(("sendkey " + key + "\\n").encode("ascii"))
+              time.sleep(0.15)
+          time.sleep(0.3)
+          monitor.close()
+          PY
+
+          for attempt in $(seq 1 30); do
+            if grep -Fq 'Commands: help, about, clear, reboot' build/serial.log; then break; fi
+            sleep 0.1
+          done
+          grep -F 'Commands: help, about, clear, reboot' build/serial.log
+          cleanup_qemu
+          trap - EXIT

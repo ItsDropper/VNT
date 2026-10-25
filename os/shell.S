@@ -50,7 +50,7 @@ os_shell:
     incl %eax
     movl %eax, os_command_length(%rip)
     movzbl %r13b, %edi
-    call os_putc
+    call vnt_fn_serial_putc
     jmp .Los_input
 
 .Los_backspace:
@@ -62,11 +62,11 @@ os_shell:
     leaq os_command(%rip), %rdx
     movb $0, (%rdx,%rax)
     movl $8, %edi
-    call os_putc
+    call vnt_fn_serial_putc
     movl $32, %edi
-    call os_putc
+    call vnt_fn_serial_putc
     movl $8, %edi
-    call os_putc
+    call vnt_fn_serial_putc
     jmp .Los_input
 
 .Los_enter:
@@ -74,7 +74,7 @@ os_shell:
     leaq os_command(%rip), %rdx
     movb $0, (%rdx,%rax)
     movl $10, %edi
-    call os_putc
+    call vnt_fn_serial_putc
 
     leaq os_command(%rip), %rdi
     leaq .Los_cmd_help(%rip), %rsi
@@ -217,28 +217,11 @@ os_puts:
     movzbl (%r12), %edi
     testl %edi, %edi
     jz .Los_puts_done
-    call os_putc
+    call vnt_fn_serial_putc
     incq %r12
     jmp .Los_puts_loop
 .Los_puts_done:
     popq %r12
-    ret
-
-.type os_putc,@function
-os_putc:
-    pushq %rbx
-    pushq %r12
-    movb %dil, %r12b
-    movw $0x3fd, %dx
-.Los_serial_wait:
-    inb %dx, %al
-    testb $0x20, %al
-    jz .Los_serial_wait
-    movw $0x3f8, %dx
-    movb %r12b, %al
-    outb %al, %dx
-    popq %r12
-    popq %rbx
     ret
 
 .type os_put_hex64,@function
@@ -249,9 +232,9 @@ os_put_hex64:
     pushq %r12
     movq %rdi, %r12
     movl $'0', %edi
-    call os_putc
+    call vnt_fn_serial_putc
     movl $'x', %edi
-    call os_putc
+    call vnt_fn_serial_putc
     movl $60, %ebx
 .Los_hex_loop:
     movq %r12, %rax
@@ -266,13 +249,13 @@ os_put_hex64:
     addl $87, %eax
 .Los_hex_emit:
     movl %eax, %edi
-    call os_putc
+    call vnt_fn_serial_putc
     subl $4, %ebx
     jns .Los_hex_loop
     movl $13, %edi
-    call os_putc
+    call vnt_fn_serial_putc
     movl $10, %edi
-    call os_putc
+    call vnt_fn_serial_putc
     popq %r12
     popq %rbx
     addq $8, %rsp

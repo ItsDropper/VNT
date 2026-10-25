@@ -1,7 +1,10 @@
 fun kernel_main() {
-    let value: i64 = 2147483647
-    value = value + 1
-    if value > 2147483647 {
+    let value: i64 = 4294967296
+    value = value + 2147483648
+    if value == 6442450944 {
+        value = value * 3
+    }
+    if value == 19327352832 {
         return 0
     }
     return 1

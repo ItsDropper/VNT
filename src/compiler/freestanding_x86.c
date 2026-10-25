@@ -118,7 +118,10 @@ static int emit_expression(FreestandingGen *g, size_t index) {
     const VntIrNode *n = &g->ir->nodes[index];
     switch (n->opcode) {
     case VNT_IR_INTEGER:
-        fprintf(g->out, "    movl $%d, %%eax\n", n->value.integer);
+        if (n->value.integer < INT32_MIN || n->value.integer > INT32_MAX)
+            fprintf(g->out, "    movabsq $%lld, %%rax\n", (long long)n->value.integer);
+        else
+            fprintf(g->out, "    movl $%d, %%eax\n", (int)n->value.integer);
         return 1;
     case VNT_IR_BOOLEAN:
         fprintf(g->out, "    movl $%d, %%eax\n", !!n->value.boolean);
@@ -136,7 +139,7 @@ static int emit_expression(FreestandingGen *g, size_t index) {
             return 0;
         if (n->operation == UNARY_NEGATE) {
             if (expression_is_64(g, (size_t)(operand - g->ir->nodes))) fputs("    negq %rax\n    jo .Lvnt_arithmetic_fault\n", g->out);
-            else fputs("    negl %eax\n    jo .Lvnt_arithmetic_fault\n", g->out);
+            else fputs("    negl %eax\n    jo .Lvnt_arithmetic_fault\n    movslq %eax, %rax\n", g->out);
             return 1;
         }
         if (n->operation == UNARY_NOT) {

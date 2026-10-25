@@ -305,6 +305,55 @@ static int remove_initialization(VntIrNode *node) {
     return 1;
 }
 
+
+static void check_cfg_liveness(void) {
+    AstNode *statements = NULL;
+    ast_append(&statements, ast_create_variable_declaration("live_x", ast_create_integer(41)));
+    ast_append(&statements, ast_create_print(ast_create_variable("live_x")));
+    AstNode *program = ast_create_program(statements);
+    VntIrProgram ir = {0};
+    CHECK(program != NULL, "liveness AST allocated");
+    if (!program) return;
+    CHECK(vnt_ir_lower(&ir, program), "liveness HIR lowering succeeds");
+    if (ir.nodes) {
+        VntCfg cfg = {0};
+        CHECK(vnt_cfg_build(&ir, &cfg), "liveness CFG builds");
+        VntCfgLiveness analysis = {0};
+        if (cfg.blocks) {
+            CHECK(vnt_cfg_compute_liveness(&ir, &cfg, &analysis),
+                  "backward variable liveness analysis succeeds");
+            if (analysis.live_in && analysis.live_out) {
+                size_t decl = find_role(&ir, ir.root, VNT_IR_EDGE_STATEMENT);
+                size_t print = decl == VNT_IR_NO_NODE ? VNT_IR_NO_NODE
+                    : ir.nodes[decl].next_sibling;
+                size_t decl_block = VNT_IR_NO_NODE, print_block = VNT_IR_NO_NODE;
+                for (size_t b = 0; b < cfg.block_count; ++b) {
+                    if (cfg.blocks[b].instruction == decl) decl_block = b;
+                    if (cfg.blocks[b].instruction == print) print_block = b;
+                }
+                CHECK(decl != VNT_IR_NO_NODE && print != VNT_IR_NO_NODE &&
+                      decl_block != VNT_IR_NO_NODE && print_block != VNT_IR_NO_NODE,
+                      "liveness statements map to CFG blocks");
+                if (decl_block != VNT_IR_NO_NODE && print_block != VNT_IR_NO_NODE) {
+                    const char *name = ir.nodes[decl].value.text;
+                    CHECK(!vnt_cfg_variable_live_in(&analysis, decl_block, name),
+                          "defined variable is not live before its declaration");
+                    CHECK(vnt_cfg_variable_live_out(&analysis, decl_block, name),
+                          "variable remains live after declaration until its read");
+                    CHECK(vnt_cfg_variable_live_in(&analysis, print_block, name),
+                          "variable is live into the block that reads it");
+                    CHECK(!vnt_cfg_variable_live_out(&analysis, print_block, name),
+                          "variable is dead after its final read");
+                }
+            }
+            vnt_cfg_liveness_free(&analysis);
+            vnt_cfg_free(&cfg);
+        }
+    }
+    vnt_ir_free(&ir);
+    ast_free(program);
+}
+
 static void check_cfg_definite_assignment(void) {
     /* A value assigned on only one incoming branch must not count as
        definitely initialized after the merge. */
@@ -438,6 +487,7 @@ int main(void) {
     check_cfg_constant_branch_pruning();
     check_cfg_prunes_unreachable_statements();
     check_cfg_definite_assignment();
+    check_cfg_liveness();
 
     if (failures) {
         fprintf(stderr, "%d HIR invariant test(s) failed.\n", failures);

@@ -116,6 +116,8 @@ gdt64_pointer:
 .global os_shell
 .type os_shell,@function
 os_shell:
+    /* Entry from kernel_main has RSP%16 == 8; align before nested calls. */
+    subq $8, %rsp
     movw $0xe9, %dx
     movb $83, %al
     outb %al, %dx

@@ -484,14 +484,14 @@ int vnt_emit_freestanding_x86_64(const VntIrProgram *ir,
     for (size_t i = 0; i < ir->node_count; ++i) {
         const VntIrNode *node = &ir->nodes[i];
         if (node->opcode != VNT_IR_STRING || !node->value.text) continue;
-        fprintf(out, ".Lvnt_str_%zu:\\n    .byte ", i);
+        fprintf(out, ".Lvnt_str_%zu:\n    .byte ", i);
         const unsigned char *p = (const unsigned char *)node->value.text;
         for (size_t j = 0; p[j]; ++j)
             fprintf(out, "%s%u", j ? "," : "", (unsigned)p[j]);
-        fprintf(out, "%s0\\n", *node->value.text ? "," : "");
+        fprintf(out, "%s0\n", *node->value.text ? "," : "");
     }
-    fputs(".section .bss\\n"
-          ".balign 16\\n"
+    fputs(".section .bss\n"
+          ".balign 16\n"
           ".globl freestanding_stack_bottom\n"
           "freestanding_stack_bottom:\n"
           "    .skip 16384\n"

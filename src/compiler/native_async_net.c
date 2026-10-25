@@ -13,11 +13,14 @@
 #include <stdint.h>
 #include <time.h>
 #ifdef _WIN32
+#include <winsock2.h>
 #include <windows.h>
+#include <winhttp.h>
 #else
 #include <pthread.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <sys/socket.h>
 #endif
 
 #define VNT_NET_ASYNC_WORKERS 4
@@ -39,6 +42,9 @@ typedef struct {
     char *response;
     size_t response_length;
     int status;
+    intptr_t active_transport;
+    int worker_finished;
+    int release_requested;
 } VntAsyncTask;
 
 static VntAsyncTask tasks[VNT_NET_ASYNC_CAPACITY];
@@ -46,6 +52,11 @@ static int queue[VNT_NET_ASYNC_CAPACITY];
 static unsigned queue_head, queue_tail, queue_count;
 static int next_handle = 1;
 static int worker_count;
+#ifdef _WIN32
+static __declspec(thread) int async_current_handle;
+#else
+static __thread int async_current_handle;
+#endif
 
 #ifdef _WIN32
 static SRWLOCK async_lock = SRWLOCK_INIT;
@@ -125,14 +136,17 @@ static void *async_worker_main(void *unused)
             continue;
         }
         task->state = TASK_RUNNING;
+        async_current_handle = task->id;
         async_lock_release();
 
         response = vnt_native_http_request_async(task->method, task->url,
                                                   task->headers, task->body,
                                                   &status, &length);
+        async_current_handle = 0;
 
         async_lock_acquire();
         /* The task cannot be released while running, so this slot is stable. */
+        task->worker_finished = 1;
         if (task->state == TASK_RUNNING) {
             task->response = response;
             task->response_length = response ? length : 0;
@@ -140,6 +154,7 @@ static void *async_worker_main(void *unused)
             task->state = TASK_DONE;
         } else {
             free(response);
+            if (task->release_requested) async_task_clear(task);
         }
         async_wake_all();
         async_lock_release();
@@ -273,12 +288,26 @@ int vnt_native_http_async_cancel(int id) {
     int result = 0;
     async_lock_acquire();
     VntAsyncTask *t = async_find_locked(id);
-    /* Active I/O cancellation is deliberately not reported as successful. */
     if (t && t->state == TASK_QUEUED) {
         t->state = TASK_CANCELLED;
         result = 1;
-        async_wake_all();
+    } else if (t && t->state == TASK_RUNNING) {
+        t->state = TASK_CANCELLED;
+        result = 1;
+        if (t->active_transport) {
+#ifdef _WIN32
+            HINTERNET request = (HINTERNET)t->active_transport;
+            t->active_transport = 0;
+            /* Closing the active WinHTTP request aborts its synchronous I/O. */
+            WinHttpCloseHandle(request);
+#else
+            int fd = (int)(t->active_transport - 1);
+            /* shutdown() interrupts a blocked socket read/write; worker owns close(). */
+            shutdown(fd, SHUT_RDWR);
+#endif
+        }
     }
+    async_wake_all();
     async_lock_release();
     return result;
 }
@@ -311,11 +340,53 @@ int vnt_native_http_async_release(int id) {
     int result = 0;
     async_lock_acquire();
     VntAsyncTask *t = async_find_locked(id);
-    if (t && (t->state == TASK_DONE || t->state == TASK_CANCELLED)) {
-        if (t->state == TASK_DONE) async_task_clear(t);
-        /* Queued cancelled entries are freed when their queue slot is popped. */
+    if (t && t->state == TASK_DONE) {
+        async_task_clear(t);
+        result = 1;
+    } else if (t && t->state == TASK_CANCELLED) {
+        t->release_requested = 1;
+        if (t->worker_finished) async_task_clear(t);
+        /* Queued cancellation is reclaimed when its queue entry is popped. */
         result = 1;
     }
     async_lock_release();
     return result;
+}
+
+/* Transport hooks used by native_net.c to interrupt active requests safely. */
+int vnt_native_http_async_current_handle(void) {
+    return async_current_handle;
+}
+
+void vnt_native_http_async_set_transport(int id, intptr_t transport) {
+    if (!id || !transport) return;
+    async_lock_acquire();
+    VntAsyncTask *t = async_find_locked(id);
+    if (t && t->state == TASK_RUNNING) {
+        t->active_transport = transport;
+    } else if (t && t->state == TASK_CANCELLED) {
+#ifdef _WIN32
+        WinHttpCloseHandle((HINTERNET)transport);
+#else
+        shutdown((int)(transport - 1), SHUT_RDWR);
+#endif
+    }
+    async_lock_release();
+}
+
+int vnt_native_http_async_should_close_transport(int id, intptr_t transport) {
+    int should_close = 1;
+    if (!id || !transport) return 1;
+    async_lock_acquire();
+    VntAsyncTask *t = async_find_locked(id);
+    if (t && t->active_transport == transport) {
+        t->active_transport = 0;
+    } else if (t && t->state == TASK_CANCELLED) {
+        /* Cancellation already closed this WinHTTP handle. */
+#ifdef _WIN32
+        should_close = 0;
+#endif
+    }
+    async_lock_release();
+    return should_close;
 }

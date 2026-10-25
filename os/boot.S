@@ -123,6 +123,7 @@ boot_stack_top:
 
 
 /* Shared scalar state for the VNT-compiled VGA/PS2 drivers. */
+.section .data
 .balign 8
 .global vntos_state
 vntos_state:

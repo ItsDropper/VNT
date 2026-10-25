@@ -8,6 +8,7 @@ typedef struct {
     const VntIrProgram *ir;
     FILE *out;
     char **variables;
+    char **variable_types;
     size_t variable_count;
     size_t variable_capacity;
     int next_label;
@@ -40,10 +41,14 @@ static int add_variable(FreestandingGen *g, const char *name) {
         char **variables = realloc(g->variables, capacity * sizeof(*variables));
         if (!variables) return 0;
         g->variables = variables;
+        char **types = realloc(g->variable_types, capacity * sizeof(*types));
+        if (!types) return 0;
+        g->variable_types = types;
         g->variable_capacity = capacity;
     }
     g->variables[g->variable_count] = strdup(name);
-    if (!g->variables[g->variable_count]) return 0;
+    g->variable_types[g->variable_count] = strdup("int");
+    if (!g->variables[g->variable_count] || !g->variable_types[g->variable_count]) return 0;
     ++g->variable_count;
     return 1;
 }
@@ -58,11 +63,41 @@ static void collect_variables(FreestandingGen *g, size_t index) {
         g->failed = 1;
         return;
     }
+    if (n->opcode == VNT_IR_VARIABLE_DECL && n->type_name) {
+        int vi = variable_index(g, n->value.text);
+        if (vi >= 0) {
+            char *copy = strdup(n->type_name);
+            if (!copy) { g->failed = 1; return; }
+            free(g->variable_types[vi]);
+            g->variable_types[vi] = copy;
+        }
+    }
     for (size_t c = n->first_child; c != VNT_IR_NO_NODE;
          c = g->ir->nodes[c].next_sibling)
         collect_variables(g, c);
 }
 
+static int variable_is_64(const FreestandingGen *g, int vi) {
+    return vi >= 0 && (size_t)vi < g->variable_count &&
+           g->variable_types[vi] && !strcmp(g->variable_types[vi], "i64");
+}
+static int expression_is_64(const FreestandingGen *g, size_t i) {
+    if (i >= g->ir->node_count) return 0;
+    const VntIrNode *n = &g->ir->nodes[i];
+    if (n->opcode == VNT_IR_VARIABLE)
+        return variable_is_64(g, variable_index(g, n->value.text));
+    if (n->opcode == VNT_IR_UNARY) {
+        const VntIrNode *c = child_role(g->ir, i, VNT_IR_EDGE_OPERAND);
+        return c && expression_is_64(g, (size_t)(c - g->ir->nodes));
+    }
+    if (n->opcode == VNT_IR_BINARY) {
+        const VntIrNode *l = child_role(g->ir, i, VNT_IR_EDGE_LEFT);
+        const VntIrNode *r = child_role(g->ir, i, VNT_IR_EDGE_RIGHT);
+        return (l && expression_is_64(g, (size_t)(l - g->ir->nodes))) ||
+               (r && expression_is_64(g, (size_t)(r - g->ir->nodes)));
+    }
+    return 0;
+}
 static int label_new(FreestandingGen *g) { return g->next_label++; }
 static void label_emit(FreestandingGen *g, int label) {
     fprintf(g->out, ".Lvnt_free_%d:\n", label);

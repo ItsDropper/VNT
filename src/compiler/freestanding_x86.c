@@ -79,7 +79,9 @@ static void collect_variables(FreestandingGen *g, size_t index) {
 
 static int variable_is_64(const FreestandingGen *g, int vi) {
     return vi >= 0 && (size_t)vi < g->variable_count &&
-           g->variable_types[vi] && !strcmp(g->variable_types[vi], "i64");
+           g->variable_types[vi] &&
+           (!strcmp(g->variable_types[vi], "int") ||
+            !strcmp(g->variable_types[vi], "i64"));
 }
 static int expression_is_64(const FreestandingGen *g, size_t i) {
     if (i >= g->ir->node_count) return 0;
@@ -138,8 +140,7 @@ static int emit_expression(FreestandingGen *g, size_t index) {
         if (!operand || !emit_expression(g, (size_t)(operand - g->ir->nodes)))
             return 0;
         if (n->operation == UNARY_NEGATE) {
-            if (expression_is_64(g, (size_t)(operand - g->ir->nodes))) fputs("    negq %rax\n    jo .Lvnt_arithmetic_fault\n", g->out);
-            else fputs("    negl %eax\n    jo .Lvnt_arithmetic_fault\n    movslq %eax, %rax\n", g->out);
+            fputs("    negq %rax\n    jo .Lvnt_arithmetic_fault\n", g->out);
             return 1;
         }
         if (n->operation == UNARY_NOT) {
@@ -171,7 +172,7 @@ static int emit_expression(FreestandingGen *g, size_t index) {
             label_emit(g, done_label);
             return 1;
         }
-        int wide = expression_is_64(g, li) || expression_is_64(g, ri);
+        int wide = 1; /* All freestanding VNT integer arithmetic is 64-bit. */
         if (!emit_expression(g, li)) return 0;
         fputs("    pushq %rax\n", g->out);
         if (!emit_expression(g, ri)) return 0;
@@ -304,9 +305,9 @@ static void emit_symbol(FILE *out, const char *name) {
 }
 
 /*
- * Freestanding x86-64 ELF subset. Values are signed 32-bit int/bool for now;
- * arithmetic overflow traps with UD2. No hosted runtime or libc references
- * are emitted. Unsupported source constructs fail compilation.
+ * Freestanding x86-64 ELF subset. Integer values use 64-bit registers and
+ * stack slots; booleans use 32-bit values. Signed arithmetic overflow traps
+ * with UD2. No hosted runtime or libc references are emitted.
  */
 int vnt_emit_freestanding_x86_64(const VntIrProgram *ir,
                                  const char *assembly_path) {

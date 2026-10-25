@@ -45,6 +45,10 @@ jobs:
         run: |
           printf 'vnx/game/last_signal.vnx\nAda\n1\n1\n3\n2\n1\n3\n5\n' | vnx/build/vnx > vnx/build/adventure.out
           grep -F 'ENDING: HOMEWARD' vnx/build/adventure.out
+      - name: Run alternate signal ending
+        run: |
+          printf 'vnx/game/last_signal.vnx\nAda\n1\n1\n3\n2\n1\n3\n3\n1\n2\nyes\n3\n4\n' | vnx/build/vnx > vnx/build/signal.out
+          grep -F 'ENDING: THE SIGNAL' vnx/build/signal.out
       - name: Verify malformed source is rejected
         run: |
           printf 'vnx/tests/invalid.vnx\n' | vnx/build/vnx > vnx/build/invalid.out

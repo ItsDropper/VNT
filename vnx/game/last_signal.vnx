@@ -68,20 +68,46 @@ label lab
 say "=== RESEARCH LAB ==="
 say "A specimen case is open. The sample hums in time with your pulse."
 say "1. Collect sample"
-say "2. Return to hub"
+say "2. Ask station AI for help"
+say "3. Return to hub"
 input choice "> "
 when choice == "1" jump collect_sample
-when choice == "2" jump hub
+when choice == "2" jump ai_dialogue
+when choice == "3" jump hub
+jump lab
+label ai_dialogue
+say "The AI says: I can open the airlock. Give me the sample."
+input ai_choice "Trust the AI? (yes/no) "
+when ai_choice == "yes" jump trust_ai
+say "You disconnect the speaker. It whispers without power."
+jump lab
+label trust_ai
+set trust "yes"
+say "You agree to meet the AI at the terminal."
 jump lab
 label collect_sample
 set sample "yes"
 say "You seal the sample in a lead capsule. The humming stops."
 jump lab
 label terminal
+when power == "yes" jump terminal_powered
 say "LOG: Emergency grid disabled from inside."
 say "LOG: A voiceprint matching the station AI entered Sector 0."
 say "LOG: If the signal returns, do not answer it."
 jump hub
+label terminal_powered
+when sample == "yes" jump terminal_sample
+say "The terminal wakes. The AI speaks in your own voice."
+say "You leave the terminal alone and return to the hub."
+jump hub
+label terminal_sample
+when trust == "yes" jump signal_ending
+say "The AI asks for the sample. You keep the capsule and leave."
+jump hub
+label signal_ending
+say "Empty rooms fill with familiar voices. They all ask you to open the doors."
+say "ENDING: THE SIGNAL. You become the station's new voice."
+end
 label airlock
 when power == "yes" jump escape
 say "The airlock is dead. Restore auxiliary power first."

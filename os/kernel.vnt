@@ -1,0 +1,11 @@
+# Copyright (c) 2026 ItsDropper
+# Licensed under the MIT License. See LICENSE in the repository root.
+
+fun kernel_main() {
+    # The boot/runtime assembly provides VGA, PS/2 keyboard polling and the
+    # shell loop. This call never returns.
+    unsafe {
+        asm volatile("call os_shell")
+    }
+    return 0
+}

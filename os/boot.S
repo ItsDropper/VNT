@@ -48,22 +48,34 @@ boot32_entry:
     incl %ecx
     cmpl $512, %ecx
     jne .Los_map_2m
+    movw $0xe9, %dx
+    movb $49, %al
+    outb %al, %dx
 
     movl %cr4, %eax
     orl $0x20, %eax
     movl %eax, %cr4
     movl $pml4_table, %eax
     movl %eax, %cr3
+    movw $0xe9, %dx
+    movb $50, %al
+    outb %al, %dx
 
     movl $0xc0000080, %ecx
     rdmsr
     orl $0x100, %eax
     wrmsr
+    movw $0xe9, %dx
+    movb $51, %al
+    outb %al, %dx
 
     lgdt gdt64_pointer
     movl %cr0, %eax
     orl $0x80000000, %eax
     movl %eax, %cr0
+    movw $0xe9, %dx
+    movb $52, %al
+    outb %al, %dx
     ljmp $0x08, $long_mode_entry
 .size boot32_entry, .-boot32_entry
 

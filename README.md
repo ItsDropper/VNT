@@ -77,7 +77,7 @@ gcc -c -ffreestanding -fno-pic kernel.s -o kernel.o
 ld -nostdlib -static -e _start -o kernel.elf kernel.o
 ```
 
-The initial freestanding subset requires a zero-argument `fun kernel_main()` and currently permits only inline assembly and bare `return` statements (including nested `unsafe` blocks). Hosted operations such as `print`, dynamic values, memory builtins, and general arithmetic are rejected rather than linked against the runtime. The generated ELF is a freestanding code-generation milestone, **not yet a bootable OS kernel**; boot protocol integration and QEMU boot/serial tests remain future work.
+The initial freestanding subset requires a zero-argument `fun kernel_main()` and currently permits inline assembly plus integer/boolean literal return values (including nested `unsafe` blocks). Hosted operations such as `print`, dynamic values, memory builtins, and general arithmetic are rejected rather than linked against the runtime. The generated ELF is a freestanding code-generation milestone, **not yet a bootable OS kernel**; boot protocol integration and QEMU boot/serial tests remain future work.
 
 ## Your first VNT program
 

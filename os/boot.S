@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the repository root.
  *
  * Multiboot2 32-bit entry transitions to long mode with a 1 GiB identity map.
- * The freestanding VNT kernel enters a separate serial-shell object.
+ * The freestanding VNT kernel owns shell behavior; this file only bootstraps the CPU.
  */
 .section .multiboot,"a"
 .balign 8

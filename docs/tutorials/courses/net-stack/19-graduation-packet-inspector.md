@@ -114,6 +114,21 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Build the final inspector from reusable modules
+
+The entry point should select a fixture, invoke Ethernet parsing, dispatch IPv4 and UDP, and report fields or the exact rejection reason. Builders should remain separate from parsers.
+
+```vnt
+let frame_fields: array = ethernet.parse_frame(frame)
+if len(frame_fields) != 14 {
+    print("TRUNCATED_ETHERNET")
+} else {
+    print(frame_fields[12])
+}
+```
+
+Finish with a successful synthetic UDP echo round trip, malformed fixtures for every layer, a README describing limitations, and independent tests for routing and state transitions.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

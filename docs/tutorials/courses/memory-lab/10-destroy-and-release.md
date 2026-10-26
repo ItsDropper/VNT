@@ -129,6 +129,21 @@ Call the new function from the example's entry point. Avoid duplicating its inte
 
 Every new branch can break earlier behavior. Run the complete relevant test set, not only the newest test.
 
+## Worked implementation: Clear owner state after release
+
+Release through the standard library, check the result, then clear every field that represents ownership.
+
+```vnt
+let released: bool = mem.free(base)
+if released {
+    base = null
+    capacity = 0
+    cursor = 0
+}
+```
+
+Keep the old pointer inaccessible after destruction. Decide whether repeated destroy is a harmless no-op or an error and test that exact contract.
+
 ## 6. Test design
 
 Add explicit tests for each applicable category:

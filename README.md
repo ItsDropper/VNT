@@ -199,6 +199,9 @@ The source-level standard library lives in `lib/std/`. Available modules include
 | `io.vnt` | Line input, standard output, and standard error |
 | `fs.vnt` | Text files and directory operations |
 | `math.vnt` | Math wrappers and helper functions |
+| `array.vnt` | Array search/count, numeric aggregates, reverse, and join |
+| `string.vnt` | Prefix/suffix/search/count/repeat helpers |
+| `number.vnt` | Parity, sign, factorial, GCD, and primality helpers |
 | `time.vnt` | Millisecond clock and sleep helpers |
 | `os.vnt` | Current directory and environment variables |
 | `process.vnt` | Start, inspect, wait for, and terminate child processes |

@@ -521,11 +521,13 @@ static int run_one_test(Config *cfg, const char *filename) {
     printf("[test] %s\n", filename);
     if (run_compiler(&test_cfg, 0) != 0) return 1;
     if (!absolute_path("build", output_path, sizeof output_path)) return 1;
-    n = snprintf(output_path + strlen(output_path), sizeof output_path - strlen(output_path),
-                 "/%s%s", name, EXE_SUFFIX);
-    if (n < 0 || (size_t)n >= sizeof output_path - strlen(output_path)) {
-        fprintf(stderr, "vbuild: test output path too long.\n");
-        return 1;
+    {
+        size_t len = strlen(output_path);
+        n = snprintf(output_path + len, sizeof output_path - len, "/%s%s", name, EXE_SUFFIX);
+        if (n < 0 || (size_t)n >= sizeof output_path - len) {
+            fprintf(stderr, "vbuild: test output path too long.\n");
+            return 1;
+        }
     }
     args[0] = output_path;
     args[1] = NULL;

@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 /*
  * Copyright (c) 2026 ItsDropper
  * SPDX-License-Identifier: MIT

@@ -1,0 +1,44 @@
+# Copyright (c) 2026 ItsDropper
+# A deliberately small TCP state-machine exercise. It does not implement TCP.
+# States: 0=CLOSED, 1=LISTEN, 2=SYN_SENT, 3=SYN_RECEIVED, 4=ESTABLISHED.
+# Events: 1=LISTEN, 2=ACTIVE_OPEN, 3=RECEIVE_SYN, 4=RECEIVE_SYN_ACK,
+# 5=RECEIVE_ACK, 6=CLOSE. Invalid transitions return -1.
+export fun transition(state: int, event: int) -> int {
+    if state == 0 && event == 1 {
+        return 1
+    }
+    if state == 0 && event == 2 {
+        return 2
+    }
+    if state == 1 && event == 3 {
+        return 3
+    }
+    if state == 2 && event == 4 {
+        return 4
+    }
+    if state == 3 && event == 5 {
+        return 4
+    }
+    if state == 4 && event == 6 {
+        return 0
+    }
+    if state == 1 && event == 6 {
+        return 0
+    }
+    if state == 2 && event == 6 {
+        return 0
+    }
+    if state == 3 && event == 6 {
+        return 0
+    }
+    return -1
+}
+
+export fun state_name(state: int) -> string {
+    if state == 0 { return "CLOSED" }
+    if state == 1 { return "LISTEN" }
+    if state == 2 { return "SYN_SENT" }
+    if state == 3 { return "SYN_RECEIVED" }
+    if state == 4 { return "ESTABLISHED" }
+    return "INVALID"
+}

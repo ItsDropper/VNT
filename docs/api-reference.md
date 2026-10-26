@@ -38,7 +38,7 @@ The import path is relative to the importing source file. Module functions are e
 | `process.vnt` | Start, poll, wait for, inspect, and terminate child processes; launch visible programs | Pass an executable and an array of string arguments. Arguments are not shell-parsed by VNT | [process.vnt](../lib/std/process.vnt) |
 | `net.vnt` | HTTP/HTTPS, custom methods/headers, status, binary request/response, downloads, async and stream helpers | Body helpers return an empty string on transport failure; status `000` means no HTTP status was received. Ordinary responses are buffered. Download fallback routes may buffer | [net.vnt](../lib/std/net.vnt) |
 | `log.vnt` | Console and file logging | Appends to `vnt.log` in the current working directory | [log.vnt](../lib/std/log.vnt) |
-| `config.vnt` | Load-or-create and save plain text | Not a TOML/JSON parser | [config.vnt](../lib/std/config.vnt) |
+| `config.vnt` | Load-or-create, save/append, INI `get`, `get_bool`, `has_key`, and `section_exists` | Supports simple `[section]` headers, `key=value`, blank lines, `#`/`;` comments, and outer double quotes; no escape processing, mutation, or TOML/JSON support | [config.vnt](../lib/std/config.vnt) |
 | `json.vnt` | Read a simple JSON field occurrence | Not a full JSON DOM/parser | [json.vnt](../lib/std/json.vnt) |
 | `mem.vnt` | Raw pointer allocation and memory primitives | Requires explicit `unsafe { ... }`; no bounds/lifetime checking | [mem.vnt](../lib/std/mem.vnt) and [raw-memory guide](raw-memory.md) |
 

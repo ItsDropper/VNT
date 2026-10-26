@@ -1,0 +1,111 @@
+# Pure VNT string helpers using existing indexing, comparisons, and concatenation.
+# String indexing follows the language runtime's current character/index semantics.
+
+export fun is_empty(value) {
+    return len(value) == 0
+}
+
+export fun is_not_empty(value) {
+    return len(value) > 0
+}
+
+export fun starts_with(value, prefix) {
+    prefix_size = len(prefix)
+    if prefix_size > len(value) {
+        return false
+    }
+    i = 0
+    while i < prefix_size {
+        if value[i] != prefix[i] {
+            return false
+        }
+        i += 1
+    }
+    return true
+}
+
+export fun ends_with(value, suffix) {
+    suffix_size = len(suffix)
+    value_size = len(value)
+    if suffix_size > value_size {
+        return false
+    }
+    offset = value_size - suffix_size
+    i = 0
+    while i < suffix_size {
+        if value[offset + i] != suffix[i] {
+            return false
+        }
+        i += 1
+    }
+    return true
+}
+
+export fun index_of(value, needle) {
+    value_size = len(value)
+    needle_size = len(needle)
+    if needle_size == 0 {
+        return 0
+    }
+    if needle_size > value_size {
+        return -1
+    }
+    start = 0
+    while start <= value_size - needle_size {
+        i = 0
+        matched = true
+        while i < needle_size {
+            if value[start + i] != needle[i] {
+                matched = false
+            }
+            i += 1
+        }
+        if matched {
+            return start
+        }
+        start += 1
+    }
+    return -1
+}
+
+export fun contains(value, needle) {
+    return index_of(value, needle) >= 0
+}
+
+# Counts non-overlapping matches. An empty needle returns zero.
+export fun count(value, needle) {
+    value_size = len(value)
+    needle_size = len(needle)
+    if needle_size == 0 || needle_size > value_size {
+        return 0
+    }
+    matches = 0
+    start = 0
+    while start <= value_size - needle_size {
+        i = 0
+        matched = true
+        while i < needle_size {
+            if value[start + i] != needle[i] {
+                matched = false
+            }
+            i += 1
+        }
+        if matched {
+            matches += 1
+            start += needle_size
+        } else {
+            start += 1
+        }
+    }
+    return matches
+}
+
+export fun repeat(value, times) {
+    result = ""
+    i = 0
+    while i < times {
+        result = result + value
+        i += 1
+    }
+    return result
+}

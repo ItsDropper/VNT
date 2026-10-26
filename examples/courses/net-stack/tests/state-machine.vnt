@@ -1,0 +1,15 @@
+# Copyright (c) 2026 ItsDropper
+# Deterministic tests for the deliberately limited TCP state model.
+import "../src/tcp_state.vnt" as tcp
+
+let state: int = tcp.transition(0, 1)
+if state != 1 { print("NET_STACK_FAIL: CLOSED -> LISTEN") }
+state = tcp.transition(state, 3)
+if state != 3 { print("NET_STACK_FAIL: LISTEN -> SYN_RECEIVED") }
+state = tcp.transition(state, 5)
+if state != 4 { print("NET_STACK_FAIL: SYN_RECEIVED -> ESTABLISHED") }
+if tcp.transition(0, 5) != -1 {
+    print("NET_STACK_FAIL: invalid transition accepted")
+} else {
+    print("NET_STACK_PASS: invalid transition rejected")
+}

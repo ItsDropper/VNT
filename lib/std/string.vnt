@@ -359,7 +359,14 @@ export fun pad_left(value, target_length, fill) {
         result = fill + result
     }
     if len(result) > target_length && target_length >= 0 {
-        result = right(result, target_length)
+        trimmed = ""
+        start = len(result) - target_length
+        i = start
+        while i < len(result) {
+            trimmed = trimmed + result[i]
+            i += 1
+        }
+        result = trimmed
     }
     return result
 }
@@ -373,7 +380,13 @@ export fun pad_right(value, target_length, fill) {
         result = result + fill
     }
     if len(result) > target_length && target_length >= 0 {
-        result = left(result, target_length)
+        trimmed = ""
+        i = 0
+        while i < target_length {
+            trimmed = trimmed + result[i]
+            i += 1
+        }
+        result = trimmed
     }
     return result
 }

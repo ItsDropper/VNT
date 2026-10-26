@@ -114,6 +114,21 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Give every rejection a stable reason
+
+Do not use one boolean for every failure once the tool grows. Distinguish truncation, invalid length, checksum failure, unsupported protocol, and unbound service.
+
+```text
+TRUNCATED_ETHERNET
+UNSUPPORTED_ETHERTYPE
+INVALID_IPV4_LENGTH
+BAD_IPV4_CHECKSUM
+INVALID_UDP_LENGTH
+UNBOUND_UDP_PORT
+```
+
+A caller can then report the precise layer and add a regression test for the reason, not just the fact that parsing failed.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

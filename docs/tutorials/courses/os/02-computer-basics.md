@@ -49,3 +49,31 @@ Define CPU, RAM, register, stack, address, paging, and privilege level in your o
 ## Exercise
 
 Open `os/boot.S` and find where `RSP` is initialized in long mode. Explain why the bootstrap must do that before calling `_start`.
+
+## 7. Derive a stack frame instead of memorizing offsets
+
+On x86-64, a normal function call conventionally uses a stack pointer named RSP and a frame pointer named RBP when the compiler chooses to keep one. A push of a 64-bit register moves RSP by eight bytes; a pop reverses that movement. If a function saves registers or allocates locals, the addresses of its locals depend on those exact operations.
+
+That is why hard-coded offsets in inline assembly are brittle. If the compiler changes its prologue or a local variable is added, an expression such as `-16(%rbp)` may no longer refer to the intended value. VNTOS has some routines that rely on this compiler-specific layout. Treat them as known limitations, not as a general technique to copy into new code.
+
+## 8. Memory-mapped devices and port I/O
+
+The VGA text buffer is memory-mapped: software writes character and attribute bytes to a physical address that the hardware interprets as display cells. The legacy serial and PS/2 controllers use x86 I/O ports instead. These are different access mechanisms. A pointer store is not interchangeable with an `in` or `out` instruction.
+
+The boot code identity-maps the first 1 GiB, which lets the kernel access low physical addresses using the same numeric virtual addresses for now. This is a bootstrap convenience, not a universal rule. Once a kernel changes its mappings, a physical address and a virtual address can refer to different locations.
+
+## 9. Interrupts are not ordinary function calls
+
+A normal function call happens because code deliberately calls another function. An interrupt transfers control because of a processor exception or a device event. The CPU constructs a return frame, and the entry stub must preserve state before calling ordinary compiled code. The handler returns with `iretq`, not a normal `ret`, because the CPU must restore the interrupted instruction pointer and flags.
+
+The current timer handler increments a counter and returns to the interrupted code. It does not switch tasks. A timer interrupt by itself is not a scheduler.
+
+## 10. Privilege and trust boundaries
+
+x86 privilege levels determine which instructions and memory accesses are allowed. VNTOS currently operates in kernel mode; it does not have a user-mode process boundary. Therefore the shell is not an isolated program, and a bad command implementation can damage the entire kernel.
+
+Before adding userspace, the kernel would need controlled transitions, syscall entry, memory protection, per-process address spaces, and a defined ABI. Do not describe a function in the shell as a system call simply because it performs a privileged operation.
+
+## Lab: map one hardware access
+
+Choose one access in `os/serial.vnt`, `os/console.vnt`, or `os/ps2.vnt`. Record the address or port, the width of the access, the status bit or memory layout it relies on, and the function that owns the operation. Explain what would break if the access were moved into the shell without a wrapper.

@@ -33,6 +33,17 @@ This is an offline protocol laboratory: all frames are synthetic byte arrays and
 
 The companion project is in `examples/courses/net-stack/`. Its packet parser, checksum code, protocol modules, simulator, fixtures, and tests are separate files. Implement each module as you reach its lesson; the starter is a scaffold, not a finished stack.
 
+## Use VBuild while following the course
+
+Set up the companion project using its [VBuild instructions](../../../../examples/courses/net-stack/README.md#build-and-run-with-vbuild). This gives the simulator consistent `build`, `run`, `test`, and `verify` tasks, so you can focus on packet formats and parser correctness rather than repeating compiler commands.
+
+1. Build VBuild from the repository root: `gcc -std=c11 -O2 tools/vbuild.c -o vbuild.exe` on Windows, or `gcc -std=c11 -O2 tools/vbuild.c -o vbuild` on Linux/WSL.
+2. Add the `vbuild.properties` and `build.vbuild` templates from the companion README inside `examples/courses/net-stack/`. Do not run `init` on top of the existing source tree.
+3. From that example directory, run `..\..\..\vbuild.exe build`, `run`, and `test`; on Linux/WSL use `../../../vbuild`.
+4. For each new parser or protocol feature, run the test task and add valid, truncated, malformed, and unsupported fixtures. Make failing assertions produce a non-zero exit status; VBuild cannot infer failure from printed text alone.
+
+Use direct `vnt --compile` commands when isolating compiler errors from build-driver errors. Read the [VBuild reference](../../../VBUILD.md) for target selection, task dependencies, incremental rebuilds, and the current limitations of test discovery.
+
 ## Working method
 
 For every protocol, define the wire format, validate lengths before reading, test known-good fixtures, test malformed fixtures, and document unsupported behavior. A parser that merely avoids crashing is not necessarily correct.

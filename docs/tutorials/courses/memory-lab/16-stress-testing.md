@@ -129,6 +129,24 @@ Call the new function from the example's entry point. Avoid duplicating its inte
 
 Every new branch can break earlier behavior. Run the complete relevant test set, not only the newest test.
 
+## Worked implementation: Use deterministic request sequences
+
+Begin with a fixed request list so failures are repeatable; only add pseudo-random inputs after the invariant suite is stable.
+
+```vnt
+let sizes: array = [1, 3, 8, 2, 16, 5, 4, 7]
+let alignments: array = [1, 2, 8, 4, 16, 1, 4, 2]
+let i: int = 0
+while i < len(sizes) {
+    let region: ptr = arena.arena_reserve(sizes[i], alignments[i])
+    print(region != null)
+    print(arena.arena_invariants_hold())
+    i += 1
+}
+```
+
+Record the first failing index and request pair, then keep that exact sequence as a regression test.
+
 ## 6. Test design
 
 Add explicit tests for each applicable category:

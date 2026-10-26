@@ -132,6 +132,22 @@ Call the smallest standard-library function that performs the needed primitive. 
 
 After success, verify that the invariant still holds. In tests, inspect the actual output or bytes rather than only checking a success boolean.
 
+## Worked implementation: Publish state only after allocation succeeds
+
+Use a temporary pointer. Do not update capacity or initialized state until allocation succeeds.
+
+```vnt
+let candidate: ptr = null
+unsafe { candidate = mem.alloc(requested) }
+if candidate == null { return false }
+base = candidate
+capacity = requested
+cursor = 0
+return true
+```
+
+Test invalid capacity and repeated initialization. After failure, every field must still describe an uninitialized arena.
+
 ## 7. Tests you must write
 
 Do not consider this lesson complete until all of these categories have an explicit test:

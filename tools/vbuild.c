@@ -644,7 +644,7 @@ static int imports_are_current(const char *source, const char *output) {
 }
 
 /* Inputs consumed after compilation by VNT's hosted runtime or freestanding linker. */
-static int build_inputs_are_current(const char *output, const char *target) {
+static int build_inputs_are_current(const char *output, const char *target, const char *toolchain) {
     static const char *const hosted_inputs[] = {
         "src/compiler/native_runtime.c",
         "src/compiler/native_runtime.h",
@@ -670,7 +670,11 @@ static int build_inputs_are_current(const char *output, const char *target) {
     for (i = 0; i < count; i++) {
         char input_path[PATH_CAP];
         struct stat input_stat;
-        if (!absolute_path(inputs[i], input_path, sizeof input_path)) return -1;
+        int n = snprintf(input_path, sizeof input_path, "%s/%s", toolchain, inputs[i]);
+        if (n < 0 || (size_t)n >= sizeof input_path) {
+            fprintf(stderr, "vbuild: build input path is too long: %s\\n", inputs[i]);
+            return -1;
+        }
         if (stat(input_path, &input_stat) != 0) {
             fprintf(stderr, "vbuild: required build input is missing: %s\n", input_path);
             return -1;
@@ -750,7 +754,7 @@ static int run_compiler(Config *cfg, int check) {
     }
     import_graph_current = imports_are_current(source, output);
     if (import_graph_current < 0) return 1;
-    build_inputs_current = build_inputs_are_current(output, cfg->target);
+    build_inputs_current = build_inputs_are_current(output, cfg->target, toolchain);
     if (build_inputs_current < 0) return 1;
     if (!check && !force_build && import_graph_current && build_inputs_current && dependencies_current &&
         stat(output, &output_stat) == 0 &&

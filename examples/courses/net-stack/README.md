@@ -20,27 +20,65 @@ Companion to the [20-lesson network systems course](../../../docs/tutorials/cour
 - `tests/routing.vnt` — longest-prefix matching tests.
 - `tests/state-machine.vnt` — valid and invalid TCP state transition tests.
 
-## Build and run
+## Build and run with VBuild
 
-From the repository root, build the compiler according to the root README. Compile the integrated simulator:
-
-```powershell
-.\\vnt.exe --compile examples\\courses\\net-stack\\src\\main.vnt -o net-stack.exe
-.\\net-stack.exe
-```
-
-Compile the independent tests in the same way:
+VBuild provides repeatable build, run, and test tasks for the simulator. It is a native C program and does not need Python. Build it once from the repository root:
 
 ```powershell
-.\\vnt.exe --compile examples\\courses\\net-stack\\tests\\smoke.vnt -o net-stack-smoke.exe
-.\\net-stack-smoke.exe
-.\\vnt.exe --compile examples\\courses\\net-stack\\tests\\routing.vnt -o net-stack-routing.exe
-.\\net-stack-routing.exe
-.\\vnt.exe --compile examples\\courses\\net-stack\\tests\\state-machine.vnt -o net-stack-state.exe
-.\\net-stack-state.exe
+gcc -std=c11 -O2 tools\vbuild.c -o vbuild.exe
 ```
 
-Tests emit stable PASS/FAIL text; any FAIL marker is a test failure. These commands describe the intended workflow. Verify compiler output on the current checkout before treating the project as passing.
+On Linux or WSL, use `gcc -std=c11 -O2 tools/vbuild.c -o vbuild`.
+
+This example already contains its source files, so do **not** run `vbuild init` inside it: init deliberately refuses to overwrite existing project files. Create the following files in `examples/courses/net-stack/`.
+
+`vbuild.properties`:
+
+```properties
+project.name = net-stack
+project.version = 0.1.0
+source = src/main.vnt
+output = net-stack
+compiler = vnt
+toolchain = ../../..
+```
+
+Here, `toolchain = ../../..` points back to the VNT repository root from this example directory. If you copy the project elsewhere, change `toolchain` to your actual VNT checkout path or set `VNT_HOME`.
+
+`build.vbuild`:
+
+```text
+target exe
+task build = build
+task run = run depends build
+task check = check
+task test = test
+task clean = clean
+task verify = none depends check, build, test
+```
+
+Run from `examples/courses/net-stack/`:
+
+```powershell
+..\..\..\vbuild.exe tasks
+..\..\..\vbuild.exe build
+..\..\..\vbuild.exe run
+..\..\..\vbuild.exe test
+..\..\..\vbuild.exe verify
+```
+
+On Linux or WSL, replace `..\..\..\vbuild.exe` with `../../../vbuild`. The executable is placed under `build/`. VBuild's test discovery is non-recursive and finds the existing `tests/*.vnt` programs. For VBuild to detect a failing test, the test must exit non-zero; a printed `FAIL` message alone is not sufficient. Keep explicit PASS/FAIL output for humans, and make assertions affect the process exit status where supported.
+
+VBuild fingerprints the root source, imported modules, project properties, task file, and relevant compiler/runtime inputs. Use `..\..\..\vbuild.exe build --force` after changes to system libraries or environment variables that are not included in its fingerprint.
+
+## Direct compiler fallback
+
+Direct compilation is useful when you need to isolate a compiler error from a build-driver error. From the repository root:
+
+```powershell
+.\vnt.exe --compile examples\courses\net-stack\src\main.vnt -o net-stack.exe
+.\net-stack.exe
+```
 
 ## Data flow
 

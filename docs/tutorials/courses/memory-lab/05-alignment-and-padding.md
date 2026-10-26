@@ -132,6 +132,20 @@ Call the smallest standard-library function that performs the needed primitive. 
 
 After success, verify that the invariant still holds. In tests, inspect the actual output or bytes rather than only checking a success boolean.
 
+## Worked implementation: Compute aligned cursor safely
+
+This implementation accepts a deliberately small set of power-of-two alignments. It advances a temporary offset until it is divisible by the requested alignment.
+
+```vnt
+let start: int = cursor
+while start % alignment != 0 {
+    start += 1
+}
+let padding: int = start - cursor
+```
+
+Validate alignment before the loop and reject unsupported values. Padding counts toward consumed capacity even though the caller did not request payload bytes.
+
 ## 7. Tests you must write
 
 Do not consider this lesson complete until all of these categories have an explicit test:

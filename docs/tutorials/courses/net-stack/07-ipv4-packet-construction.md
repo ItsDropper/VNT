@@ -114,6 +114,21 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Build the header before calculating its checksum
+
+Set the checksum field to zero, populate every other header field, calculate the checksum over the header, write it back, and only then append the payload.
+
+```vnt
+packet[0] = 69
+packet[8] = ttl
+packet[9] = protocol
+bytes.write_be16(packet, 10, 0)
+let sum: int = checksum.internet_checksum(bytes.slice(packet, 0, 20))
+bytes.write_be16(packet, 10, sum)
+```
+
+Build a packet, parse it with the same parser, then compare its fields and payload. Also test malformed input separately; round-trip alone cannot validate the parser.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

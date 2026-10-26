@@ -100,3 +100,9 @@ Do not add a timeout that reports success after the deadline. Decide whether the
 Save a short transcript from a known-good boot containing the startup marker, prompt, one command, and its response. When serial behavior changes, compare the new transcript against that baseline. A missing startup marker suggests a different stage than a prompt that appears but fails after a key is entered.
 
 A transcript is not a substitute for source inspection, but it is cheap evidence that helps localize regressions quickly.
+
+## 14. Future improvement: bounded receive behavior
+
+A robust receive routine should define what happens when no byte arrives. It may poll with a timeout, return a status indicating no data, or rely on a later interrupt-driven queue. Each design has trade-offs. A blocking read is simple for the current shell, but it prevents the main loop from doing other work while waiting.
+
+Do not add an interrupt-driven serial path without designing the queue and its synchronization first. Keep the current implementation's polling behavior explicit so users of the function understand that it can wait.

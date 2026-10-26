@@ -351,6 +351,21 @@ try {
     }
     Write-Host "Arbitrary-precision integer runtime: PASS"
 
+    $CryptoExe = Join-Path $OutDir "std_crypto_runtime.exe"
+    & .\\vnt.exe --compile tests\\std_crypto_runtime.vnt -o $CryptoExe
+    if ($LASTEXITCODE -ne 0) { throw "Crypto runtime test did not compile." }
+    $cryptoOutput = & $CryptoExe
+    if ($LASTEXITCODE -ne 0) { throw "Crypto runtime program exited unsuccessfully." }
+    $cryptoExpected = @(
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "true", "false", "CRYPTO_RUNTIME_OK"
+    )
+    if (($cryptoOutput -join "|") -ne ($cryptoExpected -join "|")) {
+        throw "Unexpected crypto runtime output: $($cryptoOutput -join ' | ')"
+    }
+    Write-Host "SHA-256 and constant-time comparison: PASS"
+
     $VantaOneExe = Join-Path $OutDir "vanta_one.exe"
     & .\vnt.exe --compile examples\vanta_one.vnt -o $VantaOneExe
     if ($LASTEXITCODE -ne 0) { throw "Vanta One desktop app did not compile." }

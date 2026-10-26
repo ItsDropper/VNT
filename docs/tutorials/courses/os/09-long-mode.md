@@ -50,3 +50,25 @@ Explain why these are separate things:
 ## Exercise
 
 Read `boot.S` from the first control-register update through `long_mode_entry`. Write down the purpose of each control-register operation and the far jump.
+
+## 6. The control-register sequence has dependencies
+
+Long mode is not enabled by one magic instruction. The bootstrap configures page-table state, enables the relevant CPU feature through the extended feature controls, enables paging/protected-mode state in CR0, and transfers into a 64-bit code segment. The GDT must contain a code descriptor appropriate for the far jump. A wrong ordering can cause a fault before the kernel has a usable console.
+
+When reading the code, write the sequence in a table with columns for register or instruction, purpose, prerequisite, and next state. This is more useful than memorizing the hexadecimal constants because it lets you reason about why the sequence is ordered that way.
+
+## 7. Why the far jump matters
+
+Changing control bits does not automatically change the CPU's current instruction-decoding mode. The far jump loads a code-segment selector and a new instruction pointer, making the transition to the 64-bit code segment explicit. The target label must be assembled for the correct bitness and must be located where the processor can fetch it after paging is enabled.
+
+If the jump target is wrong, the CPU may execute invalid bytes or fault before any VNT function can run. That is why early boot debugging needs a marker close to the transition rather than only a message in the final kernel entry.
+
+## 8. What long mode does not provide
+
+Long mode provides the 64-bit execution environment and architectural register set. It does not automatically create a heap, initialize devices, install a complete IDT, or establish userspace. The bootstrap's initial mapping is also not a memory allocator. Those are separate responsibilities built on top of the processor state.
+
+The current kernel still runs in privileged kernel mode. A 64-bit address does not by itself make an access safe, and a pointer can still refer to unmapped or unintended memory.
+
+## Lab: explain one dependency
+
+Choose one control-register write or far jump in `os/boot.S`. State the CPU mode before the instruction, the feature it enables or selects, the prerequisite already established, and the first later instruction that relies on it. Then describe one plausible failure if the prerequisite were absent.

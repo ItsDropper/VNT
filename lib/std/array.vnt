@@ -1,5 +1,6 @@
 # Pure VNT array helpers; no compiler or runtime extensions are required.
 # Numeric helpers expect numeric elements. min/max/average return 0 for an empty array.
+# take/drop clamp the requested count to the array bounds; unique preserves first occurrence order.
 
 export fun contains(values, target) {
     i = 0
@@ -88,6 +89,72 @@ export fun reverse(values) {
     i = 0
     while i < size {
         result[i] = values[size - i - 1]
+        i += 1
+    }
+    return result
+}
+
+export fun concat(left, right) {
+    left_size = len(left)
+    right_size = len(right)
+    result = range(left_size + right_size)
+    i = 0
+    while i < left_size {
+        result[i] = left[i]
+        i += 1
+    }
+    i = 0
+    while i < right_size {
+        result[left_size + i] = right[i]
+        i += 1
+    }
+    return result
+}
+
+export fun take(values, requested) {
+    size = len(values)
+    count = requested
+    if count < 0 {
+        count = 0
+    }
+    if count > size {
+        count = size
+    }
+    result = range(count)
+    i = 0
+    while i < count {
+        result[i] = values[i]
+        i += 1
+    }
+    return result
+}
+
+export fun drop(values, requested) {
+    size = len(values)
+    count = requested
+    if count < 0 {
+        count = 0
+    }
+    if count > size {
+        count = size
+    }
+    result = range(size - count)
+    i = 0
+    while i < size - count {
+        result[i] = values[count + i]
+        i += 1
+    }
+    return result
+}
+
+# Stable deduplication: keeps the first occurrence of each value.
+export fun unique(values) {
+    result = []
+    i = 0
+    while i < len(values) {
+        if !contains(result, values[i]) {
+            result = concat(result, [values[i]])
+        }
         i += 1
     }
     return result

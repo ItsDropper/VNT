@@ -97,3 +97,29 @@ This format is more useful than listing only filenames because it tells reviewer
 Do not attempt a scheduler, userspace, filesystem, heap, keyboard IRQ, and page allocator in one patch. Each depends on invariants that the current kernel does not yet provide. For example, keyboard IRQ handling needs a data queue and an ownership rule for the PS/2 controller; a scheduler needs task state and a deliberate context-switch ABI; a heap needs a physical/virtual memory design and a trustworthy allocator.
 
 A strong systems developer does not measure progress by how many subsystems are named in the README. Measure it by how many invariants are explicit, how many tests detect regressions, and how much code can be explained line by line.
+
+## Choose one project and make the acceptance test concrete
+
+Before implementation, write a small acceptance table:
+
+| Requirement | Evidence |
+| --- | --- |
+| Existing kernel still builds | successful `bash os/build.sh` result |
+| ELF is structurally valid | `readelf` and Multiboot2 check |
+| Kernel reaches the shell | QEMU transcript or visible prompt |
+| New behavior works | exact command or controlled scenario |
+| Regression is covered | repeatable test or CI assertion |
+| Limitations are explicit | short section in the report |
+
+For an exception-reporting project, do not deliberately cause a fault in the normal CI boot. Instead, test the formatting logic independently where possible and use a separate disposable QEMU run for a controlled exception. For a timer project, compare numeric values rather than only matching the command label. For an ABI project, inspect the final ELF symbols and add a compiler regression test if the assumption belongs to the compiler.
+
+## Final review questions
+
+- Did you keep policy in VNT and only the architecture boundary in assembly?
+- Did you change the smallest set of files that can implement the feature?
+- Can you explain the stack, memory, and interrupt assumptions affected?
+- Does the test detect the bug you intended to prevent?
+- Does the report distinguish observed results from expectations?
+- Are future tasks described as future work rather than existing capability?
+
+A strong graduation project is one small subsystem whose behavior is understood, tested, and documented—not a list of features that have not been validated.

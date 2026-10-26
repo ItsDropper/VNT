@@ -1,0 +1,9 @@
+# Copyright (c) 2026 ItsDropper
+# Reporting stays separate from raw memory access.
+export fun print_arena_report(capacity: int, used: int, payload_bytes: int) {
+    # TODO lesson 13: validate invariants and calculate remaining capacity.
+    print("Arena report scaffold: complete lesson 13")
+    print(capacity)
+    print(used)
+    print(payload_bytes)
+}

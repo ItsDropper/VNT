@@ -1,0 +1,8 @@
+# Copyright (c) 2026 ItsDropper
+# Smoke-test scaffold. Add assertions and stable pass/fail output as lessons progress.
+import "../src/simulator.vnt" as simulator
+if simulator.process_synthetic_frame(0) {
+    print("NET_STACK_FAIL: empty frame accepted")
+} else {
+    print("NET_STACK_TODO: add valid synthetic frame fixture")
+}

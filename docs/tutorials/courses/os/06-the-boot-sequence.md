@@ -88,3 +88,13 @@ Similarly, an interrupt does not use the ordinary function-return path. Its entr
 ## Lab: diagnose a missing marker
 
 Imagine that the build completes but the expected boot marker never appears. List the earliest possible stage where execution could have stopped. For each stage, name an independent observation: artifact existence, ELF headers, GRUB output, a bootstrap marker, serial initialization, or a QEMU debugger breakpoint. Your diagnosis should narrow the stage before proposing a source edit.
+
+## 9. Compare the expected and observed timeline
+
+Keep two timelines: one derived from source and one derived from runtime evidence. The source timeline tells you what should happen; the observed timeline records the last marker actually seen. A difference between the two identifies the stage to investigate.
+
+For example, if the serial banner appears but the shell prompt does not, the bootstrap and at least part of console initialization succeeded. Investigate the path between the banner and the shell loop before revisiting GRUB or long-mode setup. If no serial output appears, first verify the QEMU serial routing before concluding that the CPU never reached the kernel.
+
+## Lab: write a boot trace
+
+Use the documented QEMU command and record the order of visible markers. For each marker, name the source function or assembly label that emits it. If the current code does not emit a marker at a stage, note that as an observability gap instead of inventing one. Propose the smallest safe marker that would distinguish two competing failure hypotheses.

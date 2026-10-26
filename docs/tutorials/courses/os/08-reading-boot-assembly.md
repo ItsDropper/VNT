@@ -98,3 +98,9 @@ Do not combine changes to page tables, GDT entries, stack setup, and interrupt i
 ## Lab: produce an assembly annotation
 
 Create a table for the bootstrap's main stages: initial entry, stack setup, page-table setup, control-register configuration, long-mode jump, and kernel handoff. For each stage record input state, instructions that establish the next state, output state, and one failure symptom. Verify each claim against `os/boot.S` and the built ELF.
+
+## 14. Explain the reason for each assembly instruction
+
+For each non-obvious instruction, annotate three facts: which CPU state it reads, which state it changes, and which later instruction depends on the change. For example, a control-register write changes a processor feature; a far jump changes the active code segment and instruction pointer; a stack adjustment changes where later pushes and calls write data.
+
+If a line has no clear purpose in your explanation, research it before changing it. This habit is more reliable than copying a bootstrap from a different kernel and hoping the assumptions match.

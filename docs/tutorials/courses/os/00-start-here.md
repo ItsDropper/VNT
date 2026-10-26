@@ -116,3 +116,16 @@ Do not report only "black screen." A black screen could mean no ISO, a boot prot
 ## Lab deliverable
 
 Create a short note containing the baseline commit, build result, QEMU command, visible boot marker, and one call chain from shell to device. This note is your first reproducible kernel experiment.
+
+## 10. A useful first source-reading exercise
+
+Pick one command from the shell and answer these questions using source, not intuition:
+
+- Which function receives the command text?
+- Where is the command name compared?
+- Which module owns the operation?
+- Which function produces the output?
+- Can the command block while waiting for hardware?
+- What is the smallest observable test for the command?
+
+If you cannot answer one of these, follow the call chain until the missing boundary is clear. Keep the answer beside the line number so you can repeat the investigation after a future refactor.

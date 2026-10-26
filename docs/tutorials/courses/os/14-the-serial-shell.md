@@ -76,3 +76,13 @@ Test the command after normal startup and after another command. Also test an un
 ## Lab: define a command before coding
 
 Write a short contract for a hypothetical `ticks` command: accepted syntax, output format, behavior if the counter is zero, and whether it changes state. Then trace the existing `irq` command and compare the implementation with your contract. Do not add a second alias unless it improves a real interface need.
+
+## 11. Keep the command loop predictable
+
+A small shell is easier to maintain when each iteration has a simple contract: begin with a clean input buffer, collect one line within its capacity, handle editing keys, terminate the line, dispatch exactly one command, then reset state for the next line. If state is not reset consistently, the next command may contain bytes from the previous one.
+
+When changing the loop, test consecutive commands, an empty line, backspace at the beginning, unknown input, and a line that reaches the maximum length. Test after a command that prints output as well as after one that changes or reads state. This catches bugs hidden by a single fresh-boot happy path.
+
+## Lab: describe one state transition
+
+Draw the shell states for waiting for a character, appending a character, handling backspace, receiving Enter, dispatching a command, and clearing the buffer. For every transition, write the condition and the state change. Use this state diagram before adding multi-argument parsing or command history.

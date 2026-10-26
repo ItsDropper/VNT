@@ -77,3 +77,35 @@ Do not claim “it doesn't work” without the observed stage. That information 
 ## Checkpoint
 
 For each symptom—build failure, no ISO, no startup output, startup output but no prompt, prompt but no input—name the first file or layer you would inspect.
+
+## 6. Diagnose interrupts separately from boot
+
+A kernel can reach the prompt and still have a broken interrupt path. The IDT must be initialized, the descriptor base and limit must be valid, the correct handler stub must be installed, the PIC must be mapped as expected, and the timer IRQ must be unmasked before the tick counter can change. The CPU must also have maskable interrupts enabled at the correct point.
+
+Use the `irq` command twice with a delay. If the counter does not increase, inspect each link in that path rather than changing the shell or timer divisor at random. If the kernel resets, consider an invalid gate, a malformed stack frame, or a fault during exception handling. A triple fault often produces little useful output, so use controlled markers and the QEMU debugger.
+
+## 7. Use the ELF to answer linker questions
+
+When the linker reports an undefined reference, copy the exact symbol spelling from the error. Then inspect the final object/symbol names with `nm` or `readelf -s`. The source-level VNT name may have a compiler prefix, and assembly must reference the emitted name. Also verify that the object defining the symbol appears in the link command.
+
+A successful compile of the VNT source does not guarantee that the assembly object and VNT object agree on their interface. The linker checks symbol resolution; the runtime test checks whether the call contract was correct.
+
+## 8. Preserve the first failure
+
+Do not fix five things at once after a crash. Capture the first error, save the diff, and reproduce the failure with the same command. If the change affects boot assembly, return to the last known-good version and reapply one small change. If it affects VNT policy, test that function in the simplest path available before adding more behavior.
+
+For a serious bug report, include the commit SHA, tool versions, exact build command, first error line, relevant ELF inspection, QEMU command, and last visible output. This is enough information for someone else to start from the same evidence.
+
+## 9. Debugging exercises
+
+- Build succeeds but QEMU resets immediately: inspect the ELF entry point, bootstrap transition, and early markers.
+- Serial output works but VGA is blank: inspect display mode and the VGA text-memory path rather than the serial driver.
+- Shell works but `irq` remains unchanged: inspect IDT/PIC/PIT initialization and the timer dispatch path.
+- Link fails on `vnt_fn_interrupt_dispatch`: inspect the emitted VNT symbol and whether `interrupts.S` calls the exact name.
+- Keyboard input works only in one QEMU mode: identify whether the test is using PS/2 or serial input.
+
+These are starting hypotheses, not automatic diagnoses. Confirm each with evidence.
+
+## Lab: write a fault tree
+
+Choose one symptom above and draw a tree of at least three possible causes. For each cause, name one observation that would support or rule it out. Only after the tree is built should you choose the first experiment.

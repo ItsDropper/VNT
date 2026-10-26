@@ -202,7 +202,7 @@ The source-level standard library lives in `lib/std/`. Available modules include
 | `array.vnt` | Search/count, numeric aggregates, reverse, concatenate, take/drop, stable deduplication, and join |
 | `string.vnt` | Search/split/slicing/padding/replacement, prefix/suffix removal, trimming, and line counting (runtime indexing; no grapheme segmentation) |
 | `number.vnt` | Parity, sign, factorial, GCD, and primality helpers |
-| `time.vnt` | Millisecond clock, sleep, duration conversions, and deadline helpers (not a timezone engine or guaranteed monotonic clock) |
+| `time.vnt` | Millisecond clock, duration/deadline helpers, Gregorian leap-year/date validation, day-of-year, and weekday (no timezone database or guaranteed monotonic clock) |
 | `os.vnt` | Current directory and environment variables |
 | `process.vnt` | Start, inspect, wait for, and terminate child processes |
 | `net.vnt` | Native HTTP/HTTPS requests, status codes/classifiers, form encoding, headers, and downloads |

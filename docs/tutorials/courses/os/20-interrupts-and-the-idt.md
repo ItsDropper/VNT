@@ -55,3 +55,39 @@ Explain why the IDT needs the address of each handler and why a normal function 
 ## Exercise
 
 Calculate the IDT storage size for 256 descriptors of 16 bytes each. Then find the code that writes the descriptor's low, middle, and high address fields.
+
+## Read one 16-byte gate as a data structure
+
+An x86-64 interrupt gate contains these fields:
+
+| Byte offsets | Size | Meaning |
+| --- | ---: | --- |
+| 0–1 | 2 bytes | handler address bits 0–15 |
+| 2–3 | 2 bytes | kernel code selector |
+| 4 | 1 byte | IST index and reserved bits |
+| 5 | 1 byte | present/type/privilege attributes |
+| 6–7 | 2 bytes | handler address bits 16–31 |
+| 8–11 | 4 bytes | handler address bits 32–63 |
+| 12–15 | 4 bytes | reserved, written as zero |
+
+The address is split because the descriptor layout is fixed by the processor architecture. The initializer writes the same handler address into the low, middle, and high pieces. When it installs a dedicated stub, it overwrites those pieces with that stub's address.
+
+The IDT limit is measured in bytes minus one. For 256 entries:
+
+`256 × 16 = 4096` bytes, so the limit is `4095`.
+
+## Why install the IDT before enabling IRQs?
+
+An interrupt can arrive as soon as its line is unmasked and the CPU's interrupt flag is enabled. If the IDT is not ready, the processor may follow an invalid descriptor and fault again while trying to report the original fault. That can end in a triple fault and an emulator reset.
+
+The initializer therefore fills the table, installs the known stubs, executes `lidt`, remaps the PIC, programs the PIT, masks all but IRQ0, and only then executes `sti`. Do not move `sti` to the beginning as a cosmetic cleanup.
+
+## Manual review exercise
+
+In `os/interrupts.S`, inspect each write to offsets 0, 2, 4, 5, 6, 8, and 12 from the gate pointer. For every write, name the field from the table above. Then inspect the code that constructs the IDTR pointer: it stores a 16-bit limit followed by a 64-bit base.
+
+The initial page tables map the low 1 GiB, so the IDT and handlers at the kernel's current low physical/virtual addresses are reachable under the current identity-map design. If the kernel moves to a higher-half layout later, the address assumptions and mapping strategy must be revisited.
+
+## Failure analysis
+
+A missing gate can fault when the event occurs. A wrong selector can cause a general-protection fault. A malformed stack frame can make the return path interpret the error code as RIP. A wrong PIC vector offset can send IRQ0 into an exception handler. These failures look similar from the outside—a frozen VM or reboot—so keep the table layout, stub frame, and PIC configuration as separate review steps.

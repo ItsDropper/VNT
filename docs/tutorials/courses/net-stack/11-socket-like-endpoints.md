@@ -114,6 +114,20 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Separate parsing from service dispatch
+
+A parser should return validated ports and payload length. A dispatcher should decide which handler owns the destination port.
+
+```vnt
+if udp_fields[1] == 7 {
+    # Invoke the synthetic echo handler.
+} else {
+    # Return an explicit unsupported/unbound result.
+}
+```
+
+Add duplicate-registration and unbound-port tests when you implement the endpoint registry. Do not embed application logic inside the UDP header parser.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

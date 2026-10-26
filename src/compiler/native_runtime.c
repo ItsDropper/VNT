@@ -1585,13 +1585,13 @@ static VntValue *vnt_bigint_binary(VntValue *av,VntValue *bv,int operation) {
             for(size_t i=a.length;i>0;i--) {
                 int carry=0,da=a.digits[i-1]-'0';
                 for(size_t j=b.length;j>0;j--) {
-                    size_t pos=i+j;
+                    size_t pos=i+j-1;
                     int sum=acc[pos]+da*(b.digits[j-1]-'0')+carry;
                     acc[pos]=sum%10;carry=sum/10;
                 }
-                acc[i]+=carry;
+                acc[i-1]+=carry;
             }
-            for(size_t i=1;i<=length;i++)digits[i-1]=(char)('0'+acc[i]);
+            for(size_t i=0;i<length;i++)digits[i]=(char)('0'+acc[i]);
             digits[length]=0;free(acc);sign=a.sign*b.sign;
         }
     } else {

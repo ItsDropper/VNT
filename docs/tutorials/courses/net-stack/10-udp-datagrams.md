@@ -114,6 +114,20 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Validate UDP length independently of the IP length
+
+The IPv4 payload may contain padding or a larger available slice. UDP's own length must be at least eight and no larger than the available IP payload.
+
+```vnt
+let length: int = bytes.read_be16(payload, 4)
+if len(payload) < 8 || length < 8 || length > len(payload) {
+    return []
+}
+return [source_port, destination_port, length, checksum, length - 8]
+```
+
+Extract only the number of payload bytes declared by UDP. Document that this project's builder uses IPv4's permitted zero UDP checksum rather than claiming pseudoheader checksum support.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

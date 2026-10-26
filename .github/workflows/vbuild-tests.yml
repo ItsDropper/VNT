@@ -121,15 +121,49 @@ jobs:
           compiler = vnt
           toolchain = $GITHUB_WORKSPACE
           EOF
+          mkdir -p libs
+          cat > libs/math_helpers.vnt <<'EOF'
+          export fun square(value: int) -> int {
+              return value * value
+          }
+          EOF
+          cat > src/main.vnt <<'EOF'
+          import "math_helpers.vnt" as math_helpers
+          print(math_helpers.square(7))
+          EOF
+          cat > build.vbuild <<'EOF'
+          target exe
+          repositories {
+              local("libs")
+          }
+          dependencies {
+              implementation("math_helpers.vnt")
+          }
+          task build = build
+          task run = run depends build
+          task check = check
+          task clean = clean
+          task test = test
+          EOF
           "$GITHUB_WORKSPACE/vbuild" build
           test -x build/hello
-          incremental="$("$GITHUB_WORKSPACE/vbuild" build)"
-          printf '%s\n' "$incremental" | grep -Fq 'Up to date:'
-          forced="$("$GITHUB_WORKSPACE/vbuild" build --force)"
-          printf '%s\n' "$forced" | grep -Fq 'Built '
           output="$("$GITHUB_WORKSPACE/vbuild" run)"
           printf '%s\n' "$output"
-          printf '%s\n' "$output" | grep -Fq 'Hello from VNT'
+          printf '%s\n' "$output" | grep -Fq '49'
+          incremental="$("$GITHUB_WORKSPACE/vbuild" build)"
+          printf '%s\n' "$incremental" | grep -Fq 'Up to date:'
+          sleep 1
+          cat > libs/math_helpers.vnt <<'EOF'
+          export fun square(value: int) -> int {
+              return value * value + 1
+          }
+          EOF
+          dependency_rebuild="$("$GITHUB_WORKSPACE/vbuild" build)"
+          printf '%s\n' "$dependency_rebuild" | grep -Fq 'Built '
+          output="$("$GITHUB_WORKSPACE/vbuild" run)"
+          printf '%s\n' "$output" | grep -Fq '50'
+          forced="$("$GITHUB_WORKSPACE/vbuild" build --force)"
+          printf '%s\n' "$forced" | grep -Fq 'Built '
           mkdir -p tests
           printf 'print("VBUILD_TEST_OK")\n' > tests/smoke.vnt
           test_output="$("$GITHUB_WORKSPACE/vbuild" test)"

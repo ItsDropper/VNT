@@ -53,42 +53,16 @@ Make failure atomic: validate inputs and calculate derived values in local varia
 
 Name failure reasons explicitly. Invalid input, resource exhaustion, checksum failure, and unsupported behavior should not silently collapse into one indistinguishable result.
 
-## 4. Small VNT experiment
+## Run the current milestone
 
-This snippet verifies basic syntax and the toolchain; it is not the finished feature.
-
-```vnt
-import "lib/std/mem.vnt" as mem
-
-unsafe {
-    let storage: ptr = mem.alloc(16)
-    if mem.is_null(storage) {
-        print("allocation failed")
-    } else {
-        let wrote: bool = mem.write_u8(storage, 0, 18)
-        if wrote {
-            print(mem.read_u8(storage, 0))
-        } else {
-            print("write failed")
-        }
-        let released: bool = mem.free(storage)
-        print(released)
-    }
-}
-```
-
-On Windows, from the repository root:
+Compile the multi-file memory project from the repository root:
 
 ```powershell
-.\\build.ps1
-.\\vnt.exe --compile lesson.vnt -o lesson.exe
-.\\lesson.exe
+.\\vnt.exe --compile examples\\courses\\memory-lab\\src\\main.vnt -o memory-lab.exe
+.\\memory-lab.exe
 ```
 
-On Linux, use the built `./vnt` executable with the same `--compile` option.
-
-Write expected output down before running. A result is not a test unless the expected result and reason are known in advance.
-
+Run the dedicated smoke and bounds tests from the project README as well. Record the compiler result and test markers; do not infer correctness from the example's output alone.
 ## 5. Implementation recipe
 
 ### Step A — identify ownership

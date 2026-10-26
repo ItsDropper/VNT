@@ -117,3 +117,24 @@ Keep this checklist in your notes for every future subsystem extraction.
 For each operation, choose the module that should own it and explain why: waiting for COM1 transmit-ready, writing a VGA cell, translating a PS/2 scan code, incrementing a timer tick, comparing a shell command, and returning from an interrupt. The last operation belongs in assembly because `iretq` consumes a CPU-defined frame; the policy for the timer event belongs in VNT.
 
 If two modules both need to know the raw port numbers or the internal layout of another module's state, the boundary may be too weak. Prefer a small function contract over duplicated hardware knowledge.
+
+## Worked example: trace an import and ownership boundary
+
+At the top of `os/kernel.vnt`, the current imports are:
+
+```vnt
+import "serial.vnt"
+import "console.vnt"
+import "ps2.vnt"
+import "interrupts.vnt"
+```
+
+These imports make the module declarations available to the kernel compilation. They do not produce four separate kernel binaries. The linker still receives one generated kernel object plus the bootstrap and interrupt assembly objects, and creates one `kernel.elf`.
+
+Use ownership to decide where a new function belongs. A function that waits for COM1's transmitter belongs in `serial.vnt`; a function that writes a VGA cell belongs in `console.vnt`; scan-code polling belongs in `ps2.vnt`; and the decision that vector 32 increments a timer counter belongs in `interrupts.vnt`. The shell in `kernel.vnt` should call these interfaces rather than duplicating the hardware operations.
+
+## Refactor drill
+
+Choose a function that has one clear responsibility and is already called through a stable name. Move it without changing the body, add the import if needed, rebuild, and run the behavior that calls it. Compare the before/after diff to ensure that only file placement and imports changed. Once that refactor passes, a separate patch may improve the function's behavior.
+
+Do not move the shared-state helpers or change their inline assembly as part of this exercise. Their stack-offset assumptions are compiler-specific and deserve a separate compiler/ABI investigation.

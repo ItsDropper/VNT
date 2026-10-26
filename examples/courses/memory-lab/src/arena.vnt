@@ -1,0 +1,22 @@
+# Copyright (c) 2026 ItsDropper
+# Educational arena allocator scaffold. Complete alongside the course.
+import "../../../lib/std/mem.vnt" as mem
+
+# TODO: represent base pointer, capacity, cursor, and payload accounting
+# using syntax supported by the current compiler.
+export fun arena_init(capacity: int) -> bool {
+    # TODO lesson 04: validate, allocate, and handle null.
+    return false
+}
+export fun arena_reserve(size: int, alignment: int) -> ptr {
+    # TODO lessons 05-08: validate, align safely, prove bounds, then commit state.
+    return null
+}
+export fun arena_reset() -> bool {
+    # TODO lesson 09: invalidate reservations logically.
+    return false
+}
+export fun arena_destroy() -> bool {
+    # TODO lesson 10: release once and clear owner state.
+    return false
+}

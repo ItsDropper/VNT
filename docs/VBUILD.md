@@ -72,10 +72,15 @@ project.version = 0.1.0
 source = src/main.vnt
 output = hello
 compiler = vnt
+toolchain = C:/path/to/VNT
 ```
 
 Supported properties are `project.name`, `project.version`, `source`,
-`output`, and `compiler`. `source` points to the single root VNT source
+`output`, `compiler`, and `toolchain`. `toolchain` is the VNT repository root;
+VBuild launches the compiler with that working directory so the compiler can
+find its native runtime sources. If omitted, `VNT_HOME` is used when set,
+otherwise the current project directory is used. Use an absolute path when the
+project lives outside the VNT checkout. `source` points to the single root VNT source
 file. `output` must be a file name, and the output is written under `build/`.
 VNT's module loader handles imports from that root source.
 

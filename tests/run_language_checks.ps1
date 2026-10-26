@@ -326,6 +326,17 @@ try {
     }
     Write-Host "Improved time/path/network/JSON helpers: PASS"
 
+    $RuntimeFeaturesExe = Join-Path $OutDir "runtime_features.exe"
+    & .\\vnt.exe --compile tests\\runtime_features.vnt -o $RuntimeFeaturesExe
+    if ($LASTEXITCODE -ne 0) { throw "UTF-8 and atomic-write runtime tests did not compile." }
+    $runtimeFeaturesOutput = & $RuntimeFeaturesExe
+    if ($LASTEXITCODE -ne 0) { throw "UTF-8 and atomic-write runtime test program exited unsuccessfully." }
+    $runtimeFeaturesExpected = @("4", "é中", "🙂", "", "true", "first", "true", "replacement", "true", "RUNTIME_FEATURES_OK")
+    if (($runtimeFeaturesOutput -join "|") -ne ($runtimeFeaturesExpected -join "|")) {
+        throw "Unexpected UTF-8/atomic-write output: $($runtimeFeaturesOutput -join ' | ')"
+    }
+    Write-Host "UTF-8 scalar helpers and atomic filesystem writes: PASS"
+
     $VantaOneExe = Join-Path $OutDir "vanta_one.exe"
     & .\vnt.exe --compile examples\vanta_one.vnt -o $VantaOneExe
     if ($LASTEXITCODE -ne 0) { throw "Vanta One desktop app did not compile." }

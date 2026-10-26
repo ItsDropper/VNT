@@ -122,9 +122,16 @@ jobs:
           toolchain = $GITHUB_WORKSPACE
           EOF
           mkdir -p libs
+          mkdir -p libs/nested
           cat > libs/math_helpers.vnt <<'EOF'
+          import "nested/bonus.vnt" as bonus
           export fun square(value: int) -> int {
-              return value * value
+              return value * value + bonus.increment()
+          }
+          EOF
+          cat > libs/nested/bonus.vnt <<'EOF'
+          export fun increment() -> int {
+              return 0
           }
           EOF
           cat > src/main.vnt <<'EOF'
@@ -153,15 +160,26 @@ jobs:
           incremental="$("$GITHUB_WORKSPACE/vbuild" build)"
           printf '%s\n' "$incremental" | grep -Fq 'Up to date:'
           sleep 1
+          cat > libs/nested/bonus.vnt <<'EOF'
+          export fun increment() -> int {
+              return 1
+          }
+          EOF
+          transitive_rebuild="$("$GITHUB_WORKSPACE/vbuild" build)"
+          printf '%s\\n' "$transitive_rebuild" | grep -Fq 'Built '
+          output="$("$GITHUB_WORKSPACE/vbuild" run)"
+          printf '%s\\n' "$output" | grep -Fq '50'
+          sleep 1
           cat > libs/math_helpers.vnt <<'EOF'
+          import "nested/bonus.vnt" as bonus
           export fun square(value: int) -> int {
-              return value * value + 1
+              return value * value + bonus.increment() + 1
           }
           EOF
           dependency_rebuild="$("$GITHUB_WORKSPACE/vbuild" build)"
-          printf '%s\n' "$dependency_rebuild" | grep -Fq 'Built '
+          printf '%s\\n' "$dependency_rebuild" | grep -Fq 'Built '
           output="$("$GITHUB_WORKSPACE/vbuild" run)"
-          printf '%s\n' "$output" | grep -Fq '50'
+          printf '%s\\n' "$output" | grep -Fq '51'
           forced="$("$GITHUB_WORKSPACE/vbuild" build --force)"
           printf '%s\n' "$forced" | grep -Fq 'Built '
           mkdir -p tests

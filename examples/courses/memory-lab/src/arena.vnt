@@ -1,6 +1,6 @@
 # Copyright (c) 2026 ItsDropper
 # Educational arena allocator scaffold. Complete alongside the course.
-import "../../../lib/std/mem.vnt" as mem
+import "../../../../lib/std/mem.vnt" as mem
 
 # TODO: represent base pointer, capacity, cursor, and payload accounting
 # using syntax supported by the current compiler.

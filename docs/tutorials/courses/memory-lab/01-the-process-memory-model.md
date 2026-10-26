@@ -68,41 +68,16 @@ Follow this order rather than implementing everything at once:
 
 Early validation keeps invalid data away from dangerous operations. A small function is easier to reason about because its preconditions and postconditions fit on one screen. Integration comes later, after the unit behavior is known.
 
-## 5. A tiny VNT experiment
+## Run the current milestone
 
-Use this as a toolchain and syntax experiment, not as the finished feature:
-
-```vnt
-import "lib/std/mem.vnt" as mem
-
-unsafe {
-    let storage: ptr = mem.alloc(16)
-    if mem.is_null(storage) {
-        print("allocation failed")
-    } else {
-        let ok: bool = mem.write_u8(storage, 0, 18)
-        if ok {
-            print(mem.read_u8(storage, 0))
-        } else {
-            print("write failed")
-        }
-        let released: bool = mem.free(storage)
-        print(released)
-    }
-}
-```
-
-On Windows, build the compiler and compile the file from the repository root:
+From the repository root, compile the multi-file example that exercises this course:
 
 ```powershell
-.\\build.ps1
-.\\vnt.exe --compile lesson.vnt -o lesson.exe
-.\\lesson.exe
+.\\vnt.exe --compile examples\\courses\\memory-lab\\src\\main.vnt -o memory-lab.exe
+.\\memory-lab.exe
 ```
 
-On Linux, use the repository's built `./vnt` executable and the same `--compile` option. Use a file in a scratch directory only if its import paths remain correct.
-
-Expected output must be written down before you run the test. Otherwise, it is too easy to reinterpret surprising output as success.
+Use the exact compiler output as evidence. The relevant test executables and their commands are listed in the companion project's README. Do not substitute the same standalone pointer demo for the lesson-specific change below.
 
 ## 6. Implement the feature in small steps
 

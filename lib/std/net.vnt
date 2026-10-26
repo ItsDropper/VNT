@@ -201,5 +201,14 @@ export fun post_form_fields(url, keys, values) {
     if len(keys) != len(values) {
         return ""
     }
-    return net_request("POST", url, "Content-Type: application/x-www-form-urlencoded", encode_form(keys, values))
+    encoded_body = ""
+    i = 0
+    while i < len(keys) {
+        if i > 0 {
+            encoded_body = encoded_body + "&"
+        }
+        encoded_body = encoded_body + net_url_encode(keys[i]) + "=" + net_url_encode(values[i])
+        i += 1
+    }
+    return net_request("POST", url, "Content-Type: application/x-www-form-urlencoded", encoded_body)
 }

@@ -132,6 +132,18 @@ Call the smallest standard-library function that performs the needed primitive. 
 
 After success, verify that the invariant still holds. In tests, inspect the actual output or bytes rather than only checking a success boolean.
 
+## Worked implementation: Range validation before pointer arithmetic
+
+Keep the range check in integer space. Pointer arithmetic is the final operation, not the first.
+
+```vnt
+if offset < 0 || offset > capacity { return null }
+if size < 0 || size > capacity - offset { return null }
+let address: ptr = mem.offset(base, offset)
+```
+
+The one-past-end offset is a valid boundary value but not the start of a non-empty reservation. The subtraction check avoids overflow in offset + size.
+
 ## 7. Tests you must write
 
 Do not consider this lesson complete until all of these categories have an explicit test:

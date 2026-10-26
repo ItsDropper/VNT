@@ -84,3 +84,17 @@ The current bootstrap and linker script form one contract. If you change how BSS
 ## Lab: answer from the artifact
 
 Run `readelf -h -l build/kernel.elf` and `nm -n build/kernel.elf`. Record the entry point, loadable segment ranges, and addresses of the interrupt and kernel entry symbols. Explain which command shows each fact and why none of these checks alone proves a successful boot.
+
+## 10. Understand why a valid ELF can still fail
+
+A structurally valid ELF may have the wrong entry point, missing loadable data, an incorrect address layout, or symbols that do not match the assembly caller. The ELF format check alone cannot prove the kernel will boot. Likewise, a successful link only proves that the linker resolved the references it was asked to resolve.
+
+Use three levels of evidence: inspect the ELF header and program headers; inspect required symbols and disassembly; then boot the packaged image in QEMU. Each level narrows a different class of errors.
+
+## 11. Linker changes require a full regression pass
+
+If you change `os/linker.ld`, rebuild every artifact from source rather than reusing old objects. Check the entry point, Multiboot2 header, loadable segments, and symbol addresses. Then run the full boot and shell smoke test. The linker script is shared infrastructure: an error can affect the boot protocol, assembly, VNT code, and interrupt tables simultaneously.
+
+## Lab: save an ELF report
+
+Capture the output of `readelf -h -l build/kernel.elf` and `nm -n build/kernel.elf` for a known-good build. Identify the entry point, loadable segments, kernel entry, interrupt initializer, and dispatcher symbol. Keep the report with the commit SHA so a later change can be compared against a real baseline.

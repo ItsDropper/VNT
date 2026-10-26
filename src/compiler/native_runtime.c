@@ -736,14 +736,18 @@ VNT_NATIVE_ABI void vnt_print(VntValue *v) {
 
 /* UTF-8 helpers count Unicode scalar encodings, not grapheme clusters. Invalid
    byte sequences are treated as one-byte units so slicing always progresses. */
+static VNT_NATIVE_ABI const char *vnt_app_string(VntValue *v,const char *fn);
 static size_t vnt_utf8_unit(const unsigned char *p) {
     if (p[0] < 0x80) return 1;
-    if (p[0] >= 0xC2 && p[0] <= 0xDF && p[1] && (p[1] & 0xC0) == 0x80) return 2;
+    if (p[0] >= 0xC2 && p[0] <= 0xDF &&
+        p[1] && (p[1] & 0xC0) == 0x80) return 2;
     if (p[0] >= 0xE0 && p[0] <= 0xEF &&
-        (p[1] && (p[1] & 0xC0) == 0x80 && p[2] && (p[2] & 0xC0) == 0x80 &&
+        p[1] && p[2] &&
+        (p[1] & 0xC0) == 0x80 && (p[2] & 0xC0) == 0x80 &&
         !(p[0] == 0xE0 && p[1] < 0xA0) &&
         !(p[0] == 0xED && p[1] >= 0xA0)) return 3;
     if (p[0] >= 0xF0 && p[0] <= 0xF4 &&
+        p[1] && p[2] && p[3] &&
         (p[1] & 0xC0) == 0x80 && (p[2] & 0xC0) == 0x80 &&
         (p[3] & 0xC0) == 0x80 &&
         !(p[0] == 0xF0 && p[1] < 0x90) &&

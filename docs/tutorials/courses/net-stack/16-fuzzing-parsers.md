@@ -114,6 +114,27 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Generate bounded malformed byte arrays
+
+Start with deterministic lengths and byte values. Feed each generated array into the parsers and assert that the program rejects invalid inputs without reading outside the array.
+
+```vnt
+let length: int = 0
+while length < 64 {
+    let sample: array = range(length)
+    let i: int = 0
+    while i < length {
+        sample[i] = (i * 37 + length * 11) % 256
+        i += 1
+    }
+    let parsed: array = ethernet.parse_frame(sample)
+    print(len(parsed) == 0 || len(parsed) == 14)
+    length += 1
+}
+```
+
+When a generated case exposes a bug, save the exact bytes as a named fixture and keep it forever as a regression test.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

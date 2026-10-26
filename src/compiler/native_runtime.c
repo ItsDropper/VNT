@@ -1509,6 +1509,106 @@ VNT_NATIVE_ABI VntValue * vnt_process_launch(VntValue *path_value) {
 }
 
 
+/* Decimal-string arbitrary-precision signed integer arithmetic. */
+typedef struct { int sign; size_t length; char *digits; } VntBigInt;
+static void vnt_bigint_fail(void) {
+    fprintf(stderr,"Runtime error: bigint operations require signed decimal integer strings.\\n"); exit(1);
+}
+static VntBigInt vnt_bigint_parse(VntValue *value,const char *fn) {
+    const char *text=vnt_app_string(value,fn);
+    VntBigInt n={1,0,NULL};
+    if(*text=='-'||*text=='+'){if(*text=='-')n.sign=-1;text++;}
+    const char *begin=text;
+    while(*text>='0'&&*text<='9')text++;
+    if(text==begin||*text) vnt_bigint_fail();
+    while(begin[0]=='0' && begin[1]) begin++;
+    n.length=(size_t)(text-begin);
+    n.digits=(char *)malloc(n.length+1);
+    if(!n.digits){fprintf(stderr,"Runtime error: out of memory in bigint operation.\\n");exit(1);}
+    memcpy(n.digits,begin,n.length);n.digits[n.length]=0;
+    if(n.length==1&&n.digits[0]=='0')n.sign=0;
+    return n;
+}
+static int vnt_bigint_magcmp(const VntBigInt *a,const VntBigInt *b) {
+    if(a->length!=b->length)return a->length<b->length?-1:1;
+    int c=memcmp(a->digits,b->digits,a->length);
+    return c<0?-1:c>0?1:0;
+}
+static char *vnt_bigint_format(int sign,const char *digits,size_t length) {
+    while(length>1&&*digits=='0'){digits++;length--;}
+    int zero=length==1&&digits[0]=='0';
+    size_t prefix=(sign<0&&!zero)?1:0;
+    char *out=(char *)malloc(prefix+length+1);
+    if(!out){fprintf(stderr,"Runtime error: out of memory formatting bigint.\\n");exit(1);}
+    if(prefix)out[0]='-';
+    memcpy(out+prefix,digits,length);out[prefix+length]=0;return out;
+}
+static char *vnt_bigint_addmag(const VntBigInt *a,const VntBigInt *b,size_t *outlen) {
+    size_t n=(a->length>b->length?a->length:b->length)+1;
+    char *out=(char *)malloc(n+1);if(!out){fprintf(stderr,"Runtime error: out of memory.\\n");exit(1);}
+    int carry=0;
+    for(size_t k=0;k<n-1;k++){
+        int da=k<a->length?a->digits[a->length-1-k]-'0':0;
+        int db=k<b->length?b->digits[b->length-1-k]-'0':0;
+        int sum=da+db+carry;out[n-1-k]=(char)('0'+sum%10);carry=sum/10;
+    }
+    out[0]=(char)('0'+carry);
+    size_t start=carry?0:1;*outlen=n-start;
+    memmove(out,out+start,*outlen);out[*outlen]=0;return out;
+}
+static char *vnt_bigint_submag(const VntBigInt *large,const VntBigInt *small,size_t *outlen) {
+    char *out=(char *)malloc(large->length+1);if(!out){fprintf(stderr,"Runtime error: out of memory.\\n");exit(1);}
+    int borrow=0;
+    for(size_t k=0;k<large->length;k++){
+        int da=large->digits[large->length-1-k]-'0';
+        int db=k<small->length?small->digits[small->length-1-k]-'0':0;
+        int v=da-db-borrow;if(v<0){v+=10;borrow=1;}else borrow=0;
+        out[large->length-1-k]=(char)('0'+v);
+    }
+    size_t start=0;while(start+1<large->length&&out[start]=='0')start++;
+    *outlen=large->length-start;memmove(out,out+start,*outlen);out[*outlen]=0;return out;
+}
+static VntValue *vnt_bigint_binary(VntValue *av,VntValue *bv,int operation) {
+    VntBigInt a=vnt_bigint_parse(av,"bigint operation"),b=vnt_bigint_parse(bv,"bigint operation");
+    char *digits=NULL;size_t length=0;int sign=1;
+    if(operation==3) {
+        int cmp=a.sign==b.sign?(a.sign==0?0:vnt_bigint_magcmp(&a,&b)):(a.sign<b.sign?-1:1);
+        VntValue *r=vnt_int(cmp<0?-1:cmp>0?1:0);free(a.digits);free(b.digits);return r;
+    }
+    if(operation==2) {
+        if(a.sign==0||b.sign==0){digits=strdup("0");length=1;sign=0;}
+        else {
+            length=a.length+b.length;digits=(char *)calloc(length+1,1);
+            if(!digits){fprintf(stderr,"Runtime error: out of memory multiplying bigint.\\n");exit(1);}
+            for(size_t i=0;i<a.length;i++)for(size_t j=0;j<b.length;j++)
+                digits[i+j+1]+=(a.digits[i]-'0')*(b.digits[j]-'0');
+            for(size_t i=length;i>0;i--){digits[i-1]+=digits[i]/10;digits[i]%=10;digits[i]=(char)(digits[i]+'0');}
+            digits[0]=(char)(digits[0]+'0');
+            length=a.length+b.length;while(length>1&&digits[0]=='0'){digits++;length--;}
+            sign=a.sign*b.sign;
+        }
+    } else {
+        int bsign=operation==1?-b.sign:b.sign;
+        if(a.sign==0){digits=strdup(b.digits);length=b.length;sign=bsign;}
+        else if(bsign==0){digits=strdup(a.digits);length=a.length;sign=a.sign;}
+        else if(a.sign==bsign){digits=vnt_bigint_addmag(&a,&b,&length);sign=a.sign;}
+        else {
+            int cmp=vnt_bigint_magcmp(&a,&b);
+            if(cmp==0){digits=strdup("0");length=1;sign=0;}
+            else if(cmp>0){digits=vnt_bigint_submag(&a,&b,&length);sign=a.sign;}
+            else {digits=vnt_bigint_submag(&b,&a,&length);sign=bsign;}
+        }
+    }
+    if(!digits){fprintf(stderr,"Runtime error: out of memory in bigint operation.\\n");exit(1);}
+    char *formatted=vnt_bigint_format(sign,digits,length);
+    VntValue *result=vnt_string(formatted);
+    free(formatted);free(digits);free(a.digits);free(b.digits);return result;
+}
+VNT_NATIVE_ABI VntValue *vnt_bigint_add(VntValue *a,VntValue *b){return vnt_bigint_binary(a,b,0);}
+VNT_NATIVE_ABI VntValue *vnt_bigint_sub(VntValue *a,VntValue *b){return vnt_bigint_binary(a,b,1);}
+VNT_NATIVE_ABI VntValue *vnt_bigint_mul(VntValue *a,VntValue *b){return vnt_bigint_binary(a,b,2);}
+VNT_NATIVE_ABI VntValue *vnt_bigint_compare(VntValue *a,VntValue *b){return vnt_bigint_binary(a,b,3);}
+
 /* Read a scalar field from the Nth JSON object/key occurrence. This is a
    deliberately small accessor for API responses, not a full JSON DOM. */
 static VNT_NATIVE_ABI void vnt_json_copy_string(const char *p, char *out, size_t cap) {

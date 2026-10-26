@@ -79,3 +79,30 @@ Explain why setting `handled = 1` matters and what the shell would print if the 
 ## Stretch exercise
 
 Add a second command that prints a static line of text. Do not add arguments or memory operations yet. Repeat the same test routine.
+
+## 6. Example change: add a read-only diagnostic command
+
+A good first feature reads state that already exists rather than changing hardware configuration. The current `irq` command is an example: it reports the timer counter without resetting it. For a new command, first identify the state owner and the function that reads it. Do not access a controller port directly from the shell just because the value is hardware-related.
+
+Use this implementation sequence:
+
+1. Write the command contract and expected output.
+2. Find the shell dispatch logic in `os/kernel.vnt`.
+3. Add one branch using the existing module API.
+4. Update `help` output so the command is discoverable.
+5. Rebuild and boot in QEMU.
+6. Run the new command twice and check that reading it does not mutate the value.
+7. Test an unknown command and a second command afterward.
+8. Review the diff for unrelated edits.
+
+This sequence tests behavior as well as integration with the shell.
+
+## 7. Know when a change is not small
+
+Changing the timer handler, interrupt stack layout, page-table entries, or linker start address is not an ideal first patch. Those components have architectural preconditions and can fail before useful output is available. Read the relevant lesson and establish a known-good baseline before modifying them.
+
+A patch is small when it changes one understandable contract—not merely when it touches few lines. A two-line change to the interrupt return path can be riskier than a twenty-line help-text update.
+
+## Lab: prepare a review-ready patch
+
+Write a short description with the intended behavior, exact files changed, build command, QEMU test, observed output, and known limitations. Run `git diff --check` and inspect the full diff. If you cannot explain every changed line, reduce the patch before asking for review.

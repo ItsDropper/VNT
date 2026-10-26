@@ -186,6 +186,14 @@ jobs:
           printf '%s\\n' "$runtime_rebuild" | grep -Fq 'Built '
           output="$("$GITHUB_WORKSPACE/vbuild" run)"
           printf '%s\\n' "$output" | grep -Fq '51'
+          # Content changes must invalidate the build even when mtime is restored.
+          cp -p libs/nested/bonus.vnt "$RUNNER_TEMP/vbuild-bonus-backup.vnt"
+          sed -i 's/return 1/return 2/' libs/nested/bonus.vnt
+          touch -r "$RUNNER_TEMP/vbuild-bonus-backup.vnt" libs/nested/bonus.vnt
+          same_mtime_rebuild="$("$GITHUB_WORKSPACE/vbuild" build)"
+          printf '%s\n' "$same_mtime_rebuild" | grep -Fq 'Built '
+          output="$("$GITHUB_WORKSPACE/vbuild" run)"
+          printf '%s\n' "$output" | grep -Fq '52'
           forced="$("$GITHUB_WORKSPACE/vbuild" build --force)"
           printf '%s\n' "$forced" | grep -Fq 'Built '
           mkdir -p tests

@@ -109,7 +109,7 @@ def command_init(project: Path, name: str | None) -> None:
     if manifest.exists():
         raise VBuildError(f"{MANIFEST} already exists; refusing to overwrite it.")
     project_name = name or project.name or "vnt-project"
-    if not project_name.strip() or any(c in project_name for c in "\r\n\\""):
+    if not project_name.strip() or any(c in project_name for c in '\r\n"'):
         raise VBuildError("Project name must be a non-empty, single-line string.")
     manifest.write_text(
         f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n\n'

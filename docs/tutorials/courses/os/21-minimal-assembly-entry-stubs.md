@@ -87,3 +87,13 @@ The common entry first removes the normalized vector/error fields, then executes
 - Are the synthetic vector/error fields removed before `iretq`?
 
 If any answer is unclear, do not edit the assembly yet. Use the offsets and the macro expansion to derive the answer first.
+
+## What the entry code deliberately does not do
+
+The stub does not allocate a new kernel stack, switch page tables, identify a process, or save floating-point/SIMD state. Those omissions are acceptable only for the current single-address-space kernel, where the timer handler does not use SIMD and no task switch occurs. A future scheduler or user-mode transition must revisit the complete architectural state that needs preservation.
+
+The stub also does not make the current VNT compiler's inline assembly safer. It isolates the most delicate interrupt frame in a dedicated file, but other kernel functions still use hard-coded stack offsets. Keep those two facts separate when reviewing the design.
+
+## A controlled review technique
+
+Read the assembly without editing it. Write down the stack pointer's logical contents at four points: immediately after the CPU enters, after the stub adds vector/error fields, after all general registers are pushed, and immediately before `iretq`. Use one row per push or pop. If your diagram does not return to the same CPU frame, stop and fix the reasoning before touching the code.

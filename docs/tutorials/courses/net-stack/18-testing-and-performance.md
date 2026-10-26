@@ -114,6 +114,20 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Test correctness before timing
+
+Run known-good and malformed fixtures first. Then measure repeated synthetic packets with output removed from the timed loop.
+
+```text
+correctness suite: must pass first
+warm-up: 1 run
+measured runs: 7
+same fixture corpus for every build
+report accepted count and rejected count
+```
+
+Label results as simulator throughput, not real network throughput. Compiler revision, optimization mode, input mix, and output overhead all affect results.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

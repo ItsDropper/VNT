@@ -140,22 +140,26 @@ file; VNT's module loader handles imports.
 
 ## Incremental builds
 
-VBuild checks the output timestamp against the configured root source, project
-properties, task file, compiler executable, every explicitly declared
-`implementation` module, and the recursively discovered VNT import graph.
-It scans `import "module.vnt"` declarations, resolves each import relative to
-its importer before searching configured local repositories, and visits each
-source file once to handle repeated and cyclic imports. A changed direct or
-transitive imported source invalidates the build even when that module is not
-listed in `dependencies {}`. If tracked inputs are current, VBuild prints
-`Up to date`. Use `vbuild build --force` to force recompilation.
+VBuild computes a content fingerprint over the configured root source,
+project properties, task file, the compiler binary when it can resolve it as a
+file, every explicitly declared \`implementation\` module, and the recursively
+discovered VNT import graph. It scans \`import "module.vnt"\` declarations,
+resolves each import relative to its importer before searching configured local
+repositories, and visits each source file once to handle repeated and cyclic
+imports. A content change invalidates the build even if the file's modification
+timestamp is unchanged. The fingerprint is saved beside the artifact as
+\`<artifact>.vbuild-inputs\` and is updated only after a successful build. If
+tracked inputs match the saved manifest, VBuild prints \`Up to date\`. Use
+\`vbuild build --force\` to force recompilation.
 
-For hosted executables, VBuild also tracks the native runtime sources and
-runtime header used by VNT's link step. For freestanding ELF targets, it tracks
-`freestanding/x86_64.ld`. A newer or missing required input prevents a stale
-artifact from being treated as up to date. External compiler/linker binaries,
-system libraries, environment variables, and other toolchain state are not
-content-fingerprinted; use `--force` after changing those inputs.
+For hosted executables, VBuild fingerprints the native runtime sources and
+runtime header used by VNT's link step. For freestanding ELF targets, it
+fingerprints \`freestanding/x86_64.ld\`. VBuild currently uses a portable
+64-bit FNV-1a fingerprint, intended for change detection rather than
+cryptographic integrity. If the compiler is resolved only through \`PATH\`,
+VBuild fingerprints the configured command name rather than the external
+binary. System libraries, environment variables, and other external toolchain
+state are not fingerprinted; use \`--force\` after changing those inputs.
 
 ## Tests
 
@@ -174,7 +178,7 @@ directories and expected-output assertions are not yet supported.
   imports.
 - Test programs are standalone passing executables, not a framework with
   assertions, fixtures, or expected-output files.
-- Native runtime/linker inputs are not yet fingerprinted. Profiles,
+- External system libraries, environment variables, and compiler commands resolved only through `PATH` are not fully fingerprinted. Profiles,
   cross-compilation, remote repositories, versioned/transitive package
   coordinates, arbitrary custom tasks, and reproducible-build guarantees are
   not implemented.

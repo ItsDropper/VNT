@@ -62,3 +62,64 @@ export fun remaining_ms(deadline_ms) {
 export fun has_elapsed(start_ms, duration_ms) {
     return time_ms() - start_ms >= duration_ms
 }
+
+# Proleptic Gregorian calendar helpers. Years start at 1; no timezone/DST
+# conversion is performed. weekday() uses 0=Sunday through 6=Saturday.
+export fun is_leap_year(year) {
+    if mod(year, 400) == 0 {
+        return true
+    }
+    if mod(year, 100) == 0 {
+        return false
+    }
+    return mod(year, 4) == 0
+}
+
+export fun days_in_month(year, month) {
+    if month < 1 || month > 12 {
+        return 0
+    }
+    if month == 2 {
+        if is_leap_year(year) {
+            return 29
+        }
+        return 28
+    }
+    if month == 4 || month == 6 || month == 9 || month == 11 {
+        return 30
+    }
+    return 31
+}
+
+export fun is_valid_date(year, month, day) {
+    if year < 1 || day < 1 {
+        return false
+    }
+    month_days = days_in_month(year, month)
+    return month_days > 0 && day <= month_days
+}
+
+export fun day_of_year(year, month, day) {
+    if !is_valid_date(year, month, day) {
+        return -1
+    }
+    total = day
+    current_month = 1
+    while current_month < month {
+        total += days_in_month(year, current_month)
+        current_month += 1
+    }
+    return total
+}
+
+export fun weekday(year, month, day) {
+    if !is_valid_date(year, month, day) {
+        return -1
+    }
+    adjusted_year = year
+    if month < 3 {
+        adjusted_year -= 1
+    }
+    offsets = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4]
+    return mod(adjusted_year + adjusted_year / 4 - adjusted_year / 100 + adjusted_year / 400 + offsets[month - 1] + day, 7)
+}

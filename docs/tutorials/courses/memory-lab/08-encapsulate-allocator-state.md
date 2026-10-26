@@ -132,6 +132,19 @@ Call the smallest standard-library function that performs the needed primitive. 
 
 After success, verify that the invariant still holds. In tests, inspect the actual output or bytes rather than only checking a success boolean.
 
+## Worked implementation: Expose allocator policy through a module API
+
+Callers should not edit base, cursor, or allocation metadata directly. Keep those fields inside `arena.vnt`.
+
+```vnt
+arena.arena_init(128)
+let first: ptr = arena.arena_reserve(7, 1)
+let second: ptr = arena.arena_reserve(8, 8)
+print(arena.arena_invariants_hold())
+```
+
+Interleave reservations from two arenas after you extend the implementation to independent instances. If the current implementation only has one global arena, document that limitation.
+
 ## 7. Tests you must write
 
 Do not consider this lesson complete until all of these categories have an explicit test:

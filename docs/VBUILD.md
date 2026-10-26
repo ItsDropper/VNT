@@ -1,77 +1,92 @@
 # VBuild
 
-VBuild is the first-party project driver for VNT. The initial implementation is
-a small Python 3.11+ command-line tool using only the standard library; TOML
-parsing uses `tomllib`. It delegates language semantics and code generation to
-the existing VNT compiler rather than implementing a second compiler.
+VBuild is VNT's native project build driver. The command-line implementation is
+C in `tools/vbuild.c`; it does not require Python or a Python runtime. Build
+the tool itself with a C compiler, then distribute the resulting executable as
+`vbuild.exe` on Windows or `vbuild` on Linux.
 
-## Current setup
+## Build the VBuild executable
 
-Build VNT using the repository's existing `build.ps1` or CI compiler command.
-From a project directory, run the script with Python:
+From the VNT repository root:
 
 ```sh
-python /path/to/VNT/tools/vbuild.py init
-python /path/to/VNT/tools/vbuild.py build
-python /path/to/VNT/tools/vbuild.py check
-python /path/to/VNT/tools/vbuild.py run
-python /path/to/VNT/tools/vbuild.py clean
+gcc -std=c11 -O2 tools/vbuild.c -o vbuild
 ```
 
-The current compiler is located in the VNT repository root by default. Set
-`VNT_COMPILER` to override its executable path. Python 3.11 or newer is required.
-VBuild currently runs the compiler from its source repository because the
-compiler's native-link command references runtime source files relative to that
-working directory. Source and output paths passed to the compiler are absolute,
-so project directories may contain spaces.
+On Windows with GCC:
 
-## Manifest
-
-VBuild reads `vbuild.toml` from the current project directory:
-
-```toml
-[project]
-name = "hello"
-version = "0.1.0"
-
-[build]
-sources = ["src/main.vnt"]
-output = "hello"
-target = "host"
+```powershell
+gcc -std=c11 -O2 tools/vbuild.c -o vbuild.exe
 ```
 
-The first release accepts one root source file. Imports are resolved by VNT's
-existing source module loader; listing several independent source roots is not
-yet supported because the compiler CLI accepts one source file per invocation.
-The `host` target uses the host compiler/linker toolchain. Other targets are
-rejected instead of being silently treated as supported.
+Put the executable in the VNT project directory (or on PATH). VBuild currently
+expects the VNT compiler executable to be available as `vnt` on PATH, or to be
+named explicitly using the `compiler` property.
 
-## Commands
+## Create and build a project
 
-- `init [--name NAME]`: create a manifest and `src/main.vnt`; refuses to overwrite an existing manifest.
-- `build`: validate configuration and sources, then invoke `vnt --compile`.
-- `run`: build and execute the resulting host program.
-- `check`: run the compiler's existing `--dump-ir` pipeline. This checks parsing, lowering, optimization, and HIR validation; it is not a separate full static-analysis mode.
-- `clean`: remove only the project's generated `build/` directory.
-- `test`: explicitly reports that test targets are not implemented yet. It does not claim to run tests.
+```powershell
+.\vbuild init
+.\vbuild build
+.\vbuild run
+.\vbuild check
+.\vbuild clean
+```
 
-Generated programs and assembly are placed under `build/`. VBuild does not
-currently resolve dependencies, provide incremental builds, define profiles,
-cross-compile, discover tests, or promise bit-for-bit reproducibility. Those
-features should be added only after compiler invocation and project lifecycle
-contracts are stable.
+On Linux use `./vbuild init`, etc. `init` creates `build.vbuild`,
+`vbuild.properties`, and `src/main.vnt`. Existing manifests are never
+overwritten.
 
-## Architecture and next steps
+## build.vbuild
 
-`tools/vbuild.py` owns CLI parsing, manifest validation, source-path checks,
-process invocation, and generated-output cleanup. The compiler remains the
-authority for parsing, type checking, module expansion, HIR validation, native
-code generation, and linking.
+The initial build script is deliberately declarative and limited to the
+built-in task graph:
 
-Next milestones:
+```text
+# VBuild task file (version 1)
+task build
+task run depends build
+task check
+task clean
+task test
+```
 
-1. Move compiler runtime/toolchain discovery out of the current-working-directory assumption.
-2. Add reliable integration tests for build/run/check on Linux and Windows.
-3. Add explicit test-target configuration and real test execution.
-4. Add debug/release profiles and target metadata once the compiler exposes supported target capabilities.
-5. Add content-based incremental builds and dependency locking after dependency semantics are defined.
+VBuild validates the declared task set before running a command. Arbitrary
+build-script code and custom task actions are not supported yet; this is a
+small first version, not a general-purpose scripting engine.
+
+## vbuild.properties
+
+```properties
+project.name = hello
+project.version = 0.1.0
+source = src/main.vnt
+output = hello
+compiler = vnt
+```
+
+Supported properties are `project.name`, `project.version`, `source`,
+`output`, and `compiler`. The current MVP builds one root source file;
+VNT's existing import/module loader remains responsible for module loading.
+The output file is written to `build/`.
+
+## Commands and current limits
+
+- `init`: generate starter files without overwriting existing manifests.
+- `build`: compile the configured source using VNT's existing compiler.
+- `run`: build and execute the host binary.
+- `check`: invoke the compiler's `--dump-ir` validation path.
+- `clean`: remove the generated `build/` directory only.
+- `test`: reports that test discovery/execution is not implemented. It does
+  not claim to run tests.
+
+The compiler and native linker remain prerequisites for compiling VNT programs.
+The build driver itself requires a C compiler only when building VBuild from
+source; end users can run the prebuilt native executable without Python.
+
+Dependency resolution, incremental builds, test discovery, custom task actions,
+profiles, cross-compilation, and reproducible build guarantees are not
+implemented. The current compiler invocation still relies on host toolchain
+availability. Later work should replace shell-based process invocation with
+platform-specific process APIs, improve executable discovery, and add native
+integration tests on Windows and Linux.

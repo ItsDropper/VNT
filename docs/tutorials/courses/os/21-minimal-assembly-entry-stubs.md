@@ -103,3 +103,17 @@ Read the assembly without editing it. Write down the stack pointer's logical con
 The current freestanding backend emits VNT functions with a `vnt_fn_` prefix. Therefore the assembly common entry calls `vnt_fn_interrupt_dispatch`, even though the source-level VNT function is named `interrupt_dispatch`. The assembly initializer has the explicit external name `vntos_interrupts_init`, because the VNT wrapper calls that name from inline assembly.
 
 This distinction is important when reading linker errors. An undefined `vnt_fn_interrupt_dispatch` means the compiled VNT function was not emitted under the expected symbol; an undefined `vntos_interrupts_init` means the external assembly implementation or its object file is missing.
+
+## Implementation lab: verify the normalized frame
+
+Make a stack diagram before changing a macro. For a no-error-code interrupt, the stub pushes a synthetic zero error code and then the vector. For an error-code exception, the CPU already placed the error code on the stack, so the stub pushes only the vector. Both paths should reach the common entry with vector at the top and error code immediately below it.
+
+The common entry saves all general-purpose registers before calling VNT. It aligns the stack for the call and restores the original interrupt stack pointer afterward. The VNT dispatcher receives the vector and error code as ordinary function arguments. After dispatch, the common entry sends an EOI for hardware IRQ vectors, restores registers, removes the normalized fields, and returns with `iretq`.
+
+Before editing, check each transition against the actual assembly. Do not infer the stack from the macro name. One extra push changes every later offset by eight bytes and can make a valid-looking interrupt return to a nonsense address.
+
+## Why the red zone is disabled
+
+The kernel objects are compiled with `-mno-red-zone`. In ordinary x86-64 environments, compilers may use a red zone below RSP without adjusting the stack pointer. Interrupts can use the current kernel stack asynchronously, so data placed there may be overwritten by the interrupt entry path. The kernel build disables that optimization to avoid relying on storage below RSP that an interrupt can consume.
+
+This is an example of a compiler flag enforcing an architectural invariant. If you change the kernel's compilation flags, review the ABI and interrupt entry assumptions rather than treating the flag as a generic optimization setting.

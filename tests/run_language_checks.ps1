@@ -337,6 +337,20 @@ try {
     }
     Write-Host "UTF-8 scalar helpers and atomic filesystem writes: PASS"
 
+    $BigIntExe = Join-Path $OutDir "std_bigint_runtime.exe"
+    & .\\vnt.exe --compile tests\\std_bigint_runtime.vnt -o $BigIntExe
+    if ($LASTEXITCODE -ne 0) { throw "Big integer runtime test did not compile." }
+    $bigintOutput = & $BigIntExe
+    if ($LASTEXITCODE -ne 0) { throw "Big integer runtime program exited unsuccessfully." }
+    $bigintExpected = @(
+        "1000000000000000000000", "999999999999999999999", "111111110111111111010",
+        "1", "-8", "0", "-1", "0", "1", "BIGINT_RUNTIME_OK"
+    )
+    if (($bigintOutput -join "|") -ne ($bigintExpected -join "|")) {
+        throw "Unexpected big integer output: $($bigintOutput -join ' | ')"
+    }
+    Write-Host "Arbitrary-precision integer runtime: PASS"
+
     $VantaOneExe = Join-Path $OutDir "vanta_one.exe"
     & .\vnt.exe --compile examples\vanta_one.vnt -o $VantaOneExe
     if ($LASTEXITCODE -ne 0) { throw "Vanta One desktop app did not compile." }

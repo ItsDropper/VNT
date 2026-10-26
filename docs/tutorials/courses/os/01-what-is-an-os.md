@@ -98,3 +98,13 @@ This example shows how even a tiny shell separates input acquisition, parsing, p
 ## Lab deliverable
 
 Draw a boundary diagram for one command. Mark which module reads the input, which function decides what the command means, which subsystem performs the operation, and which code displays the result. Label any layer that does not yet exist, such as a userspace process or syscall boundary.
+
+## 10. Think in invariants, not feature names
+
+A subsystem is more than a filename and a function. It has an invariant that must remain true. The console must not write outside its text buffer. The shell must not store beyond its command buffer. The interrupt entry must restore the saved CPU state. The timer handler must not perform slow output on every tick.
+
+When proposing a new feature, write down the invariant first, then choose the data structure and functions that maintain it. For example, an event queue would need a defined capacity, producer/consumer ownership, full-queue behavior, and a rule for concurrent access. "Add keyboard interrupts" is not a complete design until those questions are answered.
+
+## Lab: define a subsystem contract
+
+Choose the console or PS/2 input module. Write its inputs, outputs, state it owns, failure modes, and what it deliberately does not do. Then name one change that should be made inside the module and one change that should remain in the shell. This is the first step toward making future kernel features maintainable.

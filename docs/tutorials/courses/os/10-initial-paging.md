@@ -91,3 +91,9 @@ Do not claim that paging automatically provides process isolation. Isolation req
 ## Lab: review the current map
 
 Draw the path from CR3 to the page-table structures used by the current identity map. Mark the region covered by the 1 GiB mapping and the location of VGA text memory. Then list three features a physical/virtual memory manager must add before this map could support isolated processes.
+
+## 12. Avoid unsafe assumptions about mapped memory
+
+A virtual address can be numerically small and still be invalid if the active page tables do not map it. Conversely, a mapped address may refer to device memory rather than ordinary RAM, so normal caching and access assumptions may not apply. The current bootstrap map is intentionally broad to get the kernel running; it is not a validation routine for arbitrary pointers.
+
+Before adding a new memory access, establish the address range, mapping, access width, and owner of the region. A future memory manager must track which frames are available and which are reserved; the identity map alone provides no such ownership information.

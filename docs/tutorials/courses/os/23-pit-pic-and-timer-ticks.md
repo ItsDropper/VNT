@@ -112,3 +112,15 @@ The counter is a diagnostic count of delivered timer interrupts. It is not wall-
 The current timer handler does very little work by design. An interrupt handler should avoid unbounded loops, waiting for a device, dynamic allocation, and formatting large messages. Those operations delay the interrupted code and can make other hardware events harder to service.
 
 A later kernel may defer work into the main loop or a worker task. That requires a queue or a pending-event mechanism with defined ownership. The current counter is the simplest possible example: record a fact quickly, then let the shell read and display it in normal context.
+
+## Implementation lab: follow the timer all the way through
+
+Use the source to trace one timer tick from generation to observation. Identify the PIT divisor writes, the PIC mask, the IDT vector, the `isr32` stub, the common assembly entry, the VNT branch, and the shared counter displayed by the shell. Write the sequence in your own words and mark which step is hardware configuration, which is CPU entry/exit, and which is kernel policy.
+
+Then run `irq` twice with a short delay. Record both values and calculate the difference. Do not expect a precise number unless the delay is measured and the environment is controlled. The useful result is that the counter increases and the shell remains responsive.
+
+## Why not enable keyboard IRQ1 now?
+
+The PS/2 module currently polls the controller and reads its data port from the main kernel path. If IRQ1 were unmasked without redesigning that path, the interrupt handler and polling code could race to consume the same byte. A correct implementation needs a single owner for device reads and a bounded queue that the shell drains later. It must also define overflow behavior and keep the handler short.
+
+This is an important lesson in kernel development: hardware configuration is the final step after the data ownership and concurrency model are designed, not the first step.

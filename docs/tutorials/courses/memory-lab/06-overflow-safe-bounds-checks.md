@@ -132,6 +132,19 @@ Call the smallest standard-library function that performs the needed primitive. 
 
 After success, verify that the invariant still holds. In tests, inspect the actual output or bytes rather than only checking a success boolean.
 
+## Worked implementation: Validate before committing the cursor
+
+Once candidate start is computed, prove it is within capacity before subtracting. Then compare the requested size with remaining capacity.
+
+```vnt
+if start > capacity { return null }
+if size > capacity - start { return null }
+let end: int = start + size
+# Commit cursor only after all checks pass.
+```
+
+The end addition is safe only after the subtraction-form bounds check proves the range fits. Rejected requests must not change the allocation count or padding.
+
 ## 7. Tests you must write
 
 Do not consider this lesson complete until all of these categories have an explicit test:

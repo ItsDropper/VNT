@@ -84,3 +84,11 @@ Instead, the handler increments the counter and leaves formatting to the `irq` s
 The shared `vntos_state` array is a compact teaching device, not a type-safe kernel data model. Index 11 is currently the timer count, but raw indices do not communicate ownership or atomicity. A future refactor should give timer state a named interface and decide whether reads require interrupts to be masked or a wider atomicity guarantee.
 
 Keep the current implementation simple while learning the interrupt path; do not add a complicated synchronization layer before you can test it.
+
+## Separate event classification from response
+
+The dispatcher is intentionally simple, but its branches model a useful design rule: first classify the event, then apply the policy for that class. A timer IRQ is expected and returns quickly. A CPU exception indicates that an instruction could not proceed normally and is fatal in this kernel. An unexpected non-timer vector is also fatal because this version has no handler contract for it.
+
+Do not merge all three cases into a single generic "print and return" branch. Returning from a page fault without fixing the faulting mapping would normally repeat the same fault. Returning from a general-protection fault can hide a broken kernel invariant. The conservative halt makes the failure visible instead of pretending to recover.
+
+A later implementation can add a named exception-message table, but it must preserve the numeric vector and raw error code so the friendly name does not discard useful evidence. For page faults, the CPU's fault-address register must also be read through an architecture-specific primitive; it is not included in the current dispatcher arguments.

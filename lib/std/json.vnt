@@ -18,7 +18,6 @@ export fun value_or(json_text, key, occurrence, fallback) {
 # Tests whether lookup returns a non-empty value. Empty strings and missing fields
 # are indistinguishable through the current native accessor.
 export fun has_nonempty_value(json_text, key, occurrence) {
-    marker = "__VNT_JSON_MISSING_6B41D9__"
     value = json_value_at(json_text, key, occurrence)
-    return value != marker && value != ""
+    return value != ""
 }

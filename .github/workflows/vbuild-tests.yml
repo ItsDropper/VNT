@@ -71,7 +71,7 @@ jobs:
             & $binary cycle
             if ($LASTEXITCODE -eq 0) { throw 'dependency cycle was not rejected' }
             & $binary test
-            if ($LASTEXITCODE -ne 2) { throw 'unimplemented test task did not return exit code 2' }
+            if ($LASTEXITCODE -ne 1) { throw 'test task without a tests/ directory should fail clearly' }
             & $binary clean
             if ($LASTEXITCODE -ne 0) { throw 'clean task failed' }
             & $binary clean
@@ -123,6 +123,33 @@ jobs:
           EOF
           "$GITHUB_WORKSPACE/vbuild" build
           test -x build/hello
+          incremental="$("$GITHUB_WORKSPACE/vbuild" build)"
+          printf '%s\\n' "$incremental" | grep -Fq 'Up to date:'
           output="$("$GITHUB_WORKSPACE/vbuild" run)"
-          printf '%s\n' "$output"
-          printf '%s\n' "$output" | grep -Fq 'Hello from VNT'
+          printf '%s\\n' "$output"
+          printf '%s\\n' "$output" | grep -Fq 'Hello from VNT'
+          mkdir -p tests
+          printf 'print("VBUILD_TEST_OK")\\n' > tests/smoke.vnt
+          test_output="$("$GITHUB_WORKSPACE/vbuild" test)"
+          printf '%s\\n' "$test_output"
+          printf '%s\\n' "$test_output" | grep -Fq 'VBUILD_TEST_OK'
+      - name: Build a freestanding ELF through VBuild
+        shell: bash
+        run: |
+          project="$RUNNER_TEMP/vbuild elf integration project"
+          mkdir -p "$project"
+          cd "$project"
+          "$GITHUB_WORKSPACE/vbuild" init
+          cp "$GITHUB_WORKSPACE/tests/freestanding_minimal.vnt" src/main.vnt
+          cat > vbuild.properties <<EOF
+          project.name = kernel
+          project.version = 0.1.0
+          source = src/main.vnt
+          output = kernel
+          compiler = vnt
+          toolchain = $GITHUB_WORKSPACE
+          EOF
+          sed -i 's/^target exe$/target elf/' build.vbuild
+          "$GITHUB_WORKSPACE/vbuild" build
+          test -x build/kernel.elf
+          readelf -h build/kernel.elf | grep -Fq 'ELF64'

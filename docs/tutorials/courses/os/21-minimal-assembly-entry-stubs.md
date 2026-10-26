@@ -53,3 +53,37 @@ Draw the stack from the vector number down through the CPU-saved return state. E
 ## Exercise
 
 Inspect the push and pop order in `interrupt_common`. Verify that each saved register is restored in reverse order and that the vector/error pair is removed before `iretq`. Do not reorder the pushes as a cleanup.
+
+## Stack-frame arithmetic, not magic numbers
+
+For a no-error-code interrupt, the CPU's current-privilege frame begins with the saved instruction pointer, code selector, and flags. The stub then pushes a synthetic error code and the vector number. For an exception where the CPU already pushed an error code, the stub adds only the vector number.
+
+After the common entry pushes 15 general-purpose registers, the vector is 120 bytes above the current RSP and the error code is 128 bytes above it. Those offsets come from:
+
+`15 registers × 8 bytes = 120 bytes`.
+
+Do not change the register-save list without recalculating these offsets. Adding one push changes both values by eight bytes.
+
+## Why align the stack before calling VNT?
+
+The interrupted instruction could have left RSP at an alignment that is valid for ordinary execution but unsuitable for a compiled function call. The entry code saves the original stack pointer in R12, rounds RSP down to a 16-byte boundary, calls the VNT dispatcher, and restores the saved stack pointer afterward. R12's original value is itself already saved on the interrupt stack and is restored with the other registers.
+
+This assumes the VNT-generated function follows the documented x86-64 calling convention and preserves callee-saved registers. That assumption is part of the kernel ABI and should eventually have explicit compiler regression tests.
+
+## What `iretq` restores
+
+`iretq` consumes the CPU return frame. It restores the instruction pointer, code selector, and flags for a same-privilege return. A return across privilege levels would have additional stack state, but VNTOS has not implemented userspace or such a transition.
+
+The common entry first removes the normalized vector/error fields, then executes `iretq`. Using `ret` would pop the wrong value as a return address and would not restore the processor flags.
+
+## Audit questions
+
+- Does every stub place the vector at the top of the normalized frame?
+- Does the error-code macro avoid pushing a second dummy code?
+- Are all general-purpose registers saved before calling VNT?
+- Is the stack aligned before the call?
+- Does the PIC EOI happen only for vectors 32–47?
+- Are all saved registers restored in reverse order?
+- Are the synthetic vector/error fields removed before `iretq`?
+
+If any answer is unclear, do not edit the assembly yet. Use the offsets and the macro expansion to derive the answer first.

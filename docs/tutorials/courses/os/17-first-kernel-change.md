@@ -106,3 +106,27 @@ A patch is small when it changes one understandable contract—not merely when i
 ## Lab: prepare a review-ready patch
 
 Write a short description with the intended behavior, exact files changed, build command, QEMU test, observed output, and known limitations. Run `git diff --check` and inspect the full diff. If you cannot explain every changed line, reduce the patch before asking for review.
+
+## 8. Worked patch: add a `ticks` command alias
+
+This is a teaching exercise that adds a second command for reading the same timer counter. It does not change the interrupt subsystem. In `os/kernel.vnt`, find the help string and the existing `irq` branch. Add `ticks` to the advertised command list, then add a branch beside `irq`:
+
+```vnt
+if str_eq(buffer, "ticks") {
+    console_puts("Timer ticks: ")
+    console_hex(state_get(11))
+    handled = 1
+}
+```
+
+The shell has already collected and terminated the input line before it reaches this code. `str_eq` checks the complete command name. `state_get(11)` reads the same shared counter updated by the timer dispatcher. `console_hex` formats the value, and `handled = 1` prevents the shell from printing the unknown-command response.
+
+This is intentionally a read-only command. Do not reset the counter from the shell because that would introduce a shared-state mutation and change the meaning of observations taken elsewhere.
+
+## 9. Verify the change and understand its limits
+
+Build with `bash os/build.sh`, boot the new ISO in QEMU, and run `help`, `ticks`, `irq`, and an unknown command. Both timer commands should report the same value if run close together; the count may increase between calls because IRQ0 continues to arrive.
+
+If the code compiles but the command is unknown, check that the branch was added inside the Enter-handling dispatch block and before the fallback test. If the output is missing or malformed, inspect the console call and whether `handled` is set. If the build fails, fix the first compiler or linker error before investigating QEMU.
+
+After testing, inspect `git diff --check` and the full diff. This patch should touch only the shell source and its help text. The lesson is complete when you can explain every line and reproduce the behavior from a fresh build.

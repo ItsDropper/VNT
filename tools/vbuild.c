@@ -506,25 +506,25 @@ static int run_one_test(Config *cfg, const char *filename) {
     int n;
     if (name_len < 5 || strcmp(filename + name_len - 4, ".vnt")) return 0;
     if (name_len - 4 >= sizeof name) {
-        fprintf(stderr, "vbuild: test filename too long: %s\\n", filename);
+        fprintf(stderr, "vbuild: test filename too long: %s\n", filename);
         return 1;
     }
     memcpy(name, filename, name_len - 4);
-    name[name_len - 4] = '\\0';
+    name[name_len - 4] = '\0';
     if (!safe_filename(name) || snprintf(source_path, sizeof source_path, "tests/%s", filename) >= (int)sizeof source_path) {
-        fprintf(stderr, "vbuild: invalid test filename: %s\\n", filename);
+        fprintf(stderr, "vbuild: invalid test filename: %s\n", filename);
         return 1;
     }
     if (!copy_value(test_cfg.source, sizeof test_cfg.source, source_path, "source") ||
         !copy_value(test_cfg.output, sizeof test_cfg.output, name, "output") ||
         !copy_value(test_cfg.target, sizeof test_cfg.target, "exe", "target")) return 1;
-    printf("[test] %s\\n", filename);
+    printf("[test] %s\n", filename);
     if (run_compiler(&test_cfg, 0) != 0) return 1;
     if (!absolute_path("build", output_path, sizeof output_path)) return 1;
     n = snprintf(output_path + strlen(output_path), sizeof output_path - strlen(output_path),
                  "/%s%s", name, EXE_SUFFIX);
     if (n < 0 || (size_t)n >= sizeof output_path - strlen(output_path)) {
-        fprintf(stderr, "vbuild: test output path too long.\\n");
+        fprintf(stderr, "vbuild: test output path too long.\n");
         return 1;
     }
     args[0] = output_path;
@@ -536,9 +536,9 @@ static int run_tests(Config *cfg) {
     int count = 0, failures = 0;
 #ifdef _WIN32
     WIN32_FIND_DATAA data;
-    HANDLE handle = FindFirstFileA("tests\\\\*.vnt", &data);
+    HANDLE handle = FindFirstFileA("tests\\*.vnt", &data);
     if (handle == INVALID_HANDLE_VALUE) {
-        fprintf(stderr, "vbuild: no tests found. Add passing .vnt programs under tests/.\\n");
+        fprintf(stderr, "vbuild: no tests found. Add passing .vnt programs under tests/.\n");
         return 1;
     }
     do {
@@ -552,7 +552,7 @@ static int run_tests(Config *cfg) {
     DIR *dir = opendir("tests");
     struct dirent *entry;
     if (!dir) {
-        fprintf(stderr, "vbuild: no tests directory found. Add passing .vnt programs under tests/.\\n");
+        fprintf(stderr, "vbuild: no tests directory found. Add passing .vnt programs under tests/.\n");
         return 1;
     }
     while ((entry = readdir(dir)) != NULL) {
@@ -564,11 +564,11 @@ static int run_tests(Config *cfg) {
     closedir(dir);
 #endif
     if (count == 0) {
-        fprintf(stderr, "vbuild: tests/ contains no .vnt test programs.\\n");
+        fprintf(stderr, "vbuild: tests/ contains no .vnt test programs.\n");
         return 1;
     }
-    if (failures) fprintf(stderr, "vbuild: %d of %d test(s) failed.\\n", failures, count);
-    else printf("VBuild tests passed: %d\\n", count);
+    if (failures) fprintf(stderr, "vbuild: %d of %d test(s) failed.\n", failures, count);
+    else printf("VBuild tests passed: %d\n", count);
     return failures ? 1 : 0;
 }
 

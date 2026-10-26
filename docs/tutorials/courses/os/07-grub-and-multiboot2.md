@@ -85,3 +85,13 @@ Do not copy a random boot header from another project without checking whether i
 ## Lab: separate the layers
 
 Create three failure examples: (a) the ISO contains no `grub.cfg`; (b) the ELF fails Multiboot2 validation; (c) the ELF validates but QEMU resets immediately. For each, write the first tool or source file you would inspect and explain why. This trains you to diagnose the earliest failing contract rather than randomly editing the boot code.
+
+## 9. Bootloader responsibility ends at the handoff
+
+GRUB loads the kernel according to the boot protocol and transfers control. It does not initialize VNTOS's UART driver, parse shell commands, create a heap, or decide what an IRQ means. Those responsibilities belong to the kernel after the handoff. Keeping that division clear helps you avoid debugging GRUB when the failure is actually in kernel initialization.
+
+A bootloader can also provide information through protocol-defined structures or registers. If VNTOS later consumes a memory map or framebuffer description, parse the documented structure and validate its size and fields before using it. Never treat a pointer supplied by the bootloader as automatically valid forever.
+
+## Lab: verify the handoff without assumptions
+
+Write down what the boot protocol guarantees and what the bootstrap itself must establish. For each item, point to the relevant header, assembly block, linker setting, or kernel initializer. Mark any behavior that has not been independently tested. This creates a concrete contract for future changes to the boot path.

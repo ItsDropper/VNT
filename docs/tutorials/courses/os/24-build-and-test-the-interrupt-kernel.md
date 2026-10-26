@@ -99,3 +99,15 @@ The added `irq` check verifies the command path and that the counter can be read
 ## Keep artifacts separate from source
 
 Generated files belong under `build/`. Do not edit `build/kernel.s` or `build/kernel.o` as a permanent fix: the next build regenerates them. If you need to inspect compiler output, save the relevant snippet in your notes and change the source or compiler implementation that generated it.
+
+## 6. Build a reproducible verification packet
+
+For a serious change, keep one folder or review note containing the commit SHA, build command, tool versions, ELF inspection, Multiboot2 validation result, QEMU command, and the actual serial transcript. Add a screenshot or VGA check result if the change affects display output. This packet should allow another developer to distinguish a source regression from a different local toolchain.
+
+Do not copy an old successful transcript and present it as the result of the new revision. The commit SHA and artifact path must match the code being tested. If a test is still running, report it as pending. If a test was not run, say that it was not run.
+
+## 7. Interpret CI at the right level
+
+A green compiler smoke-test workflow is evidence about the compiler tests it executes; it is not automatically evidence that the ISO boots. The VNTOS workflow is the relevant one for the kernel's build and QEMU path. Read the individual job steps and logs when it fails, rather than relying only on the overall status.
+
+A failure during tool installation is different from a failure during VNT compilation. A build failure is different from a QEMU shell timeout. Preserve the first failing step and use it to choose the next investigation. Do not rerun indefinitely without changing the hypothesis or environment.

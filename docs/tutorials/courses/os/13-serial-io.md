@@ -94,3 +94,9 @@ Record the QEMU invocation, which channel you typed into, which channel displaye
 A more robust UART driver could limit how long it waits for a status bit and return an error when the device never becomes ready. That requires a timeout source and a clear return contract. A fixed iteration count is simple but varies with CPU and emulator speed; a timer-based deadline is more meaningful but depends on the timer being initialized and reliable.
 
 Do not add a timeout that reports success after the deadline. Decide whether the caller should retry, drop the diagnostic byte, or enter a fatal path. For the current teaching kernel, understand the existing polling limitation before changing it.
+
+## 13. Keep a known-good serial transcript
+
+Save a short transcript from a known-good boot containing the startup marker, prompt, one command, and its response. When serial behavior changes, compare the new transcript against that baseline. A missing startup marker suggests a different stage than a prompt that appears but fails after a key is entered.
+
+A transcript is not a substitute for source inspection, but it is cheap evidence that helps localize regressions quickly.

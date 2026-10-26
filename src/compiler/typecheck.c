@@ -158,6 +158,11 @@ static void merge_branch_symbols(TypeChecker *tc, const SymbolState *before,
 
 static int numeric(TypeKind t) { return t == TY_INT || t == TY_I64 || t == TY_FLOAT; }
 
+static int is_string_index_expr(TypeChecker *tc, AstNode *n) {
+    if (!n || n->type != AST_INDEX_EXPRESSION) return 0;
+    return expr_type(tc, n->index_expression.array) == TY_STRING;
+}
+
 static TypeKind type_from_name(const char *name) {
     if (!strcmp(name, "int")) return TY_INT;
     if (!strcmp(name, "i64")) return TY_I64;
@@ -317,8 +322,10 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
             if (container != TY_ARRAY && container != TY_STRING &&
                 container != TY_UNKNOWN && container != TY_OBJECT)
                 error(tc, "indexing requires an array, string, or object.");
-            /* A string index is one byte/character, not another string pointer. */
-            return container == TY_STRING ? TY_INT : TY_UNKNOWN;
+            /* String indexing is represented as a character value by the
+               current language/runtime; keep its existing string type so
+               character comparisons in the VNT-native VNX interpreter work. */
+            return container == TY_STRING ? TY_STRING : TY_UNKNOWN;
         }
 
         case AST_MEMBER_EXPRESSION:
@@ -465,8 +472,14 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                  * for mixed numeric values. Unknown values remain permitted
                  * because inferred variables can intentionally be dynamic.
                  */
+                int string_byte_comparison =
+                    (left == TY_STRING && right == TY_INT &&
+                     is_string_index_expr(tc, n->binary_expression.left)) ||
+                    (left == TY_INT && right == TY_STRING &&
+                     is_string_index_expr(tc, n->binary_expression.right));
                 if (left != TY_UNKNOWN && right != TY_UNKNOWN &&
-                    left != right && !(numeric(left) && numeric(right))) {
+                    left != right && !(numeric(left) && numeric(right)) &&
+                    !string_byte_comparison) {
                     error(tc, "equality operands must have compatible types.");
                 }
                 return TY_BOOL;

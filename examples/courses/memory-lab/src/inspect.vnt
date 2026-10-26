@@ -1,0 +1,51 @@
+# Copyright (c) 2026 ItsDropper
+# Pattern writes and verification are isolated from allocation policy.
+# Caller must pass a pointer returned by a live arena reservation.
+import "../../../lib/std/mem.vnt" as mem
+
+export unsafe fun write_pattern(region: ptr, size: int, seed: int) -> bool {
+    if mem.is_null(region) || size <= 0 {
+        return false
+    }
+    let i: int = 0
+    while i < size {
+        let value: int = (seed + i * 13) % 256
+        if !mem.write_u8(region, i, value) {
+            return false
+        }
+        i += 1
+    }
+    return true
+}
+
+export unsafe fun verify_pattern(region: ptr, size: int, seed: int) -> bool {
+    if mem.is_null(region) || size <= 0 {
+        return false
+    }
+    let i: int = 0
+    while i < size {
+        let expected: int = (seed + i * 13) % 256
+        if mem.read_u8(region, i) != expected {
+            return false
+        }
+        i += 1
+    }
+    return true
+}
+
+export unsafe fun copy_and_compare(destination: ptr, source: ptr, length: int) -> bool {
+    if mem.is_null(destination) || mem.is_null(source) || length <= 0 {
+        return false
+    }
+    if !mem.copy(destination, source, length) {
+        return false
+    }
+    let i: int = 0
+    while i < length {
+        if mem.read_u8(destination, i) != mem.read_u8(source, i) {
+            return false
+        }
+        i += 1
+    }
+    return true
+}

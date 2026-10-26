@@ -96,3 +96,5 @@ A later implementation can add a named exception-message table, but it must pres
 ## How to verify the ABI boundary
 
 After a successful build, use `nm build/kernel.elf` and search for the interrupt initializer and dispatcher symbols. The ELF should contain both the assembly initializer and the compiler-emitted VNT dispatcher. Use the actual symbol names shown by `nm`; do not infer them from source names when the compiler applies a prefix.
+
+For your notes, record the source-level function name, the emitted ELF symbol, and the assembly call site in three separate columns. This is a small ABI exercise: the source interface and machine-level linkage are related, but they are not the same naming layer.

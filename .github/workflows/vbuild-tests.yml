@@ -5,14 +5,12 @@ on:
     branches: [main]
     paths:
       - 'tools/vbuild.c'
-      - 'tools/vbuild.py'
       - 'docs/VBUILD.md'
       - '.github/workflows/vbuild-tests.yml'
   pull_request:
     branches: [main]
     paths:
       - 'tools/vbuild.c'
-      - 'tools/vbuild.py'
       - 'docs/VBUILD.md'
       - '.github/workflows/vbuild-tests.yml'
   workflow_dispatch:

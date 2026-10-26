@@ -268,6 +268,20 @@ try {
     }
     Write-Host "Standard portable path helpers: PASS"
 
+    $ConfigIniExe = Join-Path $OutDir "std_config_ini.exe"
+    & .\vnt.exe --compile tests\std_config_ini.vnt -o $ConfigIniExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard INI configuration helpers did not compile." }
+    $configIniOutput = & $ConfigIniExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard INI configuration program exited unsuccessfully." }
+    $configIniExpected = @(
+        "enabled", "dark mode", "125", "a=b", "fallback",
+        "true", "false", "true", "true", "false", "true", "false", "INI_CONFIG_OK"
+    )
+    if (($configIniOutput -join "|") -ne ($configIniExpected -join "|")) {
+        throw "Unexpected standard INI configuration output: $($configIniOutput -join ' | ')"
+    }
+    Write-Host "Standard INI configuration parsing: PASS"
+
     $VantaOneExe = Join-Path $OutDir "vanta_one.exe"
     & .\vnt.exe --compile examples\vanta_one.vnt -o $VantaOneExe
     if ($LASTEXITCODE -ne 0) { throw "Vanta One desktop app did not compile." }

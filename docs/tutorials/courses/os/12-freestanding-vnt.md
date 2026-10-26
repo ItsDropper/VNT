@@ -10,7 +10,7 @@ A kernel is the environment that normally provides those facilities to other pro
 
 ## 2. Freestanding means fewer assumptions
 
-The build script uses the compiler's freestanding mode to emit assembly for `os/kernel.vnt`, then assembles and links it without a hosted C runtime. The kernel needs a defined entry point and must avoid depending on hosted APIs that are unavailable at boot.
+The build script uses the compiler's freestanding mode to emit assembly for `os/kernel.vnt`. That root imports `serial.vnt`, `console.vnt`, `ps2.vnt`, and `interrupts.vnt`; the compiler loads their declarations into the same freestanding compilation unit. The generated VNT assembly is then assembled and linked without a hosted C runtime. The kernel needs a defined entry point and must avoid depending on hosted APIs that are unavailable at boot.
 
 The freestanding backend currently supports a restricted subset of VNT. It does not imply that every standard-library module or hosted language feature works in the kernel. Check the current compiler documentation and tests before relying on a feature.
 
@@ -22,7 +22,7 @@ This is why `kernel_main` is not the ELF entry point. It is the main kernel func
 
 ## 4. Inline assembly is a sharp tool
 
-The current `kernel.vnt` uses inline assembly for:
+The current kernel uses inline assembly for:
 - UART port I/O;
 - CPU halt and reboot control;
 - reading linker-defined symbol addresses;
@@ -32,7 +32,13 @@ These are implementation constraints, not ideal long-term interfaces. Hard-coded
 
 Do not blindly copy the inline assembly into another function. Before modifying it, inspect the generated assembly and understand the exact calling convention.
 
-## 5. What the kernel currently lacks
+## 5. Why interrupts have one small external assembly file
+
+VNT's current inline-assembly feature has no operand constraints or clobber list. Interrupt entry must preserve every interrupted register, account for exception-specific error-code pushes, align the stack before calling compiled code, and return with `iretq`. Hiding that ABI inside an ordinary VNT function would be unsafe. `os/interrupts.S` keeps those CPU mechanics in one auditable file; `os/interrupts.vnt` contains the event policy and diagnostics.
+
+This is not an excuse to move the rest of the kernel into assembly. Serial, VGA, PS/2, shell, and interrupt policy live in VNT files.
+
+## 6. What the kernel currently lacks
 
 The current kernel is not linked with a hosted runtime, and it does not yet have all the infrastructure needed for dynamic allocation, filesystem access, user programs, or general device drivers. Adding a call to a hosted function does not magically implement that subsystem.
 

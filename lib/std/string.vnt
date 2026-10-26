@@ -365,15 +365,3 @@ export fun count_lines(value) {
     }
     return lines
 }
-
-fun append_item(values, item) {
-    size = len(values)
-    result = range(size + 1)
-    i = 0
-    while i < size {
-        result[i] = values[i]
-        i += 1
-    }
-    result[size] = item
-    return result
-}

@@ -188,6 +188,21 @@ try {
     }
     Write-Host "Standard filesystem library: PASS"
 
+    $StdTextFsExe = Join-Path $OutDir "std_text_fs_lines.exe"
+    & .\vnt.exe --compile tests\std_text_fs_lines.vnt -o $StdTextFsExe
+    if ($LASTEXITCODE -ne 0) { throw "Advanced text/filesystem line helpers did not compile." }
+    $textFsOutput = & $StdTextFsExe
+    if ($LASTEXITCODE -ne 0) { throw "Advanced text/filesystem line program exited unsuccessfully." }
+    $textFsExpected = @(
+        "4", "alpha", "true", "gamma", "true", "8", "abc", "ef",
+        "value", "filename", "00042", "vnt...", "2", "0",
+        "true", "2", "first", "second", "true", "3", "third", "STD_TEXT_FS_LINES_OK"
+    )
+    if (($textFsOutput -join "|") -ne ($textFsExpected -join "|")) {
+        throw "Unexpected advanced text/filesystem output: $($textFsOutput -join ' | ')"
+    }
+    Write-Host "Advanced text and filesystem line helpers: PASS"
+
     $StdCollectionsExe = Join-Path $OutDir "std_collections_strings_numbers.exe"
     & .\vnt.exe --compile tests\std_collections_strings_numbers.vnt -o $StdCollectionsExe
     if ($LASTEXITCODE -ne 0) { throw "Standard array/string/number libraries did not compile." }

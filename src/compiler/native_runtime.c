@@ -733,6 +733,51 @@ VNT_NATIVE_ABI void vnt_print(VntValue *v) {
     fflush(stdout);
 }
 
+/* UTF-8 helpers count Unicode scalar encodings, not grapheme clusters. Invalid
+   byte sequences are treated as one-byte units so slicing always progresses. */
+static size_t vnt_utf8_unit(const unsigned char *p) {
+    if (p[0] < 0x80) return 1;
+    if (p[0] >= 0xC2 && p[0] <= 0xDF && (p[1] & 0xC0) == 0x80) return 2;
+    if (p[0] >= 0xE0 && p[0] <= 0xEF &&
+        (p[1] & 0xC0) == 0x80 && (p[2] & 0xC0) == 0x80 &&
+        !(p[0] == 0xE0 && p[1] < 0xA0) &&
+        !(p[0] == 0xED && p[1] >= 0xA0)) return 3;
+    if (p[0] >= 0xF0 && p[0] <= 0xF4 &&
+        (p[1] & 0xC0) == 0x80 && (p[2] & 0xC0) == 0x80 &&
+        (p[3] & 0xC0) == 0x80 &&
+        !(p[0] == 0xF0 && p[1] < 0x90) &&
+        !(p[0] == 0xF4 && p[1] >= 0x90)) return 4;
+    return 1;
+}
+VNT_NATIVE_ABI VntValue *vnt_utf8_len(VntValue *value) {
+    const unsigned char *p=(const unsigned char *)vnt_app_string(value,"utf8_len()");
+    int64_t count=0;
+    while (*p) { size_t n=vnt_utf8_unit(p); p+=n; if(count==INT64_MAX) return vnt_int(count); count++; }
+    return vnt_int(count);
+}
+VNT_NATIVE_ABI VntValue *vnt_utf8_slice(VntValue *value,VntValue *start_value,VntValue *count_value) {
+    const unsigned char *source=(const unsigned char *)vnt_app_string(value,"utf8_slice()");
+    if(!start_value||start_value->type!=VNT_INT||!count_value||count_value->type!=VNT_INT||
+       start_value->integer<0||count_value->integer<0) {
+        fprintf(stderr,"Runtime error: utf8_slice() expects non-negative integer start and count.\\n"); exit(1);
+    }
+    size_t begin=0,end=0,index=0,byte_begin=0,byte_end=0;
+    size_t start=(size_t)start_value->integer, count=(size_t)count_value->integer;
+    while(source[begin] && index<start) { begin+=vnt_utf8_unit(source+begin); index++; }
+    if(index<start) return vnt_string("");
+    byte_begin=begin; index=0;
+    while(source[end] && index<count) { end+=vnt_utf8_unit(source+end); index++; }
+    /* The second walk begins at byte zero; use a code-point target to avoid
+       assuming that the requested slice ends before the string does. */
+    end=byte_begin;
+    while(source[end] && index>0) { end+=vnt_utf8_unit(source+end); index--; }
+    byte_end=end;
+    char *out=(char *)malloc(byte_end-byte_begin+1);
+    if(!out){fprintf(stderr,"Runtime error: out of memory in utf8_slice().\\n");exit(1);}
+    memcpy(out,source+byte_begin,byte_end-byte_begin);out[byte_end-byte_begin]=0;
+    VntValue *result=vnt_string(out);free(out);return result;
+}
+
 VNT_NATIVE_ABI VntValue * vnt_len(VntValue *v) {
     if (v->type == VNT_STRING) return vnt_int((int64_t)strlen(v->string));
     if (v->type == VNT_ARRAY) return vnt_int(v->array.count);
@@ -985,6 +1030,52 @@ static VNT_NATIVE_ABI VntValue * vnt_fs_write_mode(VntValue *path, VntValue *con
     int bad = written != n || ferror(f); if (fclose(f) != 0) bad = 1;
     return vnt_bool(!bad);
 }
+/* Atomic text replacement: write a sibling temporary file, flush it, then
+   replace the destination. This is atomic on filesystems that provide atomic
+   same-directory rename; it does not promise crash-proof directory metadata. */
+static unsigned long vnt_atomic_write_counter;
+VNT_NATIVE_ABI VntValue *vnt_fs_write_atomic(VntValue *path_value,VntValue *contents_value) {
+    const char *path=vnt_app_string(path_value,"fs_write_atomic()");
+    const char *contents=vnt_app_string(contents_value,"fs_write_atomic()");
+    char *temporary=NULL; FILE *file=NULL;
+    for(int attempt=0;attempt<32;attempt++) {
+        unsigned long sequence=++vnt_atomic_write_counter;
+#ifdef _WIN32
+        unsigned long process_id=(unsigned long)GetCurrentProcessId();
+#else
+        unsigned long process_id=(unsigned long)getpid();
+#endif
+        size_t needed=strlen(path)+80;
+        temporary=(char *)malloc(needed);
+        if(!temporary){fprintf(stderr,"Runtime error: out of memory in fs_write_atomic().\\n");exit(1);}
+        snprintf(temporary,needed,"%s.vnt-tmp-%lu-%lu",path,process_id,sequence);
+        file=fopen(temporary,"wbx");
+        if(file) break;
+        free(temporary);temporary=NULL;
+        if(errno!=EEXIST) return vnt_bool(0);
+    }
+    if(!file){free(temporary);return vnt_bool(0);}
+    size_t length=strlen(contents),written=fwrite(contents,1,length,file);
+    int failed=written!=length || ferror(file);
+    if(!failed && fflush(file)!=0) failed=1;
+#ifdef _WIN32
+    if(!failed && _commit(_fileno(file))!=0) failed=1;
+#else
+    if(!failed && fsync(fileno(file))!=0) failed=1;
+#endif
+    if(fclose(file)!=0) failed=1;
+    if(!failed) {
+#ifdef _WIN32
+        if(!MoveFileExA(temporary,path,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)) failed=1;
+#else
+        if(rename(temporary,path)!=0) failed=1;
+#endif
+    }
+    if(failed) remove(temporary);
+    free(temporary);
+    return vnt_bool(!failed);
+}
+
 VNT_NATIVE_ABI VntValue * vnt_fs_write(VntValue *p, VntValue *s) { return vnt_fs_write_mode(p, s, "wb", "fs_write()"); }
 VNT_NATIVE_ABI VntValue * vnt_fs_append(VntValue *p, VntValue *s) { return vnt_fs_write_mode(p, s, "ab", "fs_append()"); }
 VNT_NATIVE_ABI VntValue * vnt_fs_delete(VntValue *path) { return vnt_bool(remove(vnt_app_string(path, "fs_delete()")) == 0); }

@@ -125,3 +125,9 @@ The current inline assembly support does not provide the full operand-constraint
 ## Lab: move one helper safely
 
 Choose a small pure helper that has no hidden hardware side effects. Move it to an appropriate existing module, add or adjust the import only if needed, rebuild, and inspect the diff. Then explain why the destination module owns the helper. Do not move shared state access or interrupt entry code as a first refactor; those have compiler and ABI constraints that deserve separate analysis.
+
+## 11. Review a kernel change by contract
+
+For a VNT function, document the function's inputs, output, state changed, and failure behavior. If it touches hardware, include the register or port contract. If it is called from an interrupt, include the restrictions on allocation, waiting, and output. This level of detail is not bureaucracy: it makes it possible to review the function without reconstructing every assumption from scratch.
+
+Before committing, compare the implementation against the contract and add a test for the behavior that could regress. The best test is one that would fail if the important invariant were broken.

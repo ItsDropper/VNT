@@ -7,12 +7,18 @@ on:
       - 'tools/vbuild.c'
       - 'docs/VBUILD.md'
       - '.github/workflows/vbuild-tests.yml'
+      - 'src/**'
+      - 'include/**'
+      - 'build.ps1'
   pull_request:
     branches: [main]
     paths:
       - 'tools/vbuild.c'
       - 'docs/VBUILD.md'
       - '.github/workflows/vbuild-tests.yml'
+      - 'src/**'
+      - 'include/**'
+      - 'build.ps1'
   workflow_dispatch:
 
 permissions:
@@ -79,3 +85,44 @@ jobs:
           } finally {
             Pop-Location
           }
+
+  vbuild-real-compiler:
+    name: VBuild compiles and runs a real VNT program (Ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Build VNT compiler
+        shell: bash
+        run: |
+          gcc -O3 -Iinclude -Isrc/compiler \
+            src/main.c src/modules.c src/lexer.c \
+            src/parser/parser.c src/parser/primary.c src/parser/unary.c \
+            src/parser/binary.c src/parser/functions.c src/parser/statements.c \
+            src/parser/simple_statements.c src/parser/control.c src/parser/loops.c \
+            src/parser/assignments.c src/ast.c src/compiler/compiler.c \
+            src/compiler/typecheck.c src/compiler/ir.c src/compiler/ir_lower.c \
+            src/compiler/cfg.c src/compiler/x86_backend.c src/compiler/freestanding_x86.c \
+            -o vnt
+      - name: Build native VBuild
+        run: gcc -std=c11 -Wall -Wextra -Werror -O2 tools/vbuild.c -o vbuild
+      - name: Compile and run starter project through VBuild
+        shell: bash
+        run: |
+          project="$RUNNER_TEMP/vbuild integration project"
+          mkdir -p "$project"
+          cd "$project"
+          "$GITHUB_WORKSPACE/vbuild" init
+          cat > vbuild.properties <<EOF
+          project.name = hello
+          project.version = 0.1.0
+          source = src/main.vnt
+          output = hello
+          compiler = vnt
+          toolchain = $GITHUB_WORKSPACE
+          EOF
+          "$GITHUB_WORKSPACE/vbuild" build
+          test -x build/hello
+          output="$("$GITHUB_WORKSPACE/vbuild" run)"
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" | grep -Fq 'Hello from VNT'

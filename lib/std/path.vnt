@@ -114,3 +114,39 @@ export fun join(left, right) {
     }
     return normalized_left + "/" + normalized_right
 }
+
+export fun is_absolute(path) {
+    normalized = normalize_separators(path)
+    if len(normalized) == 0 {
+        return false
+    }
+    if normalized[0] == "/" {
+        return true
+    }
+    return len(normalized) >= 3 && normalized[1] == ":" && normalized[2] == "/"
+}
+
+# Replaces the final extension. A leading dot alone is not treated as an extension.
+# Pass an extension with or without a leading dot.
+export fun change_extension(path, new_extension) {
+    normalized = normalize_separators(path)
+    name = basename(normalized)
+    parent = dirname(normalized)
+    ext = extension(name)
+    stem_name = name
+    if len(ext) > 0 {
+        stem_name = stem(name)
+    }
+    clean_extension = new_extension
+    if len(clean_extension) > 0 && clean_extension[0] != "." {
+        clean_extension = "." + clean_extension
+    }
+    changed = stem_name + clean_extension
+    if parent == "." {
+        return changed
+    }
+    if parent == "/" {
+        return "/" + changed
+    }
+    return parent + "/" + changed
+}

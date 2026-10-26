@@ -171,3 +171,162 @@ export fun trim(value) {
     }
     return result
 }
+
+# Returns the last matching index, or -1. An empty needle returns len(value).
+export fun last_index_of(value, needle) {
+    value_size = len(value)
+    needle_size = len(needle)
+    if needle_size == 0 {
+        return value_size
+    }
+    if needle_size > value_size {
+        return -1
+    }
+    start = value_size - needle_size
+    while start >= 0 {
+        matched = true
+        i = 0
+        while i < needle_size {
+            if value[start + i] != needle[i] {
+                matched = false
+            }
+            i += 1
+        }
+        if matched {
+            return start
+        }
+        start -= 1
+    }
+    return -1
+}
+
+# Returns a new array of substrings. Empty delimiter returns [value] to avoid an infinite split.
+# Empty input returns [""]; trailing empty fields are preserved.
+export fun split(value, delimiter) {
+    if len(delimiter) == 0 {
+        return [value]
+    }
+    parts = []
+    part_start = 0
+    position = 0
+    value_size = len(value)
+    delimiter_size = len(delimiter)
+    while position <= value_size - delimiter_size {
+        matched = true
+        i = 0
+        while i < delimiter_size {
+            if value[position + i] != delimiter[i] {
+                matched = false
+            }
+            i += 1
+        }
+        if matched {
+            part = ""
+            i = part_start
+            while i < position {
+                part = part + value[i]
+                i += 1
+            }
+            parts = parts + [part]
+            position += delimiter_size
+            part_start = position
+        } else {
+            position += 1
+        }
+    }
+    tail = ""
+    i = part_start
+    while i < value_size {
+        tail = tail + value[i]
+        i += 1
+    }
+    return parts + [tail]
+}
+
+export fun left(value, count) {
+    size = len(value)
+    take_count = count
+    if take_count < 0 { take_count = 0 }
+    if take_count > size { take_count = size }
+    result = ""
+    i = 0
+    while i < take_count {
+        result = result + value[i]
+        i += 1
+    }
+    return result
+}
+
+export fun right(value, count) {
+    size = len(value)
+    take_count = count
+    if take_count < 0 { take_count = 0 }
+    if take_count > size { take_count = size }
+    result = ""
+    i = size - take_count
+    while i < size {
+        result = result + value[i]
+        i += 1
+    }
+    return result
+}
+
+export fun remove_prefix(value, prefix) {
+    if !starts_with(value, prefix) {
+        return value
+    }
+    return right(value, len(value) - len(prefix))
+}
+
+export fun remove_suffix(value, suffix) {
+    if !ends_with(value, suffix) {
+        return value
+    }
+    return left(value, len(value) - len(suffix))
+}
+
+export fun pad_left(value, target_length, fill) {
+    if len(fill) == 0 {
+        return value
+    }
+    result = value
+    while len(result) < target_length {
+        result = fill + result
+    }
+    if len(result) > target_length && target_length >= 0 {
+        result = right(result, target_length)
+    }
+    return result
+}
+
+export fun pad_right(value, target_length, fill) {
+    if len(fill) == 0 {
+        return value
+    }
+    result = value
+    while len(result) < target_length {
+        result = result + fill
+    }
+    if len(result) > target_length && target_length >= 0 {
+        result = left(result, target_length)
+    }
+    return result
+}
+
+export fun count_lines(value) {
+    if len(value) == 0 {
+        return 0
+    }
+    lines = 1
+    i = 0
+    while i < len(value) {
+        if value[i] == "\n" {
+            lines += 1
+        }
+        i += 1
+    }
+    if value[len(value) - 1] == "\n" {
+        lines -= 1
+    }
+    return lines
+}

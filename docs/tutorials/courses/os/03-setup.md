@@ -85,3 +85,46 @@ You should see the VNTOS startup text and a `VNTOS>` prompt. Type `help` and pre
 ## Checkpoint
 
 Explain what `build/kernel.elf` is and why `build/vntos.iso` is a different artifact.
+
+## 7. Keep build artifacts and source separate
+
+The build script writes generated files under `build/`. Treat those as outputs. If you need to inspect generated assembly, open it to understand the compiler's output, but make a permanent fix in `os/*.vnt`, `os/*.S`, the linker script, or the compiler source as appropriate. Editing a generated file is not reproducible because the next build overwrites it.
+
+Check the repository status before and after building:
+
+```sh
+git status --short
+bash os/build.sh
+git status --short
+```
+
+Know which generated artifacts are ignored and which are tracked. Do not add a large ISO or object file to a source commit unless the repository explicitly expects that artifact.
+
+## 8. Use a consistent QEMU command
+
+Start with the documented QEMU command in `os/README.md`. Keep the memory size, boot medium, display mode, and serial routing fixed while debugging. If you change several settings between runs, you lose the ability to compare results.
+
+The graphical QEMU window shows VGA text output and accepts emulated PS/2 keyboard input. The serial console is a separate channel. For a serial-only run, `-display none -serial stdio` hides VGA output; it does not mean VGA initialization failed. Always record which output channel you are watching.
+
+## 9. Tool failures are not kernel failures
+
+If `gcc`, `nasm`, `grub-file`, `xorriso`, or QEMU is missing, the first failure may be an environment problem. Confirm the executable exists and note its version before changing kernel source. If the compiler builds but the linker reports an undefined symbol, that is a different class of problem: inspect the symbol name and whether its object file was included.
+
+Do not install random packages until you know which stage needs the missing tool. The build pipeline in Lesson 05 explains which tool is used at each stage.
+
+## 10. A safe repeatable lab loop
+
+Use this sequence for every later lesson:
+
+1. Check `git status --short` and make sure unrelated work is not mixed in.
+2. Read the relevant source and identify the exact function you intend to change.
+3. Make one focused edit.
+4. Run `bash os/build.sh` and preserve the first failure.
+5. Boot the resulting ISO in QEMU.
+6. Exercise the specific behavior changed and one existing behavior.
+7. Inspect `git diff --check` and `git diff`.
+8. Record the result and revert experiments that you cannot explain.
+
+## Lab deliverable
+
+Write down the exact commands and tool versions used for a successful baseline. Include whether the ISO was created, whether QEMU booted, whether the VGA prompt appeared, and whether the serial shell responded. This turns "it works on my machine" into a reproducible result.

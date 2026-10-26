@@ -114,6 +114,19 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Bound every reassembly resource
+
+A fragment offset is measured in eight-byte units. Validate offset and length before storing bytes, and cap both the pending packet count and total retained bytes.
+
+```text
+byte_offset = fragment_offset_units * 8
+reject if byte_offset < 0
+reject if fragment_length > max_packet_size - byte_offset
+reject if pending_packets >= pending_packet_limit
+```
+
+Start with a fragment metadata table and explicit timeout policy. Add overlap, missing-final-fragment, duplicate, and inconsistent-length tests before claiming reassembly.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

@@ -124,15 +124,15 @@ jobs:
           "$GITHUB_WORKSPACE/vbuild" build
           test -x build/hello
           incremental="$("$GITHUB_WORKSPACE/vbuild" build)"
-          printf '%s\\n' "$incremental" | grep -Fq 'Up to date:'
+          printf '%s\n' "$incremental" | grep -Fq 'Up to date:'
           output="$("$GITHUB_WORKSPACE/vbuild" run)"
-          printf '%s\\n' "$output"
-          printf '%s\\n' "$output" | grep -Fq 'Hello from VNT'
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" | grep -Fq 'Hello from VNT'
           mkdir -p tests
-          printf 'print("VBUILD_TEST_OK")\\n' > tests/smoke.vnt
+          printf 'print("VBUILD_TEST_OK")\n' > tests/smoke.vnt
           test_output="$("$GITHUB_WORKSPACE/vbuild" test)"
-          printf '%s\\n' "$test_output"
-          printf '%s\\n' "$test_output" | grep -Fq 'VBUILD_TEST_OK'
+          printf '%s\n' "$test_output"
+          printf '%s\n' "$test_output" | grep -Fq 'VBUILD_TEST_OK'
       - name: Build a freestanding ELF through VBuild
         shell: bash
         run: |

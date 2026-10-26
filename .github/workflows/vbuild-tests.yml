@@ -75,6 +75,7 @@ jobs:
             if ($LASTEXITCODE -eq 0) { throw 'undefined dependency was not rejected' }
             & $binary init
             if ($LASTEXITCODE -eq 0) { throw 'init overwrote existing project files' }
+            $global:LASTEXITCODE = 0
           } finally {
             Pop-Location
           }

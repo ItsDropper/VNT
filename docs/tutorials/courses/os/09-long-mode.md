@@ -82,3 +82,9 @@ If the VM resets, do not immediately change the CPU feature bits. First establis
 ## Lab: build a dependency table
 
 For the long-mode transition, list the GDT, stack, page tables, CPU feature controls, paging bit, and far jump. For each, write what it depends on and which later operation relies on it. Then explain why moving the final jump earlier would violate the transition contract.
+
+## 10. Keep the transition reproducible
+
+Record the last known-good commit and the exact QEMU command before testing any change to long-mode setup. If the change causes an immediate reset, restore the baseline and reapply only the smallest part needed to reproduce the issue. Do not use a successful compiler exit as evidence that the CPU transition is correct.
+
+A useful review should be able to explain why the GDT selector is valid, why the stack is mapped, why the page-table root is usable, and why the target address is reachable after paging becomes active. Those facts together explain the transition; a single "long mode enabled" comment does not.

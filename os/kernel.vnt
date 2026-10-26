@@ -1,6 +1,8 @@
 # Copyright (c) 2026 ItsDropper
 # Licensed under the MIT License. See LICENSE in the repository root.
 
+import "interrupts.vnt"
+
 # VNTOS hardware I/O lives in VNT. Inline assembly is kept to port I/O,
 # VGA memory access, and CPU/linker operations.
 
@@ -494,6 +496,8 @@ fun kernel_main() {
     vga_puts("VGA console active. PS/2 keyboard and mouse polling enabled.\r\n")
     vga_puts("Type help. Serial COM1 remains available for diagnostics.\r\n\r\n")
     serial_puts("VNTOS_BOOT_OK\r\nVNTOS - freestanding x86-64 console\r\nType help for commands.\r\n")
+    interrupts_init()
+    console_puts("PIT timer interrupts enabled.\r\n")
     ps2_init()
     vga_puts("VNTOS> ")
     serial_puts("VNTOS_COMMAND_LINE_READY\r\n")
@@ -520,7 +524,7 @@ fun kernel_main() {
             console_puts("\r\n")
             handled = 0
             if str_eq(buffer, "help") {
-                console_puts("Commands: help, about, clear, echo, mem, mouse, reboot, halt\r\n")
+                console_puts("Commands: help, about, clear, echo, mem, irq, mouse, reboot, halt\r\n")
                 handled = 1
             }
             if str_eq(buffer, "about") {
@@ -538,6 +542,11 @@ fun kernel_main() {
                 console_puts("Kernel end: ")
                 console_hex(kernel_end_addr())
                 console_puts("Identity map: first 1 GiB\r\n")
+                handled = 1
+            }
+            if str_eq(buffer, "irq") {
+                console_puts("Timer ticks: ")
+                console_hex(state_get(11))
                 handled = 1
             }
             if str_eq(buffer, "mouse") {

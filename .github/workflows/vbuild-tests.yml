@@ -180,6 +180,12 @@ jobs:
           printf '%s\\n' "$dependency_rebuild" | grep -Fq 'Built '
           output="$("$GITHUB_WORKSPACE/vbuild" run)"
           printf '%s\\n' "$output" | grep -Fq '51'
+          sleep 1
+          touch "$GITHUB_WORKSPACE/src/compiler/native_runtime.c"
+          runtime_rebuild="$("$GITHUB_WORKSPACE/vbuild" build)"
+          printf '%s\\n' "$runtime_rebuild" | grep -Fq 'Built '
+          output="$("$GITHUB_WORKSPACE/vbuild" run)"
+          printf '%s\\n' "$output" | grep -Fq '51'
           forced="$("$GITHUB_WORKSPACE/vbuild" build --force)"
           printf '%s\n' "$forced" | grep -Fq 'Built '
           mkdir -p tests
@@ -205,5 +211,11 @@ jobs:
           EOF
           sed -i 's/^target exe$/target elf/' build.vbuild
           "$GITHUB_WORKSPACE/vbuild" build
+          test -x build/kernel.elf
+          readelf -h build/kernel.elf | grep -Fq 'ELF64'
+          sleep 1
+          touch "$GITHUB_WORKSPACE/freestanding/x86_64.ld"
+          linker_rebuild="$("$GITHUB_WORKSPACE/vbuild" build)"
+          printf '%s\\n' "$linker_rebuild" | grep -Fq 'Built '
           test -x build/kernel.elf
           readelf -h build/kernel.elf | grep -Fq 'ELF64'

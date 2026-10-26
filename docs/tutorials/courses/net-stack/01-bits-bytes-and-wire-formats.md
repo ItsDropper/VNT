@@ -114,6 +114,17 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Read big-endian fields by offsets
+
+Ethernet EtherType occupies bytes 12 and 13. The high byte contributes 256 times its value; the low byte contributes its value.
+
+```vnt
+let ether_type: int = frame[12] * 256 + frame[13]
+print(ether_type)
+```
+
+For IPv4 EtherType, the two bytes are 8 and 0, giving 2048 (0x0800). Never read them until the frame length is at least 14.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

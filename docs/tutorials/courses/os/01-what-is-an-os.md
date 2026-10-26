@@ -60,3 +60,41 @@ Explain the difference between:
 ## Exercise
 
 List three features that VNTOS does not yet implement. For each, name one reason it would need careful design. Do not claim a feature exists just because its name appears in a roadmap or documentation.
+
+## 6. Follow the kernel boundary in this repository
+
+The word *operating system* can refer to the entire platform, including applications and system services. VNTOS in this course is primarily a kernel experiment. Its job is to establish a controlled execution environment and communicate with hardware. It does not yet provide the process isolation, filesystem, or application environment expected from a desktop operating system.
+
+Look at the real boundaries:
+
+- `os/boot.S` establishes the processor state needed to enter compiled kernel code.
+- `os/kernel.vnt` owns kernel entry and shell command policy.
+- `os/serial.vnt` implements serial device access.
+- `os/console.vnt` combines VGA and serial output.
+- `os/ps2.vnt` reads keyboard and mouse data using polling.
+- `os/interrupts.S` handles architecture-specific interrupt entry and return.
+- `os/interrupts.vnt` decides what a delivered event means to the kernel.
+
+This is a useful architecture because device mechanics, policy, and CPU entry/exit are not all mixed into one file.
+
+## 7. Driver versus policy
+
+A driver knows how to communicate with a device. Policy decides what the system should do with the information. The PS/2 module knows how to read a scan code from controller ports; the shell decides what a completed line means. The serial driver knows when the UART can accept a byte; the console decides where a message should be sent.
+
+This distinction becomes important when hardware changes. You can replace one output backend without rewriting command parsing if the shell depends on a stable console interface rather than raw device ports.
+
+## 8. Why kernel code needs stricter rules
+
+Kernel code runs without the safety net of a normal process. An invalid pointer can corrupt kernel state. A blocking loop can prevent the shell from responding. A malformed interrupt return frame can crash the machine. There is usually no independent process manager to kill the broken component and keep the rest of the system alive.
+
+For every hardware operation, identify the preconditions, the possible failure, and the recovery policy. For example, a UART transmit function must decide what happens if the transmitter never becomes ready. An infinite wait may be acceptable for a tiny lab only if the limitation is explicit; it is not a robust general driver.
+
+## 9. Trace a shell command as a miniature OS service
+
+Run VNTOS in QEMU and enter `help`, then `about`, then `irq`. Find the dispatch branches in `os/kernel.vnt`. The shell reads characters, forms a command string, compares it with supported names, and invokes a function or prints a response. The `irq` command reads a timer counter; it does not itself deliver the interrupt.
+
+This example shows how even a tiny shell separates input acquisition, parsing, policy, and device output. A larger system would add users, processes, files, permissions, and system calls, but those features need their own state and invariants rather than being bolted onto command strings.
+
+## Lab deliverable
+
+Draw a boundary diagram for one command. Mark which module reads the input, which function decides what the command means, which subsystem performs the operation, and which code displays the result. Label any layer that does not yet exist, such as a userspace process or syscall boundary.

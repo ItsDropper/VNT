@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <limits.h>
 #include <ctype.h>
+#include <time.h>
 #ifdef _WIN32
 #include <windows.h>
 #else

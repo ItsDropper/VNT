@@ -56,3 +56,44 @@ For the real kernel, use `bash os/build.sh` and the QEMU checks documented above
 ## Final checkpoint
 
 Explain the whole path from GRUB to `kernel_main`, then from a PIT event through the IDT and assembly stub into `interrupt_dispatch` and back through `iretq`. If you cannot explain where the CPU state is saved and restored, revisit Lessons 20–24 before adding a scheduler or user mode.
+
+## Definition of done
+
+Use this checklist before asking someone to review your kernel work:
+
+- [ ] The change has one clearly stated goal.
+- [ ] Every modified file has a specific responsibility.
+- [ ] The VNT and assembly boundary is documented.
+- [ ] The baseline build still succeeds.
+- [ ] The resulting ELF passes the Multiboot2 check.
+- [ ] QEMU reaches the command prompt.
+- [ ] The new behavior has a reproducible test.
+- [ ] Existing commands and timer ticks still work.
+- [ ] The relevant GitHub Actions run has been inspected.
+- [ ] Known limitations are written down.
+- [ ] The patch does not modify generated build artifacts.
+- [ ] No claim of successful verification is made without evidence.
+
+## Example report format
+
+Use this structure in your pull request description:
+
+```text
+Goal:
+Files changed and responsibility:
+Before:
+After:
+Build command and result:
+QEMU command and result:
+Relevant CI run:
+Known limitations:
+Next small step:
+```
+
+This format is more useful than listing only filenames because it tells reviewers what behavior changed and how they can reproduce it.
+
+## Keep the scope realistic
+
+Do not attempt a scheduler, userspace, filesystem, heap, keyboard IRQ, and page allocator in one patch. Each depends on invariants that the current kernel does not yet provide. For example, keyboard IRQ handling needs a data queue and an ownership rule for the PS/2 controller; a scheduler needs task state and a deliberate context-switch ABI; a heap needs a physical/virtual memory design and a trustworthy allocator.
+
+A strong systems developer does not measure progress by how many subsystems are named in the README. Measure it by how many invariants are explicit, how many tests detect regressions, and how much code can be explained line by line.

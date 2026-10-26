@@ -129,6 +129,23 @@ Call the new function from the example's entry point. Avoid duplicating its inte
 
 Every new branch can break earlier behavior. Run the complete relevant test set, not only the newest test.
 
+## Worked implementation: Log the decision instead of the pointer
+
+A useful trace captures the request and computed range. Raw addresses are unstable and do not explain why a request failed.
+
+```vnt
+print("request size")
+print(size)
+print("old cursor")
+print(cursor)
+print("candidate start")
+print(start)
+print("capacity")
+print(capacity)
+```
+
+Use this trace to find the first incorrect decision. Remove noisy output from the normal path after a regression test exists.
+
 ## 6. Test design
 
 Add explicit tests for each applicable category:

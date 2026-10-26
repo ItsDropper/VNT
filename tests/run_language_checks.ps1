@@ -253,6 +253,21 @@ try {
     }
     Write-Host "Standard CSV parser/serializer: PASS"
 
+    $PathExe = Join-Path $OutDir "std_path.exe"
+    & .\vnt.exe --compile tests\std_path.vnt -o $PathExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard path library did not compile." }
+    $pathOutput = & $PathExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard path program exited unsuccessfully." }
+    $pathExpected = @(
+        "src/main/file.vnt", "main.vnt", "C:/Users/dropper/project", "gz",
+        "archive.tar", "", ".env", ".", "", "src/main/file.vnt",
+        "/absolute/file", "PATH_STANDARD_LIBRARY_OK"
+    )
+    if (($pathOutput -join "|") -ne ($pathExpected -join "|")) {
+        throw "Unexpected standard path output: $($pathOutput -join ' | ')"
+    }
+    Write-Host "Standard portable path helpers: PASS"
+
     $VantaOneExe = Join-Path $OutDir "vanta_one.exe"
     & .\vnt.exe --compile examples\vanta_one.vnt -o $VantaOneExe
     if ($LASTEXITCODE -ne 0) { throw "Vanta One desktop app did not compile." }

@@ -8,7 +8,7 @@
 .section .text
 .code64
 
-.extern interrupt_dispatch
+.extern vnt_fn_interrupt_dispatch
 .global vntos_interrupts_init
 .type vntos_interrupts_init,@function
 
@@ -115,7 +115,7 @@ interrupt_common:
     movq 128(%rsp), %rsi
     movq %rsp, %r12
     andq $-16, %rsp
-    call interrupt_dispatch
+    call vnt_fn_interrupt_dispatch
     movq %r12, %rsp
 
     /* Acknowledge the PIC only for hardware IRQ vectors. */

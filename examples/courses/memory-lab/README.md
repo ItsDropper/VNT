@@ -1,29 +1,51 @@
 # Memory Lab: Arena Allocator and Inspector
 
-Multi-file companion to [the 20-lesson course](../../../docs/tutorials/courses/memory-lab/README.md). This is an educational scaffold; complete the TODOs in lesson order.
+This is the companion implementation for the [20-lesson memory course](../../../docs/tutorials/courses/memory-lab/README.md). It is intentionally more than a one-file pointer demo: it owns a backing allocation, reserves aligned subregions, records allocation metadata, tracks payload and padding separately, checks invariants, writes deterministic patterns, and verifies failure atomicity.
 
-## Layout
+## Project layout
 
-- `src/main.vnt` — entry point.
-- `src/arena.vnt` — allocation policy and invariants.
-- `src/report.vnt` — reporting.
-- `tests/smoke.vnt` — smoke-test scaffold.
-- `tests/bounds.vnt` — oversized-reservation regression scaffold.
+- `src/arena.vnt` — backing allocation, aligned reservations, metadata, reset/destroy, counters, invariant checks.
+- `src/inspect.vnt` — deterministic byte patterns, round-trip verification, copy-and-compare.
+- `src/report.vnt` — human-readable summary and allocation table.
+- `src/main.vnt` — integration demonstration with multiple phases.
+- `tests/smoke.vnt` — byte round-trip and accounting check.
+- `tests/bounds.vnt` — invalid request and failure-atomicity regression checks.
 
-Verify API signatures against `lib/std/mem.vnt` and `docs/raw-memory.md`. The TODOs are deliberate exercises, not a claim that the starter already implements an allocator.
+## Build and run
 
-## Build
-
-From the repository root, build VNT using the top-level README instructions, then compile the entry file:
+From the repository root, build the compiler using the root README. Then compile the entry point:
 
 ```powershell
-.\\build.ps1
 .\\vnt.exe --compile examples\\courses\\memory-lab\\src\\main.vnt -o memory-lab.exe
 .\\memory-lab.exe
 ```
 
-On Linux use `./vnt` and the matching executable name. Imports resolve relative to the importing file in the current loader; inspect module tests if your checkout differs.
+The import loader expands source modules relative to the importing file. If the compiler reports a syntax or import error, compare the exact syntax with current tests and standard-library source; VNT is experimental.
 
-## Safety
+Compile the tests independently using the same command pattern:
 
-Only access allocations created by the documented API. Never dereference arbitrary addresses. This hosted example does not demonstrate kernel heap management, page tables, or hardware access.
+```powershell
+.\\vnt.exe --compile examples\\courses\\memory-lab\\tests\\smoke.vnt -o memory-lab-smoke.exe
+.\\memory-lab-smoke.exe
+.\\vnt.exe --compile examples\\courses\\memory-lab\\tests\\bounds.vnt -o memory-lab-bounds.exe
+.\\memory-lab-bounds.exe
+```
+
+The tests print explicit PASS/FAIL markers. Treat any FAIL marker as a failed test even if the process exits normally.
+
+## Invariants and design choices
+
+- The arena owns one allocation; callers only receive pointers to reserved ranges.
+- Cursor, payload bytes, and padding bytes are tracked separately.
+- Reservation validation happens before metadata or cursor changes.
+- Bounds checks use `size <= capacity - start` after validating `start <= capacity`, avoiding overflow in `start + size` during the check.
+- Supported alignments are deliberately limited to 1, 2, 4, 8, and 16 bytes.
+- Reset starts a new logical lifetime. All previously returned pointers must be treated as invalid after reset.
+- Destroy releases the backing allocation and clears accounting.
+- The allocation table is a bounded teaching log of successful reservations, not a full heap profiler.
+
+## Limitations
+
+This is an educational hosted allocator, not a production heap or kernel allocator. It does not support individual free, thread safety, reallocation of arena regions, guard pages, leak-safe ownership tracking, or arbitrary alignment beyond the documented set. Raw pointers are not bounds checked by the language. Do not pass arbitrary addresses to the memory helpers or use this project for hardware access.
+
+The course asks you to extend the implementation with exact-fit tests, reset/reuse cases, and additional invariants. Do not claim correctness from a single successful run.

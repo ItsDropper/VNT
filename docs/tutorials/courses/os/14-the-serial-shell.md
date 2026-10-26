@@ -48,3 +48,31 @@ Explain the difference between the command buffer's length and its null terminat
 ## Exercise
 
 Trace the `echo HELLO` command. Identify where the prefix is recognized, where the offset is chosen, and where the output reaches the UART.
+
+## 6. Treat input as bounded data
+
+A command buffer has finite capacity. The shell must define what happens when the user types more bytes than fit: ignore extra characters, reject the line, or truncate it with a visible warning. Writing beyond the buffer is not an acceptable behavior. When editing input logic, identify the capacity and the index update, then verify that every write occurs only after the bounds check.
+
+Backspace is another boundary case. It should remove a character only when the current line is nonempty, and the cursor/display behavior should match the buffer state. Empty input should not accidentally dispatch a stale command left in the buffer from a previous line.
+
+## 7. Parse commands deliberately
+
+The current shell uses a small command set and simple string comparisons. That is sufficient for a teaching kernel, but it is not a general command language. Adding arguments requires a defined grammar: where the command ends, how spaces are handled, whether repeated spaces matter, and what happens to unknown arguments.
+
+Keep parsing separate from device operations. The parser should identify a command and its arguments; the command implementation should perform the requested operation; the console should display the result. If every command implements its own byte-by-byte parsing, behavior becomes inconsistent and harder to test.
+
+## 8. Interrupt context is not shell context
+
+The shell runs in the main kernel loop. The timer interrupt handler can run while that loop is executing. Do not call the shell parser from the timer handler or print a routine message for each tick. Interrupt code must be short and predictable; shell work can wait until the main loop reads the counter.
+
+The current keyboard driver still polls PS/2 data. Do not enable the keyboard IRQ while leaving both the polling loop and interrupt handler able to read the same data port. That would create two competing consumers and could lose keystrokes.
+
+## 9. Add a command with a narrow contract
+
+A good new command has a clear name, defined inputs, defined output, and no hidden side effects. For example, a diagnostic command should report existing state rather than mutate the timer, interrupt table, or controller. Update the help text at the same time as the dispatch branch so the interface stays discoverable.
+
+Test the command after normal startup and after another command. Also test an unknown command and an empty line. This catches stale-buffer and dispatch fall-through errors that a single happy-path test misses.
+
+## Lab: define a command before coding
+
+Write a short contract for a hypothetical `ticks` command: accepted syntax, output format, behavior if the counter is zero, and whether it changes state. Then trace the existing `irq` command and compare the implementation with your contract. Do not add a second alias unless it improves a real interface need.

@@ -95,3 +95,9 @@ A bootloader can also provide information through protocol-defined structures or
 ## Lab: verify the handoff without assumptions
 
 Write down what the boot protocol guarantees and what the bootstrap itself must establish. For each item, point to the relevant header, assembly block, linker setting, or kernel initializer. Mark any behavior that has not been independently tested. This creates a concrete contract for future changes to the boot path.
+
+## 10. Report the exact validation result
+
+A command such as `grub-file --is-x86-multiboot2 build/kernel.elf` normally communicates success through its exit status. Preserve that status when running the command in a script. Printing a message that says "header OK" without checking the command result is not validation.
+
+In a test report, include the exact artifact path and the command used. If you validated an ELF from an earlier build, that result does not validate the newly generated ELF. Clean, rebuild, and validate the artifact you intend to boot.

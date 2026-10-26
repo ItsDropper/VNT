@@ -1,0 +1,6 @@
+# Copyright (c) 2026 ItsDropper
+# IPv4 parser scaffold. Do not read fields before validating packet length.
+export fun parse_ipv4(packet_length: int) -> bool {
+    # TODO: validate version, IHL, total length, and header checksum.
+    return false
+}

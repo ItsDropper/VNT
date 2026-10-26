@@ -96,3 +96,13 @@ The storage is declared in `os/boot.S` because that file already owns the initia
 
 When documenting your measurements, include the QEMU command, the two hexadecimal counter readings, the approximate delay, and whether the kernel was otherwise idle. That makes the observation repeatable and prevents a counter value from being mistaken for a precise clock.
 If the counter is unchanged, attach the transcript to your issue or review rather than reporting only a conclusion.
+
+## 15. Make the timer test meaningful
+
+A test that only finds the text `irq` in the console proves that the shell accepted the command and printed something. It does not necessarily prove that the interrupt was delivered. A stronger test reads the numeric counter, waits for a defined interval, reads it again, parses both values, and asserts that the later value is greater.
+
+Be careful about the test environment: if the QEMU monitor sends input differently from the serial console, the test should state which input path it covers. A timer test should also avoid assuming an exact count unless the elapsed time and timer behavior are controlled.
+
+## 16. Document what the counter can and cannot mean
+
+The counter is a diagnostic count of delivered timer interrupts. It is not wall-clock time, a calibrated duration, a sleep API, or a scheduling metric. If later code uses the counter for elapsed time, define wraparound behavior and the conversion to time units. If a scheduler uses timer ticks, it additionally needs a safe context-switch contract and task state; the counter alone is not enough.

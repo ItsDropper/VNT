@@ -22,7 +22,7 @@ print("Strings:")
 name = "Vanta"
 print(name + "OS")
 print(len(name))
-let first_character: int = name[0]
+let first_character: string = name[0]
 print(first_character)
 print(name[0])
 print(name[4])

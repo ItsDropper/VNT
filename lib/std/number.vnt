@@ -1,0 +1,58 @@
+# Pure VNT numeric helpers implemented with existing operators and control flow.
+# factorial(-n) returns -1 for negative input; gcd() returns a non-negative value.
+
+export fun is_even(value) {
+    return value % 2 == 0
+}
+
+export fun is_odd(value) {
+    return value % 2 != 0
+}
+
+export fun sign(value) {
+    if value < 0 {
+        return -1
+    }
+    if value > 0 {
+        return 1
+    }
+    return 0
+}
+
+export fun factorial(value) {
+    if value < 0 {
+        return -1
+    }
+    result = 1
+    i = 2
+    while i <= value {
+        result *= i
+        i += 1
+    }
+    return result
+}
+
+export fun gcd(left, right) {
+    left = abs(left)
+    right = abs(right)
+    while right != 0 {
+        remainder = left % right
+        left = right
+        right = remainder
+    }
+    return left
+}
+
+export fun is_prime(value) {
+    if value < 2 {
+        return false
+    }
+    divisor = 2
+    while divisor * divisor <= value {
+        if value % divisor == 0 {
+            return false
+        }
+        divisor += 1
+    }
+    return true
+}

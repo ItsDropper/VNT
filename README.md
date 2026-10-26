@@ -24,6 +24,7 @@ The project focuses on a small, understandable language, native execution, and a
 - [VNT programming courses and tutorials](docs/tutorials/README.md)
 - [Complete beginner VNTOS operating-system course (19 lessons)](docs/tutorials/courses/os/README.md)
 - [Build a programming language in VNT (15 beginner lessons)](docs/tutorials/courses/programming-language/README.md)
+- [Build a Memory Arena and Inspector in VNT (20 low-level lessons)](docs/tutorials/courses/memory-lab/README.md)
 - [VNTOS kernel walkthrough](docs/tutorials/05-vntos-kernel-walkthrough.md)
 - [Advanced low-level systems programming course](docs/tutorials/10-low-level-systems-programming.md)
 - [Build and try the VNTOS bootable kernel](docs/tutorials/vntos-beginners.md)

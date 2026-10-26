@@ -239,6 +239,20 @@ try {
     Write-Host "Standard JSON field accessor: PASS"
 
 
+    $CsvExe = Join-Path $OutDir "std_csv.exe"
+    & .\vnt.exe --compile tests\std_csv.vnt -o $CsvExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard CSV library did not compile." }
+    $csvOutput = & $CsvExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard CSV program exited unsuccessfully." }
+    $csvExpected = @(
+        "4", "name", "Ada", "likes, commas", "13", "a `"quote`"",
+        "likes, commas", "13", "a `"quote`"", "[]", "[]", "CSV_STANDARD_LIBRARY_OK"
+    )
+    if (($csvOutput -join "|") -ne ($csvExpected -join "|")) {
+        throw "Unexpected standard CSV output: $($csvOutput -join ' | ')"
+    }
+    Write-Host "Standard CSV parser/serializer: PASS"
+
     $VantaOneExe = Join-Path $OutDir "vanta_one.exe"
     & .\vnt.exe --compile examples\vanta_one.vnt -o $VantaOneExe
     if ($LASTEXITCODE -ne 0) { throw "Vanta One desktop app did not compile." }

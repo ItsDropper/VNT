@@ -295,16 +295,36 @@ static int load_tasks(void) {
     return 1;
 }
 
-static int run_process(char *const argv[]) {
+static int run_process(char *const argv[], const char *working_directory) {
 #ifdef _WIN32
-    int rc = _spawnvp(_P_WAIT, argv[0], (const char * const *)argv);
+    char old_directory[PATH_CAP];
+    int rc;
+    if (!_getcwd(old_directory, sizeof old_directory)) {
+        fprintf(stderr, "vbuild: cannot read current directory: %s\n", strerror(errno)); return 127;
+    }
+    if (working_directory && _chdir(working_directory) != 0) {
+        fprintf(stderr, "vbuild: cannot enter working directory '%s': %s\n", working_directory, strerror(errno)); return 127;
+    }
+    rc = _spawnvp(_P_WAIT, argv[0], (const char * const *)argv);
+    if (_chdir(old_directory) != 0) {
+        fprintf(stderr, "vbuild: failed to restore working directory '%s'.\n", old_directory);
+        return 127;
+    }
     if (rc == -1) { fprintf(stderr, "vbuild: cannot launch '%s': %s\n", argv[0], strerror(errno)); return 127; }
     return rc;
 #else
     pid_t pid = fork();
     int status;
     if (pid < 0) { fprintf(stderr, "vbuild: fork failed: %s\n", strerror(errno)); return 127; }
-    if (pid == 0) { execvp(argv[0], argv); fprintf(stderr, "vbuild: cannot launch '%s': %s\n", argv[0], strerror(errno)); _exit(127); }
+    if (pid == 0) {
+        if (working_directory && chdir(working_directory) != 0) {
+            fprintf(stderr, "vbuild: cannot enter working directory '%s': %s\n", working_directory, strerror(errno));
+            _exit(127);
+        }
+        execvp(argv[0], argv);
+        fprintf(stderr, "vbuild: cannot launch '%s': %s\n", argv[0], strerror(errno));
+        _exit(127);
+    }
     while (waitpid(pid, &status, 0) < 0) {
         if (errno == EINTR) continue;
         fprintf(stderr, "vbuild: waitpid failed: %s\n", strerror(errno)); return 127;
@@ -312,7 +332,6 @@ static int run_process(char *const argv[]) {
     return WAIT_STATUS(status);
 #endif
 }
-
 static int run_compiler(Config *cfg, int check) {
     char output[PATH_CAP];
     char *args[6];

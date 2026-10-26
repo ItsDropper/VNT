@@ -89,3 +89,7 @@ A scheduler is a different service again. The current handler returns to the sam
 The PIT and legacy PIC are chosen for an educational baseline. Modern PCs often use APIC-family interrupt controllers and different timer sources. The exact same high-level VNT policy can be retained while replacing the hardware-routing layer, but the vector setup, EOI operation, timer initialization, and device masking rules would change.
 
 Do not copy the PIC port writes into a driver for a different controller. First identify the controller and its required initialization sequence, then put that hardware-specific sequence behind a narrow interface.
+
+## Why the counter is shared across modules
+
+The storage is declared in `os/boot.S` because that file already owns the initial scalar state layout. The VNT dispatcher does not allocate memory for each tick; it updates the existing slot through `state_set`. The shell later reads that same slot through `state_get`. This is a minimal shared-state contract, and a future cleanup should replace numeric indexes with a documented state interface.

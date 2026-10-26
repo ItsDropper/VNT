@@ -88,3 +88,9 @@ When a serial test fails, separate UART setup, transmit readiness, receive readi
 ## Lab: write a minimal I/O report
 
 Record the QEMU invocation, which channel you typed into, which channel displayed output, the first byte or command that failed, and whether the failure reproduces after a fresh boot. Include the relevant function in `os/serial.vnt` and avoid saying "serial is broken" until you have localized the failed stage.
+
+## 12. Define a timeout policy before hardening polling
+
+A more robust UART driver could limit how long it waits for a status bit and return an error when the device never becomes ready. That requires a timeout source and a clear return contract. A fixed iteration count is simple but varies with CPU and emulator speed; a timer-based deadline is more meaningful but depends on the timer being initialized and reliable.
+
+Do not add a timeout that reports success after the deadline. Decide whether the caller should retry, drop the diagnostic byte, or enter a fatal path. For the current teaching kernel, understand the existing polling limitation before changing it.

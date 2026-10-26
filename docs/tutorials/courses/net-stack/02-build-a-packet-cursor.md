@@ -114,6 +114,21 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Centralize a bounded 16-bit read
+
+The reusable helper checks both bytes exist before indexing either one. Its failure sentinel is -1 and it leaves the buffer unchanged.
+
+```vnt
+export fun read_be16(buffer: array, offset: int) -> int {
+    if offset < 0 || len(buffer) < 2 || offset > len(buffer) - 2 {
+        return -1
+    }
+    return buffer[offset] * 256 + buffer[offset + 1]
+}
+```
+
+Test offset 0 with two bytes, offset at the last byte, negative offset, and an empty buffer.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

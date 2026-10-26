@@ -127,6 +127,20 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Trace a reservation through the whole program
+
+The inspector combines reservation policy, byte verification, metadata reporting, and regression tests across separate files.
+
+```vnt
+let first: ptr = arena.arena_reserve(7, 1)
+let second: ptr = arena.arena_reserve(8, 8)
+report.print_arena_report()
+report.print_allocation_table()
+print(arena.arena_invariants_hold())
+```
+
+Extend the project with independent arena instances, bounded event history, exact-fit tests, and explicit rejection reasons. Do not call a feature complete until its test exists.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

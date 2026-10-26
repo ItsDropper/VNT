@@ -468,7 +468,7 @@ static int execute_action(Action action, Config *cfg) {
             }
         }
         if (!exists(output)) {
-            fprintf(stderr, "vbuild: output not found; add 'depends build' to this task or run the build task first.\\n");
+            fprintf(stderr, "vbuild: output not found; add 'depends build' to this task or run the build task first.\n");
             return 1;
         }
         args[0] = output; args[1] = NULL;

@@ -148,3 +148,18 @@ For example, "the `irq` command prints a count" is weaker than "two readings sho
 At the end, keep a short technical report with the subsystem diagram, the invariant you changed or preserved, the exact source files involved, the build and QEMU commands, the observed output, the relevant CI run, and the remaining limitations. Include a short explanation of why the assembly boundary remains minimal and which behavior is owned by VNT.
 
 This report is part of the learning goal: kernel development requires not only making a change but being able to explain its assumptions and demonstrate that it works.
+
+## Worked trace: from a shell command to hardware state
+
+The `irq` command is a compact example that crosses the course's main boundaries:
+
+1. The shell in `os/kernel.vnt` recognizes the text `irq`.
+2. It reads shared state slot 11 and passes the value to `console_hex`.
+3. The timer interrupt entry in `os/interrupts.S` saves registers and calls the emitted VNT dispatcher symbol.
+4. `os/interrupts.vnt` handles vector 32 by incrementing slot 11 and returning quickly.
+5. The assembly entry acknowledges the PIC, restores registers, and executes `iretq`.
+6. The shell later displays the updated counter in ordinary kernel context.
+
+Trace both directions: command-to-output and hardware-event-to-state. This demonstrates why the VNT dispatcher does not print on every tick and why the shell does not need to know the PIC's port addresses.
+
+The shared state array is a compact teaching mechanism, not a finished type-safe kernel API. A future improvement would give the timer count a named interface and define how concurrent reads and writes are synchronized. Do not claim the current design already provides a general concurrency abstraction.

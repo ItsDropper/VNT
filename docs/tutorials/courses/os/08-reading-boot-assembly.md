@@ -82,3 +82,19 @@ Before adding assembly, ask whether a stable VNT function can own the policy. Fo
 ## Lab: annotate without changing behavior
 
 Add comments in your notes—not the source—beside the instructions that establish the stack, build page-table entries, enable long mode, and transfer control. For each group, record its prerequisite and what would fail if it were moved earlier. Then compare your explanation with the comments already present in `os/boot.S`.
+
+## 12. Inspect the actual machine code when comments are insufficient
+
+Assembly source is precise, but the assembler and linker determine the final bytes and addresses. Use `objdump -d build/kernel.elf` to inspect disassembly and `readelf -h -l build/kernel.elf` to inspect the ELF entry point and loadable segments. Use the disassembly to answer a specific question, such as whether the far jump target is present or whether a call reaches the expected symbol.
+
+Do not treat disassembly as a replacement for understanding the source. It is an independent view of what the toolchain produced. If source and output disagree, check which revision was built and whether the file under inspection was regenerated.
+
+## 13. A disciplined edit to boot assembly
+
+Boot assembly is high-risk because errors can occur before the VNT console exists. If you need to change it, first write down the invariant the existing code establishes. Make the smallest edit, rebuild, validate the ELF, and boot in QEMU. If the kernel stops earlier than before, revert the experiment and narrow the change.
+
+Do not combine changes to page tables, GDT entries, stack setup, and interrupt initialization in one patch. These components depend on one another, and a combined change makes the first broken invariant difficult to identify.
+
+## Lab: produce an assembly annotation
+
+Create a table for the bootstrap's main stages: initial entry, stack setup, page-table setup, control-register configuration, long-mode jump, and kernel handoff. For each stage record input state, instructions that establish the next state, output state, and one failure symptom. Verify each claim against `os/boot.S` and the built ELF.

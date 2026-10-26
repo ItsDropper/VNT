@@ -150,8 +150,12 @@ transitive imported source invalidates the build even when that module is not
 listed in `dependencies {}`. If tracked inputs are current, VBuild prints
 `Up to date`. Use `vbuild build --force` to force recompilation.
 
-Native runtime/linker inputs and non-source files are not yet fingerprinted.
-Use `--force` after changing those inputs.
+For hosted executables, VBuild also tracks the native runtime sources and
+runtime header used by VNT's link step. For freestanding ELF targets, it tracks
+`freestanding/x86_64.ld`. A newer or missing required input prevents a stale
+artifact from being treated as up to date. External compiler/linker binaries,
+system libraries, environment variables, and other toolchain state are not
+content-fingerprinted; use `--force` after changing those inputs.
 
 ## Tests
 

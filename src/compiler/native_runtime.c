@@ -1572,7 +1572,7 @@ static VntValue *vnt_bigint_binary(VntValue *av,VntValue *bv,int operation) {
     VntBigInt a=vnt_bigint_parse(av,"bigint operation"),b=vnt_bigint_parse(bv,"bigint operation");
     char *digits=NULL;size_t length=0;int sign=1;
     if(operation==3) {
-        int cmp=a.sign==b.sign?(a.sign==0?0:vnt_bigint_magcmp(&a,&b)):(a.sign<b.sign?-1:1);
+        int cmp=a.sign==b.sign?(a.sign==0?0:vnt_bigint_magcmp(&a,&b)*(a.sign<0?-1:1)):(a.sign<b.sign?-1:1);
         VntValue *r=vnt_int(cmp<0?-1:cmp>0?1:0);free(a.digits);free(b.digits);return r;
     }
     if(operation==2) {
@@ -1594,7 +1594,7 @@ static VntValue *vnt_bigint_binary(VntValue *av,VntValue *bv,int operation) {
             for(size_t i=1;i<=length;i++)digits[i-1]=(char)('0'+acc[i]);
             digits[length]=0;free(acc);sign=a.sign*b.sign;
         }
-    } else {else {
+    } else {
         int bsign=operation==1?-b.sign:b.sign;
         if(a.sign==0){digits=strdup(b.digits);length=b.length;sign=bsign;}
         else if(bsign==0){digits=strdup(a.digits);length=a.length;sign=a.sign;}

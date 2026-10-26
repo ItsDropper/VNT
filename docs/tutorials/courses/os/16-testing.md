@@ -106,3 +106,9 @@ For one proposed kernel change, define a happy-path test, a boundary test, a fai
 The build script is executable project logic and can regress independently of the kernel. It must stop when compilation or linking fails, avoid packaging stale artifacts after a failure, and clearly distinguish required steps from optional ISO tooling. Read `os/build.sh` and identify where `set -euo pipefail` affects failure propagation.
 
 When reviewing a build-script change, reason about what happens if each command exits nonzero. If a later command can still run after an earlier failure, the script may accidentally report a misleading success. Keep the test focused on the script's actual behavior and do not claim coverage that CI does not provide.
+
+## 11. Test claims at the same level they are made
+
+If you claim the compiler builds, show the compiler test. If you claim the ELF is valid, show the ELF and Multiboot2 checks. If you claim the kernel boots, show a QEMU run. If you claim the timer advances, show a test that compares counter values. Do not use a lower-level result to support a stronger claim.
+
+This is especially important for interrupt code: a successful link proves that the dispatcher symbol resolved, but not that the stack frame is correct. A successful boot proves that startup worked, but not that every exception vector is safe. Match each claim to the test that can actually support it.

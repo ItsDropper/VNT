@@ -75,3 +75,19 @@ The CPU uses virtual addresses for interrupt handlers and the IDT base while pag
 ## Lab: inspect an address range
 
 Choose the VGA text buffer address `0xB8000`. Explain why it lies inside the bootstrap's mapped range, why that makes the console access possible under the current identity map, and why the same numeric address is not guaranteed to work after a future mapping redesign.
+
+## 10. Inspect the table entries as encoded data
+
+A page-table entry is a bit field, not just an address. Some bits describe presence and permissions; other bits encode the physical frame or page size. A large-page entry must set the correct page-size flag and encode an address aligned to the large-page boundary. Accidentally treating a 2 MiB mapping as a 4 KiB mapping changes how the CPU interprets the entry.
+
+When reading the bootstrap, decode the entry fields and compare the address alignment with the page size. Avoid changing constants until you can explain which architectural field each bit controls. The processor manual is the authority for the bit layout.
+
+## 11. Permission bits and future isolation
+
+The current early mapping is intentionally permissive and intended for a tiny kernel. A production memory design would need to decide which pages are writable, executable, or user-accessible. Write protection and execute-disable features can help enforce those decisions, but only if the kernel's mappings and code layout are designed consistently.
+
+Do not claim that paging automatically provides process isolation. Isolation requires separate address-space policy and controlled transitions, not just turning paging on.
+
+## Lab: review the current map
+
+Draw the path from CR3 to the page-table structures used by the current identity map. Mark the region covered by the 1 GiB mapping and the location of VGA text memory. Then list three features a physical/virtual memory manager must add before this map could support isolated processes.

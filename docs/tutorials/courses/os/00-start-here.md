@@ -74,3 +74,45 @@ Without looking back, answer:
 ## Exercise
 
 Write one sentence for each of the six files listed above describing what you think it does. Revisit your answers after Lesson 05.
+
+## 6. Run a baseline before changing anything
+
+A baseline is a recorded result from the unmodified revision. It gives you something to compare against after an edit. From the repository root, run:
+
+```sh
+git status --short
+bash os/build.sh
+```
+
+Read the final lines of the build output. If the script creates `build/vntos.iso`, boot it in QEMU using the command in `os/README.md`. If the ISO tools are unavailable, record that packaging was skipped rather than claiming the ISO exists. Do not start editing while the baseline build is already broken; first determine whether the problem is your environment or the current source.
+
+## 7. Follow one visible output byte
+
+Open `os/kernel.vnt` and find the kernel entry function. Follow its calls until it reaches the console functions. Then open `os/console.vnt` and see how output is forwarded to VGA and serial routines. Finally inspect `os/serial.vnt` to see that the driver waits for the UART's transmit-ready bit before writing a byte.
+
+Write this call chain in your notes:
+
+```text
+kernel entry / shell
+  -> console policy
+     -> VGA text output
+     -> COM1 serial output
+```
+
+The diagram is a dependency map, not proof that each operation succeeds. The actual implementation and the QEMU output are the evidence.
+
+## 8. Make changes in reviewable units
+
+A good first kernel patch changes one behavior, such as the wording of a help message. It should not simultaneously rewrite the console, change the boot stack, and alter interrupt setup. Small patches make it possible to connect a failure to a specific change.
+
+Before editing, ask: what exact output or behavior will differ? After editing, ask: which test demonstrates that difference? If you cannot answer both questions, reduce the scope until you can.
+
+## 9. Build a failure report
+
+When the kernel fails, record the commit, exact command, first error, and last output visible in QEMU or serial. Include whether the failure happened during compilation, linking, GRUB loading, early CPU setup, console initialization, or command handling. These are separate stages with different failure causes.
+
+Do not report only "black screen." A black screen could mean no ISO, a boot protocol problem, a triple fault, a VGA initialization issue, or simply output routed to serial. State what you observed and what you have ruled out.
+
+## Lab deliverable
+
+Create a short note containing the baseline commit, build result, QEMU command, visible boot marker, and one call chain from shell to device. This note is your first reproducible kernel experiment.

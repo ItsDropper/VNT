@@ -1,0 +1,120 @@
+# Portable lexical path helpers. Output separators are always forward slashes.
+# These functions manipulate path strings only; they do not access the filesystem or resolve symlinks.
+import "string.vnt" as strutil
+
+fun is_separator(ch) {
+    return ch == "/" || ch == "\\"
+}
+
+export fun normalize_separators(path) {
+    return strutil.replace(path, "\\", "/")
+}
+
+export fun basename(path) {
+    normalized = normalize_separators(path)
+    size = len(normalized)
+    end = size
+    while end > 0 && normalized[end - 1] == "/" {
+        end -= 1
+    }
+    start = end
+    while start > 0 && normalized[start - 1] != "/" {
+        start -= 1
+    }
+    result = ""
+    i = start
+    while i < end {
+        result = result + normalized[i]
+        i += 1
+    }
+    return result
+}
+
+export fun dirname(path) {
+    normalized = normalize_separators(path)
+    size = len(normalized)
+    end = size
+    while end > 1 && normalized[end - 1] == "/" {
+        end -= 1
+    }
+    separator = -1
+    i = 0
+    while i < end {
+        if normalized[i] == "/" {
+            separator = i
+        }
+        i += 1
+    }
+    if separator == -1 {
+        return "."
+    }
+    if separator == 0 {
+        return "/"
+    }
+    if separator == 2 && len(normalized) >= 3 && normalized[1] == ":" {
+        return normalized[0] + normalized[1] + "/"
+    }
+    result = ""
+    i = 0
+    while i < separator {
+        result = result + normalized[i]
+        i += 1
+    }
+    return result
+}
+
+export fun extension(path) {
+    name = basename(path)
+    dot = -1
+    i = 0
+    while i < len(name) {
+        if name[i] == "." {
+            dot = i
+        }
+        i += 1
+    }
+    if dot <= 0 {
+        return ""
+    }
+    result = ""
+    i = dot + 1
+    while i < len(name) {
+        result = result + name[i]
+        i += 1
+    }
+    return result
+}
+
+export fun stem(path) {
+    name = basename(path)
+    ext = extension(name)
+    if len(ext) == 0 {
+        return name
+    }
+    target_size = len(name) - len(ext) - 1
+    result = ""
+    i = 0
+    while i < target_size {
+        result = result + name[i]
+        i += 1
+    }
+    return result
+}
+
+export fun join(left, right) {
+    if len(right) == 0 {
+        return normalize_separators(left)
+    }
+    if len(left) == 0 {
+        return normalize_separators(right)
+    }
+    normalized_left = normalize_separators(left)
+    normalized_right = normalize_separators(right)
+    if normalized_right[0] == "/" {
+        return normalized_right
+    }
+    if normalized_left[len(normalized_left) - 1] == "/" {
+        return normalized_left + normalized_right
+    }
+    return normalized_left + "/" + normalized_right
+}

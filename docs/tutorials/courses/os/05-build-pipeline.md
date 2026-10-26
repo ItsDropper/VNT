@@ -12,10 +12,10 @@ The script runs these stages in order:
 
 1. Create the `build/` directory.
 2. Compile the VNT compiler itself from C source files into `build/vnt`.
-3. Ask that compiler to emit freestanding assembly from `os/kernel.vnt`.
-4. Assemble the generated kernel assembly into `build/kernel.o`.
-5. Assemble `os/boot.S` into `build/boot.o`.
-6. Link both object files with `os/linker.ld` into `build/kernel.elf`.
+3. Ask that compiler to emit freestanding assembly from `os/kernel.vnt`; its imports load `serial.vnt`, `console.vnt`, `ps2.vnt`, and `interrupts.vnt` into the same compilation unit.
+4. Assemble the generated VNT assembly into `build/kernel.o`.
+5. Assemble `os/boot.S` into `build/boot.o` and `os/interrupts.S` into `build/interrupts.o`.
+6. Link all three object files with `os/linker.ld` into `build/kernel.elf`.
 7. If `grub-file` is installed, verify that the ELF has a Multiboot2 header.
 8. If the ISO tools are installed, package the ELF and GRUB configuration into `build/vntos.iso`.
 
@@ -49,6 +49,7 @@ After a successful build:
 file build/kernel.elf
 file build/boot.o
 file build/kernel.o
+file build/interrupts.o
 ```
 
 If available, inspect ELF metadata:
@@ -68,8 +69,8 @@ That is why later lessons use both artifact inspection and QEMU runtime checks.
 
 ## Checkpoint
 
-Draw the build pipeline from `kernel.vnt` and `boot.S` to `kernel.elf`, then from the ELF to the ISO. Label which tool handles each transformation.
+Draw the build pipeline from the imported VNT modules, `boot.S`, and `interrupts.S` to `kernel.elf`, then from the ELF to the ISO. Label which tool handles each transformation.
 
 ## Exercise
 
-Temporarily inspect the build script and find the exact command that links `build/boot.o` and `build/kernel.o`. Do not edit the script in this lesson.
+Temporarily inspect the build script and find the exact command that links `build/boot.o`, `build/kernel.o`, and `build/interrupts.o`. Do not edit the script in this lesson.

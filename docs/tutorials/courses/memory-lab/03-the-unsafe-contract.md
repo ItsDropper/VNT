@@ -132,6 +132,18 @@ Call the smallest standard-library function that performs the needed primitive. 
 
 After success, verify that the invariant still holds. In tests, inspect the actual output or bytes rather than only checking a success boolean.
 
+## Worked implementation: Wrap unsafe operations behind a narrow interface
+
+Mark the wrapper unsafe when the caller must establish raw-memory preconditions. The keyword does not prove the preconditions.
+
+```vnt
+export unsafe fun read_byte(base: ptr, offset: int) -> int {
+    return mem.read_u8(base, offset)
+}
+```
+
+This wrapper is valid only when the caller proves that base is live and offset lies inside its allocation. A public safe API must perform those checks before calling it.
+
 ## 7. Tests you must write
 
 Do not consider this lesson complete until all of these categories have an explicit test:

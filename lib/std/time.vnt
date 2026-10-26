@@ -20,3 +20,45 @@ export fun seconds_to_ms(seconds) {
 export fun ms_to_seconds(milliseconds) {
     return milliseconds / 1000
 }
+
+export fun minutes_to_ms(minutes) {
+    return seconds_to_ms(minutes * 60)
+}
+
+export fun hours_to_ms(hours) {
+    return minutes_to_ms(hours * 60)
+}
+
+export fun days_to_ms(days) {
+    return hours_to_ms(days * 24)
+}
+
+export fun ms_to_minutes(milliseconds) {
+    return ms_to_seconds(milliseconds) / 60
+}
+
+export fun ms_to_hours(milliseconds) {
+    return ms_to_minutes(milliseconds) / 60
+}
+
+export fun ms_to_days(milliseconds) {
+    return ms_to_hours(milliseconds) / 24
+}
+
+# Deadline helpers use the runtime clock exposed by time_ms; they are not a
+# monotonic-clock guarantee and should not be used as a security timer.
+export fun deadline_after(duration_ms) {
+    return time_ms() + duration_ms
+}
+
+export fun remaining_ms(deadline_ms) {
+    remaining = deadline_ms - time_ms()
+    if remaining < 0 {
+        return 0
+    }
+    return remaining
+}
+
+export fun has_elapsed(start_ms, duration_ms) {
+    return time_ms() - start_ms >= duration_ms
+}

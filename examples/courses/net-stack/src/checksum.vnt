@@ -1,0 +1,7 @@
+# Copyright (c) 2026 ItsDropper
+# Internet checksum scaffold. Implement and verify known vectors in lesson 03.
+export fun internet_checksum(length: int) -> int {
+    # TODO: sum network-order 16-bit words, pad odd length, fold carries, complement.
+    # The buffer contract must be explicit before this function can be correct.
+    return -1
+}

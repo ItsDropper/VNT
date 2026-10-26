@@ -35,6 +35,19 @@ All examples are hosted programs. **Never write to physical memory, kernel addre
 
 The implemented companion project is in [`examples/courses/memory-lab/`](../../../../examples/courses/memory-lab/README.md), with separate allocator, inspection, reporting, entry point, and test files. The course then asks you to extend it with stronger tests and design limitations.
 
+## Use VBuild while following the course
+
+Use the companion project's [VBuild setup and commands](../../../../examples/courses/memory-lab/README.md#build-and-run-with-vbuild) once you reach the multi-file project. VBuild is the recommended workflow for repeated edits because it centralizes compilation, execution, tests, and incremental rebuilds.
+
+The short version:
+
+1. Build VBuild from the repository root with `gcc -std=c11 -O2 tools/vbuild.c -o vbuild.exe` on Windows, or produce `vbuild` on Linux/WSL.
+2. Create `vbuild.properties` and `build.vbuild` in `examples/courses/memory-lab/` using the exact templates in the companion README. Do not run `init` over the existing project.
+3. From the example directory, run `..\..\..\vbuild.exe build`, then `run` and `test`. Linux/WSL uses `../../../vbuild`.
+4. After each lesson, run the tests and add a regression case for the behavior you changed. Use `build --force` when changing inputs outside VBuild's tracked fingerprint.
+
+VBuild does not replace learning the compiler command. The direct `vnt --compile` path remains useful when diagnosing whether a failure comes from VNT or the build driver. See [VBuild's full documentation](../../../VBUILD.md) for target selection, task dependencies, local module repositories, and incremental-build behavior.
+
 ## Workflow
 
 1. Read the lesson and inspect the standard-library source.

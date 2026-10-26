@@ -1,33 +1,43 @@
 # Build VNTOS: A Beginner's Operating-System Course
 
-**Goal:** understand, build, boot, inspect, and safely extend the real learning kernel in this repository's `os/` directory.
+**Goal:** understand, build, boot, inspect, and safely extend the real VNTOS
+kernel in `os/`. This course starts at the bootloader and ends with a modular
+VNT kernel that handles CPU exceptions and a periodic timer interrupt.
 
-This is a guided course, not a claim that VNTOS is a finished desktop operating system. The current project is an experimental x86-64 kernel with a Multiboot2 bootstrap, early identity mapping, VNT-compiled kernel entry, and a serial command shell. It does **not** yet have a general memory allocator, filesystem, process scheduler, user mode, or a general device-driver framework.
+This is a practical course, not a claim that VNTOS is a finished desktop OS.
+The current kernel has a Multiboot2 bootstrap, a 1 GiB initial identity map,
+a VNT serial/VGA console, polled PS/2 input, an IDT, fatal exception reporting,
+and a PIT timer IRQ. It does **not** have a scheduler, userspace, filesystem,
+general heap allocator, or general device-driver framework.
 
-## Who this course is for
+## Who this is for
 
-You do not need prior operating-system development experience. You should be willing to read small programs and use a terminal. If programming is new to you, take the beginner lessons in [VNT Programming Courses](../../README.md) alongside this course. Every lesson explains new terms before relying on them.
+No prior OS-development experience is required. Basic terminal use helps.
+Read the early lessons in order: later lessons depend on concepts introduced
+earlier. Every implementation lesson points to the real files, explains the
+reason for each boundary, gives exact commands, and includes a check you can
+perform instead of relying on a vague claim that it works.
 
-You will learn what the computer does before the kernel starts, why a bootloader is used, what the CPU bootstrap must configure, how the kernel is linked, how VNT code runs without a hosted runtime, how serial input/output works, and how to test changes in an emulator.
+## Safety and working rules
 
-## Safety and scope
+- Use QEMU for experiments; do not install this kernel on your physical PC.
+- Never write an image to a USB drive or disk containing important files.
+- Run build commands from the repository root unless a lesson says otherwise.
+- Inspect the first build error. Later linker errors can be consequences.
+- A successful compile is not proof of a successful boot or interrupt.
+- The current VNT freestanding compiler subset is experimental. If the course
+  and the source disagree, the source and current CI behavior win.
+- Make one change at a time and retain a recoverable Git branch.
 
-- Build and test in **QEMU**, not on your main computer's physical disk.
-- Do not write kernel images to USB drives, internal disks, or other storage containing important data.
-- Run build commands from the repository root unless a lesson explicitly says otherwise.
-- The source is the final authority. If a lesson and the current code disagree, note the mismatch and inspect the current source before changing anything.
-- A successful compile does not prove the kernel boots. Use the boot and shell checks later in this course.
-- Some low-level parts are experimental and compiler-specific. The course calls those limitations out instead of presenting them as ideal production design.
-
-## How to use each lesson
+## How to study a lesson
 
 1. Read the goal and vocabulary.
-2. Follow the source-reading task before editing code.
-3. Run the stated command and compare your result with the expected outcome.
-4. Complete the checkpoint in your own words.
-5. Make one small change at a time, then rebuild and test in QEMU.
-
-Do not skip ahead to paging or CPU mode switching before understanding the boot path.
+2. Open the exact source file named by the lesson.
+3. Trace the call path before editing.
+4. Run the command shown and compare the observed output with the expectation.
+5. Answer the checkpoint in your own words.
+6. Make the exercise change only after you can explain its failure modes.
+7. Rebuild and boot in QEMU; inspect GitHub Actions for the corresponding run.
 
 ## Course map
 
@@ -38,7 +48,7 @@ Do not skip ahead to paging or CPU mode switching before understanding the boot 
 4. [Set up the safe development environment](03-setup.md)
 5. [Learn just enough VNT for kernel code](04-vnt-for-kernels.md)
 
-### Phase 2 — From source code to a bootable ELF
+### Phase 2 — Boot, CPU state, and the ELF
 6. [Follow the build pipeline](05-build-pipeline.md)
 7. [Understand the boot sequence](06-the-boot-sequence.md)
 8. [Understand GRUB and Multiboot2](07-grub-and-multiboot2.md)
@@ -47,30 +57,60 @@ Do not skip ahead to paging or CPU mode switching before understanding the boot 
 11. [Understand the initial page tables](10-initial-paging.md)
 12. [Understand ELF and the linker script](11-elf-and-linker.md)
 
-### Phase 3 — The kernel written in VNT
-13. [Hosted programs versus freestanding kernels](12-freestanding-vnt.md)
+### Phase 3 — Freestanding VNT and the original shell
+13. [Hosted programs versus freestanding kernel code](12-freestanding-vnt.md)
 14. [Serial output and input](13-serial-io.md)
 15. [Read the command shell](14-the-serial-shell.md)
-
-### Phase 4 — Work like a kernel developer
 16. [Debugging boot failures](15-debugging.md)
 17. [Test changes without guessing](16-testing.md)
-18. [Add a shell command as your first modification](17-first-kernel-change.md)
-19. [Where to go next: real OS subsystems](18-next-steps.md)
+18. [Make your first kernel change](17-first-kernel-change.md)
+19. [What comes next?](18-next-steps.md)
 
-## What counts as finishing?
+### Phase 4 — A real modular kernel and interrupts
+20. [Split the kernel into VNT modules](19-split-the-kernel-into-vnt-modules.md)
+21. [Interrupts, exceptions, and the IDT](20-interrupts-and-the-idt.md)
+22. [The small assembly boundary](21-minimal-assembly-entry-stubs.md)
+23. [Keep interrupt policy in VNT](22-vnt-interrupt-dispatch.md)
+24. [The PIT, PIC, and timer ticks](23-pit-pic-and-timer-ticks.md)
+25. [Build and verify the interrupt kernel](24-build-and-test-the-interrupt-kernel.md)
+26. [Graduation project: improve a subsystem](25-graduation-project.md)
 
-You have completed the course when you can explain the path from GRUB to `kernel_main`, build and boot the current kernel in QEMU, describe the purpose and limits of the initial 1 GiB identity map, trace serial input through the shell, add a harmless command in VNT, and prove that your change still builds and boots.
+## What you should be able to do at the end
 
-## Repository source map
+You should be able to explain the complete path from GRUB to `kernel_main`,
+follow an import from `kernel.vnt` into a device module, describe why the IDT
+and interrupt-entry assembly exist, trace IRQ0 from the PIT through the IDT
+and VNT dispatcher back to `iretq`, run the `irq` command, and produce
+evidence that the kernel still builds and boots.
+
+## Source map
 
 | File | Responsibility |
 | --- | --- |
-| `os/boot.S` | Multiboot2 header and early CPU bootstrap |
-| `os/kernel.vnt` | Kernel entry, serial routines, command parsing and shell |
-| `os/linker.ld` | ELF layout, load addresses and linker symbols |
-| `os/grub.cfg` | Tells GRUB to load the kernel using Multiboot2 |
-| `os/build.sh` | Builds the compiler, kernel object, ELF and optional ISO |
-| `LICENSE` | Project license |
+| `os/boot.S` | Multiboot2 header, early stack, paging, long-mode transition |
+| `os/kernel.vnt` | Shared state, CPU control, kernel entry, shell policy |
+| `os/serial.vnt` | COM1 UART driver |
+| `os/console.vnt` | VGA text output and combined console |
+| `os/ps2.vnt` | Polled keyboard and mouse input |
+| `os/interrupts.vnt` | VNT exception/IRQ dispatch policy |
+| `os/interrupts.S` | IDT, entry stubs, PIC/PIT setup, `iretq` boundary |
+| `os/linker.ld` | ELF section layout and symbols |
+| `os/grub.cfg` | GRUB Multiboot2 configuration |
+| `os/build.sh` | Compiler, assembler, linker, and ISO pipeline |
+
+## Build tooling note: VBuild
+
+VBuild is the native build driver for ordinary VNT projects. Its current
+freestanding `elf` target does not link this mixed kernel with both assembly
+objects, the custom `os/linker.ld`, and the GRUB ISO layout. The authoritative
+kernel build remains:
+
+```sh
+bash os/build.sh
+```
+
+Do not claim that `vbuild build` creates the VNTOS boot image. Read
+[`docs/VBUILD.md`](../../../VBUILD.md) for VBuild's supported targets and
+limits; use the kernel-specific pipeline for the actual OS.
 
 Start with [Lesson 00](00-start-here.md).

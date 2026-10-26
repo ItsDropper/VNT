@@ -318,6 +318,7 @@ try {
         "src/main.exe", "C:/VNT/main.elf", ".env.txt",
         "true", "true", "true", "true", "true", "true",
         "name=Ada&theme=dark", "", "VNT", "fallback", "true", "false",
+        "true", "false", "true", "29", "false", "61", "1", "6", "-1",
         "STD_IMPROVED_MODULES_OK"
     )
     if (($improvedModulesOutput -join "|") -ne ($improvedModulesExpected -join "|")) {

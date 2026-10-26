@@ -1,0 +1,43 @@
+# Copyright (c) 2026 ItsDropper
+# Licensed under the MIT License. See LICENSE in the repository root.
+# COM1 UART routines. Polling is intentional for the early diagnostic console.
+
+fun serial_init() {
+    unsafe {
+        asm volatile("movw $0x3f9, %dx; xorb %al, %al; outb %al, %dx; movw $0x3fb, %dx; movb $0x80, %al; outb %al, %dx; movw $0x3f8, %dx; movb $1, %al; outb %al, %dx; movw $0x3f9, %dx; xorb %al, %al; outb %al, %dx; movw $0x3fb, %dx; movb $3, %al; outb %al, %dx; movw $0x3fa, %dx; movb $0xc7, %al; outb %al, %dx; movw $0x3fc, %dx; movb $0x0b, %al; outb %al, %dx")
+    }
+    return 0
+}
+
+fun serial_putc(value: int) {
+    unsafe {
+        asm volatile("movl -8(%rbp), %eax; movw $0x3fd, %dx; 1: inb %dx, %al; testb $0x20, %al; jz 1b; movw $0x3f8, %dx; movl -8(%rbp), %eax; outb %al, %dx")
+    }
+    return 0
+}
+
+fun serial_try_getc() -> int {
+    let result: int = -1
+    unsafe {
+        asm volatile("movw $0x3fd, %dx; inb %dx, %al; testb $1, %al; jz 1f; movw $0x3f8, %dx; inb %dx, %al; movzbl %al, %eax; movq %rax, -8(%rbp); jmp 2f; 1: movq $-1, -8(%rbp); 2:")
+    }
+    return result
+}
+
+fun serial_puts(text: string) {
+    let index: int = 0
+    while text[index] != 0 {
+        serial_putc(text[index])
+        index = index + 1
+    }
+    return 0
+}
+
+fun serial_puts_offset(text: string, offset: int) {
+    let index: int = 0
+    while text[index + offset] != 0 {
+        serial_putc(text[index + offset])
+        index = index + 1
+    }
+    return 0
+}

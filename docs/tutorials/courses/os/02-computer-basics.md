@@ -96,3 +96,9 @@ Examples of assumptions worth checking:
 - "The ISO boots" → run QEMU and record the visible boot marker.
 
 A useful kernel developer turns assumptions into checks that another person can repeat.
+
+## 13. A register is part of the interface
+
+When an assembly stub calls compiled VNT code, the calling convention determines where arguments are placed and which registers the callee must preserve. An interrupt stub has an additional responsibility: it must preserve the state of the code it interrupted, even if that state was not created by an ordinary call. These are related but different contracts.
+
+Before reviewing an assembly-to-VNT call, identify the argument registers, saved registers, stack alignment, return value, and symbol name. If one is undocumented, treat it as an assumption to verify against the emitted assembly and ELF symbols.

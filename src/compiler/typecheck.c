@@ -635,8 +635,11 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
             case AST_ASSIGNMENT: {
                 TypeKind target = expr_type(tc, n->assignment.target);
                 TypeKind value = expr_type(tc, n->assignment.value);
+                int string_byte_store =
+                    is_string_index_expr(tc, n->assignment.target) &&
+                    value == TY_INT;
                 if (target != TY_UNKNOWN && target != TY_UNDECLARED &&
-                    !type_compatible(target, value))
+                    !type_compatible(target, value) && !string_byte_store)
                     error(tc, "assignment changes an incompatible type.");
                 break;
             }

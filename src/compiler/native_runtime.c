@@ -1210,12 +1210,9 @@ static VntValue *vnt_time_parts(VntValue *value,int utc,const char *fn) {
     time_t stamp=(time_t)seconds;
     if((int64_t)stamp!=seconds)return vnt_array_new();
     struct tm parts;
-#ifdef _WIN32
-    errno_t err=utc?gmtime_s(&parts,&stamp):localtime_s(&parts,&stamp);
-    if(err!=0)return vnt_array_new();
-#else
-    if(!(utc?gmtime_r(&stamp,&parts):localtime_r(&stamp,&parts)))return vnt_array_new();
-#endif
+    struct tm *converted=utc?gmtime(&stamp):localtime(&stamp);
+    if(!converted)return vnt_array_new();
+    parts=*converted;
     VntValue *result=vnt_array_new();
     vnt_array_push(result,vnt_int((int64_t)parts.tm_year+1900));
     vnt_array_push(result,vnt_int((int64_t)parts.tm_mon+1));

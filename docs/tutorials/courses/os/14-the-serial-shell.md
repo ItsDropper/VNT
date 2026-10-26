@@ -92,3 +92,9 @@ Draw the shell states for waiting for a character, appending a character, handli
 The shell receives bytes from an input channel. Treat the resulting line as untrusted data: it may be empty, too long, or contain characters the parser does not expect. Compare bounded strings and avoid interpreting an input index as a pointer without validating it. A malformed command should produce a predictable response, not alter interrupt configuration or memory mappings.
 
 This is a small example of a general kernel rule: validate input at the boundary, then pass a well-defined representation to the operation that consumes it.
+
+## 13. A shell is a useful stress test for the kernel
+
+The command loop repeatedly exercises input, buffer mutation, string comparison, device output, and shared state. A defect may appear only after several commands because a buffer index or cursor position was not reset. Test sequences, not only isolated commands: empty line, known command, unknown command, backspace, another known command, and a long line.
+
+If a command hangs, determine whether it is waiting for input, polling hardware, or stuck in its own logic. Use a marker immediately before dispatch and another immediately after the operation to narrow the location. Remove temporary markers once the diagnosis is complete.

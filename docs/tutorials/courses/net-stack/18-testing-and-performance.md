@@ -53,29 +53,16 @@ Make failure atomic: validate inputs and calculate derived values in local varia
 
 Name failure reasons explicitly. Invalid input, resource exhaustion, checksum failure, and unsupported behavior should not silently collapse into one indistinguishable result.
 
-## 4. Small VNT experiment
+## Run the current milestone
 
-This snippet verifies basic syntax and the toolchain; it is not the finished feature.
-
-```vnt
-let sample: array = [0, 1, 8, 0, 20, 0, 0, 0]
-print(sample)
-print(sample[0])
-print(sample[1])
-```
-
-On Windows, from the repository root:
+Compile the integrated offline network simulator from the repository root:
 
 ```powershell
-.\\build.ps1
-.\\vnt.exe --compile lesson.vnt -o lesson.exe
-.\\lesson.exe
+.\\vnt.exe --compile examples\\courses\\net-stack\\src\\main.vnt -o net-stack.exe
+.\\net-stack.exe
 ```
 
-On Linux, use the built `./vnt` executable with the same `--compile` option.
-
-Write expected output down before running. A result is not a test unless the expected result and reason are known in advance.
-
+Run the relevant parser, routing, and state-machine tests listed in the companion README. Keep all fixtures synthetic and record the actual result of each test.
 ## 5. Implementation recipe
 
 ### Step A — identify ownership

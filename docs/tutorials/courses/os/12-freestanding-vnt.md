@@ -87,3 +87,9 @@ This sequence prevents a compiler limitation from being "fixed" by adding arbitr
 ## Lab: follow a function end to end
 
 Pick `interrupt_dispatch` or another kernel function. Find its source declaration, the compiler-emitted symbol, the corresponding assembly call site if applicable, and the final ELF symbol. Write one sentence about the contract at each boundary. This is a practical introduction to ABI debugging.
+
+## 12. Make unsupported assumptions visible in reviews
+
+When reviewing a kernel patch, call out dependencies on hosted libraries, dynamic allocation, thread-local state, exceptions, or compiler-generated stack layout. These assumptions may be perfectly normal in an application but invalid in this freestanding environment. Do not silently replace a missing feature with inline assembly unless the replacement has a documented ABI and a regression test.
+
+The goal is to keep the VNT portion readable and testable while isolating the minimum CPU-specific mechanics in assembly. If a proposed change requires a large assembly block for ordinary policy, revisit the boundary before accepting it.

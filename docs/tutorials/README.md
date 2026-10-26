@@ -1,6 +1,6 @@
 # VNT Programming Courses
 
-These tutorials teach VNT through small, practical projects. VNT is experimental; use the compiler and examples in your current checkout as the final syntax reference.
+These tutorials teach VNT through practical projects, from beginner exercises to multi-module low-level systems work. VNT is experimental; use the compiler and examples in your current checkout as the final syntax reference.
 
 ## Beginner course
 
@@ -18,10 +18,6 @@ These tutorials teach VNT through small, practical projects. VNT is experimental
 9. [Build a complete local task tracker](09-build-a-project.md)
 10. [Low-level systems programming](10-low-level-systems-programming.md)
 
-
-## Advanced low-level project course
-
-[Build a Memory Arena and Inspector in VNT — 20 lessons](courses/memory-lab/README.md). Starts from pointer validity and unsafe contracts, then teaches alignment, overflow-safe bounds checks, allocation lifetime, testing, stress testing, and benchmarking. Includes a multi-file example project under `examples/courses/memory-lab/`.
 
 
 ## Advanced systems project courses

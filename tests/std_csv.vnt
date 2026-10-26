@@ -1,0 +1,17 @@
+import "../lib/std/csv.vnt" as csv
+
+source = "name,notes\r\nAda,\"likes, commas\"\r\nBob,\"line 1\nline 2\"\r\nQuote,\"a \"\"quote\"\"\"\r\n"
+rows = csv.parse(source)
+print(len(rows))
+print(rows[0][0])
+print(rows[1][0])
+print(rows[1][1])
+print(rows[2][1])
+print(rows[3][1])
+encoded = csv.stringify(rows)
+round_trip = csv.parse(encoded)
+print(round_trip[1][1])
+print(round_trip[2][1])
+print(csv.parse("\"unterminated"))
+print(csv.parse("a\"b,c"))
+print("CSV_STANDARD_LIBRARY_OK")

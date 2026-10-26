@@ -668,9 +668,11 @@ static int build_inputs_are_current(const char *output, const char *target) {
     }
     if (stat(output, &output_stat) != 0) return 0;
     for (i = 0; i < count; i++) {
+        char input_path[PATH_CAP];
         struct stat input_stat;
-        if (stat(inputs[i], &input_stat) != 0) {
-            fprintf(stderr, "vbuild: required build input is missing: %s\\n", inputs[i]);
+        if (!absolute_path(inputs[i], input_path, sizeof input_path)) return -1;
+        if (stat(input_path, &input_stat) != 0) {
+            fprintf(stderr, "vbuild: required build input is missing: %s\\n", input_path);
             return -1;
         }
         if (output_stat.st_mtime < input_stat.st_mtime) return 0;

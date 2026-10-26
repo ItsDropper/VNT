@@ -58,7 +58,7 @@ class VBuildTests(unittest.TestCase):
         expected = vbuild.output_path(self.project, manifest)
         def fake_compile(args):
             self.assertEqual(args[0], "--compile")
-            self.assertEqual(Path(args[1]), self.project / "src" / "main.vnt")
+            self.assertTrue(Path(args[1]).samefile(self.project / "src" / "main.vnt"))
             self.assertEqual(args[2], "-o")
             Path(args[3]).parent.mkdir(parents=True, exist_ok=True)
             Path(args[3]).write_text("fake executable", encoding="utf-8")

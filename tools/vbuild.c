@@ -39,7 +39,10 @@ typedef struct {
     char source[PATH_CAP];
     char output[256];
     char compiler[PATH_CAP];
+    char toolchain[PATH_CAP];
 } Config;
+
+static char project_root[PATH_CAP];
 
 typedef enum { ACT_BUILD, ACT_RUN, ACT_CHECK, ACT_CLEAN, ACT_TEST, ACT_NONE } Action;
 typedef struct {
@@ -114,6 +117,8 @@ static int load_properties(Config *cfg) {
             if (!copy_value(cfg->output, sizeof cfg->output, value, key)) { fclose(f); return 0; }
         } else if (!strcmp(key, "compiler")) {
             if (!copy_value(cfg->compiler, sizeof cfg->compiler, value, key)) { fclose(f); return 0; }
+        } else if (!strcmp(key, "toolchain")) {
+            if (!copy_value(cfg->toolchain, sizeof cfg->toolchain, value, key)) { fclose(f); return 0; }
         } else {
             fprintf(stderr, "vbuild: unknown property '%s'.\n", key);
             fclose(f); return 0;
@@ -133,7 +138,41 @@ static int load_properties(Config *cfg) {
     }
     if (!cfg->version[0]) strcpy(cfg->version, "0.1.0");
     if (!cfg->compiler[0]) strcpy(cfg->compiler, "vnt");
+    if (!cfg->toolchain[0]) {
+        const char *home = getenv("VNT_HOME");
+        if (!copy_value(cfg->toolchain, sizeof cfg->toolchain, home && home[0] ? home : ".", "toolchain")) return 0;
+    }
     return 1;
+}
+
+static int path_is_absolute(const char *path) {
+#ifdef _WIN32
+    return path[0] == '/' || path[0] == '\\' ||
+           (isalpha((unsigned char)path[0]) && path[1] == ':');
+#else
+    return path[0] == '/';
+#endif
+}
+
+static int absolute_path(const char *path, char *out, size_t cap) {
+    int n;
+    if (path_is_absolute(path)) n = snprintf(out, cap, "%s", path);
+    else n = snprintf(out, cap, "%s/%s", project_root, path);
+    if (n < 0 || (size_t)n >= cap) {
+        fprintf(stderr, "vbuild: path is too long: %s\n", path);
+        return 0;
+    }
+    return 1;
+}
+
+static int is_directory(const char *path) {
+    struct stat st;
+    if (stat(path, &st) != 0) return 0;
+#ifdef _WIN32
+    return (st.st_mode & _S_IFDIR) != 0;
+#else
+    return S_ISDIR(st.st_mode);
+#endif
 }
 
 static int exists(const char *path) {
@@ -173,7 +212,7 @@ static int write_file(const char *path, const char *contents) {
 static int init_project(void) {
     const char *name = "hello";
     const char *properties =
-        "project.name = hello\nproject.version = 0.1.0\nsource = src/main.vnt\noutput = hello\ncompiler = vnt\n";
+        "project.name = hello\nproject.version = 0.1.0\nsource = src/main.vnt\noutput = hello\ncompiler = vnt\ntoolchain = .\n";
     const char *script =
         "# VBuild task file (version 1)\n"
         "task build = build\n"
@@ -334,19 +373,37 @@ static int run_process(char *const argv[], const char *working_directory) {
 }
 static int run_compiler(Config *cfg, int check) {
     char output[PATH_CAP];
+    char source[PATH_CAP];
+    char compiler[PATH_CAP];
+    char toolchain[PATH_CAP];
     char *args[6];
     if (!exists(cfg->source)) {
         fprintf(stderr, "vbuild: source file not found: %s\n", cfg->source); return 1;
     }
     if (!check && !ensure_build_dir()) return 1;
-    snprintf(output, sizeof output, "build/%s%s", cfg->output, EXE_SUFFIX);
-    args[0] = cfg->compiler;
-    if (check) {
-        args[1] = "--dump-ir"; args[2] = cfg->source; args[3] = NULL;
-    } else {
-        args[1] = "--compile"; args[2] = cfg->source; args[3] = "-o"; args[4] = output; args[5] = NULL;
+    if (!absolute_path(cfg->source, source, sizeof source) ||
+        !absolute_path(cfg->toolchain, toolchain, sizeof toolchain) ||
+        !is_directory(toolchain)) {
+        fprintf(stderr, "vbuild: toolchain directory not found or path invalid: %s\n", cfg->toolchain); return 1;
     }
-    if (run_process(args) != 0) {
+    if (strchr(cfg->compiler, '/') || strchr(cfg->compiler, '\\')) {
+        if (!absolute_path(cfg->compiler, compiler, sizeof compiler)) return 1;
+    } else if (!copy_value(compiler, sizeof compiler, cfg->compiler, "compiler")) return 1;
+    if (!absolute_path("build", output, sizeof output)) return 1;
+    {
+        size_t len = strlen(output);
+        int n = snprintf(output + len, sizeof output - len, "/%s%s", cfg->output, EXE_SUFFIX);
+        if (n < 0 || (size_t)n >= sizeof output - len) {
+            fprintf(stderr, "vbuild: output path is too long.\n"); return 1;
+        }
+    }
+    args[0] = compiler;
+    if (check) {
+        args[1] = "--dump-ir"; args[2] = source; args[3] = NULL;
+    } else {
+        args[1] = "--compile"; args[2] = source; args[3] = "-o"; args[4] = output; args[5] = NULL;
+    }
+    if (run_process(args, toolchain) != 0) {
         fprintf(stderr, "vbuild: compiler command failed.\n"); return 1;
     }
     if (!check && !exists(output)) {
@@ -355,7 +412,6 @@ static int run_compiler(Config *cfg, int check) {
     if (!check) printf("Built %s\n", output);
     return 0;
 }
-
 static int clean_build(void) {
 #ifdef _WIN32
     int rc = system("if exist build rmdir /s /q build");
@@ -377,13 +433,20 @@ static int execute_action(Action action, Config *cfg) {
     if (action == ACT_RUN) {
         char output[PATH_CAP];
         char *args[2];
-        snprintf(output, sizeof output, "build/%s%s", cfg->output, EXE_SUFFIX);
+        if (!absolute_path("build", output, sizeof output)) return 1;
+        {
+            size_t len = strlen(output);
+            int n = snprintf(output + len, sizeof output - len, "/%s%s", cfg->output, EXE_SUFFIX);
+            if (n < 0 || (size_t)n >= sizeof output - len) {
+                fprintf(stderr, "vbuild: output path is too long.\n"); return 1;
+            }
+        }
         if (!exists(output)) {
             fprintf(stderr, "vbuild: output not found; add 'depends build' to this task or run the build task first.\\n");
             return 1;
         }
         args[0] = output; args[1] = NULL;
-        return run_process(args);
+        return run_process(args, project_root);
     }
     return 0;
 }
@@ -409,8 +472,16 @@ static int execute_task(int index, Config *cfg) {
 }
 
 int main(int argc, char **argv) {
-    Config cfg = {{0}, {0}, {0}, {0}, {0}};
+    Config cfg = {{0}, {0}, {0}, {0}, {0}, {0}};
     int index;
+#ifdef _WIN32
+    if (!_getcwd(project_root, sizeof project_root)) {
+#else
+    if (!getcwd(project_root, sizeof project_root)) {
+#endif
+        fprintf(stderr, "vbuild: cannot determine project directory: %s\n", strerror(errno));
+        return 1;
+    }
     if (argc != 2) {
         fprintf(stderr, "Usage: vbuild <task-name|init|tasks>\n");
         return 2;

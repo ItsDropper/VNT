@@ -93,3 +93,9 @@ Pick `interrupt_dispatch` or another kernel function. Find its source declaratio
 When reviewing a kernel patch, call out dependencies on hosted libraries, dynamic allocation, thread-local state, exceptions, or compiler-generated stack layout. These assumptions may be perfectly normal in an application but invalid in this freestanding environment. Do not silently replace a missing feature with inline assembly unless the replacement has a documented ABI and a regression test.
 
 The goal is to keep the VNT portion readable and testable while isolating the minimum CPU-specific mechanics in assembly. If a proposed change requires a large assembly block for ordinary policy, revisit the boundary before accepting it.
+
+## 13. A kernel function should be easy to audit
+
+Prefer a short VNT function with a named responsibility over a large block that combines register manipulation, parsing, and output. If the function changes global state, name the state and explain the invariant. If it calls assembly, document the emitted symbol and argument contract. If it is called from an IRQ, explain why its execution time and side effects are bounded.
+
+These requirements are practical guardrails while the freestanding compiler and runtime are still evolving. They also make future compiler improvements easier because the source expresses the intended behavior independently of the current backend's quirks.

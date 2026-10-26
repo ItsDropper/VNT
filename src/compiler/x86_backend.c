@@ -181,7 +181,7 @@ static const char *builtin(const char *s,int *arity) {
       {"mem_copy","vnt_mem_copy",3},{"mem_set","vnt_mem_set",3},
       {"sqrt","vnt_sqrt",1},{"sin","vnt_sin",1},{"cos","vnt_cos",1},{"tan","vnt_tan",1},
       {"abs","vnt_abs",1},{"floor","vnt_floor",1},{"ceil","vnt_ceil",1},{"min","vnt_min",2},{"max","vnt_max",2},
-      {"mod","vnt_mod",2},{"len","vnt_len",1},{"utf8_len","vnt_utf8_len",1},{"utf8_slice","vnt_utf8_slice",3},{"input","vnt_input",1},{"fs_write_atomic","vnt_fs_write_atomic",2},{"fs_exists","vnt_fs_exists",1},
+      {"mod","vnt_mod",2},{"len","vnt_len",1},{"bigint_add","vnt_bigint_add",2},{"bigint_sub","vnt_bigint_sub",2},{"bigint_mul","vnt_bigint_mul",2},{"bigint_compare","vnt_bigint_compare",2},{"utf8_len","vnt_utf8_len",1},{"utf8_slice","vnt_utf8_slice",3},{"input","vnt_input",1},{"fs_write_atomic","vnt_fs_write_atomic",2},{"fs_exists","vnt_fs_exists",1},
       {"fs_read","vnt_fs_read",1},{"fs_write","vnt_fs_write",2},{"fs_append","vnt_fs_append",2},{"fs_delete","vnt_fs_delete",1},
       {"fs_rename","vnt_fs_rename",2},{"fs_is_file","vnt_fs_is_file",1},{"fs_is_dir","vnt_fs_is_dir",1},{"fs_list","vnt_fs_list",1},
       {"io_write","vnt_io_write",1},{"io_write_error","vnt_io_write_error",1},

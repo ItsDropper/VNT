@@ -125,6 +125,8 @@ jobs:
           test -x build/hello
           incremental="$("$GITHUB_WORKSPACE/vbuild" build)"
           printf '%s\n' "$incremental" | grep -Fq 'Up to date:'
+          forced="$("$GITHUB_WORKSPACE/vbuild" build --force)"
+          printf '%s\n' "$forced" | grep -Fq 'Built '
           output="$("$GITHUB_WORKSPACE/vbuild" run)"
           printf '%s\n' "$output"
           printf '%s\n' "$output" | grep -Fq 'Hello from VNT'

@@ -114,6 +114,18 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Create an offline fixture first
+
+The first program should construct bytes in memory and pass them to the parser. It should not open a socket or access a network interface.
+
+```vnt
+let fixture: array = [0, 1, 2, 3, 4, 5, 6]
+print(len(fixture))
+print(ethernet.parse_frame(fixture))
+```
+
+A fixture is deterministic input owned by the test. Store expected acceptance/rejection next to it.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

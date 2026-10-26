@@ -1,0 +1,6 @@
+# Copyright (c) 2026 ItsDropper
+# Offline protocol dispatcher scaffold. Never send packets onto a real network.
+export fun process_synthetic_frame(frame_length: int) -> bool {
+    # TODO: parse Ethernet, dispatch IPv4, then UDP, and return a structured result.
+    return false
+}

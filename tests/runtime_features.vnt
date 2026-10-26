@@ -1,0 +1,15 @@
+import "../lib/std/unicode.vnt" as unicode
+import "../lib/std/fs.vnt" as fs
+
+sample = "Aé中🙂"
+print(unicode.length(sample))
+print(unicode.slice(sample, 1, 2))
+print(unicode.slice(sample, 3, 5))
+print(unicode.slice(sample, 4, 1))
+atomic_path = "vnt-runtime-atomic-test.txt"
+print(fs.write_text_atomic(atomic_path, "first"))
+print(fs.read_text(atomic_path))
+print(fs.write_text_atomic(atomic_path, "replacement"))
+print(fs.read_text(atomic_path))
+print(fs.remove_file(atomic_path))
+print("RUNTIME_FEATURES_OK")

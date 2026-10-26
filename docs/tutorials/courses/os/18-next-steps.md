@@ -98,3 +98,9 @@ This is a dependency order, not a promise that all features already exist.
 Prefer a project that can be built and tested within one focused change. A stronger exception report is measurable if it reports the vector and error code and preserves the fatal halt. A timer statistics command is measurable if its counter and units are documented. A compiler ABI test is measurable if it catches an unexpected symbol or stack-layout change.
 
 Avoid goals such as "make the OS faster" unless you first choose a workload, define a measurement, and capture a baseline. Kernel progress is meaningful when the behavior and its evidence are reproducible.
+
+## 11. Write acceptance criteria before starting a subsystem
+
+A subsystem proposal should include a concrete behavior, the invariant it maintains, the API it exposes, its failure policy, and the test that proves it works. For a page allocator, for example, acceptance criteria might include aligned allocation, rejection of invalid sizes, no allocation from reserved ranges, and deterministic failure when no frames remain.
+
+For an interrupt-driven input queue, criteria should include bounded capacity, explicit overflow behavior, one owner for device reads, no slow console output in the handler, and a test that exercises input after many interrupts. These criteria make it clear when the subsystem is finished enough to depend on.

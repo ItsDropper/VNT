@@ -86,3 +86,9 @@ When changing the loop, test consecutive commands, an empty line, backspace at t
 ## Lab: describe one state transition
 
 Draw the shell states for waiting for a character, appending a character, handling backspace, receiving Enter, dispatching a command, and clearing the buffer. For every transition, write the condition and the state change. Use this state diagram before adding multi-argument parsing or command history.
+
+## 12. Do not confuse command text with trusted kernel state
+
+The shell receives bytes from an input channel. Treat the resulting line as untrusted data: it may be empty, too long, or contain characters the parser does not expect. Compare bounded strings and avoid interpreting an input index as a pointer without validating it. A malformed command should produce a predictable response, not alter interrupt configuration or memory mappings.
+
+This is a small example of a general kernel rule: validate input at the boundary, then pass a well-defined representation to the operation that consumes it.

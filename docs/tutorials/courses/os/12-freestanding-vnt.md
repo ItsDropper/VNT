@@ -99,3 +99,9 @@ The goal is to keep the VNT portion readable and testable while isolating the mi
 Prefer a short VNT function with a named responsibility over a large block that combines register manipulation, parsing, and output. If the function changes global state, name the state and explain the invariant. If it calls assembly, document the emitted symbol and argument contract. If it is called from an IRQ, explain why its execution time and side effects are bounded.
 
 These requirements are practical guardrails while the freestanding compiler and runtime are still evolving. They also make future compiler improvements easier because the source expresses the intended behavior independently of the current backend's quirks.
+
+## 14. Keep interfaces smaller than implementations
+
+A module interface should expose the operations another module needs, not every internal variable or hardware detail. The shell needs a way to print text and read a line; it should not need to know the UART divisor or the PS/2 controller status bits. The interrupt dispatcher needs a narrow way to update timer state; it should not need to know the shell's command-buffer layout.
+
+This separation makes refactors safer. When an implementation changes but its contract remains stable, callers should not need unrelated edits. When a caller needs an internal detail, reconsider whether the interface is missing a deliberate operation.

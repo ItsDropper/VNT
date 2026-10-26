@@ -111,3 +111,9 @@ The `git diff` commands show the move and the import list. They do not prove the
 - **Build and boot pass:** still test the specific device path; a working prompt alone does not prove keyboard or timer behavior.
 
 Keep this checklist in your notes for every future subsystem extraction.
+
+## Review exercise: choose the owner
+
+For each operation, choose the module that should own it and explain why: waiting for COM1 transmit-ready, writing a VGA cell, translating a PS/2 scan code, incrementing a timer tick, comparing a shell command, and returning from an interrupt. The last operation belongs in assembly because `iretq` consumes a CPU-defined frame; the policy for the timer event belongs in VNT.
+
+If two modules both need to know the raw port numbers or the internal layout of another module's state, the boundary may be too weak. Prefer a small function contract over duplicated hardware knowledge.

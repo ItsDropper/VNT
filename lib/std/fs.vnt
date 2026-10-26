@@ -1,5 +1,6 @@
 # VNT standard filesystem
 # Paths are interpreted relative to the process working directory unless absolute.
+import "string.vnt" as strutil
 
 export fun exists(path: string) -> bool {
     return fs_exists(path)
@@ -43,8 +44,6 @@ export fun list_dir(path: string) {
 
 # Line helpers use LF as the serialized newline. read_lines accepts LF and CRLF.
 # A single trailing newline does not create a phantom final line.
-import "string.vnt" as strutil
-
 export fun read_lines(path) {
     if !fs_exists(path) {
         return []
@@ -90,8 +89,8 @@ export fun append_line(path, line) {
         return fs_write(path, line + "\n")
     }
     contents = fs_read(path)
-    if len(contents) > 0 && !strutil.ends_with(contents, "\n") {
-        contents = contents + "\n"
+    if len(contents) == 0 || strutil.ends_with(contents, "\n") {
+        return fs_append(path, line + "\n")
     }
-    return fs_write(path, contents + line + "\n")
+    return fs_write(path, contents + "\n" + line + "\n")
 }

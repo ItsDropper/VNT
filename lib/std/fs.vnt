@@ -22,6 +22,11 @@ export fun write_text(path: string, contents: string) -> bool {
     return fs_write(path, contents)
 }
 
+# Writes a sibling temporary file and atomically replaces the destination when supported.
+export fun write_text_atomic(path: string, contents: string) -> bool {
+    return fs_write_atomic(path, contents)
+}
+
 export fun append_text(path: string, contents: string) -> bool {
     return fs_append(path, contents)
 }

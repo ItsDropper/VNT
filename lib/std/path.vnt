@@ -145,8 +145,8 @@ export fun change_extension(path, new_extension) {
     if parent == "." {
         return changed
     }
-    if parent == "/" {
-        return "/" + changed
+    if parent == "/" || (len(parent) == 3 && parent[1] == ":" && parent[2] == "/") {
+        return parent + changed
     }
     return parent + "/" + changed
 }

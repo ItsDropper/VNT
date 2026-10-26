@@ -114,3 +114,9 @@ The build driver VBuild does not currently replace this mixed VNT/assembly/custo
 ## Lab: make a stage table
 
 Create a table with columns for command, input, output, and validation. Include the VNT compiler build, VNT freestanding emission, assembly of `boot.S`, assembly of `interrupts.S`, linking, Multiboot2 validation, and ISO creation. Fill in the actual paths from `os/build.sh`, not guessed names.
+
+## 11. Make the build explain itself
+
+For every generated artifact, record the command that creates it and the next command that consumes it. This forms a directed graph: VNT sources feed the freestanding compiler; generated assembly feeds the assembler; object files feed the linker; the ELF feeds validation and GRUB packaging; the ISO feeds QEMU.
+
+If a future build-script edit changes a filename, update the next stage and the course together. A pipeline diagram that no longer matches `os/build.sh` is worse than no diagram because it sends debugging toward nonexistent files.

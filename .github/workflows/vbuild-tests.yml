@@ -35,9 +35,15 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Run VBuild unit tests
-        run: python -m unittest discover -s tests -p test_vbuild.py -v
+      - name: Build native VBuild executable
+        run: gcc -std=c11 -O2 tools/vbuild.c -o vbuild${{ runner.os == 'Windows' && '.exe' || '' }}
+      - name: Verify VBuild CLI and initialization
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/vbuild smoke project"
+          cd "$RUNNER_TEMP/vbuild smoke project"
+          "$GITHUB_WORKSPACE/vbuild${{ runner.os == 'Windows' && '.exe' || '' }}" init
+          test -f build.vbuild
+          test -f vbuild.properties
+          test -f src/main.vnt
+          "$GITHUB_WORKSPACE/vbuild${{ runner.os == 'Windows' && '.exe' || '' }}" clean --help >/dev/null 2>&1 && exit 1 || true

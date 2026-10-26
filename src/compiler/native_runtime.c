@@ -1200,6 +1200,37 @@ VNT_NATIVE_ABI VntValue * vnt_time_ms(void) {
     return vnt_float((double)tv.tv_sec * 1000.0 + (double)tv.tv_usec / 1000.0);
 #endif
 }
+/* Convert Unix epoch milliseconds using the host C runtime's timezone rules.
+   Returned fields: [year, month, day, hour, minute, second, weekday, yearday, is_dst].
+   Local conversion uses only the machine's configured timezone, not arbitrary IANA zones. */
+static VntValue *vnt_time_parts(VntValue *value,int utc,const char *fn) {
+    if(!value||value->type!=VNT_INT){fprintf(stderr,"Runtime error: %s expects epoch milliseconds as an integer.\\n",fn);exit(1);}
+    int64_t ms=value->integer,seconds=ms/1000;
+    if(ms<0 && ms%1000)seconds--;
+    time_t stamp=(time_t)seconds;
+    if((int64_t)stamp!=seconds)return vnt_array_new();
+    struct tm parts;
+#ifdef _WIN32
+    errno_t err=utc?gmtime_s(&parts,&stamp):localtime_s(&parts,&stamp);
+    if(err!=0)return vnt_array_new();
+#else
+    if(!(utc?gmtime_r(&stamp,&parts):localtime_r(&stamp,&parts)))return vnt_array_new();
+#endif
+    VntValue *result=vnt_array_new();
+    vnt_array_push(result,vnt_int((int64_t)parts.tm_year+1900));
+    vnt_array_push(result,vnt_int((int64_t)parts.tm_mon+1));
+    vnt_array_push(result,vnt_int(parts.tm_mday));
+    vnt_array_push(result,vnt_int(parts.tm_hour));
+    vnt_array_push(result,vnt_int(parts.tm_min));
+    vnt_array_push(result,vnt_int(parts.tm_sec));
+    vnt_array_push(result,vnt_int(parts.tm_wday));
+    vnt_array_push(result,vnt_int((int64_t)parts.tm_yday+1));
+    vnt_array_push(result,vnt_int(parts.tm_isdst>0?1:0));
+    return result;
+}
+VNT_NATIVE_ABI VntValue *vnt_time_local_parts(VntValue *value){return vnt_time_parts(value,0,"time_local_parts()");}
+VNT_NATIVE_ABI VntValue *vnt_time_utc_parts(VntValue *value){return vnt_time_parts(value,1,"time_utc_parts()");}
+
 VNT_NATIVE_ABI VntValue * vnt_sleep_ms(VntValue *value) {
     if (!value || value->type != VNT_INT || value->integer < 0) {
         fprintf(stderr, "Runtime error: sleep_ms() expects a non-negative integer.\n"); exit(1);

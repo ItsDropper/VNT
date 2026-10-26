@@ -18,7 +18,7 @@ This code assumes the expected legacy UART interface is available. A production 
 
 `serial_putc(value)` waits until the UART reports that its transmitter holding register is ready, then writes the byte to the data port. The status register is read from port `0x3FD`; the data register is at `0x3F8`.
 
-The polling loop is a **busy wait**: the CPU repeatedly checks the device instead of sleeping or receiving an interrupt. That is acceptable for a tiny early console but inefficient as a general device-driver design.
+The polling loop is a **busy wait**: the CPU repeatedly checks the device instead of sleeping or receiving an interrupt. That is acceptable for a tiny early console but inefficient as a general device-driver design. VNTOS now has a PIT timer IRQ, but COM1 itself is still polled; the existence of an IDT does not turn every driver into an interrupt-driven driver.
 
 ## 4. Receiving a byte
 

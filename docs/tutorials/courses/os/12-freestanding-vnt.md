@@ -77,3 +77,13 @@ Do not assume a general-purpose allocator, file API, thread API, or process envi
 ## Lab: investigate one emitted symbol
 
 Build the kernel, run `nm build/kernel.elf`, and locate the emitted VNT entry and interrupt dispatcher symbols. Compare those names with the source-level function declarations and assembly call sites. Record the mapping and explain how an incorrect symbol name would appear in a linker error.
+
+## 11. Separate compiler bugs from kernel bugs
+
+When a VNT construct fails in the freestanding path, reproduce the smallest example that demonstrates the compiler behavior. If the minimal example fails to parse or type-check, investigate the frontend. If it emits assembly but the assembler rejects it, inspect the emitted instruction syntax. If assembly succeeds but linking fails, inspect symbols and object inclusion. If the ELF links but QEMU fails, move to runtime diagnosis.
+
+This sequence prevents a compiler limitation from being "fixed" by adding arbitrary assembly to the kernel. It also gives you a compact regression test that can be used when the compiler is improved.
+
+## Lab: follow a function end to end
+
+Pick `interrupt_dispatch` or another kernel function. Find its source declaration, the compiler-emitted symbol, the corresponding assembly call site if applicable, and the final ELF symbol. Write one sentence about the contract at each boundary. This is a practical introduction to ABI debugging.

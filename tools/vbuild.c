@@ -643,6 +643,41 @@ static int imports_are_current(const char *source, const char *output) {
     return 1;
 }
 
+/* Inputs consumed after compilation by VNT's hosted runtime or freestanding linker. */
+static int build_inputs_are_current(const char *output, const char *target) {
+    static const char *const hosted_inputs[] = {
+        "src/compiler/native_runtime.c",
+        "src/compiler/native_runtime.h",
+        "src/compiler/native_net.c",
+        "src/compiler/native_async_net.c"
+    };
+    static const char *const elf_inputs[] = {
+        "freestanding/x86_64.ld"
+    };
+    const char *const *inputs = NULL;
+    size_t count = 0, i;
+    struct stat output_stat;
+    if (!strcmp(target, "exe")) {
+        inputs = hosted_inputs;
+        count = sizeof hosted_inputs / sizeof hosted_inputs[0];
+    } else if (!strcmp(target, "elf")) {
+        inputs = elf_inputs;
+        count = sizeof elf_inputs / sizeof elf_inputs[0];
+    } else {
+        return 1;
+    }
+    if (stat(output, &output_stat) != 0) return 0;
+    for (i = 0; i < count; i++) {
+        struct stat input_stat;
+        if (stat(inputs[i], &input_stat) != 0) {
+            fprintf(stderr, "vbuild: required build input is missing: %s\\n", inputs[i]);
+            return -1;
+        }
+        if (output_stat.st_mtime < input_stat.st_mtime) return 0;
+    }
+    return 1;
+}
+
 static int run_compiler(Config *cfg, int check);
 static int run_tests(Config *cfg);
 
@@ -657,6 +692,7 @@ static int run_compiler(Config *cfg, int check) {
     struct stat output_stat, source_stat, properties_stat, tasks_stat, compiler_stat;
     int dependencies_current = 1;
     int import_graph_current;
+    int build_inputs_current;
     int dep_index;
     if (!configure_module_path()) return 1;
     if (!exists(cfg->source)) {
@@ -712,7 +748,9 @@ static int run_compiler(Config *cfg, int check) {
     }
     import_graph_current = imports_are_current(source, output);
     if (import_graph_current < 0) return 1;
-    if (!check && !force_build && import_graph_current && dependencies_current &&
+    build_inputs_current = build_inputs_are_current(output, cfg->target);
+    if (build_inputs_current < 0) return 1;
+    if (!check && !force_build && import_graph_current && build_inputs_current && dependencies_current &&
         stat(output, &output_stat) == 0 &&
         stat(source, &source_stat) == 0 && stat("vbuild.properties", &properties_stat) == 0 &&
         stat("build.vbuild", &tasks_stat) == 0 && stat(compiler, &compiler_stat) == 0 &&

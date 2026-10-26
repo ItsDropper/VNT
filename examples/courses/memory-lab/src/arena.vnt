@@ -1,8 +1,8 @@
 # Copyright (c) 2026 ItsDropper
 # Memory Lab arena: one owned allocation, aligned subregions, and explicit accounting.
 # All raw memory access is confined to these functions.
-import "../../../lib/std/mem.vnt" as mem
-import "../../../lib/std/array.vnt" as arrays
+import "../../../../lib/std/mem.vnt" as mem
+import "../../../../lib/std/array.vnt" as arrays
 
 let ml_base: ptr = null
 let ml_capacity: int = 0

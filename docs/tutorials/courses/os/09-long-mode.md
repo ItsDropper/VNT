@@ -72,3 +72,13 @@ The current kernel still runs in privileged kernel mode. A 64-bit address does n
 ## Lab: explain one dependency
 
 Choose one control-register write or far jump in `os/boot.S`. State the CPU mode before the instruction, the feature it enables or selects, the prerequisite already established, and the first later instruction that relies on it. Then describe one plausible failure if the prerequisite were absent.
+
+## 9. Validate the result, not just the source
+
+After building, inspect the ELF entry point and disassembly. Confirm that the linked image contains the expected bootstrap and that the entry point points into the intended loadable region. Then boot the ISO in QEMU and look for the first kernel marker. These checks answer different questions: ELF inspection verifies the artifact's structure; QEMU verifies that the combined boot path executes far enough to observe the marker.
+
+If the VM resets, do not immediately change the CPU feature bits. First establish whether GRUB loaded the image and whether the bootstrap reached the transition. Use a marker or debugger breakpoint at the earliest stage that can be observed safely.
+
+## Lab: build a dependency table
+
+For the long-mode transition, list the GDT, stack, page tables, CPU feature controls, paging bit, and far jump. For each, write what it depends on and which later operation relies on it. Then explain why moving the final jump earlier would violate the transition contract.

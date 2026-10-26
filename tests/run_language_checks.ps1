@@ -188,6 +188,50 @@ try {
     }
     Write-Host "Standard filesystem library: PASS"
 
+    $StdTextExe = Join-Path $OutDir "std_text_advanced.exe"
+    & .\vnt.exe --compile tests\std_text_advanced.vnt -o $StdTextExe
+    if ($LASTEXITCODE -ne 0) { throw "Advanced text helpers did not compile." }
+    $textOutput = & $StdTextExe
+    if ($LASTEXITCODE -ne 0) { throw "Advanced text program exited unsuccessfully." }
+    $textExpected = @(
+        "4", "alpha", "true", "gamma", "true", "8", "abc", "ef",
+        "value", "filename", "00042", "vnt...", "2", "0", "STD_TEXT_ADVANCED_OK"
+    )
+    if (($textOutput -join "|") -ne ($textExpected -join "|")) {
+        throw "Unexpected advanced text output: $($textOutput -join ' | ')"
+    }
+    Write-Host "Advanced text helpers: PASS"
+
+    $StdTextFsExe = Join-Path $OutDir "std_text_fs_lines.exe"
+    & .\vnt.exe --compile tests\std_text_fs_lines.vnt -o $StdTextFsExe
+    if ($LASTEXITCODE -ne 0) { throw "Filesystem line helpers did not compile." }
+    $textFsOutput = & $StdTextFsExe
+    if ($LASTEXITCODE -ne 0) { throw "Filesystem line program exited unsuccessfully." }
+    $textFsExpected = @("true", "2", "first", "second", "true", "3", "third", "STD_FS_LINES_OK")
+    if (($textFsOutput -join "|") -ne ($textFsExpected -join "|")) {
+        throw "Unexpected filesystem line output: $($textFsOutput -join ' | ')"
+    }
+    Write-Host "Filesystem line helpers: PASS"
+
+    $StdCollectionsExe = Join-Path $OutDir "std_collections_strings_numbers.exe"
+    & .\vnt.exe --compile tests\std_collections_strings_numbers.vnt -o $StdCollectionsExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard array/string/number libraries did not compile." }
+    $collectionsOutput = & $StdCollectionsExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard array/string/number program exited unsuccessfully." }
+    $collectionsExpected = @(
+        "true", "1", "2", "24", "4.8", "2", "9", "[9, 2, 7, 2, 4]",
+        "vnt-stdlib-ok", "0", "[1, 2, 3, 4]", "[4, 2, 7]", "[4, 2, 7, 2, 9]", "[]",
+        "[7, 2, 9]", "[]", "[4, 2, 7, 2, 9]", "[3, 1, 2]",
+        "true", "true", "true", "true", "true", "1", "2", "ababab", "false",
+        "one cat, two cat", "unchanged", "VNT stdlib", "",
+        "true", "true", "-1", "0", "1", "720", "-1", "6", "true", "false",
+        "STDLIB_COLLECTIONS_STRINGS_NUMBERS_OK"
+    )
+    if (($collectionsOutput -join "|") -ne ($collectionsExpected -join "|")) {
+        throw "Unexpected standard array/string/number output: $($collectionsOutput -join ' | ')"
+    }
+    Write-Host "Standard array/string/number libraries: PASS"
+
     $StdFoundationExe = Join-Path $OutDir "std_foundation.exe"
     & .\vnt.exe --compile tests\std_foundation.vnt -o $StdFoundationExe
     if ($LASTEXITCODE -ne 0) { throw "Standard foundation libraries did not compile." }
@@ -219,6 +263,108 @@ try {
     }
     Write-Host "Standard JSON field accessor: PASS"
 
+
+    $CsvExe = Join-Path $OutDir "std_csv.exe"
+    & .\vnt.exe --compile tests\std_csv.vnt -o $CsvExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard CSV library did not compile." }
+    $csvOutput = & $CsvExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard CSV program exited unsuccessfully." }
+    $csvExpected = @(
+        "4", "name", "Ada", "likes, commas", "13", "a `"quote`"",
+        "likes, commas", "13", "a `"quote`"", "[]", "[]", "CSV_STANDARD_LIBRARY_OK"
+    )
+    if (($csvOutput -join "|") -ne ($csvExpected -join "|")) {
+        throw "Unexpected standard CSV output: $($csvOutput -join ' | ')"
+    }
+    Write-Host "Standard CSV parser/serializer: PASS"
+
+    $PathExe = Join-Path $OutDir "std_path.exe"
+    & .\vnt.exe --compile tests\std_path.vnt -o $PathExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard path library did not compile." }
+    $pathOutput = & $PathExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard path program exited unsuccessfully." }
+    $pathExpected = @(
+        "src/main/file.vnt", "main.vnt", "C:/Users/dropper/project", "gz",
+        "archive.tar", "", ".env", ".", "", "src/main/file.vnt",
+        "/absolute/file", "PATH_STANDARD_LIBRARY_OK"
+    )
+    if (($pathOutput -join "|") -ne ($pathExpected -join "|")) {
+        throw "Unexpected standard path output: $($pathOutput -join ' | ')"
+    }
+    Write-Host "Standard portable path helpers: PASS"
+
+    $ConfigIniExe = Join-Path $OutDir "std_config_ini.exe"
+    & .\vnt.exe --compile tests\std_config_ini.vnt -o $ConfigIniExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard INI configuration helpers did not compile." }
+    $configIniOutput = & $ConfigIniExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard INI configuration program exited unsuccessfully." }
+    $configIniExpected = @(
+        "enabled", "dark mode", "125", "a=b", "fallback",
+        "true", "false", "true", "true", "false", "true", "false", "INI_CONFIG_OK"
+    )
+    if (($configIniOutput -join "|") -ne ($configIniExpected -join "|")) {
+        throw "Unexpected standard INI configuration output: $($configIniOutput -join ' | ')"
+    }
+    Write-Host "Standard INI configuration parsing: PASS"
+
+    $ImprovedModulesExe = Join-Path $OutDir "std_improved_modules.exe"
+    & .\vnt.exe --compile tests\std_improved_modules.vnt -o $ImprovedModulesExe
+    if ($LASTEXITCODE -ne 0) { throw "Improved standard modules did not compile." }
+    $improvedModulesOutput = & $ImprovedModulesExe
+    if ($LASTEXITCODE -ne 0) { throw "Improved standard modules program exited unsuccessfully." }
+    $improvedModulesExpected = @(
+        "120000", "3600000", "86400000", "2", "1", "1",
+        "true", "true", "true", "true", "true", "false",
+        "src/main.exe", "C:/VNT/main.elf", ".env.txt",
+        "true", "true", "true", "true", "true", "true",
+        "name=Ada&theme=dark", "", "VNT", "fallback", "true", "false", "fallback", "false",
+        "true", "false", "true", "29", "false", "61", "1", "6", "-1",
+        "STD_IMPROVED_MODULES_OK"
+    )
+    if (($improvedModulesOutput -join "|") -ne ($improvedModulesExpected -join "|")) {
+        throw "Unexpected improved standard module output: $($improvedModulesOutput -join ' | ')"
+    }
+    Write-Host "Improved time/path/network/JSON helpers: PASS"
+
+    $RuntimeFeaturesExe = Join-Path $OutDir "runtime_features.exe"
+    & .\\vnt.exe --compile tests\\runtime_features.vnt -o $RuntimeFeaturesExe
+    if ($LASTEXITCODE -ne 0) { throw "UTF-8 and atomic-write runtime tests did not compile." }
+    $runtimeFeaturesOutput = & $RuntimeFeaturesExe
+    if ($LASTEXITCODE -ne 0) { throw "UTF-8 and atomic-write runtime test program exited unsuccessfully." }
+    $runtimeFeaturesExpected = @("4", "é中", "🙂", "", "true", "first", "true", "replacement", "true", "9", "1970", "1", "1", "0", "0", "0", "4", "1", "0", "RUNTIME_FEATURES_OK")
+    if (($runtimeFeaturesOutput -join "|") -ne ($runtimeFeaturesExpected -join "|")) {
+        throw "Unexpected UTF-8/atomic-write output: $($runtimeFeaturesOutput -join ' | ')"
+    }
+    Write-Host "UTF-8 scalar helpers and atomic filesystem writes: PASS"
+
+    $BigIntExe = Join-Path $OutDir "std_bigint_runtime.exe"
+    & .\\vnt.exe --compile tests\\std_bigint_runtime.vnt -o $BigIntExe
+    if ($LASTEXITCODE -ne 0) { throw "Big integer runtime test did not compile." }
+    $bigintOutput = & $BigIntExe
+    if ($LASTEXITCODE -ne 0) { throw "Big integer runtime program exited unsuccessfully." }
+    $bigintExpected = @(
+        "1000000000000000000000", "999999999999999999999", "111111110111111111010",
+        "1", "-8", "0", "-1", "0", "1", "BIGINT_RUNTIME_OK"
+    )
+    if (($bigintOutput -join "|") -ne ($bigintExpected -join "|")) {
+        throw "Unexpected big integer output: $($bigintOutput -join ' | ')"
+    }
+    Write-Host "Arbitrary-precision integer runtime: PASS"
+
+    $CryptoExe = Join-Path $OutDir "std_crypto_runtime.exe"
+    & .\\vnt.exe --compile tests\\std_crypto_runtime.vnt -o $CryptoExe
+    if ($LASTEXITCODE -ne 0) { throw "Crypto runtime test did not compile." }
+    $cryptoOutput = & $CryptoExe
+    if ($LASTEXITCODE -ne 0) { throw "Crypto runtime program exited unsuccessfully." }
+    $cryptoExpected = @(
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "true", "false", "CRYPTO_RUNTIME_OK"
+    )
+    if (($cryptoOutput -join "|") -ne ($cryptoExpected -join "|")) {
+        throw "Unexpected crypto runtime output: $($cryptoOutput -join ' | ')"
+    }
+    Write-Host "SHA-256 and constant-time comparison: PASS"
 
     $VantaOneExe = Join-Path $OutDir "vanta_one.exe"
     & .\vnt.exe --compile examples\vanta_one.vnt -o $VantaOneExe

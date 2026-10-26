@@ -197,15 +197,20 @@ The source-level standard library lives in `lib/std/`. Available modules include
 | Module | Purpose |
 | --- | --- |
 | `io.vnt` | Line input, standard output, and standard error |
-| `fs.vnt` | Text files and directory operations |
+| `fs.vnt` | Text files, directory operations, and line-oriented file helpers |
 | `math.vnt` | Math wrappers and helper functions |
-| `time.vnt` | Millisecond clock and sleep helpers |
+| `array.vnt` | Search/count, numeric aggregates, reverse, concatenate, take/drop, stable deduplication, and join |
+| `string.vnt` | Search/split/slicing/padding/replacement, prefix/suffix removal, trimming, and line counting (runtime indexing; no grapheme segmentation) |
+| `number.vnt` | Parity, sign, factorial, GCD, and primality helpers |
+| `time.vnt` | Millisecond clock, duration/deadline helpers, Gregorian leap-year/date validation, day-of-year, and weekday (no timezone database or guaranteed monotonic clock) |
 | `os.vnt` | Current directory and environment variables |
 | `process.vnt` | Start, inspect, wait for, and terminate child processes |
-| `net.vnt` | Native HTTP/HTTPS requests, status codes, headers, and downloads |
+| `net.vnt` | Native HTTP/HTTPS requests, status codes/classifiers, form encoding, headers, and downloads |
 | `log.vnt` | File and console logging |
-| `config.vnt` | Plain-text configuration helpers |
-| `json.vnt` | JSON-related source helpers |
+| `config.vnt` | Load/save files and read INI-style sections, keys, quoted values, and booleans |
+| `json.vnt` | JSON field lookup, fallback values, and non-empty-value checks (not a full DOM/parser) |
+| `csv.vnt` | CSV parsing/serialization with quoted commas, escaped quotes, and multiline fields |
+| `path.vnt` | Portable separators, basename, dirname, extension/stem replacement, absolute-path detection, and joining |
 | `mem.vnt` | Raw pointer allocation, offset, read/write, copy, and fill primitives; see [raw-memory limits](docs/raw-memory.md) |
 
 Example filesystem usage:

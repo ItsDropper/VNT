@@ -1,0 +1,27 @@
+import "../lib/std/unicode.vnt" as unicode
+import "../lib/std/fs.vnt" as fs
+import "../lib/std/time.vnt" as time
+
+sample = "Aé中🙂"
+print(unicode.length(sample))
+print(unicode.slice(sample, 1, 2))
+print(unicode.slice(sample, 3, 5))
+print(unicode.slice(sample, 4, 1))
+atomic_path = "vnt-runtime-atomic-test.txt"
+print(fs.write_text_atomic(atomic_path, "first"))
+print(fs.read_text(atomic_path))
+print(fs.write_text_atomic(atomic_path, "replacement"))
+print(fs.read_text(atomic_path))
+print(fs.remove_file(atomic_path))
+utc = time.utc_parts(0)
+print(len(utc))
+print(utc[0])
+print(utc[1])
+print(utc[2])
+print(utc[3])
+print(utc[4])
+print(utc[5])
+print(utc[6])
+print(utc[7])
+print(utc[8])
+print("RUNTIME_FEATURES_OK")

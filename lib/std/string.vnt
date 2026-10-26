@@ -1,0 +1,410 @@
+# Pure VNT string helpers using existing indexing, comparisons, and concatenation.
+# String indexing follows the language runtime's current character/index semantics.
+
+export fun is_empty(value) {
+    return len(value) == 0
+}
+
+export fun is_not_empty(value) {
+    return len(value) > 0
+}
+
+export fun starts_with(value, prefix) {
+    prefix_size = len(prefix)
+    if prefix_size > len(value) {
+        return false
+    }
+    i = 0
+    while i < prefix_size {
+        if value[i] != prefix[i] {
+            return false
+        }
+        i += 1
+    }
+    return true
+}
+
+export fun ends_with(value, suffix) {
+    suffix_size = len(suffix)
+    value_size = len(value)
+    if suffix_size > value_size {
+        return false
+    }
+    offset = value_size - suffix_size
+    i = 0
+    while i < suffix_size {
+        if value[offset + i] != suffix[i] {
+            return false
+        }
+        i += 1
+    }
+    return true
+}
+
+export fun index_of(value, needle) {
+    value_size = len(value)
+    needle_size = len(needle)
+    if needle_size == 0 {
+        return 0
+    }
+    if needle_size > value_size {
+        return -1
+    }
+    start = 0
+    while start <= value_size - needle_size {
+        i = 0
+        matched = true
+        while i < needle_size {
+            if value[start + i] != needle[i] {
+                matched = false
+            }
+            i += 1
+        }
+        if matched {
+            return start
+        }
+        start += 1
+    }
+    return -1
+}
+
+export fun contains(value, needle) {
+    value_size = len(value)
+    needle_size = len(needle)
+    if needle_size == 0 {
+        return true
+    }
+    if needle_size > value_size {
+        return false
+    }
+    start = 0
+    while start <= value_size - needle_size {
+        matched = true
+        i = 0
+        while i < needle_size {
+            if value[start + i] != needle[i] {
+                matched = false
+            }
+            i += 1
+        }
+        if matched {
+            return true
+        }
+        start += 1
+    }
+    return false
+}
+
+# Counts non-overlapping matches. An empty needle returns zero.
+export fun count(value, needle) {
+    value_size = len(value)
+    needle_size = len(needle)
+    if needle_size == 0 || needle_size > value_size {
+        return 0
+    }
+    matches = 0
+    start = 0
+    while start <= value_size - needle_size {
+        i = 0
+        matched = true
+        while i < needle_size {
+            if value[start + i] != needle[i] {
+                matched = false
+            }
+            i += 1
+        }
+        if matched {
+            matches += 1
+            start += needle_size
+        } else {
+            start += 1
+        }
+    }
+    return matches
+}
+
+export fun repeat(value, times) {
+    result = ""
+    i = 0
+    while i < times {
+        result = result + value
+        i += 1
+    }
+    return result
+}
+
+# Replaces non-overlapping matches. An empty search string leaves the input unchanged.
+export fun replace(value, needle, replacement) {
+    needle_size = len(needle)
+    if needle_size == 0 {
+        return value
+    }
+    value_size = len(value)
+    result = ""
+    position = 0
+    while position < value_size {
+        matched = false
+        if position + needle_size <= value_size {
+            matched = true
+            i = 0
+            while i < needle_size {
+                if value[position + i] != needle[i] {
+                    matched = false
+                }
+                i += 1
+            }
+        }
+        if matched {
+            result = result + replacement
+            position += needle_size
+        } else {
+            result = result + value[position]
+            position += 1
+        }
+    }
+    return result
+}
+
+# Trims ASCII space, tab, carriage return, and newline from both ends.
+export fun trim(value) {
+    size = len(value)
+    start = 0
+    end = size
+    while start < end {
+        ch = value[start]
+        if ch == " " || ch == "\t" || ch == "\r" || ch == "\n" {
+            start += 1
+        } else {
+            break
+        }
+    }
+    while end > start {
+        ch = value[end - 1]
+        if ch == " " || ch == "\t" || ch == "\r" || ch == "\n" {
+            end -= 1
+        } else {
+            break
+        }
+    }
+    result = ""
+    i = start
+    while i < end {
+        result = result + value[i]
+        i += 1
+    }
+    return result
+}
+
+# Returns the last matching index, or -1. An empty needle returns len(value).
+export fun last_index_of(value, needle) {
+    value_size = len(value)
+    needle_size = len(needle)
+    if needle_size == 0 {
+        return value_size
+    }
+    if needle_size > value_size {
+        return -1
+    }
+    start = value_size - needle_size
+    while start >= 0 {
+        matched = true
+        i = 0
+        while i < needle_size {
+            if value[start + i] != needle[i] {
+                matched = false
+            }
+            i += 1
+        }
+        if matched {
+            return start
+        }
+        start -= 1
+    }
+    return -1
+}
+
+fun append_item(values, item) {
+    size = len(values)
+    result = range(size + 1)
+    i = 0
+    while i < size {
+        result[i] = values[i]
+        i += 1
+    }
+    result[size] = item
+    return result
+}
+
+# Returns a new array of substrings. Empty delimiter returns [value] to avoid an infinite split.
+# Empty input returns [""]; trailing empty fields are preserved.
+export fun split(value, delimiter) {
+    if len(delimiter) == 0 {
+        return [value]
+    }
+    parts = []
+    part_start = 0
+    position = 0
+    value_size = len(value)
+    delimiter_size = len(delimiter)
+    while position <= value_size - delimiter_size {
+        matched = true
+        i = 0
+        while i < delimiter_size {
+            if value[position + i] != delimiter[i] {
+                matched = false
+            }
+            i += 1
+        }
+        if matched {
+            part = ""
+            i = part_start
+            while i < position {
+                part = part + value[i]
+                i += 1
+            }
+            parts = append_item(parts, part)
+            position += delimiter_size
+            part_start = position
+        } else {
+            position += 1
+        }
+    }
+    tail = ""
+    i = part_start
+    while i < value_size {
+        tail = tail + value[i]
+        i += 1
+    }
+    return append_item(parts, tail)
+}
+
+export fun left(value, count) {
+    size = len(value)
+    take_count = count
+    if take_count < 0 { take_count = 0 }
+    if take_count > size { take_count = size }
+    result = ""
+    i = 0
+    while i < take_count {
+        result = result + value[i]
+        i += 1
+    }
+    return result
+}
+
+export fun right(value, count) {
+    size = len(value)
+    take_count = count
+    if take_count < 0 { take_count = 0 }
+    if take_count > size { take_count = size }
+    result = ""
+    i = size - take_count
+    while i < size {
+        result = result + value[i]
+        i += 1
+    }
+    return result
+}
+
+export fun remove_prefix(value, prefix) {
+    prefix_size = len(prefix)
+    if prefix_size > len(value) {
+        return value
+    }
+    i = 0
+    while i < prefix_size {
+        if value[i] != prefix[i] {
+            return value
+        }
+        i += 1
+    }
+    result = ""
+    i = prefix_size
+    while i < len(value) {
+        result = result + value[i]
+        i += 1
+    }
+    return result
+}
+
+export fun remove_suffix(value, suffix) {
+    suffix_size = len(suffix)
+    value_size = len(value)
+    if suffix_size > value_size {
+        return value
+    }
+    offset = value_size - suffix_size
+    i = 0
+    while i < suffix_size {
+        if value[offset + i] != suffix[i] {
+            return value
+        }
+        i += 1
+    }
+    result = ""
+    i = 0
+    while i < value_size - suffix_size {
+        result = result + value[i]
+        i += 1
+    }
+    return result
+}
+
+export fun pad_left(value, target_length, fill) {
+    if len(fill) == 0 {
+        return value
+    }
+    result = value
+    while len(result) < target_length {
+        result = fill + result
+    }
+    if len(result) > target_length && target_length >= 0 {
+        trimmed = ""
+        start = len(result) - target_length
+        i = start
+        while i < len(result) {
+            trimmed = trimmed + result[i]
+            i += 1
+        }
+        result = trimmed
+    }
+    return result
+}
+
+export fun pad_right(value, target_length, fill) {
+    if len(fill) == 0 {
+        return value
+    }
+    result = value
+    while len(result) < target_length {
+        result = result + fill
+    }
+    if len(result) > target_length && target_length >= 0 {
+        trimmed = ""
+        i = 0
+        while i < target_length {
+            trimmed = trimmed + result[i]
+            i += 1
+        }
+        result = trimmed
+    }
+    return result
+}
+
+export fun count_lines(value) {
+    if len(value) == 0 {
+        return 0
+    }
+    lines = 1
+    i = 0
+    while i < len(value) {
+        if value[i] == "\n" {
+            lines += 1
+        }
+        i += 1
+    }
+    if value[len(value) - 1] == "\n" {
+        lines -= 1
+    }
+    return lines
+}

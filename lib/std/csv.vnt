@@ -1,0 +1,178 @@
+# RFC 4180-style CSV helpers implemented entirely in VNT.
+# parse(text) returns rows of string fields. Quoted fields may contain commas/newlines;
+# doubled quotes inside quoted fields decode to one quote. CRLF and LF row endings are accepted.
+# Malformed quoting returns an empty array; this is indistinguishable from empty input.
+# stringify(rows) quotes fields only when required and escapes embedded quotes.
+
+import "array.vnt" as array
+
+export fun parse(text) {
+    rows = []
+    row = []
+    field = ""
+    in_quotes = false
+    after_quote = false
+    size = len(text)
+    i = 0
+
+    if size == 0 {
+        return rows
+    }
+
+    while i < size {
+        ch = text[i]
+        if in_quotes {
+            if ch == "\"" {
+                if i + 1 < size && text[i + 1] == "\"" {
+                    field = field + "\""
+                    i += 2
+                } else {
+                    in_quotes = false
+                    after_quote = true
+                    i += 1
+                }
+            } else {
+                field = field + ch
+                i += 1
+            }
+        } else if after_quote {
+            if ch == "," {
+                row = array.concat(row, [field])
+                field = ""
+                after_quote = false
+                i += 1
+            } else if ch == "\n" {
+                row = array.concat(row, [field])
+                rows = array.concat(rows, [row])
+                row = []
+                field = ""
+                after_quote = false
+                i += 1
+            } else if ch == "\r" {
+                row = array.concat(row, [field])
+                rows = array.concat(rows, [row])
+                row = []
+                field = ""
+                after_quote = false
+                if i + 1 < size && text[i + 1] == "\n" {
+                    i += 2
+                } else {
+                    i += 1
+                }
+            } else {
+                return []
+            }
+        } else if ch == "\"" {
+            if len(field) != 0 {
+                return []
+            }
+            in_quotes = true
+            i += 1
+        } else if ch == "," {
+            row = array.concat(row, [field])
+            field = ""
+            i += 1
+        } else if ch == "\n" {
+            row = array.concat(row, [field])
+            rows = array.concat(rows, [row])
+            row = []
+            field = ""
+            i += 1
+        } else if ch == "\r" {
+            row = array.concat(row, [field])
+            rows = array.concat(rows, [row])
+            row = []
+            field = ""
+            if i + 1 < size && text[i + 1] == "\n" {
+                i += 2
+            } else {
+                i += 1
+            }
+        } else {
+            field = field + ch
+            i += 1
+        }
+    }
+
+    if in_quotes {
+        return []
+    }
+
+    # A final line ending already emitted its row; don't add a phantom row.
+    last = text[size - 1]
+    if last != "\n" && last != "\r" {
+        row = array.concat(row, [field])
+        rows = array.concat(rows, [row])
+    }
+    return rows
+}
+
+export fun stringify(rows) {
+    output = ""
+    row_index = 0
+    while row_index < len(rows) {
+        row = rows[row_index]
+        column_index = 0
+        while column_index < len(row) {
+            if column_index > 0 {
+                output = output + ","
+            }
+            value = row[column_index]
+            needs_quotes = false
+            if string_contains(value, ",") || string_contains(value, "\"") || string_contains(value, "\n") || string_contains(value, "\r") {
+                needs_quotes = true
+            }
+            if len(value) > 0 && (value[0] == " " || value[0] == "\t" || value[len(value) - 1] == " " || value[len(value) - 1] == "\t") {
+                needs_quotes = true
+            }
+            if needs_quotes {
+                output = output + "\""
+                i = 0
+                while i < len(value) {
+                    if value[i] == "\"" {
+                        output = output + "\"\""
+                    } else {
+                        output = output + value[i]
+                    }
+                    i += 1
+                }
+                output = output + "\""
+            } else {
+                output = output + value
+            }
+            column_index += 1
+        }
+        row_index += 1
+        if row_index < len(rows) {
+            output = output + "\r\n"
+        }
+    }
+    return output
+}
+
+fun string_contains(value, needle) {
+    value_size = len(value)
+    needle_size = len(needle)
+    if needle_size == 0 {
+        return true
+    }
+    if needle_size > value_size {
+        return false
+    }
+    start = 0
+    while start <= value_size - needle_size {
+        matched = true
+        i = 0
+        while i < needle_size {
+            if value[start + i] != needle[i] {
+                matched = false
+            }
+            i += 1
+        }
+        if matched {
+            return true
+        }
+        start += 1
+    }
+    return false
+}

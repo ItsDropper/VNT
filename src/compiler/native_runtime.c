@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <limits.h>
 #include <ctype.h>
+#include <time.h>
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -35,6 +36,7 @@
 
 #ifdef _WIN32
 #include <direct.h>
+#include <io.h>
 
 /*
  * Diagnostic crash log for compiled native VNT applications.
@@ -733,6 +735,55 @@ VNT_NATIVE_ABI void vnt_print(VntValue *v) {
     fflush(stdout);
 }
 
+/* UTF-8 helpers count Unicode scalar encodings, not grapheme clusters. Invalid
+   byte sequences are treated as one-byte units so slicing always progresses. */
+static VNT_NATIVE_ABI const char *vnt_app_string(VntValue *v,const char *fn);
+static size_t vnt_utf8_unit(const unsigned char *p) {
+    if (p[0] < 0x80) return 1;
+    if (p[0] >= 0xC2 && p[0] <= 0xDF &&
+        p[1] && (p[1] & 0xC0) == 0x80) return 2;
+    if (p[0] >= 0xE0 && p[0] <= 0xEF &&
+        p[1] && p[2] &&
+        (p[1] & 0xC0) == 0x80 && (p[2] & 0xC0) == 0x80 &&
+        !(p[0] == 0xE0 && p[1] < 0xA0) &&
+        !(p[0] == 0xED && p[1] >= 0xA0)) return 3;
+    if (p[0] >= 0xF0 && p[0] <= 0xF4 &&
+        p[1] && p[2] && p[3] &&
+        (p[1] & 0xC0) == 0x80 && (p[2] & 0xC0) == 0x80 &&
+        (p[3] & 0xC0) == 0x80 &&
+        !(p[0] == 0xF0 && p[1] < 0x90) &&
+        !(p[0] == 0xF4 && p[1] >= 0x90)) return 4;
+    return 1;
+}
+VNT_NATIVE_ABI VntValue *vnt_utf8_len(VntValue *value) {
+    const unsigned char *p=(const unsigned char *)vnt_app_string(value,"utf8_len()");
+    int64_t count=0;
+    while (*p) { size_t n=vnt_utf8_unit(p); p+=n; if(count==INT64_MAX) return vnt_int(count); count++; }
+    return vnt_int(count);
+}
+VNT_NATIVE_ABI VntValue *vnt_utf8_slice(VntValue *value,VntValue *start_value,VntValue *count_value) {
+    const unsigned char *source=(const unsigned char *)vnt_app_string(value,"utf8_slice()");
+    if(!start_value||start_value->type!=VNT_INT||!count_value||count_value->type!=VNT_INT||
+       start_value->integer<0||count_value->integer<0) {
+        fprintf(stderr,"Runtime error: utf8_slice() expects non-negative integer start and count.\\n"); exit(1);
+    }
+    size_t begin=0,end=0,index=0,byte_begin=0,byte_end=0;
+    size_t start=(size_t)start_value->integer, count=(size_t)count_value->integer;
+    while(source[begin] && index<start) { begin+=vnt_utf8_unit(source+begin); index++; }
+    if(index<start) return vnt_string("");
+    byte_begin=begin; index=0;
+    while(source[end] && index<count) { end+=vnt_utf8_unit(source+end); index++; }
+    /* The second walk begins at byte zero; use a code-point target to avoid
+       assuming that the requested slice ends before the string does. */
+    end=byte_begin;
+    while(source[end] && index>0) { end+=vnt_utf8_unit(source+end); index--; }
+    byte_end=end;
+    char *out=(char *)malloc(byte_end-byte_begin+1);
+    if(!out){fprintf(stderr,"Runtime error: out of memory in utf8_slice().\\n");exit(1);}
+    memcpy(out,source+byte_begin,byte_end-byte_begin);out[byte_end-byte_begin]=0;
+    VntValue *result=vnt_string(out);free(out);return result;
+}
+
 VNT_NATIVE_ABI VntValue * vnt_len(VntValue *v) {
     if (v->type == VNT_STRING) return vnt_int((int64_t)strlen(v->string));
     if (v->type == VNT_ARRAY) return vnt_int(v->array.count);
@@ -985,6 +1036,52 @@ static VNT_NATIVE_ABI VntValue * vnt_fs_write_mode(VntValue *path, VntValue *con
     int bad = written != n || ferror(f); if (fclose(f) != 0) bad = 1;
     return vnt_bool(!bad);
 }
+/* Atomic text replacement: write a sibling temporary file, flush it, then
+   replace the destination. This is atomic on filesystems that provide atomic
+   same-directory rename; it does not promise crash-proof directory metadata. */
+static unsigned long vnt_atomic_write_counter;
+VNT_NATIVE_ABI VntValue *vnt_fs_write_atomic(VntValue *path_value,VntValue *contents_value) {
+    const char *path=vnt_app_string(path_value,"fs_write_atomic()");
+    const char *contents=vnt_app_string(contents_value,"fs_write_atomic()");
+    char *temporary=NULL; FILE *file=NULL;
+    for(int attempt=0;attempt<32;attempt++) {
+        unsigned long sequence=++vnt_atomic_write_counter;
+#ifdef _WIN32
+        unsigned long process_id=(unsigned long)GetCurrentProcessId();
+#else
+        unsigned long process_id=(unsigned long)getpid();
+#endif
+        size_t needed=strlen(path)+80;
+        temporary=(char *)malloc(needed);
+        if(!temporary){fprintf(stderr,"Runtime error: out of memory in fs_write_atomic().\\n");exit(1);}
+        snprintf(temporary,needed,"%s.vnt-tmp-%lu-%lu",path,process_id,sequence);
+        file=fopen(temporary,"wbx");
+        if(file) break;
+        free(temporary);temporary=NULL;
+        if(errno!=EEXIST) return vnt_bool(0);
+    }
+    if(!file){free(temporary);return vnt_bool(0);}
+    size_t length=strlen(contents),written=fwrite(contents,1,length,file);
+    int failed=written!=length || ferror(file);
+    if(!failed && fflush(file)!=0) failed=1;
+#ifdef _WIN32
+    if(!failed && _commit(_fileno(file))!=0) failed=1;
+#else
+    if(!failed && fsync(fileno(file))!=0) failed=1;
+#endif
+    if(fclose(file)!=0) failed=1;
+    if(!failed) {
+#ifdef _WIN32
+        if(!MoveFileExA(temporary,path,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)) failed=1;
+#else
+        if(rename(temporary,path)!=0) failed=1;
+#endif
+    }
+    if(failed) remove(temporary);
+    free(temporary);
+    return vnt_bool(!failed);
+}
+
 VNT_NATIVE_ABI VntValue * vnt_fs_write(VntValue *p, VntValue *s) { return vnt_fs_write_mode(p, s, "wb", "fs_write()"); }
 VNT_NATIVE_ABI VntValue * vnt_fs_append(VntValue *p, VntValue *s) { return vnt_fs_write_mode(p, s, "ab", "fs_append()"); }
 VNT_NATIVE_ABI VntValue * vnt_fs_delete(VntValue *path) { return vnt_bool(remove(vnt_app_string(path, "fs_delete()")) == 0); }
@@ -1104,6 +1201,34 @@ VNT_NATIVE_ABI VntValue * vnt_time_ms(void) {
     return vnt_float((double)tv.tv_sec * 1000.0 + (double)tv.tv_usec / 1000.0);
 #endif
 }
+/* Convert Unix epoch milliseconds using the host C runtime's timezone rules.
+   Returned fields: [year, month, day, hour, minute, second, weekday, yearday, is_dst].
+   Local conversion uses only the machine's configured timezone, not arbitrary IANA zones. */
+static VntValue *vnt_time_parts(VntValue *value,int utc,const char *fn) {
+    if(!value||value->type!=VNT_INT){fprintf(stderr,"Runtime error: %s expects epoch milliseconds as an integer.\\n",fn);exit(1);}
+    int64_t ms=value->integer,seconds=ms/1000;
+    if(ms<0 && ms%1000)seconds--;
+    time_t stamp=(time_t)seconds;
+    if((int64_t)stamp!=seconds)return vnt_array_new();
+    struct tm parts;
+    struct tm *converted=utc?gmtime(&stamp):localtime(&stamp);
+    if(!converted)return vnt_array_new();
+    parts=*converted;
+    VntValue *result=vnt_array_new();
+    vnt_array_push(result,vnt_int((int64_t)parts.tm_year+1900));
+    vnt_array_push(result,vnt_int((int64_t)parts.tm_mon+1));
+    vnt_array_push(result,vnt_int(parts.tm_mday));
+    vnt_array_push(result,vnt_int(parts.tm_hour));
+    vnt_array_push(result,vnt_int(parts.tm_min));
+    vnt_array_push(result,vnt_int(parts.tm_sec));
+    vnt_array_push(result,vnt_int(parts.tm_wday));
+    vnt_array_push(result,vnt_int((int64_t)parts.tm_yday+1));
+    vnt_array_push(result,vnt_int(parts.tm_isdst>0?1:0));
+    return result;
+}
+VNT_NATIVE_ABI VntValue *vnt_time_local_parts(VntValue *value){return vnt_time_parts(value,0,"time_local_parts()");}
+VNT_NATIVE_ABI VntValue *vnt_time_utc_parts(VntValue *value){return vnt_time_parts(value,1,"time_utc_parts()");}
+
 VNT_NATIVE_ABI VntValue * vnt_sleep_ms(VntValue *value) {
     if (!value || value->type != VNT_INT || value->integer < 0) {
         fprintf(stderr, "Runtime error: sleep_ms() expects a non-negative integer.\n"); exit(1);
@@ -1416,6 +1541,170 @@ VNT_NATIVE_ABI VntValue * vnt_process_launch(VntValue *path_value) {
 #endif
 }
 
+
+/* Dependency-free SHA-256 for integrity checks and digest-based identifiers.
+   This is hashing, not encryption or password-storage policy. */
+static uint32_t vnt_sha_rotr(uint32_t x,unsigned n){return (x>>n)|(x<<(32-n));}
+static void vnt_sha256_block(uint32_t h[8],const unsigned char block[64]) {
+    static const uint32_t k[64]={
+      0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+      0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+      0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+      0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+      0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+      0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+      0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+      0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+    };
+    uint32_t w[64];
+    for(int i=0;i<16;i++)w[i]=((uint32_t)block[i*4]<<24)|((uint32_t)block[i*4+1]<<16)|((uint32_t)block[i*4+2]<<8)|block[i*4+3];
+    for(int i=16;i<64;i++){
+        uint32_t s0=vnt_sha_rotr(w[i-15],7)^vnt_sha_rotr(w[i-15],18)^(w[i-15]>>3);
+        uint32_t s1=vnt_sha_rotr(w[i-2],17)^vnt_sha_rotr(w[i-2],19)^(w[i-2]>>10);
+        w[i]=w[i-16]+s0+w[i-7]+s1;
+    }
+    uint32_t a=h[0],b=h[1],c=h[2],d=h[3],e=h[4],f=h[5],g=h[6],z=h[7];
+    for(int i=0;i<64;i++){
+        uint32_t s1=vnt_sha_rotr(e,6)^vnt_sha_rotr(e,11)^vnt_sha_rotr(e,25);
+        uint32_t ch=(e&f)^(~e&g),t1=z+s1+ch+k[i]+w[i];
+        uint32_t s0=vnt_sha_rotr(a,2)^vnt_sha_rotr(a,13)^vnt_sha_rotr(a,22);
+        uint32_t maj=(a&b)^(a&c)^(b&c),t2=s0+maj;
+        z=g;g=f;f=e;e=d+t1;d=c;c=b;b=a;a=t1+t2;
+    }
+    h[0]+=a;h[1]+=b;h[2]+=c;h[3]+=d;h[4]+=e;h[5]+=f;h[6]+=g;h[7]+=z;
+}
+VNT_NATIVE_ABI VntValue *vnt_sha256(VntValue *input) {
+    const unsigned char *data=(const unsigned char *)vnt_app_string(input,"sha256()");
+    size_t n=strlen((const char *)data);
+    if(n>(SIZE_MAX-72)){fprintf(stderr,"Runtime error: input too large for sha256().\\n");exit(1);}
+    size_t padded=((n+9+63)/64)*64;
+    unsigned char *buffer=(unsigned char *)calloc(padded,1);
+    if(!buffer){fprintf(stderr,"Runtime error: out of memory in sha256().\\n");exit(1);}
+    memcpy(buffer,data,n);buffer[n]=0x80;
+    uint64_t bits=(uint64_t)n*8;
+    for(int i=0;i<8;i++)buffer[padded-1-i]=(unsigned char)(bits>>(i*8));
+    uint32_t h[8]={0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19};
+    for(size_t i=0;i<padded;i+=64)vnt_sha256_block(h,buffer+i);
+    free(buffer);
+    char hex[65];
+    for(int i=0;i<8;i++)snprintf(hex+i*8,9,"%08x",h[i]);
+    hex[64]=0;return vnt_string(hex);
+}
+VNT_NATIVE_ABI VntValue *vnt_constant_time_equal(VntValue *left,VntValue *right) {
+    const unsigned char *a=(const unsigned char *)vnt_app_string(left,"constant_time_equal()");
+    const unsigned char *b=(const unsigned char *)vnt_app_string(right,"constant_time_equal()");
+    size_t na=strlen((const char *)a),nb=strlen((const char *)b),n=na>nb?na:nb;
+    size_t diff=na^nb;
+    for(size_t i=0;i<n;i++)diff|=(i<na?a[i]:0)^(i<nb?b[i]:0);
+    return vnt_bool(diff==0);
+}
+
+/* Decimal-string arbitrary-precision signed integer arithmetic. */
+typedef struct { int sign; size_t length; char *digits; } VntBigInt;
+static void vnt_bigint_fail(void) {
+    fprintf(stderr,"Runtime error: bigint operations require signed decimal integer strings.\\n"); exit(1);
+}
+static VntBigInt vnt_bigint_parse(VntValue *value,const char *fn) {
+    const char *text=vnt_app_string(value,fn);
+    VntBigInt n={1,0,NULL};
+    if(*text=='-'||*text=='+'){if(*text=='-')n.sign=-1;text++;}
+    const char *begin=text;
+    while(*text>='0'&&*text<='9')text++;
+    if(text==begin||*text) vnt_bigint_fail();
+    while(begin[0]=='0' && begin[1]) begin++;
+    n.length=(size_t)(text-begin);
+    n.digits=(char *)malloc(n.length+1);
+    if(!n.digits){fprintf(stderr,"Runtime error: out of memory in bigint operation.\\n");exit(1);}
+    memcpy(n.digits,begin,n.length);n.digits[n.length]=0;
+    if(n.length==1&&n.digits[0]=='0')n.sign=0;
+    return n;
+}
+static int vnt_bigint_magcmp(const VntBigInt *a,const VntBigInt *b) {
+    if(a->length!=b->length)return a->length<b->length?-1:1;
+    int c=memcmp(a->digits,b->digits,a->length);
+    return c<0?-1:c>0?1:0;
+}
+static char *vnt_bigint_format(int sign,const char *digits,size_t length) {
+    while(length>1&&*digits=='0'){digits++;length--;}
+    int zero=length==1&&digits[0]=='0';
+    size_t prefix=(sign<0&&!zero)?1:0;
+    char *out=(char *)malloc(prefix+length+1);
+    if(!out){fprintf(stderr,"Runtime error: out of memory formatting bigint.\\n");exit(1);}
+    if(prefix)out[0]='-';
+    memcpy(out+prefix,digits,length);out[prefix+length]=0;return out;
+}
+static char *vnt_bigint_addmag(const VntBigInt *a,const VntBigInt *b,size_t *outlen) {
+    size_t n=(a->length>b->length?a->length:b->length)+1;
+    char *out=(char *)malloc(n+1);if(!out){fprintf(stderr,"Runtime error: out of memory.\\n");exit(1);}
+    int carry=0;
+    for(size_t k=0;k<n-1;k++){
+        int da=k<a->length?a->digits[a->length-1-k]-'0':0;
+        int db=k<b->length?b->digits[b->length-1-k]-'0':0;
+        int sum=da+db+carry;out[n-1-k]=(char)('0'+sum%10);carry=sum/10;
+    }
+    out[0]=(char)('0'+carry);
+    size_t start=carry?0:1;*outlen=n-start;
+    memmove(out,out+start,*outlen);out[*outlen]=0;return out;
+}
+static char *vnt_bigint_submag(const VntBigInt *large,const VntBigInt *small,size_t *outlen) {
+    char *out=(char *)malloc(large->length+1);if(!out){fprintf(stderr,"Runtime error: out of memory.\\n");exit(1);}
+    int borrow=0;
+    for(size_t k=0;k<large->length;k++){
+        int da=large->digits[large->length-1-k]-'0';
+        int db=k<small->length?small->digits[small->length-1-k]-'0':0;
+        int v=da-db-borrow;if(v<0){v+=10;borrow=1;}else borrow=0;
+        out[large->length-1-k]=(char)('0'+v);
+    }
+    size_t start=0;while(start+1<large->length&&out[start]=='0')start++;
+    *outlen=large->length-start;memmove(out,out+start,*outlen);out[*outlen]=0;return out;
+}
+static VntValue *vnt_bigint_binary(VntValue *av,VntValue *bv,int operation) {
+    VntBigInt a=vnt_bigint_parse(av,"bigint operation"),b=vnt_bigint_parse(bv,"bigint operation");
+    char *digits=NULL;size_t length=0;int sign=1;
+    if(operation==3) {
+        int cmp=a.sign==b.sign?(a.sign==0?0:vnt_bigint_magcmp(&a,&b)*(a.sign<0?-1:1)):(a.sign<b.sign?-1:1);
+        VntValue *r=vnt_int(cmp<0?-1:cmp>0?1:0);free(a.digits);free(b.digits);return r;
+    }
+    if(operation==2) {
+        if(a.sign==0||b.sign==0){digits=strdup("0");length=1;sign=0;}
+        else {
+            length=a.length+b.length;
+            int *acc=(int *)calloc(length+1,sizeof(int));
+            digits=(char *)malloc(length+1);
+            if(!acc||!digits){free(acc);free(digits);fprintf(stderr,"Runtime error: out of memory multiplying bigint.\\n");exit(1);}
+            for(size_t i=a.length;i>0;i--) {
+                int carry=0,da=a.digits[i-1]-'0';
+                for(size_t j=b.length;j>0;j--) {
+                    size_t pos=i+j-1;
+                    int sum=acc[pos]+da*(b.digits[j-1]-'0')+carry;
+                    acc[pos]=sum%10;carry=sum/10;
+                }
+                acc[i-1]+=carry;
+            }
+            for(size_t i=0;i<length;i++)digits[i]=(char)('0'+acc[i]);
+            digits[length]=0;free(acc);sign=a.sign*b.sign;
+        }
+    } else {
+        int bsign=operation==1?-b.sign:b.sign;
+        if(a.sign==0){digits=strdup(b.digits);length=b.length;sign=bsign;}
+        else if(bsign==0){digits=strdup(a.digits);length=a.length;sign=a.sign;}
+        else if(a.sign==bsign){digits=vnt_bigint_addmag(&a,&b,&length);sign=a.sign;}
+        else {
+            int cmp=vnt_bigint_magcmp(&a,&b);
+            if(cmp==0){digits=strdup("0");length=1;sign=0;}
+            else if(cmp>0){digits=vnt_bigint_submag(&a,&b,&length);sign=a.sign;}
+            else {digits=vnt_bigint_submag(&b,&a,&length);sign=bsign;}
+        }
+    }
+    if(!digits){fprintf(stderr,"Runtime error: out of memory in bigint operation.\\n");exit(1);}
+    char *formatted=vnt_bigint_format(sign,digits,length);
+    VntValue *result=vnt_string(formatted);
+    free(formatted);free(digits);free(a.digits);free(b.digits);return result;
+}
+VNT_NATIVE_ABI VntValue *vnt_bigint_add(VntValue *a,VntValue *b){return vnt_bigint_binary(a,b,0);}
+VNT_NATIVE_ABI VntValue *vnt_bigint_sub(VntValue *a,VntValue *b){return vnt_bigint_binary(a,b,1);}
+VNT_NATIVE_ABI VntValue *vnt_bigint_mul(VntValue *a,VntValue *b){return vnt_bigint_binary(a,b,2);}
+VNT_NATIVE_ABI VntValue *vnt_bigint_compare(VntValue *a,VntValue *b){return vnt_bigint_binary(a,b,3);}
 
 /* Read a scalar field from the Nth JSON object/key occurrence. This is a
    deliberately small accessor for API responses, not a full JSON DOM. */

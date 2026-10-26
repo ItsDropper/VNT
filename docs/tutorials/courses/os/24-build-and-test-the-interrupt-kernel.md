@@ -70,3 +70,32 @@ Explain what each of `grub-file`, `readelf`, `nm`, and QEMU proves—and what it
 ## Exercise
 
 Capture the output of two `irq` commands separated by a delay. Keep the exact command transcript with your notes. If the values do not change, report the observed behavior instead of changing multiple subsystems at once.
+
+## Record the result instead of guessing
+
+For a serious kernel change, keep a small test log with these fields:
+
+| Check | Expected result | Your observation |
+| --- | --- | --- |
+| VNT compilation | no parser/type errors | |
+| Assembly | both `boot.S` and `interrupts.S` assemble | |
+| Link | no unresolved symbols | |
+| Multiboot2 | `grub-file` exits successfully | |
+| Boot marker | `VNTOS_BOOT_OK` appears | |
+| Prompt marker | `VNTOS_COMMAND_LINE_READY` appears | |
+| Shell | existing commands still work | |
+| Timer | `irq` shows a count that increases | |
+| VGA | banner is visible and SeaBIOS text is cleared | |
+| CI | VNTOS QEMU workflow passes | |
+
+Fill the observation column with what actually happened. If a check fails, preserve the first error or transcript; do not replace it with a summary like "doesn't work."
+
+## Why the existing CI uses a keyboard monitor
+
+The workflow sends keystrokes through QEMU's monitor so it tests the emulated PS/2 keyboard path instead of merely writing command bytes into the serial socket. The shell also accepts serial input, but that would not verify keyboard scan-code polling. The VGA check snapshots text memory and verifies that the banner is present, independently of the serial transcript.
+
+The added `irq` check verifies the command path and that the counter can be read. The repeated timer delivery is best checked manually by reading it twice; if you want a stronger automated test later, add an explicit delay and assert that the numeric value changed rather than checking only the label.
+
+## Keep artifacts separate from source
+
+Generated files belong under `build/`. Do not edit `build/kernel.s` or `build/kernel.o` as a permanent fix: the next build regenerates them. If you need to inspect compiler output, save the relevant snippet in your notes and change the source or compiler implementation that generated it.

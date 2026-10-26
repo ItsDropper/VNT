@@ -161,6 +161,52 @@ static char *join_path(const char *directory, const char *name) {
     return path;
 }
 
+
+static int file_exists(const char *path) {
+    FILE *file = fopen(path, "rb");
+    if (!file) return 0;
+    fclose(file);
+    return 1;
+}
+
+/* Resolve relative to the importing module first, then VNT_MODULE_PATH entries. */
+static char *resolve_module_path(const char *directory, const char *module) {
+    char *candidate = join_path(directory, module);
+    if (candidate && file_exists(candidate)) {
+        char *resolved = normalize_path(candidate);
+        free(candidate);
+        return resolved;
+    }
+    free(candidate);
+    const char *search = getenv("VNT_MODULE_PATH");
+    if (!search || !*search) return normalize_path(module);
+    while (*search) {
+        const char *end = strchr(search,
+#ifdef _WIN32
+                                 ';'
+#else
+                                 ':'
+#endif
+        );
+        size_t length = end ? (size_t)(end - search) : strlen(search);
+        if (length > 0 && length < 4096) {
+            char root[4096];
+            memcpy(root, search, length);
+            root[length] = '\0';
+            candidate = join_path(root, module);
+            if (candidate && file_exists(candidate)) {
+                char *resolved = normalize_path(candidate);
+                free(candidate);
+                return resolved;
+            }
+            free(candidate);
+        }
+        if (!end) break;
+        search = end + 1;
+    }
+    return normalize_path(module);
+}
+
 static int is_import_line(const char *line, char *module, size_t module_size,
                           char *alias, size_t alias_size) {
     while (isspace((unsigned char)*line))
@@ -280,9 +326,7 @@ static int load_recursive(Loader *loader, const char *path, const char *namespac
 
         char module[4096], alias[256];
         if (is_import_line(line, module, sizeof(module), alias, sizeof(alias))) {
-            char *module_path = join_path(directory, module);
-            char *resolved_path = module_path ? normalize_path(module_path) : NULL;
-            free(module_path);
+            char *resolved_path = resolve_module_path(directory, module);
             if (!resolved_path ||
                 !load_recursive(loader, resolved_path, alias[0] ? alias : NULL, output, length, capacity)) {
                 free(resolved_path);

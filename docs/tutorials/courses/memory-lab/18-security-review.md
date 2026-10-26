@@ -127,6 +127,22 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Audit every boundary and lifetime transition
+
+Review each public function and write down the evidence that makes every raw-memory operation valid.
+
+```text
+[ ] allocation succeeded
+[ ] offset is non-negative
+[ ] start <= capacity
+[ ] size <= capacity - start
+[ ] cursor changes only after validation
+[ ] reset invalidates old reservations
+[ ] free happens exactly once
+```
+
+The arena is not thread-safe and does not support individual free. Document those limitations and reject unsupported alignment values.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

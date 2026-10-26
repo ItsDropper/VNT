@@ -1,6 +1,62 @@
 # Copyright (c) 2026 ItsDropper
-# Offline entry point for the network stack simulator.
+# Builds one synthetic UDP request, sends it through the in-process stack,
+# then validates the generated response. No real network is used.
+import "./bytes.vnt" as bytes
+import "./ethernet.vnt" as ethernet
+import "./ipv4.vnt" as ipv4
+import "./udp.vnt" as udp
 import "./simulator.vnt" as simulator
 
-print("VNT Network Stack Simulator scaffold")
-print("Complete the offline packet fixtures and parser TODOs in the course.")
+let client_mac: array = [2, 0, 0, 0, 0, 1]
+let server_mac: array = [2, 0, 0, 0, 0, 2]
+let client_ip: array = [192, 0, 2, 10]
+let server_ip: array = [192, 0, 2, 20]
+let message: array = [86, 78, 84, 32, 115, 121, 115, 116, 101, 109, 115]
+
+print("Building synthetic UDP echo request")
+let request_udp: array = udp.build_udp(40000, 7, message)
+let request_ip: array = ipv4.build_ipv4(client_ip, server_ip, 17, 64, 42, request_udp)
+let request_frame: array = ethernet.build_frame(server_mac, client_mac, 2048, request_ip)
+print("request frame length:")
+print(len(request_frame))
+
+print("Processing frame in offline simulator")
+let response_frame: array = simulator.process_synthetic_frame(request_frame)
+print("response frame length:")
+print(len(response_frame))
+
+let response_ethernet: array = ethernet.parse_frame(response_frame)
+if len(response_ethernet) != 14 {
+    print("NET_STACK_FAIL: response Ethernet header")
+} else {
+    let response_ip_packet: array = bytes.slice(response_frame, 14, len(response_frame) - 14)
+    let response_ip: array = ipv4.parse_ipv4(response_ip_packet)
+    if len(response_ip) != 12 {
+        print("NET_STACK_FAIL: response IPv4 header")
+    } else {
+        let response_udp_bytes: array = bytes.slice(response_ip_packet, response_ip[0], response_ip[1] - response_ip[0])
+        let response_udp: array = udp.parse_udp(response_udp_bytes)
+        if len(response_udp) != 5 {
+            print("NET_STACK_FAIL: response UDP header")
+        } else {
+            let response_payload: array = udp.udp_payload(response_udp_bytes)
+            if len(response_payload) != len(message) {
+                print("NET_STACK_FAIL: payload length")
+            } else {
+                let equal: bool = true
+                let i: int = 0
+                while i < len(message) {
+                    if response_payload[i] != message[i] {
+                        equal = false
+                    }
+                    i += 1
+                }
+                if equal {
+                    print("NET_STACK_PASS: end-to-end synthetic echo")
+                } else {
+                    print("NET_STACK_FAIL: echo payload differs")
+                }
+            }
+        }
+    }
+}

@@ -114,6 +114,19 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Implement explicit state transitions
+
+Represent a small teaching model with named integer states and event codes. Invalid transitions return -1 rather than silently succeeding.
+
+```vnt
+if state == 1 && event == 3 { return 3 }
+if state == 2 && event == 4 { return 4 }
+if state == 4 && event == 6 { return 0 }
+return -1
+```
+
+This is not TCP. Document omitted retransmission, sequence windows, congestion control, timers, and real socket I/O.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

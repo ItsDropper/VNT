@@ -35,3 +35,29 @@ Explain the role of the PIT, PIC, IDT, dispatcher, and EOI separately. Describe 
 ## Exercise
 
 Run VNTOS, enter `irq`, wait several seconds, and enter `irq` again. The hexadecimal counter should have increased. Record both values and explain why the difference is not a precise elapsed-time measurement.
+
+## Work out the divisor
+
+The conventional PIT input frequency is approximately 1,193,182 Hz. Dividing it by 100 gives about 11,931.82. The implementation uses divisor 11,931, which gives a frequency close to 100 Hz:
+
+`1,193,182 / 11,931 ≈ 100.01` ticks per second.
+
+This is an approximate rate. The PIT's real oscillator tolerance and emulator behavior mean that the counter is not a high-precision wall clock. A kernel wanting elapsed time should track calibrated time units and account for the timer's actual behavior.
+
+## The PIC mask is a bit field
+
+The master mask `0xfe` is binary `11111110`. Bit 0 is clear, so IRQ0 is enabled; bits 1–7 remain set and masked. The slave mask `0xff` is binary `11111111`, so all slave IRQs remain masked.
+
+This detail is deliberate. The current PS/2 driver reads the controller in the main polling loop. If IRQ1 were unmasked without changing that design, both the IRQ handler and the polling loop could try to consume the same controller data byte. Correct interrupt-driven input needs a clear ownership rule and usually a queue between the handler and the shell.
+
+## EOI and repeated delivery
+
+The PIC expects an end-of-interrupt (EOI) command after a hardware IRQ has been handled. The common assembly path sends EOI to the master PIC for IRQs 32–39 and to both slave and master for IRQs 40–47. Only IRQ0 is enabled now, but the common path covers the mapped range.
+
+An exception is not a PIC IRQ and must not receive a PIC EOI. That is why the vector-range check exists. Confusing exceptions and IRQs can create hard-to-diagnose behavior.
+
+## Observe, then reason
+
+Use the `irq` command twice with a delay. Record the displayed values and subtract the earlier value from the later value. The difference should be positive under normal QEMU operation. It is a count of delivered interrupts, not a timestamp. Do not infer exact seconds from the difference unless you account for the actual elapsed delay and timer rate.
+
+If the value does not change, inspect the sequence in this order: IDT loaded, PIC remapped, PIT programmed, IRQ0 unmasked, CPU IF enabled, vector 32 stub installed, dispatcher increments the counter, and EOI sent. Changing several of these at once destroys useful evidence.

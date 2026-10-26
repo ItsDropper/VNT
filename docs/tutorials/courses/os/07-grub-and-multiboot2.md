@@ -55,3 +55,33 @@ Explain the difference between `os/grub.cfg`, the Multiboot2 header in `os/boot.
 ## Exercise
 
 Find the four header fields listed in Section 3 in `os/boot.S`. Then find the `KEEP` directive in the linker script and explain why the kernel needs that section to survive linking.
+
+## 6. Understand the Multiboot2 header fields
+
+The header has a magic value, an architecture field, a header length, and a checksum chosen so the protocol's required sum is zero modulo (2^{32}). It also contains aligned tags that request or describe features. The bootloader searches for this structure within the range and alignment required by the protocol; putting a similar-looking byte sequence in an arbitrary section is not enough.
+
+When inspecting the header, verify its placement and checksum from the actual assembly and use `grub-file --is-x86-multiboot2 build/kernel.elf` as an independent validation step. The tool's success says the ELF looks like a Multiboot2 kernel; it does not say the bootstrap's paging code is correct.
+
+## 7. ELF loading and ISO packaging are separate
+
+GRUB reads the ISO filesystem, finds `grub.cfg`, loads the kernel ELF, and interprets its loadable segments. The kernel does not run directly from the ISO file. This distinction matters when debugging: a missing GRUB configuration is a packaging problem, while a wrong ELF entry point is a kernel-image problem.
+
+Use the following checks after building:
+
+```sh
+file build/vntos.iso build/kernel.elf
+readelf -h -l build/kernel.elf
+grub-file --is-x86-multiboot2 build/kernel.elf
+```
+
+Run only commands for artifacts that actually exist. If the ISO tools were unavailable, say so explicitly rather than treating the missing ISO as a boot failure.
+
+## 8. Why boot protocol code should be stable
+
+The Multiboot2 header is a contract with GRUB. Changing its alignment, tags, or section placement can prevent the loader from recognizing the kernel before any of your normal debugging output can execute. Keep protocol changes isolated and validate the ELF after each one.
+
+Do not copy a random boot header from another project without checking whether it targets the same architecture, protocol version, and linker layout. A header written for 32-bit entry assumptions may not match this kernel's 64-bit transition.
+
+## Lab: separate the layers
+
+Create three failure examples: (a) the ISO contains no `grub.cfg`; (b) the ELF fails Multiboot2 validation; (c) the ELF validates but QEMU resets immediately. For each, write the first tool or source file you would inspect and explain why. This trains you to diagnose the earliest failing contract rather than randomly editing the boot code.

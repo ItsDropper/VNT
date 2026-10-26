@@ -23,6 +23,12 @@ These tutorials teach VNT through small, practical projects. VNT is experimental
 
 [Build a Memory Arena and Inspector in VNT — 20 lessons](courses/memory-lab/README.md). Starts from pointer validity and unsafe contracts, then teaches alignment, overflow-safe bounds checks, allocation lifetime, testing, stress testing, and benchmarking. Includes a multi-file example project under `examples/courses/memory-lab/`.
 
+
+## Advanced systems project courses
+
+- [Build a Memory Arena and Inspector in VNT — 20 lessons](courses/memory-lab/README.md). Teaches pointer validity, alignment, overflow-safe bounds checks, allocation lifetime, testing, and benchmarking, with a multi-file project in `examples/courses/memory-lab/`.
+- [Build a Network Stack Simulator in VNT — 20 lessons](courses/net-stack/README.md). Teaches packet parsing, Ethernet, ARP, IPv4, checksums, routing, ICMP, UDP, TCP state concepts, fragmentation, and parser fuzzing. All exercises are offline and include a multi-file project in `examples/courses/net-stack/`.
+
 ## Programming-language implementation course
 
 [Build a programming language in VNT — 15 beginner lessons](courses/programming-language/README.md). Covers language design, lexing, tokens, ASTs, parsing, runtime values, control flow, a text adventure, testing, and extensions.

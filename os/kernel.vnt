@@ -23,11 +23,6 @@ fun state_set(index: int, value: int) {
     return 0
 }
 
-
-
-
-
-
 fun str_eq(left: string, right: string) -> bool {
     let index: int = 0
     while left[index] == right[index] {
@@ -79,23 +74,6 @@ fun cpu_reboot() {
     }
     return 0
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 fun kernel_main() {
     serial_init()

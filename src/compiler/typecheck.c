@@ -232,6 +232,7 @@ static int builtin_arity(const char *name, int argc) {
     if (!strcmp(name, "net_request") || !strcmp(name, "net_request_bytes")) return argc == 4;
     if (!strcmp(name, "net_status") || !strcmp(name, "net_download")) return argc == 3;
     if (!strcmp(name, "net_url_encode") || !strcmp(name, "utf8_len")) return argc == 1;
+    if (!strcmp(name, "time_local_parts") || !strcmp(name, "time_utc_parts")) return argc == 1;
     if (!strcmp(name, "crypto_sha256")) return argc == 1;
     if (!strcmp(name, "crypto_constant_time_equal")) return argc == 2;
     if (!strcmp(name, "bigint_add") || !strcmp(name, "bigint_sub") ||
@@ -392,6 +393,8 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 !strcmp(n->function_call.name, "utf8_slice")) return TY_STRING;
             if (!strcmp(n->function_call.name, "bigint_compare")) return TY_INT;
             if (!strcmp(n->function_call.name, "fs_write_atomic")) return TY_BOOL;
+            if (!strcmp(n->function_call.name, "time_local_parts") ||
+                !strcmp(n->function_call.name, "time_utc_parts")) return TY_ARRAY;
             if (!strcmp(n->function_call.name, "process_start")) return TY_OBJECT;
             if (!strcmp(n->function_call.name, "process_launch")) return TY_BOOL;
             if (!strcmp(n->function_call.name, "process_stdout") ||

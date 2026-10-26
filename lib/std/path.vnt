@@ -2,10 +2,6 @@
 # These functions manipulate path strings only; they do not access the filesystem or resolve symlinks.
 import "string.vnt" as strutil
 
-fun is_separator(ch) {
-    return ch == "/" || ch == "\\"
-}
-
 export fun normalize_separators(path) {
     return strutil.replace(path, "\\", "/")
 }

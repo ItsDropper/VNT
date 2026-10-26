@@ -297,6 +297,24 @@ try {
     }
     Write-Host "Standard INI configuration parsing: PASS"
 
+    $ImprovedModulesExe = Join-Path $OutDir "std_improved_modules.exe"
+    & .\vnt.exe --compile tests\std_improved_modules.vnt -o $ImprovedModulesExe
+    if ($LASTEXITCODE -ne 0) { throw "Improved standard modules did not compile." }
+    $improvedModulesOutput = & $ImprovedModulesExe
+    if ($LASTEXITCODE -ne 0) { throw "Improved standard modules program exited unsuccessfully." }
+    $improvedModulesExpected = @(
+        "120000", "3600000", "86400000", "2", "1", "1",
+        "true", "true", "true", "true", "true", "false",
+        "src/main.exe", "C:/VNT/main.elf", ".env.txt",
+        "true", "true", "true", "true", "true", "true",
+        "name=Ada&theme=dark", "", "VNT", "fallback", "true", "false",
+        "STD_IMPROVED_MODULES_OK"
+    )
+    if (($improvedModulesOutput -join "|") -ne ($improvedModulesExpected -join "|")) {
+        throw "Unexpected improved standard module output: $($improvedModulesOutput -join ' | ')"
+    }
+    Write-Host "Improved time/path/network/JSON helpers: PASS"
+
     $VantaOneExe = Join-Path $OutDir "vanta_one.exe"
     & .\vnt.exe --compile examples\vanta_one.vnt -o $VantaOneExe
     if ($LASTEXITCODE -ne 0) { throw "Vanta One desktop app did not compile." }

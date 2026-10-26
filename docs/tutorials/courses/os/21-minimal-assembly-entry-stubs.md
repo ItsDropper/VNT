@@ -97,3 +97,9 @@ The stub also does not make the current VNT compiler's inline assembly safer. It
 ## A controlled review technique
 
 Read the assembly without editing it. Write down the stack pointer's logical contents at four points: immediately after the CPU enters, after the stub adds vector/error fields, after all general registers are pushed, and immediately before `iretq`. Use one row per push or pop. If your diagram does not return to the same CPU frame, stop and fix the reasoning before touching the code.
+
+## Compiler symbol names
+
+The current freestanding backend emits VNT functions with a `vnt_fn_` prefix. Therefore the assembly common entry calls `vnt_fn_interrupt_dispatch`, even though the source-level VNT function is named `interrupt_dispatch`. The assembly initializer has the explicit external name `vntos_interrupts_init`, because the VNT wrapper calls that name from inline assembly.
+
+This distinction is important when reading linker errors. An undefined `vnt_fn_interrupt_dispatch` means the compiled VNT function was not emitted under the expected symbol; an undefined `vntos_interrupts_init` means the external assembly implementation or its object file is missing.

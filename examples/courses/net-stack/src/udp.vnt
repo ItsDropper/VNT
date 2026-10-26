@@ -1,0 +1,6 @@
+# Copyright (c) 2026 ItsDropper
+# UDP parser scaffold. Implement after the IPv4 parser.
+export fun parse_udp(packet_length: int) -> bool {
+    # TODO: validate minimum header, UDP length, and checksum policy.
+    return false
+}

@@ -129,6 +129,19 @@ Call the new function from the example's entry point. Avoid duplicating its inte
 
 Every new branch can break earlier behavior. Run the complete relevant test set, not only the newest test.
 
+## Worked implementation: Separate allocator work from output
+
+Run many reservations in one process and keep console output outside the timed loop. Startup can dominate tiny workloads.
+
+```text
+warm-up runs: 1
+measured runs: 7
+operations per run: 10000
+reported value: median elapsed time / operation count
+```
+
+Use identical compiler revision, build mode, and request sequence for comparisons. Run correctness tests first.
+
 ## 6. Test design
 
 Add explicit tests for each applicable category:

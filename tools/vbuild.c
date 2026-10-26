@@ -727,6 +727,7 @@ static int compute_fingerprint(const char *source, const char *compiler,
     static const char *const elf_inputs[] = { "freestanding/x86_64.ld" };
     const char *const *target_inputs = NULL;
     size_t target_count = 0, i;
+    int input_index;
     char path[PATH_CAP];
     int n;
     fingerprint_hash = 14695981039346656037ULL;
@@ -739,10 +740,10 @@ static int compute_fingerprint(const char *source, const char *compiler,
         /* A compiler resolved only through PATH cannot be fingerprinted portably. */
         fingerprint_bytes((const unsigned char *)compiler, strlen(compiler));
     }
-    for (i = 0; i < imported_file_count; i++)
-        if (!fingerprint_file(imported_files[i])) return 0;
-    for (i = 0; i < module_dependency_count; i++)
-        if (!fingerprint_file(resolved_dependencies[i])) return 0;
+    for (input_index = 0; input_index < imported_file_count; input_index++)
+        if (!fingerprint_file(imported_files[input_index])) return 0;
+    for (input_index = 0; input_index < module_dependency_count; input_index++)
+        if (!fingerprint_file(resolved_dependencies[input_index])) return 0;
     if (!strcmp(target, "exe")) {
         target_inputs = hosted_inputs;
         target_count = sizeof hosted_inputs / sizeof hosted_inputs[0];

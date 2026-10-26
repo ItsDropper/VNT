@@ -1,0 +1,43 @@
+name: VBuild Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/vbuild.py'
+      - 'tests/test_vbuild.py'
+      - 'docs/VBUILD.md'
+      - '.github/workflows/vbuild-tests.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/vbuild.py'
+      - 'tests/test_vbuild.py'
+      - 'docs/VBUILD.md'
+      - '.github/workflows/vbuild-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vbuild-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  vbuild-unit-tests:
+    name: VBuild unit tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run VBuild unit tests
+        run: python -m unittest discover -s tests -p test_vbuild.py -v

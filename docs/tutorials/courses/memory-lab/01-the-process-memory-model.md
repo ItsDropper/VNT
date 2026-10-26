@@ -132,6 +132,25 @@ Call the smallest standard-library function that performs the needed primitive. 
 
 After success, verify that the invariant still holds. In tests, inspect the actual output or bytes rather than only checking a success boolean.
 
+## Worked implementation: Allocation lifetime
+
+A pointer is usable only while its allocation is live. The helper cannot infer the region's capacity, so the owner must track it.
+
+```vnt
+import "lib/std/mem.vnt" as mem
+unsafe {
+    let storage: ptr = mem.alloc(16)
+    if !mem.is_null(storage) {
+        let ok: bool = mem.write_u8(storage, 0, 42)
+        if ok { print(mem.read_u8(storage, 0)) }
+        let released: bool = mem.free(storage)
+        print(released)
+    }
+}
+```
+
+Never read the pointer after free. Add capacity to the owner state; do not attempt to infer it from the pointer.
+
 ## 7. Tests you must write
 
 Do not consider this lesson complete until all of these categories have an explicit test:

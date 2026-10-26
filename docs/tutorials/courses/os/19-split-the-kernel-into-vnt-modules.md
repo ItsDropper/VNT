@@ -68,3 +68,46 @@ Explain why moving `console_puts` to `console.vnt` does not create a separate ex
 ## Exercise
 
 Add a short comment above one function explaining its contract and limitation. Rebuild the kernel. Do not rename exported functions or change the ABI as part of this exercise.
+
+## Practical refactor checklist
+
+When doing this kind of refactor in your own branch, use this order:
+
+1. Pick one group of related functions; do not move the whole kernel in one edit.
+2. Create the new file with the repository's copyright and license header.
+3. Move the complete function bodies without changing their instructions.
+4. Add one import to the root source file.
+5. Search the repository for every call to the moved function.
+6. Run `bash os/build.sh` immediately.
+7. Boot the resulting ISO and test the path you moved.
+8. Review the diff for accidental behavior changes before moving another group.
+
+The refactor in this repository follows that pattern for serial I/O, the console, and PS/2 input. The interrupt module is new behavior, but its policy is still separated from the shell.
+
+## Why not use a giant shared module?
+
+A single `hardware.vnt` file would still couple unrelated concerns. COM1 has transmit-ready status and receive-ready status. VGA has character cells, attributes, and a hardware cursor. PS/2 input has controller status and scan-code state. Interrupt dispatch has CPU-saved state and PIC acknowledgement. Those contracts are different even though they all touch hardware.
+
+The goal is not to maximize the number of files. The goal is to make the dependency direction visible and keep each file understandable. If a module becomes a dumping ground for unrelated helpers, split it only after a concrete boundary appears.
+
+## How to inspect what changed
+
+Use these commands from the repository root:
+
+```sh
+git diff --stat
+git diff -- os/kernel.vnt os/serial.vnt os/console.vnt os/ps2.vnt
+grep -n '^import ' os/kernel.vnt
+```
+
+The `git diff` commands show the move and the import list. They do not prove the compiler loaded every module; the build and QEMU run provide that evidence.
+
+## A useful failure distinction
+
+- **File not found:** import path or filename is wrong.
+- **Undeclared function:** a declaration was omitted, misspelled, or not included by the loader.
+- **Duplicate symbol:** two modules define the same external function.
+- **Build passes, behavior changes:** a function was moved with a changed body or hidden dependency.
+- **Build and boot pass:** still test the specific device path; a working prompt alone does not prove keyboard or timer behavior.
+
+Keep this checklist in your notes for every future subsystem extraction.

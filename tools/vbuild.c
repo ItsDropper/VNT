@@ -580,10 +580,17 @@ static int execute_action(Action action, Config *cfg) {
     if (action == ACT_RUN) {
         char output[PATH_CAP];
         char *args[2];
+        size_t name_len = strlen(cfg->output);
+        const char *suffix = EXE_SUFFIX;
+        if (strcmp(cfg->target, "exe")) {
+            fprintf(stderr, "vbuild: run requires target exe; selected target is '%s'.\n", cfg->target);
+            return 1;
+        }
+        if (name_len >= 4 && !strcmp(cfg->output + name_len - 4, ".exe")) suffix = "";
         if (!absolute_path("build", output, sizeof output)) return 1;
         {
             size_t len = strlen(output);
-            int n = snprintf(output + len, sizeof output - len, "/%s%s", cfg->output, EXE_SUFFIX);
+            int n = snprintf(output + len, sizeof output - len, "/%s%s", cfg->output, suffix);
             if (n < 0 || (size_t)n >= sizeof output - len) {
                 fprintf(stderr, "vbuild: output path is too long.\n"); return 1;
             }

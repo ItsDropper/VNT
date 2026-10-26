@@ -195,9 +195,12 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Standard array/string/number program exited unsuccessfully." }
     $collectionsExpected = @(
         "true", "1", "2", "24", "4.8", "2", "9", "[9, 2, 7, 2, 4]",
-        "vnt-stdlib-ok", "0", "true", "true", "true", "true", "true", "1",
-        "2", "ababab", "false", "true", "true", "-1", "0", "1", "720",
-        "-1", "6", "true", "false", "STDLIB_COLLECTIONS_STRINGS_NUMBERS_OK"
+        "vnt-stdlib-ok", "0", "[1, 2, 3, 4]", "[4, 2, 7]", "[4, 2, 7, 2, 9]", "[]",
+        "[7, 2, 9]", "[]", "[4, 2, 7, 2, 9]", "[3, 1, 2]",
+        "true", "true", "true", "true", "true", "1", "2", "ababab", "false",
+        "one cat, two cat", "unchanged", "VNT stdlib", "",
+        "true", "true", "-1", "0", "1", "720", "-1", "6", "true", "false",
+        "STDLIB_COLLECTIONS_STRINGS_NUMBERS_OK"
     )
     if (($collectionsOutput -join "|") -ne ($collectionsExpected -join "|")) {
         throw "Unexpected standard array/string/number output: $($collectionsOutput -join ' | ')"

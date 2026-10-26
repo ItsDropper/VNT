@@ -114,6 +114,24 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Separate checksum folding from parsing
+
+Pair bytes in network order, pad an odd final byte as the high half of a word, fold carries, then complement the 16-bit sum.
+
+```vnt
+let total: int = 0
+let i: int = 0
+while i + 1 < len(data) {
+    total += data[i] * 256 + data[i + 1]
+    i += 2
+}
+if i < len(data) { total += data[i] * 256 }
+while total > 65535 { total = total % 65536 + total / 65536 }
+return 65535 - total
+```
+
+Use known reference vectors. A full valid IPv4 header including its checksum should validate to zero under this course's API convention.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

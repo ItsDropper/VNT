@@ -106,3 +106,9 @@ Be careful about the test environment: if the QEMU monitor sends input different
 ## 16. Document what the counter can and cannot mean
 
 The counter is a diagnostic count of delivered timer interrupts. It is not wall-clock time, a calibrated duration, a sleep API, or a scheduling metric. If later code uses the counter for elapsed time, define wraparound behavior and the conversion to time units. If a scheduler uses timer ticks, it additionally needs a safe context-switch contract and task state; the counter alone is not enough.
+
+## 17. Interrupt latency is a design constraint
+
+The current timer handler does very little work by design. An interrupt handler should avoid unbounded loops, waiting for a device, dynamic allocation, and formatting large messages. Those operations delay the interrupted code and can make other hardware events harder to service.
+
+A later kernel may defer work into the main loop or a worker task. That requires a queue or a pending-event mechanism with defined ownership. The current counter is the simplest possible example: record a fact quickly, then let the shell read and display it in normal context.

@@ -684,6 +684,124 @@ static int build_inputs_are_current(const char *output, const char *target, cons
     return 1;
 }
 
+
+/* FNV-1a content fingerprint: portable across the native Windows/Linux builds. */
+static unsigned long long fingerprint_hash = 14695981039346656037ULL;
+
+static void fingerprint_bytes(const unsigned char *data, size_t size) {
+    size_t i;
+    for (i = 0; i < size; i++) {
+        fingerprint_hash ^= data[i];
+        fingerprint_hash *= 1099511628211ULL;
+    }
+}
+
+static int fingerprint_file(const char *path) {
+    FILE *file = fopen(path, "rb");
+    unsigned char buffer[8192];
+    size_t count;
+    if (!file) return 0;
+    fingerprint_bytes((const unsigned char *)path, strlen(path));
+    fingerprint_bytes((const unsigned char *)"\0", 1);
+    while ((count = fread(buffer, 1, sizeof buffer, file)) > 0)
+        fingerprint_bytes(buffer, count);
+    if (ferror(file)) {
+        fprintf(stderr, "vbuild: cannot fingerprint input '%s'.\n", path);
+        fclose(file);
+        return 0;
+    }
+    fclose(file);
+    fingerprint_bytes((const unsigned char *)"\xff", 1);
+    return 1;
+}
+
+static int compute_fingerprint(const char *source, const char *compiler,
+                               const char *toolchain, const char *target,
+                               char *result, size_t result_cap) {
+    static const char *const hosted_inputs[] = {
+        "src/compiler/native_runtime.c",
+        "src/compiler/native_runtime.h",
+        "src/compiler/native_net.c",
+        "src/compiler/native_async_net.c"
+    };
+    static const char *const elf_inputs[] = { "freestanding/x86_64.ld" };
+    const char *const *target_inputs = NULL;
+    size_t target_count = 0, i;
+    char path[PATH_CAP];
+    int n;
+    fingerprint_hash = 14695981039346656037ULL;
+    if (!fingerprint_file(source) ||
+        !fingerprint_file("vbuild.properties") ||
+        !fingerprint_file("build.vbuild") ||
+        !fingerprint_file(compiler)) return 0;
+    for (i = 0; i < imported_file_count; i++)
+        if (!fingerprint_file(imported_files[i])) return 0;
+    for (i = 0; i < module_dependency_count; i++)
+        if (!fingerprint_file(resolved_dependencies[i])) return 0;
+    if (!strcmp(target, "exe")) {
+        target_inputs = hosted_inputs;
+        target_count = sizeof hosted_inputs / sizeof hosted_inputs[0];
+    } else if (!strcmp(target, "elf")) {
+        target_inputs = elf_inputs;
+        target_count = sizeof elf_inputs / sizeof elf_inputs[0];
+    }
+    for (i = 0; i < target_count; i++) {
+        n = snprintf(path, sizeof path, "%s/%s", toolchain, target_inputs[i]);
+        if (n < 0 || (size_t)n >= sizeof path) {
+            fprintf(stderr, "vbuild: build input path is too long.\n");
+            return 0;
+        }
+        if (!fingerprint_file(path)) {
+            fprintf(stderr, "vbuild: required build input is missing or unreadable: %s\n", path);
+            return 0;
+        }
+    }
+    n = snprintf(result, result_cap, "%016llx", fingerprint_hash);
+    if (n < 0 || (size_t)n >= result_cap) return 0;
+    return 1;
+}
+
+static int manifest_matches(const char *output, const char *fingerprint) {
+    char path[PATH_CAP], saved[96];
+    FILE *file;
+    int n = snprintf(path, sizeof path, "%s.vbuild-inputs", output);
+    if (n < 0 || (size_t)n >= sizeof path) return 0;
+    file = fopen(path, "r");
+    if (!file) return 0;
+    if (!fgets(saved, sizeof saved, file)) {
+        fclose(file);
+        return 0;
+    }
+    fclose(file);
+    trim(saved);
+    return !strcmp(saved, fingerprint);
+}
+
+static int write_manifest(const char *output, const char *fingerprint) {
+    char path[PATH_CAP];
+    FILE *file;
+    int n = snprintf(path, sizeof path, "%s.vbuild-inputs", output);
+    if (n < 0 || (size_t)n >= sizeof path) {
+        fprintf(stderr, "vbuild: build manifest path is too long.\n");
+        return 0;
+    }
+    file = fopen(path, "w");
+    if (!file) {
+        fprintf(stderr, "vbuild: cannot write build manifest '%s': %s\n", path, strerror(errno));
+        return 0;
+    }
+    if (fprintf(file, "vbuild-inputs-v1 %s\n", fingerprint) < 0) {
+        fclose(file);
+        fprintf(stderr, "vbuild: failed writing build manifest '%s'.\n", path);
+        return 0;
+    }
+    if (fclose(file) != 0) {
+        fprintf(stderr, "vbuild: failed closing build manifest '%s'.\n", path);
+        return 0;
+    }
+    return 1;
+}
+
 static int run_compiler(Config *cfg, int check);
 static int run_tests(Config *cfg);
 
@@ -695,11 +813,11 @@ static int run_compiler(Config *cfg, int check) {
     char *args[6];
     const char *mode = NULL;
     const char *suffix = NULL;
-    struct stat output_stat, source_stat, properties_stat, tasks_stat, compiler_stat;
-    int dependencies_current = 1;
+    struct stat output_stat;
+    char fingerprint[64];
+    int fingerprint_ready;
     int import_graph_current;
     int build_inputs_current;
-    int dep_index;
     if (!configure_module_path()) return 1;
     if (!exists(cfg->source)) {
         fprintf(stderr, "vbuild: source file not found: %s\n", cfg->source); return 1;
@@ -746,25 +864,16 @@ static int run_compiler(Config *cfg, int check) {
             fprintf(stderr, "vbuild: output path is too long.\n"); return 1;
         }
     }
-    for (dep_index = 0; dep_index < module_dependency_count; dep_index++) {
-        struct stat dependency_stat;
-        if (stat(resolved_dependencies[dep_index], &dependency_stat) != 0 ||
-            stat(output, &output_stat) != 0 || output_stat.st_mtime < dependency_stat.st_mtime)
-            dependencies_current = 0;
-    }
     import_graph_current = imports_are_current(source, output);
     if (import_graph_current < 0) return 1;
     build_inputs_current = build_inputs_are_current(output, cfg->target, toolchain);
     if (build_inputs_current < 0) return 1;
-    if (!check && !force_build && import_graph_current && build_inputs_current && dependencies_current &&
+    fingerprint_ready = compute_fingerprint(source, compiler, toolchain, cfg->target,
+                                            fingerprint, sizeof fingerprint);
+    if (!fingerprint_ready) return 1;
+    if (!check && !force_build && import_graph_current && build_inputs_current &&
         stat(output, &output_stat) == 0 &&
-        stat(source, &source_stat) == 0 && stat("vbuild.properties", &properties_stat) == 0 &&
-        stat("build.vbuild", &tasks_stat) == 0 && stat(compiler, &compiler_stat) == 0 &&
-        dependencies_current &&
-        output_stat.st_mtime >= source_stat.st_mtime &&
-        output_stat.st_mtime >= properties_stat.st_mtime &&
-        output_stat.st_mtime >= tasks_stat.st_mtime &&
-        output_stat.st_mtime >= compiler_stat.st_mtime) {
+        manifest_matches(output, fingerprint)) {
         printf("Up to date: %s\n", output);
         return 0;
     }
@@ -780,6 +889,7 @@ static int run_compiler(Config *cfg, int check) {
     if (!check && !exists(output)) {
         fprintf(stderr, "vbuild: compiler returned success but output is missing: %s\n", output); return 1;
     }
+    if (!check && !write_manifest(output, fingerprint)) return 1;
     if (!check) printf("Built %s (target=%s)\n", output, cfg->target);
     return 0;
 }

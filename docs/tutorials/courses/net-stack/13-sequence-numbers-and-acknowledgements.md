@@ -114,6 +114,19 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Reject duplicates and gaps in a toy stream
+
+For a simplified non-wrapping model, accept data only when its sequence equals the expected next byte. Advance expected sequence by the payload length after accepting.
+
+```text
+expected_next = 100
+segment(sequence=100, length=4) -> accept; expected_next=104
+segment(sequence=100, length=4) -> duplicate; reject
+segment(sequence=108, length=2) -> gap; reject
+```
+
+Do not mistake this simplified rule for TCP's real sequence-number comparison rules; TCP uses 32-bit wraparound arithmetic and more complex window validation.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

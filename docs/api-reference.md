@@ -39,7 +39,7 @@ The import path is relative to the importing source file. Module functions are e
 | `net.vnt` | HTTP/HTTPS, custom methods/headers, form encoding, status classifiers, binary request/response, downloads, async and stream helpers | Body helpers return an empty string on transport failure; status `000` means no HTTP status was received. Ordinary responses are buffered. `encode_form` requires equal-length key/value arrays. Download fallback routes may buffer | [net.vnt](../lib/std/net.vnt) |
 | `log.vnt` | Console and file logging | Appends to `vnt.log` in the current working directory | [log.vnt](../lib/std/log.vnt) |
 | `config.vnt` | Load-or-create, save/append, INI `get`, `get_bool`, `has_key`, and `section_exists` | Supports simple `[section]` headers, `key=value`, blank lines, `#`/`;` comments, and outer double quotes; no escape processing, mutation, or TOML/JSON support | [config.vnt](../lib/std/config.vnt) |
-| `json.vnt` | Read a simple JSON field occurrence, fallback lookup, key-presence convenience check | Still not a full JSON DOM/parser; empty-string fields are indistinguishable from missing fields in `value_or`/`has_key` | [json.vnt](../lib/std/json.vnt) |
+| `json.vnt` | Read a simple JSON field occurrence, fallback lookup, non-empty-value check | Still not a full JSON DOM/parser; empty-string fields are indistinguishable from missing fields in `value_or`/`has_nonempty_value` | [json.vnt](../lib/std/json.vnt) |
 | `mem.vnt` | Raw pointer allocation and memory primitives | Requires explicit `unsafe { ... }`; no bounds/lifetime checking | [mem.vnt](../lib/std/mem.vnt) and [raw-memory guide](raw-memory.md) |
 
 ## Error handling conventions

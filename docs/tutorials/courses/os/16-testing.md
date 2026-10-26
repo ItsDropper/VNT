@@ -100,3 +100,9 @@ Negative-path testing is especially important in kernels because a bad fallback 
 ## Lab: write a test plan before implementation
 
 For one proposed kernel change, define a happy-path test, a boundary test, a failure test, and a regression test. Name the command or observation for each. Then implement only the feature and tests that can be verified with the current QEMU setup.
+
+## 10. Test the build script itself
+
+The build script is executable project logic and can regress independently of the kernel. It must stop when compilation or linking fails, avoid packaging stale artifacts after a failure, and clearly distinguish required steps from optional ISO tooling. Read `os/build.sh` and identify where `set -euo pipefail` affects failure propagation.
+
+When reviewing a build-script change, reason about what happens if each command exits nonzero. If a later command can still run after an earlier failure, the script may accidentally report a misleading success. Keep the test focused on the script's actual behavior and do not claim coverage that CI does not provide.

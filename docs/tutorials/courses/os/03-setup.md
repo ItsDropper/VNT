@@ -128,3 +128,13 @@ Use this sequence for every later lesson:
 ## Lab deliverable
 
 Write down the exact commands and tool versions used for a successful baseline. Include whether the ISO was created, whether QEMU booted, whether the VGA prompt appeared, and whether the serial shell responded. This turns "it works on my machine" into a reproducible result.
+
+## 11. Preserve the baseline
+
+Before experimenting, make sure the working tree contains only changes you understand. If you are working on an existing project, do not reset or clean unrelated files just to make a build look tidy. Build artifacts are disposable; source and personal data are not.
+
+When a command fails, keep the complete first error and the exact command. If the problem is a missing package, record the package name and the environment. If the problem is a source error, record the file and line. This prevents an environment problem from being misdiagnosed as a kernel regression.
+
+## Lab: make your setup reproducible
+
+Write a short environment record containing operating system or WSL version, GCC version, assembler version, GRUB/ISO tools availability, QEMU version, repository commit, and exact build command. Add one sentence explaining which stages are skipped when ISO packaging tools are absent. This record should be enough for another developer to reproduce your baseline.

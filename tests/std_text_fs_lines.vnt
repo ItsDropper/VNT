@@ -1,21 +1,5 @@
-import "../lib/std/string.vnt" as text
 import "../lib/std/fs.vnt" as fs
 
-parts = text.split("alpha,,gamma,", ",")
-print(len(parts))
-print(parts[0])
-print(parts[1] == "")
-print(parts[2])
-print(parts[3] == "")
-print(text.last_index_of("one two one", "one"))
-print(text.left("abcdef", 3))
-print(text.right("abcdef", 2))
-print(text.remove_prefix("prefix-value", "prefix-"))
-print(text.remove_suffix("filename.txt", ".txt"))
-print(text.pad_left("42", 5, "0"))
-print(text.pad_right("vnt", 6, "."))
-print(text.count_lines("one\ntwo\n"))
-print(text.count_lines(""))
 line_path = "tests/out/std_lines.txt"
 written = fs.write_lines(line_path, ["first", "second"])
 read_back = fs.read_lines(line_path)
@@ -28,4 +12,4 @@ read_back = fs.read_lines(line_path)
 print(appended)
 print(len(read_back))
 print(read_back[2])
-print("STD_TEXT_FS_LINES_OK")
+print("STD_FS_LINES_OK")

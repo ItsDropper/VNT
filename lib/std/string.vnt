@@ -109,3 +109,65 @@ export fun repeat(value, times) {
     }
     return result
 }
+
+# Replaces non-overlapping matches. An empty search string leaves the input unchanged.
+export fun replace(value, needle, replacement) {
+    needle_size = len(needle)
+    if needle_size == 0 {
+        return value
+    }
+    value_size = len(value)
+    result = ""
+    position = 0
+    while position < value_size {
+        matched = false
+        if position + needle_size <= value_size {
+            matched = true
+            i = 0
+            while i < needle_size {
+                if value[position + i] != needle[i] {
+                    matched = false
+                }
+                i += 1
+            }
+        }
+        if matched {
+            result = result + replacement
+            position += needle_size
+        } else {
+            result = result + value[position]
+            position += 1
+        }
+    }
+    return result
+}
+
+# Trims ASCII space, tab, carriage return, and newline from both ends.
+export fun trim(value) {
+    size = len(value)
+    start = 0
+    end = size
+    while start < end {
+        ch = value[start]
+        if ch == " " || ch == "\t" || ch == "\r" || ch == "\n" {
+            start += 1
+        } else {
+            break
+        }
+    }
+    while end > start {
+        ch = value[end - 1]
+        if ch == " " || ch == "\t" || ch == "\r" || ch == "\n" {
+            end -= 1
+        } else {
+            break
+        }
+    }
+    result = ""
+    i = start
+    while i < end {
+        result = result + value[i]
+        i += 1
+    }
+    return result
+}

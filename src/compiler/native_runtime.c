@@ -1578,16 +1578,23 @@ static VntValue *vnt_bigint_binary(VntValue *av,VntValue *bv,int operation) {
     if(operation==2) {
         if(a.sign==0||b.sign==0){digits=strdup("0");length=1;sign=0;}
         else {
-            length=a.length+b.length;digits=(char *)calloc(length+1,1);
-            if(!digits){fprintf(stderr,"Runtime error: out of memory multiplying bigint.\\n");exit(1);}
-            for(size_t i=0;i<a.length;i++)for(size_t j=0;j<b.length;j++)
-                digits[i+j+1]+=(a.digits[i]-'0')*(b.digits[j]-'0');
-            for(size_t i=length;i>0;i--){digits[i-1]+=digits[i]/10;digits[i]%=10;digits[i]=(char)(digits[i]+'0');}
-            digits[0]=(char)(digits[0]+'0');
-            length=a.length+b.length;while(length>1&&digits[0]=='0'){digits++;length--;}
-            sign=a.sign*b.sign;
+            length=a.length+b.length;
+            int *acc=(int *)calloc(length+1,sizeof(int));
+            digits=(char *)malloc(length+1);
+            if(!acc||!digits){free(acc);free(digits);fprintf(stderr,"Runtime error: out of memory multiplying bigint.\\n");exit(1);}
+            for(size_t i=a.length;i>0;i--) {
+                int carry=0,da=a.digits[i-1]-'0';
+                for(size_t j=b.length;j>0;j--) {
+                    size_t pos=i+j;
+                    int sum=acc[pos]+da*(b.digits[j-1]-'0')+carry;
+                    acc[pos]=sum%10;carry=sum/10;
+                }
+                acc[i]+=carry;
+            }
+            for(size_t i=1;i<=length;i++)digits[i-1]=(char)('0'+acc[i]);
+            digits[length]=0;free(acc);sign=a.sign*b.sign;
         }
-    } else {
+    } else {else {
         int bsign=operation==1?-b.sign:b.sign;
         if(a.sign==0){digits=strdup(b.digits);length=b.length;sign=bsign;}
         else if(bsign==0){digits=strdup(a.digits);length=a.length;sign=a.sign;}

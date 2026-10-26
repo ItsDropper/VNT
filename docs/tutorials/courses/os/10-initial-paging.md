@@ -49,3 +49,29 @@ Explain the difference between a virtual address, a physical address, a page-tab
 ## Exercise
 
 Find the loop labelled `.Los_map_2m` in `os/boot.S`. Explain why it loops 512 times and why each entry advances by 2 MiB. Do not change the page-table flags as an experiment on physical hardware.
+
+## 6. Walk one virtual address through the current mapping
+
+For a 2 MiB page mapping, the low 21 bits of the virtual address select a byte within the page. The remaining address bits select the page-table structures and the physical page frame. Because the bootstrap identity-maps the first 1 GiB, an address in that range resolves to the same numeric physical address under the current setup.
+
+Identity mapping is a convenience, not memory protection. It does not stop kernel code from overwriting another kernel object, and it does not distinguish trusted code from untrusted code. It only describes how virtual addresses translate to physical addresses.
+
+## 7. Why the first GiB and 2 MiB pages?
+
+The bootstrap needs a simple mapping for early code, data, the stack, and legacy devices such as VGA text memory. Large pages reduce the number of page-table entries needed for this early map. The trade-off is coarse granularity: the initial design cannot independently map or unmap every 4 KiB region.
+
+Do not assume all memory below 1 GiB is RAM. Some physical ranges may be reserved for devices or firmware. The current identity map is a minimal boot arrangement; a future physical memory manager must consult a firmware-provided memory map and avoid reserved regions.
+
+## 8. What a real memory manager must add
+
+A page allocator needs a trustworthy list of usable physical frames, bookkeeping for allocated and free frames, alignment rules, overflow-safe range checks, and a policy for reserved memory. A virtual-memory manager additionally needs page-table creation, permissions, mapping/unmapping rules, and TLB invalidation when required.
+
+A heap allocator is a separate abstraction built on top of memory supplied by a lower layer. It cannot safely be added by simply treating any address as available. VNTOS currently has no general physical-page allocator or heap, so avoid writing kernel code that assumes dynamic allocation exists.
+
+## 9. Paging and interrupts interact
+
+The CPU uses virtual addresses for interrupt handlers and the IDT base while paging is enabled. Therefore the IDT, entry stubs, stack, and handler code must remain mapped when an interrupt arrives. The current identity map keeps the initial low kernel image and its data reachable under the existing layout. A higher-half kernel or separate address spaces would need to revisit these assumptions.
+
+## Lab: inspect an address range
+
+Choose the VGA text buffer address `0xB8000`. Explain why it lies inside the bootstrap's mapped range, why that makes the console access possible under the current identity map, and why the same numeric address is not guaranteed to work after a future mapping redesign.

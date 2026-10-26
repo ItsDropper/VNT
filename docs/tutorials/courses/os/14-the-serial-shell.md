@@ -98,3 +98,17 @@ This is a small example of a general kernel rule: validate input at the boundary
 The command loop repeatedly exercises input, buffer mutation, string comparison, device output, and shared state. A defect may appear only after several commands because a buffer index or cursor position was not reset. Test sequences, not only isolated commands: empty line, known command, unknown command, backspace, another known command, and a long line.
 
 If a command hangs, determine whether it is waiting for input, polling hardware, or stuck in its own logic. Use a marker immediately before dispatch and another immediately after the operation to narrow the location. Remove temporary markers once the diagnosis is complete.
+
+## 14. Walk the current command loop line by line
+
+The kernel reads from the polled keyboard first. If no keyboard character is available, it tries the serial receive path. Negative values mean no character is ready, so the loop continues without modifying the command buffer. This polling order explains why the shell can respond to both the QEMU window's keyboard and the serial terminal, while the two input paths remain distinct.
+
+When Enter arrives, the code writes a zero terminator at `buffer[length]`, prints a newline, resets `handled`, and checks each supported command. After dispatch, it resets `length` to zero and clears the first buffer byte. Backspace only changes the buffer when `length > 0`; ordinary printable characters are appended only while `length < 127`.
+
+Those bounds checks protect the intended 128-byte input area under the current compiler layout. However, the kernel's low-level routines still rely on compiler-specific stack offsets, so do not treat this as a general safe string implementation for arbitrary VNT programs.
+
+## 15. Exercise: add a command without changing input handling
+
+Use Lesson 17's `ticks` alias exercise. Notice that it requires no changes to the keyboard driver, serial driver, line buffer, or interrupt handler. The command branch operates only after a complete line is available. That is the correct layer for a shell feature.
+
+Test the empty line, the new command, an unknown command, backspace, and the new command again. If one command affects the next, inspect the buffer reset and `handled` assignment before changing the input drivers.

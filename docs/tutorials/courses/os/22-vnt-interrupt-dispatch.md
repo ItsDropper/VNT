@@ -53,3 +53,34 @@ Why should an IRQ handler do as little as possible? Why is a single shared integ
 ## Exercise
 
 Read the timer branch and explain why it has no console calls. Then add a comment describing the limitation of the shared counter without changing its behavior.
+
+## Handler design contract
+
+Treat `interrupt_dispatch` as a restricted environment, even though it is written in VNT:
+
+- It must not allocate memory; the kernel has no general heap.
+- It must not wait for input.
+- It must not parse shell commands.
+- It should not print routine timer events.
+- It must return quickly for the timer IRQ.
+- For fatal exceptions, it should report the limited state it has and halt.
+
+The dispatcher is not a task scheduler. It runs on the interrupted kernel stack and returns to the interrupted code after a normal IRQ. No task is selected, no saved stack is replaced, and no address space changes.
+
+## Understand the fatal path
+
+For a CPU exception, the VNT dispatcher prints the vector and error code through the existing console, then calls `cpu_halt()`. The current console combines VGA and COM1 output, so the report can be visible in QEMU's window and serial transcript. The handler does not decode every architecture-specific error bit yet.
+
+Do not deliberately trigger a fault on a physical machine to test this. Once the exception handler is active, a controlled QEMU experiment can be used in a separate branch, but only after the normal boot and timer tests pass and you know how to reset the VM.
+
+## Why timer IRQ code avoids console output
+
+Imagine printing one line for every timer tick at about 100 Hz. A polling UART can spend a significant amount of time waiting for each character, and console output may overwrite text that the shell is writing. The interrupt handler would then do slow work at the exact moment it should be returning promptly to the interrupted code.
+
+Instead, the handler increments the counter and leaves formatting to the `irq` shell command. This is the simplest form of deferred observation: collect a small fact in the handler and display it later in normal execution.
+
+## Limitation worth fixing later
+
+The shared `vntos_state` array is a compact teaching device, not a type-safe kernel data model. Index 11 is currently the timer count, but raw indices do not communicate ownership or atomicity. A future refactor should give timer state a named interface and decide whether reads require interrupts to be masked or a wider atomicity guarantee.
+
+Keep the current implementation simple while learning the interrupt path; do not add a complicated synchronization layer before you can test it.

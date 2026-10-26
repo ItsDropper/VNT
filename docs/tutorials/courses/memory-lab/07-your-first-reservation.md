@@ -132,6 +132,21 @@ Call the smallest standard-library function that performs the needed primitive. 
 
 After success, verify that the invariant still holds. In tests, inspect the actual output or bytes rather than only checking a success boolean.
 
+## Worked implementation: Verify bytes, not just the pointer
+
+Use standard byte helpers inside an unsafe block and check every boolean write result.
+
+```vnt
+let a: bool = mem.write_u8(region, 0, 18)
+let b: bool = mem.write_u8(region, 1, 52)
+if a && b {
+    print(mem.read_u8(region, 0))
+    print(mem.read_u8(region, 1))
+}
+```
+
+Expected values are 18 and 52. Use recognizable values at separate offsets so a wrong offset or failed write becomes visible.
+
 ## 7. Tests you must write
 
 Do not consider this lesson complete until all of these categories have an explicit test:

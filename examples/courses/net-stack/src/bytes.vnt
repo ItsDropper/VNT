@@ -1,0 +1,11 @@
+# Copyright (c) 2026 ItsDropper
+# Bounds-checked byte cursor scaffold. Implement alongside lessons 01-02.
+# TODO: define supported buffer representation and current offset.
+export fun read_u8(offset: int) -> int {
+    # TODO: reject negative or out-of-range offsets before indexing.
+    return -1
+}
+export fun read_be16(offset: int) -> int {
+    # TODO: check both bytes exist before reading either one.
+    return -1
+}

@@ -1,0 +1,6 @@
+# Copyright (c) 2026 ItsDropper
+# Offline entry point for the network stack simulator.
+import "./simulator.vnt" as simulator
+
+print("VNT Network Stack Simulator scaffold")
+print("Complete the offline packet fixtures and parser TODOs in the course.")

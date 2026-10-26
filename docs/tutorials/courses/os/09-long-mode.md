@@ -94,3 +94,9 @@ A useful review should be able to explain why the GDT selector is valid, why the
 For a long-mode patch, state the intended processor state before the change, the state afterward, and the exact evidence used to validate the transition. Include the build result, ELF entry point, and QEMU observation. If the first visible marker is missing, say which stage you have ruled out and which remains uncertain.
 
 This is a better review than "fixed boot" because another developer can reproduce the test and understand the architectural claim being made.
+
+## 12. A useful checkpoint before touching CPU setup
+
+Before editing the transition, confirm that the baseline ELF passes the Multiboot2 check and that the ISO reaches the normal shell in QEMU. Record the commit SHA and save the first visible boot messages. This lets you distinguish a regression from an environment that was already failing.
+
+After the edit, rerun the same build and QEMU commands without changing emulator settings. If the result differs, inspect the earliest changed stage first. Keep the experiment small enough that you can revert it and reproduce the original behavior.

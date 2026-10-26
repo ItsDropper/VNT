@@ -50,3 +50,31 @@ Explain what the transmitter-ready check does, what the receive-ready check does
 ## Exercise
 
 Trace a character typed in QEMU from `serial_getc()` to the command buffer. Do not change UART register values without checking the hardware behavior and QEMU test results.
+
+## 7. Why polling works—and where it stops scaling
+
+The UART driver polls a line-status register until the transmitter can accept a byte. Polling is straightforward because the caller controls when it checks the device, and the code needs no interrupt queue. Its disadvantage is that the CPU may repeatedly check a device that is not ready. A broken or absent device can also leave the kernel spinning forever unless the driver defines a timeout.
+
+Polling is appropriate for a tiny boot console because it is easy to debug and available before more advanced scheduling exists. It is not a general solution for high-throughput or power-efficient device I/O.
+
+## 8. Serial output is a diagnostic channel
+
+Serial output can reveal early boot progress even when VGA is not initialized or the display is hidden. Keep messages short and make the stage obvious. A marker immediately before and after a risky initialization step can tell you whether execution reached that point.
+
+Do not print from every timer interrupt. COM1 is polled, so each character may wait for hardware readiness. Printing from an IRQ can keep the CPU inside the handler for a long time and interleave output with the shell. The timer handler should update a counter; the shell can format and display that value later.
+
+## 9. Test both directions
+
+Output tests show whether the transmit path works; they do not prove input works. Input tests show whether bytes arrive; they do not prove command parsing handles a complete line. Test one byte, a short string, an empty line, a longer line near the buffer limit, backspace, and repeated commands. Use the exact QEMU serial configuration documented in `os/README.md`.
+
+For every test, state what the expected result is. If a key is typed into the graphical QEMU window, that exercises the emulated PS/2 keyboard path; typing into the host terminal connected to serial exercises the serial-input path. These are distinct paths.
+
+## 10. Failure modes to consider
+
+A missing serial message can be caused by an uninitialized UART, the wrong QEMU serial route, a transmit-ready loop that never completes, or code that never reached the print call. A garbled message can point to baud/divisor configuration or concurrent output. A frozen shell after input may be a receive-polling issue or a parser bug.
+
+When debugging, temporarily reduce output to one marker and confirm the channel. Then restore the normal message. Do not rewrite the driver until you have evidence that the failure is in the driver.
+
+## Lab: build a serial test matrix
+
+Create rows for one-byte transmit, multi-byte transmit, one-byte receive, backspace, empty input, and a line near the input buffer's limit. For each, record the command used, expected output, actual output, and whether VGA or serial was the active path.

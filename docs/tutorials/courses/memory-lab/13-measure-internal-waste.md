@@ -129,6 +129,19 @@ Call the new function from the example's entry point. Avoid duplicating its inte
 
 Every new branch can break earlier behavior. Run the complete relevant test set, not only the newest test.
 
+## Worked implementation: Make the accounting reconcile
+
+Cursor includes both requested payload and alignment padding. Remaining capacity is capacity minus cursor, after verifying the invariant.
+
+```vnt
+let remaining: int = capacity - cursor
+let accounted: int = payload_bytes + padding_bytes
+print(accounted == cursor)
+print(remaining)
+```
+
+For each accepted allocation, increase payload by size and padding by start minus old cursor. On rejection, change neither counter.
+
 ## 6. Test design
 
 Add explicit tests for each applicable category:

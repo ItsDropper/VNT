@@ -24,12 +24,12 @@ All examples are hosted programs. **Never write to physical memory, kernel addre
 - [11 — Fixed-width values](11-fixed-width-values.md)
 - [12 — Copy and fill](12-copy-and-fill.md)
 - [13 — Measure internal waste](13-measure-internal-waste.md)
-- [14 — Debug memory failures](14-debug-memory-failures.md)
-- [15 — Build a test matrix](15-build-a-test-matrix.md)
-- [16 — Deterministic stress testing](16-deterministic-stress-testing.md)
-- [17 — Benchmark honestly](17-benchmark-honestly.md)
-- [18 — Security and design review](18-security-and-design-review.md)
-- [19 — Graduation: memory inspector](19-graduation-memory-inspector.md)
+- [14 — Debug memory failures](14-debugging.md)
+- [15 — Build a test matrix](15-testing.md)
+- [16 — Deterministic stress testing](16-stress-testing.md)
+- [17 — Benchmark honestly](17-benchmarking.md)
+- [18 — Security and design review](18-security-review.md)
+- [19 — Graduation: memory inspector](19-graduation-project.md)
 
 ## Multi-file example project
 

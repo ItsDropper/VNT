@@ -1,0 +1,18 @@
+# Copyright (c) 2026 ItsDropper
+# Multi-file entry point for the Memory Lab course.
+import "./arena.vnt" as arena
+import "./report.vnt" as report
+let capacity: int = 128
+if arena.arena_init(capacity) {
+    let first: ptr = arena.arena_reserve(8, 8)
+    if first == null {
+        print("reservation failed")
+        arena.arena_destroy()
+    } else {
+        print("reservation succeeded")
+        report.print_arena_report(capacity, 8, 8)
+        arena.arena_destroy()
+    }
+} else {
+    print("arena initialization failed; complete the course TODOs")
+}

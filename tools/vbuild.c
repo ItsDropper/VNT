@@ -248,6 +248,18 @@ static int parse_action(const char *s, Action *action) {
     return 1;
 }
 
+static const char *action_label(Action action) {
+    switch (action) {
+        case ACT_BUILD: return "build";
+        case ACT_RUN: return "run";
+        case ACT_CHECK: return "check";
+        case ACT_CLEAN: return "clean";
+        case ACT_TEST: return "test";
+        case ACT_NONE: return "none";
+    }
+    return "invalid";
+}
+
 static int find_task(const char *name) {
     int i;
     for (i = 0; i < task_count; i++) if (!strcmp(tasks[i].name, name)) return i;
@@ -388,7 +400,21 @@ static int run_compiler(Config *cfg, int check) {
     }
     if (strchr(cfg->compiler, '/') || strchr(cfg->compiler, '\\')) {
         if (!absolute_path(cfg->compiler, compiler, sizeof compiler)) return 1;
-    } else if (!copy_value(compiler, sizeof compiler, cfg->compiler, "compiler")) return 1;
+    } else {
+        char candidate[PATH_CAP];
+        int n = snprintf(candidate, sizeof candidate, "%s/%s", toolchain, cfg->compiler);
+        if (n >= 0 && (size_t)n < sizeof candidate && exists(candidate)) {
+            if (!copy_value(compiler, sizeof compiler, candidate, "compiler")) return 1;
+        } else {
+#ifdef _WIN32
+            n = snprintf(candidate, sizeof candidate, "%s/%s.exe", toolchain, cfg->compiler);
+            if (n >= 0 && (size_t)n < sizeof candidate && exists(candidate)) {
+                if (!copy_value(compiler, sizeof compiler, candidate, "compiler")) return 1;
+            } else
+#endif
+            if (!copy_value(compiler, sizeof compiler, cfg->compiler, "compiler")) return 1;
+        }
+    }
     if (!absolute_path("build", output, sizeof output)) return 1;
     {
         size_t len = strlen(output);
@@ -490,7 +516,7 @@ int main(int argc, char **argv) {
     if (!load_tasks()) return 1;
     if (!strcmp(argv[1], "tasks")) {
         int i;
-        for (i = 0; i < task_count; i++) printf("%-20s action=%d dependencies=%d\n", tasks[i].name, (int)tasks[i].action, tasks[i].dep_count);
+        for (i = 0; i < task_count; i++) printf("%-20s action=%s dependencies=%d\n", tasks[i].name, action_label(tasks[i].action), tasks[i].dep_count);
         return 0;
     }
     if (!load_properties(&cfg)) return 1;

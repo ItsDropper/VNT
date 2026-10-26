@@ -231,7 +231,9 @@ static int builtin_arity(const char *name, int argc) {
     if (!strcmp(name, "net_async_wait")) return argc == 2;
     if (!strcmp(name, "net_request") || !strcmp(name, "net_request_bytes")) return argc == 4;
     if (!strcmp(name, "net_status") || !strcmp(name, "net_download")) return argc == 3;
-    if (!strcmp(name, "net_url_encode")) return argc == 1;
+    if (!strcmp(name, "net_url_encode") || !strcmp(name, "utf8_len")) return argc == 1;
+    if (!strcmp(name, "utf8_slice")) return argc == 3;
+    if (!strcmp(name, "fs_write_atomic")) return argc == 2;
     if (!strcmp(name, "fs_write") || !strcmp(name, "fs_append") ||
         !strcmp(name, "fs_rename") || !strcmp(name, "env_set")) return argc == 2;
 
@@ -362,6 +364,7 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 n->function_call.argument_count != 0)
                 error(tc, "struct constructors currently take no arguments.");
             if (!strcmp(n->function_call.name, "len") ||
+                !strcmp(n->function_call.name, "utf8_len") ||
                 !strcmp(n->function_call.name, "mod") ||
                 !strcmp(n->function_call.name, "ffi_int"))
                 return TY_INT;
@@ -377,6 +380,8 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
             if (!strcmp(n->function_call.name, "mem_read_u8") || !strcmp(n->function_call.name, "mem_read_u32")) return TY_INT;
              if (!strcmp(n->function_call.name, "mem_read_u64")) return TY_I64;
             if (!strcmp(n->function_call.name, "mem_free") || !strcmp(n->function_call.name, "mem_is_null") || !strcmp(n->function_call.name, "mem_write_u8") || !strcmp(n->function_call.name, "mem_write_u32") || !strcmp(n->function_call.name, "mem_write_u64") || !strcmp(n->function_call.name, "mem_copy") || !strcmp(n->function_call.name, "mem_set")) return TY_BOOL;
+            if (!strcmp(n->function_call.name, "utf8_slice")) return TY_STRING;
+            if (!strcmp(n->function_call.name, "fs_write_atomic")) return TY_BOOL;
             if (!strcmp(n->function_call.name, "process_start")) return TY_OBJECT;
             if (!strcmp(n->function_call.name, "process_launch")) return TY_BOOL;
             if (!strcmp(n->function_call.name, "process_stdout") ||

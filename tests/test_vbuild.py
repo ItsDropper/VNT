@@ -103,6 +103,32 @@ class VBuildTests(unittest.TestCase):
         finally:
             os.chdir(old)
 
+    def test_run_executes_output_and_propagates_exit_code(self):
+        old = Path.cwd()
+        os.chdir(self.project)
+        def fake_compile(args):
+            output = Path(args[3])
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text("fake executable", encoding="utf-8")
+        try:
+            with mock.patch.object(vbuild, "invoke_compiler", side_effect=fake_compile), \
+                 mock.patch.object(vbuild.subprocess, "run", return_value=mock.Mock(returncode=23)) as run:
+                self.assertEqual(vbuild.main(["run"]), 23)
+                run.assert_called_once()
+                self.assertEqual(run.call_args.kwargs["cwd"], self.project)
+        finally:
+            os.chdir(old)
+
+    def test_check_uses_compiler_validation_pipeline(self):
+        old = Path.cwd()
+        os.chdir(self.project)
+        try:
+            with mock.patch.object(vbuild, "invoke_compiler") as invoke:
+                self.assertEqual(vbuild.main(["check"]), 0)
+                invoke.assert_called_once_with(["--dump-ir", str(self.project / "src" / "main.vnt")])
+        finally:
+            os.chdir(old)
+
 
 if __name__ == "__main__":
     unittest.main()

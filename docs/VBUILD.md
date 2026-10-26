@@ -18,20 +18,22 @@ On Windows with GCC:
 gcc -std=c11 -O2 tools/vbuild.c -o vbuild.exe
 ```
 
-## Create a project
+## Create and build a project
 
 ```powershell
-.\vbuild init
-.\vbuild tasks
-.\vbuild build
-.\vbuild run
-.\vbuild check
-.\vbuild clean
+.\\vbuild init
+.\\vbuild tasks
+.\\vbuild build
+.\\vbuild run
+.\\vbuild check
+.\\vbuild clean
 ```
 
 On Linux use `./vbuild`. Initialization creates `build.vbuild`,
-`vbuild.properties`, and `src/main.vnt`. It refuses to overwrite either
-configuration file or the starter source.
+`vbuild.properties`, and `src/main.vnt`. It refuses to overwrite existing
+project files. The default `toolchain = .` assumes the project is inside the
+VNT checkout; for a separate project, set `toolchain` to the VNT repository
+root (or omit it and set `VNT_HOME`).
 
 ## build.vbuild task syntax
 
@@ -76,29 +78,27 @@ toolchain = C:/path/to/VNT
 ```
 
 Supported properties are `project.name`, `project.version`, `source`,
-`output`, `compiler`, and `toolchain`. `toolchain` is the VNT repository root;
-VBuild launches the compiler with that working directory so the compiler can
-find its native runtime sources. If omitted, `VNT_HOME` is used when set,
-otherwise the current project directory is used. Use an absolute path when the
-project lives outside the VNT checkout. `source` points to the single root VNT source
-file. `output` must be a file name, and the output is written under `build/`.
-VNT's module loader handles imports from that root source.
+`output`, `compiler`, and `toolchain`. `toolchain` is the VNT repository
+root. VBuild launches the compiler with that working directory so the compiler
+can find its native runtime sources. If omitted, `VNT_HOME` is used when set;
+otherwise the current project directory is used. `source` points to the
+single root VNT source file. `output` must be a file name, and the output is
+written under `build/`. VNT's module loader handles imports from that root
+source.
 
 ## Commands and limitations
 
 - `init`: create the starter project.
 - `tasks`: list task declarations.
 - `build`: compile using the existing VNT compiler.
-- `run`: build and execute the output.
+- `run`: execute the built output (the default task depends on `build`).
 - `check`: invoke the compiler's `--dump-ir` parsing/lowering/validation path.
 - `clean`: remove generated `build/` output.
 - `test`: explicitly reports that test discovery/execution is not implemented.
 
-The VNT compiler and native linker remain prerequisites for compiling programs.
-Compiler invocation is now performed without passing the source/output arguments
-through a shell, reducing quoting and command-injection risks. VBuild currently
-runs the compiler from the current directory, so the compiler's native runtime
-source paths must be available relative to that directory. Toolchain-root
-discovery, a configurable working directory, dependency resolution, incremental
-builds, real test execution, profiles, cross-compilation, and reproducible
-build guarantees remain future work.
+The compiler invocation uses direct process arguments instead of interpolating
+source/output arguments into a shell. CI covers the native CLI on Windows and
+Linux, and an Ubuntu integration test builds the real VNT compiler, compiles the
+generated starter project, and verifies its program output. Dependency
+resolution, incremental builds, real test discovery/execution, profiles,
+cross-compilation, and reproducible-build guarantees remain future work.

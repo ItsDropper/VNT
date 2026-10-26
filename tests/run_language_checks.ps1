@@ -188,20 +188,30 @@ try {
     }
     Write-Host "Standard filesystem library: PASS"
 
+    $StdTextExe = Join-Path $OutDir "std_text_advanced.exe"
+    & .\vnt.exe --compile tests\std_text_advanced.vnt -o $StdTextExe
+    if ($LASTEXITCODE -ne 0) { throw "Advanced text helpers did not compile." }
+    $textOutput = & $StdTextExe
+    if ($LASTEXITCODE -ne 0) { throw "Advanced text program exited unsuccessfully." }
+    $textExpected = @(
+        "4", "alpha", "true", "gamma", "true", "8", "abc", "ef",
+        "value", "filename", "00042", "vnt...", "2", "0", "STD_TEXT_ADVANCED_OK"
+    )
+    if (($textOutput -join "|") -ne ($textExpected -join "|")) {
+        throw "Unexpected advanced text output: $($textOutput -join ' | ')"
+    }
+    Write-Host "Advanced text helpers: PASS"
+
     $StdTextFsExe = Join-Path $OutDir "std_text_fs_lines.exe"
     & .\vnt.exe --compile tests\std_text_fs_lines.vnt -o $StdTextFsExe
-    if ($LASTEXITCODE -ne 0) { throw "Advanced text/filesystem line helpers did not compile." }
+    if ($LASTEXITCODE -ne 0) { throw "Filesystem line helpers did not compile." }
     $textFsOutput = & $StdTextFsExe
-    if ($LASTEXITCODE -ne 0) { throw "Advanced text/filesystem line program exited unsuccessfully." }
-    $textFsExpected = @(
-        "4", "alpha", "true", "gamma", "true", "8", "abc", "ef",
-        "value", "filename", "00042", "vnt...", "2", "0",
-        "true", "2", "first", "second", "true", "3", "third", "STD_TEXT_FS_LINES_OK"
-    )
+    if ($LASTEXITCODE -ne 0) { throw "Filesystem line program exited unsuccessfully." }
+    $textFsExpected = @("true", "2", "first", "second", "true", "3", "third", "STD_FS_LINES_OK")
     if (($textFsOutput -join "|") -ne ($textFsExpected -join "|")) {
-        throw "Unexpected advanced text/filesystem output: $($textFsOutput -join ' | ')"
+        throw "Unexpected filesystem line output: $($textFsOutput -join ' | ')"
     }
-    Write-Host "Advanced text and filesystem line helpers: PASS"
+    Write-Host "Filesystem line helpers: PASS"
 
     $StdCollectionsExe = Join-Path $OutDir "std_collections_strings_numbers.exe"
     & .\vnt.exe --compile tests\std_collections_strings_numbers.vnt -o $StdCollectionsExe

@@ -732,8 +732,13 @@ static int compute_fingerprint(const char *source, const char *compiler,
     fingerprint_hash = 14695981039346656037ULL;
     if (!fingerprint_file(source) ||
         !fingerprint_file("vbuild.properties") ||
-        !fingerprint_file("build.vbuild") ||
-        !fingerprint_file(compiler)) return 0;
+        !fingerprint_file("build.vbuild")) return 0;
+    if (exists(compiler)) {
+        if (!fingerprint_file(compiler)) return 0;
+    } else {
+        /* A compiler resolved only through PATH cannot be fingerprinted portably. */
+        fingerprint_bytes((const unsigned char *)compiler, strlen(compiler));
+    }
     for (i = 0; i < imported_file_count; i++)
         if (!fingerprint_file(imported_files[i])) return 0;
     for (i = 0; i < module_dependency_count; i++)
@@ -762,7 +767,7 @@ static int compute_fingerprint(const char *source, const char *compiler,
 }
 
 static int manifest_matches(const char *output, const char *fingerprint) {
-    char path[PATH_CAP], saved[96];
+    char path[PATH_CAP], saved[96], expected[96];
     FILE *file;
     int n = snprintf(path, sizeof path, "%s.vbuild-inputs", output);
     if (n < 0 || (size_t)n >= sizeof path) return 0;
@@ -774,7 +779,8 @@ static int manifest_matches(const char *output, const char *fingerprint) {
     }
     fclose(file);
     trim(saved);
-    return !strcmp(saved, fingerprint);
+    n = snprintf(expected, sizeof expected, "vbuild-inputs-v1 %s", fingerprint);
+    return n >= 0 && (size_t)n < sizeof expected && !strcmp(saved, expected);
 }
 
 static int write_manifest(const char *output, const char *fingerprint) {

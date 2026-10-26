@@ -31,7 +31,7 @@ These tutorials teach VNT through practical projects, from beginner exercises to
 
 ## Full operating-system development course
 
-[Build VNTOS from the ground up — 19 beginner-friendly lessons](courses/os/README.md). Starts with computer and OS fundamentals, then covers the build pipeline, GRUB/Multiboot2, x86-64 startup, paging, ELF/linking, freestanding VNT, serial I/O, debugging, testing, and a first kernel modification. Designed to explain the current `os/` implementation without claiming unimplemented subsystems exist.
+[Build VNTOS from the ground up — 26 lessons](courses/os/README.md). Starts with computer and OS fundamentals, follows the real freestanding build pipeline, then works through the multi-file VNT kernel, IDT, minimal assembly interrupt stubs, VNT-side exception dispatch, PIC/PIT timer IRQs, and QEMU verification. The keyboard remains polled; the course calls out unimplemented subsystems rather than pretending VNTOS is production-ready.
 
 ## Systems programming course
 

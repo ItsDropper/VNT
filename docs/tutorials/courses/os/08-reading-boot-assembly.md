@@ -60,3 +60,25 @@ Point to the instructions that:
 ## Exercise
 
 Explain in plain language what would go wrong if `boot32_entry` called the 64-bit kernel before setting up the required CPU state. Do not edit assembly until you can explain the existing sequence.
+
+## 9. Read the bootstrap as a state transition
+
+For every block of assembly, write down the processor state before and after it. At the beginning, execution is in the boot protocol's initial mode. The bootstrap then establishes a stack, prepares page-table structures, enables the CPU features required for long mode, and performs a far transfer into 64-bit code. The exact order matters because an instruction is only valid after its prerequisites are satisfied.
+
+Do not read the file as a list of mysterious instructions. Group instructions by the invariant they establish: a valid stack, a valid page-table root, paging enabled, or execution in the intended code segment. If you cannot name the invariant, investigate the instruction before editing it.
+
+## 10. Why the stack and page tables are early requirements
+
+A compiled function commonly stores local variables and saved registers on the stack. Calling compiled VNT before RSP points to usable writable memory can cause the first prologue or function call to fault. Likewise, long mode with paging enabled requires valid translation structures. The initial page tables are not optional decoration; they make instruction fetches and data accesses possible under the selected CPU mode.
+
+The current bootstrap maps the first 1 GiB using 2 MiB pages. That is a simple early mapping, not a complete virtual-memory manager. It does not track physical page ownership or allow independent address spaces.
+
+## 11. Keep architecture code minimal and reviewable
+
+The course aims to keep device policy, command parsing, and ordinary algorithms in VNT. Assembly remains for the bootstrap and the interrupt entry/exit contract because those operations depend on exact processor state and stack layout. This is not a claim that assembly is inherently better; it is a boundary around operations the current compiler cannot express safely.
+
+Before adding assembly, ask whether a stable VNT function can own the policy. For example, the interrupt stub saves registers and executes `iretq`, while `interrupts.vnt` decides that a timer event should increment a counter. Adding command parsing to the assembly file would mix unrelated responsibilities.
+
+## Lab: annotate without changing behavior
+
+Add comments in your notes—not the source—beside the instructions that establish the stack, build page-table entries, enable long mode, and transfer control. For each group, record its prerequisite and what would fail if it were moved earlier. Then compare your explanation with the comments already present in `os/boot.S`.

@@ -97,3 +97,9 @@ Draw the path from CR3 to the page-table structures used by the current identity
 A virtual address can be numerically small and still be invalid if the active page tables do not map it. Conversely, a mapped address may refer to device memory rather than ordinary RAM, so normal caching and access assumptions may not apply. The current bootstrap map is intentionally broad to get the kernel running; it is not a validation routine for arbitrary pointers.
 
 Before adding a new memory access, establish the address range, mapping, access width, and owner of the region. A future memory manager must track which frames are available and which are reserved; the identity map alone provides no such ownership information.
+
+## 13. Review paging changes as a chain of invariants
+
+The page-table root must be aligned and reachable, each table pointer must refer to valid memory, the entry flags must match the intended page size, and the final mapping must cover the code and data used immediately after paging is enabled. A correct entry at one level does not compensate for a broken pointer at another level.
+
+For every paging patch, test the unchanged boot path first, then add one address-range check or controlled experiment. Keep a diagram of the mapping that changed and record whether the CPU reset, faulted, or reached the next marker.

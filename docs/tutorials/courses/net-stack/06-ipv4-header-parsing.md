@@ -114,6 +114,21 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Validate IHL and total length
+
+IHL counts 32-bit words, so multiply by four to get bytes. Total length includes the header and must not exceed the available packet.
+
+```vnt
+let version: int = packet[0] / 16
+let ihl: int = packet[0] % 16
+if version != 4 || ihl < 5 { return [] }
+let header_length: int = ihl * 4
+let total_length: int = bytes.read_be16(packet, 2)
+if header_length > len(packet) || total_length < header_length || total_length > len(packet) { return [] }
+```
+
+Only after these checks should you verify the checksum and expose the payload slice.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

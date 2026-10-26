@@ -114,6 +114,19 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Parse Ethernet II before touching payload
+
+The 14-byte header contains destination MAC, source MAC, and EtherType. Payload parsing belongs to the next layer.
+
+```vnt
+if len(frame) < 14 { return [] }
+let ether_type: int = bytes.read_be16(frame, 12)
+if ether_type < 0 { return [] }
+# Only now is frame[14..] a candidate payload.
+```
+
+Test a 13-byte frame, a 14-byte header with unknown EtherType, and a frame containing an IPv4 EtherType.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

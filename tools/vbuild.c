@@ -626,7 +626,7 @@ static int execute_task(int index, Config *cfg) {
 }
 
 int main(int argc, char **argv) {
-    Config cfg = {{0}, {0}, {0}, {0}, {0}, {0}};
+    Config cfg = {0};
     int index;
 #ifdef _WIN32
     if (!_getcwd(project_root, sizeof project_root)) {

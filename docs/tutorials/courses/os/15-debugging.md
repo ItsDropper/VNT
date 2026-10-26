@@ -109,3 +109,9 @@ These are starting hypotheses, not automatic diagnoses. Confirm each with eviden
 ## Lab: write a fault tree
 
 Choose one symptom above and draw a tree of at least three possible causes. For each cause, name one observation that would support or rule it out. Only after the tree is built should you choose the first experiment.
+
+## 10. Keep the debugging result falsifiable
+
+A good diagnosis predicts an observation that could prove it wrong. If you believe the timer counter is stuck because the PIC masks IRQ0, inspect the mask and then check whether the IDT handler is reached. If the mask is correct, update the hypothesis rather than repeating the same claim. The purpose of debugging is to reduce uncertainty, not to defend the first guess.
+
+Record each experiment with the hypothesis, one change or measurement, expected result, actual result, and next step. Avoid changing the code and the QEMU configuration in the same experiment unless the test specifically compares those configurations.

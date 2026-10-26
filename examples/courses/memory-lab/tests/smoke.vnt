@@ -1,0 +1,15 @@
+# Copyright (c) 2026 ItsDropper
+# Standalone smoke-test scaffold. Complete in lessons 15 and 19.
+import "../src/arena.vnt" as arena
+if arena.arena_init(64) {
+    let region: ptr = arena.arena_reserve(8, 8)
+    if region == null {
+        print("MEMORY_LAB_FAIL: reserve")
+        arena.arena_destroy()
+    } else {
+        print("MEMORY_LAB_TODO: add byte round-trip assertions")
+        arena.arena_destroy()
+    }
+} else {
+    print("MEMORY_LAB_FAIL: init")
+}

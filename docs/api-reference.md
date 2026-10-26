@@ -28,8 +28,8 @@ The import path is relative to the importing source file. Module functions are e
 | `io.vnt` | Read a line, write stdout/stderr | `read_line(prompt)` returns text; input is line-oriented | [io.vnt](../lib/std/io.vnt) |
 | `fs.vnt` | Check paths, read/write/append text, remove/rename paths, create/list directories | Text-oriented; not a binary-safe file API. Check boolean write/delete results | [fs.vnt](../lib/std/fs.vnt) |
 | `math.vnt` | Math helpers and numeric wrappers | Use source for exact names and type behavior | [math.vnt](../lib/std/math.vnt) |
-| `array.vnt` | Search/count values, numeric aggregation, reverse, join | `sum`/min/max/average expect numeric arrays; empty aggregates return 0 | [array.vnt](../lib/std/array.vnt) |
-| `string.vnt` | Empty checks, prefix/suffix/search/count/repeat | Uses current string indexing semantics; count is non-overlapping and empty needles count as zero | [string.vnt](../lib/std/string.vnt) |
+| `array.vnt` | Search/count, numeric aggregation, reverse, concatenate, take/drop, stable deduplication, join | `sum`/min/max/average expect numeric arrays; empty aggregates return 0; take/drop clamp counts to array bounds; unique preserves first occurrence order | [array.vnt](../lib/std/array.vnt) |
+| `string.vnt` | Empty checks, prefix/suffix/search/count/repeat, replacement, trimming | Uses current string indexing semantics; count/replace are non-overlapping; empty search needles count as zero and replace leaves input unchanged; trim removes ASCII space, tab, carriage return, and newline | [string.vnt](../lib/std/string.vnt) |
 | `number.vnt` | Parity, sign, factorial, GCD, primality | `factorial(n)` returns -1 for negative input | [number.vnt](../lib/std/number.vnt) |
 | `time.vnt` | Millisecond clock and sleep | Clock values are runtime integers; sleep takes milliseconds | [time.vnt](../lib/std/time.vnt) |
 | `os.vnt` | Current directory and environment variables | Environment variables may be absent or platform-specific | [os.vnt](../lib/std/os.vnt) |

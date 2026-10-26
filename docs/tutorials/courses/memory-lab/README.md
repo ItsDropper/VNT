@@ -33,7 +33,7 @@ All examples are hosted programs. **Never write to physical memory, kernel addre
 
 ## Multi-file example project
 
-The reference scaffold is in [`examples/courses/memory-lab/`](../../../../examples/courses/memory-lab/README.md), with separate allocator, reporting, entry point, and test files. Complete it as you progress; it is not a finished allocator.
+The implemented companion project is in [`examples/courses/memory-lab/`](../../../../examples/courses/memory-lab/README.md), with separate allocator, inspection, reporting, entry point, and test files. The course then asks you to extend it with stronger tests and design limitations.
 
 ## Workflow
 

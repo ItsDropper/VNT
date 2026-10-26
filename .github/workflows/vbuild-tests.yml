@@ -4,15 +4,15 @@ on:
   push:
     branches: [main]
     paths:
+      - 'tools/vbuild.c'
       - 'tools/vbuild.py'
-      - 'tests/test_vbuild.py'
       - 'docs/VBUILD.md'
       - '.github/workflows/vbuild-tests.yml'
   pull_request:
     branches: [main]
     paths:
+      - 'tools/vbuild.c'
       - 'tools/vbuild.py'
-      - 'tests/test_vbuild.py'
       - 'docs/VBUILD.md'
       - '.github/workflows/vbuild-tests.yml'
   workflow_dispatch:
@@ -25,8 +25,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  vbuild-unit-tests:
-    name: VBuild unit tests (${{ matrix.os }})
+  vbuild-native:
+    name: Native VBuild (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -35,15 +35,40 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
-      - name: Build native VBuild executable
-        run: gcc -std=c11 -O2 tools/vbuild.c -o vbuild${{ runner.os == 'Windows' && '.exe' || '' }}
-      - name: Verify VBuild CLI and initialization
-        shell: bash
+      - name: Compile native VBuild
+        shell: pwsh
         run: |
-          mkdir -p "$RUNNER_TEMP/vbuild smoke project"
-          cd "$RUNNER_TEMP/vbuild smoke project"
-          "$GITHUB_WORKSPACE/vbuild${{ runner.os == 'Windows' && '.exe' || '' }}" init
-          test -f build.vbuild
-          test -f vbuild.properties
-          test -f src/main.vnt
-          "$GITHUB_WORKSPACE/vbuild${{ runner.os == 'Windows' && '.exe' || '' }}" clean --help >/dev/null 2>&1 && exit 1 || true
+          if ($IsWindows) {
+            gcc -std=c11 -Wall -Wextra -Werror -O2 tools/vbuild.c -o vbuild.exe
+          } else {
+            gcc -std=c11 -Wall -Wextra -Werror -O2 tools/vbuild.c -o vbuild
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Native VBuild compilation failed' }
+      - name: Smoke-test project lifecycle and task parsing
+        shell: pwsh
+        run: |
+          $binaryName = if ($IsWindows) { 'vbuild.exe' } else { 'vbuild' }
+          $binary = Join-Path $env:GITHUB_WORKSPACE $binaryName
+          $project = Join-Path $env:RUNNER_TEMP 'vbuild smoke project'
+          New-Item -ItemType Directory -Force -Path $project | Out-Null
+          Push-Location $project
+          try {
+            & $binary init
+            if ($LASTEXITCODE -ne 0) { throw 'vbuild init failed' }
+            foreach ($path in @('build.vbuild', 'vbuild.properties', 'src/main.vnt')) {
+              if (-not (Test-Path $path)) { throw "init did not create $path" }
+            }
+            Add-Content build.vbuild 'task verify = none depends check, build'
+            & $binary tasks
+            if ($LASTEXITCODE -ne 0) { throw 'task graph parsing failed' }
+            & $binary clean
+            if ($LASTEXITCODE -ne 0) { throw 'clean task failed' }
+            & $binary clean
+            if ($LASTEXITCODE -ne 0) { throw 'repeat clean failed' }
+            & $binary invalid-task
+            if ($LASTEXITCODE -ne 2) { throw 'unknown task did not return exit code 2' }
+            & $binary init
+            if ($LASTEXITCODE -eq 0) { throw 'init overwrote existing project files' }
+          } finally {
+            Pop-Location
+          }

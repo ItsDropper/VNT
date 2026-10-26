@@ -123,3 +123,15 @@ export fun weekday(year, month, day) {
     offsets = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4]
     return mod(adjusted_year + adjusted_year / 4 - adjusted_year / 100 + adjusted_year / 400 + offsets[month - 1] + day, 7)
 }
+
+# Convert Unix epoch milliseconds to calendar fields using the host timezone.
+# Returns [year, month, day, hour, minute, second, weekday, day_of_year, is_dst].
+# weekday is 0=Sunday; is_dst is 0 or 1. Invalid/out-of-range timestamps return [].
+export fun local_parts(epoch_ms) {
+    return time_local_parts(epoch_ms)
+}
+
+# Same field layout as local_parts, always in UTC.
+export fun utc_parts(epoch_ms) {
+    return time_utc_parts(epoch_ms)
+}

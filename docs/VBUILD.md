@@ -141,16 +141,17 @@ file; VNT's module loader handles imports.
 ## Incremental builds
 
 VBuild checks the output timestamp against the configured root source, project
-properties, task file, compiler executable, and every explicitly declared
-`implementation` module. A changed declared dependency invalidates the build.
-If the tracked inputs are current, VBuild prints `Up to date`. Use
-`vbuild build --force` to force recompilation.
+properties, task file, compiler executable, every explicitly declared
+`implementation` module, and the recursively discovered VNT import graph.
+It scans `import "module.vnt"` declarations, resolves each import relative to
+its importer before searching configured local repositories, and visits each
+source file once to handle repeated and cyclic imports. A changed direct or
+transitive imported source invalidates the build even when that module is not
+listed in `dependencies {}`. If tracked inputs are current, VBuild prints
+`Up to date`. Use `vbuild build --force` to force recompilation.
 
-Imports that are not explicitly declared in `dependencies {}`, other
-project-relative imported modules, and native runtime/linker inputs are not yet
-fully fingerprinted. Declare repository modules in the dependency block and use
-`--force` after changing other inputs until full import-graph tracking is
-implemented.
+Native runtime/linker inputs and non-source files are not yet fingerprinted.
+Use `--force` after changing those inputs.
 
 ## Tests
 
@@ -169,6 +170,7 @@ directories and expected-output assertions are not yet supported.
   imports.
 - Test programs are standalone passing executables, not a framework with
   assertions, fixtures, or expected-output files.
-- Full transitive import-graph tracking, profiles, cross-compilation, remote
-  repositories, versioned/transitive dependencies, arbitrary custom tasks, and
-  reproducible-build guarantees are not implemented.
+- Native runtime/linker inputs are not yet fingerprinted. Profiles,
+  cross-compilation, remote repositories, versioned/transitive package
+  coordinates, arbitrary custom tasks, and reproducible-build guarantees are
+  not implemented.

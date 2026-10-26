@@ -74,3 +74,43 @@ Draw the build pipeline from the imported VNT modules, `boot.S`, and `interrupts
 ## Exercise
 
 Temporarily inspect the build script and find the exact command that links `build/boot.o`, `build/kernel.o`, and `build/interrupts.o`. Do not edit the script in this lesson.
+
+## 7. Inspect each stage independently
+
+A build pipeline is easier to debug when every stage has a check. After the build, list the artifacts rather than assuming that the script reached the final step:
+
+```sh
+ls -l build/
+file build/kernel.elf build/kernel.o build/boot.o build/interrupts.o
+```
+
+If a file is absent, identify the command that should have produced it. If an object exists but the ELF does not, the failure is likely in linking. If the ELF exists but the ISO does not, inspect the GRUB/ISO packaging stage. Use the actual filenames from the current build script because generated artifact names can change.
+
+## 8. Understand what the linker resolves
+
+The assembler can accept a call to a symbol whose definition is in another object file. The linker later has to find that definition. VNT's freestanding backend emits function symbols using its own naming convention, so the source-level name and the ELF symbol may differ. The interrupt assembly must call the emitted symbol name, not a name guessed from the VNT source.
+
+Inspect symbols with:
+
+```sh
+nm build/kernel.elf
+readelf -s build/kernel.elf
+```
+
+Use these tools to answer a concrete question, such as whether the interrupt dispatcher exists in the final ELF. A symbol table entry does not prove the function executes correctly; it only proves the symbol is present in that artifact.
+
+## 9. Why the custom linker script matters
+
+The linker script controls the layout and alignment of sections and defines symbols that the bootstrap or kernel may use. Changing the start address can invalidate assumptions made by the bootloader header, initial page tables, or assembly code. Treat an address change as an architectural change, not a cosmetic cleanup.
+
+When editing `os/linker.ld`, identify which input sections are collected into each output section, where the image begins, and how the script exposes boundaries. Check the resulting ELF with `readelf -h -l` and compare its entry point and load segments with the previous build.
+
+## 10. The ISO is a container, not the kernel
+
+The ELF is the linked kernel image. The ISO contains bootloader configuration and the kernel in a layout GRUB can read. A valid ISO can still contain a bad ELF; a valid ELF can still be packaged incorrectly. Therefore test both artifacts separately and then boot the ISO.
+
+The build driver VBuild does not currently replace this mixed VNT/assembly/custom-linker/GRUB pipeline. Use `bash os/build.sh` as the authoritative kernel build, and use `docs/VBUILD.md` for the supported scope of VBuild.
+
+## Lab: make a stage table
+
+Create a table with columns for command, input, output, and validation. Include the VNT compiler build, VNT freestanding emission, assembly of `boot.S`, assembly of `interrupts.S`, linking, Multiboot2 validation, and ISO creation. Fill in the actual paths from `os/build.sh`, not guessed names.

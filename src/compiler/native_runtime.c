@@ -1565,7 +1565,7 @@ VNT_NATIVE_ABI VntValue *vnt_constant_time_equal(VntValue *left,VntValue *right)
     const unsigned char *a=(const unsigned char *)vnt_app_string(left,"constant_time_equal()");
     const unsigned char *b=(const unsigned char *)vnt_app_string(right,"constant_time_equal()");
     size_t na=strlen((const char *)a),nb=strlen((const char *)b),n=na>nb?na:nb;
-    unsigned int diff=(unsigned int)(na^nb);
+    size_t diff=na^nb;
     for(size_t i=0;i<n;i++)diff|=(i<na?a[i]:0)^(i<nb?b[i]:0);
     return vnt_bool(diff==0);
 }

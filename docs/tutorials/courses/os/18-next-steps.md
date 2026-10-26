@@ -17,11 +17,13 @@ Useful goals:
 
 These are compiler and ABI tasks, not just changes to the shell source.
 
-## 2. Add exception and interrupt handling
+## 2. Extend the interrupt subsystem carefully
 
-A kernel needs a defined response to faults such as invalid instructions, page faults, and divide errors. The next architecture work includes an Interrupt Descriptor Table (IDT), well-defined assembly entry stubs, register-save conventions, and safe reporting of exception state.
+The current kernel now has a 256-entry IDT, exception stubs, PIC remapping, a PIT timer IRQ, VNT-side dispatch, and fatal exception reporting. The `irq` shell command lets you observe the timer counter. That is a first interrupt path, not a finished subsystem.
 
-Interrupt entry code is a good reason for a small assembly component. Ordinary exception policy and reporting can remain in VNT when the compiler and ABI support it.
+The keyboard and mouse still use polling, and only IRQ0 is unmasked. Before enabling keyboard IRQ1, design an interrupt-safe queue and make the IRQ handler the sole owner of reads from the PS/2 data port. Do not let the current polling loop and an IRQ handler race to consume the same byte.
+
+The default IDT stub currently reports a fallback marker rather than preserving the original vector for every unused gate. Improving unexpected-vector diagnostics is a useful contained task. A later architecture pass should also define compiler-supported interrupt-safe entry primitives and a documented register/stack ABI.
 
 ## 3. Build a real memory subsystem
 

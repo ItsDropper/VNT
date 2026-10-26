@@ -63,7 +63,22 @@ The `unsafe` marker indicates low-level operations that the compiler cannot make
 
 The current kernel uses inline assembly for serial port I/O, CPU control, and linker-symbol addresses. Some expressions rely on compiler-generated stack layout, such as a hard-coded offset from `%rbp`. That is fragile and is documented as a current implementation limitation—not recommended as a general coding technique.
 
-## 6. Read, don't guess
+## 6. Modules: the kernel is no longer one VNT file
+
+The kernel entry file imports its subsystems explicitly:
+
+```vnt
+import "serial.vnt"
+import "console.vnt"
+import "ps2.vnt"
+import "interrupts.vnt"
+```
+
+Each path is relative to `os/kernel.vnt`. The module loader combines the imported declarations for the freestanding compile; these imports do not create separate processes or ELF files. The assembly boundary remains separate because the CPU interrupt frame and `iretq` return sequence need a precisely defined ABI.
+
+When you move a function into another module, keep its name and call contract stable, then rebuild with `bash os/build.sh`. Do not assume the full hosted standard library is available to imported kernel code.
+
+## 7. Read, don't guess
 
 Open `os/kernel.vnt`. Find:
 - the declaration of `kernel_main`;

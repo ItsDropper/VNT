@@ -138,3 +138,4 @@ vntos_state:
     .quad 0       /* Mouse packet byte 2 */
     .quad 0       /* Keyboard shift state */
     .quad 0       /* Keyboard caps-lock state */
+    .quad 0       /* PIT timer interrupt count */

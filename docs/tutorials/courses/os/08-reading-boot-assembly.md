@@ -38,7 +38,13 @@ These operations are architecture-specific. A normal user application cannot exe
 
 After the bootstrap configures the required state and loads the GDT, it performs a far jump to `long_mode_entry`. This changes the code-segment context and begins execution at the 64-bit entry label. The 64-bit block sets segment registers, aligns the stack, and calls `_start`.
 
-## 7. Why the bootstrap should stay small
+## 7. Boot assembly and interrupt assembly have different jobs
+
+`os/boot.S` is responsible for getting from the Multiboot2 entry state into 64-bit mode with a known stack and page tables. `os/interrupts.S` is a separate, later boundary: it builds and loads the IDT, saves interrupted registers, normalizes exception frames, and returns through `iretq`. The VNT code does not replace either CPU transition with a normal function call.
+
+The interrupt file is intentionally separate so a reader can audit the two architecture-sensitive paths independently. It does not contain the shell, command parsing, VGA drawing policy, or keyboard translation. Those remain in VNT modules.
+
+## 8. Why the bootstrap should stay small
 
 The assembly is difficult to maintain if it grows into the whole operating system. VNTOS's intended architecture keeps the initial CPU bootstrap in assembly and keeps shell behavior and ordinary kernel logic in VNT. Some hardware operations still use inline assembly in `kernel.vnt`; these are a current limitation to improve as compiler support develops.
 

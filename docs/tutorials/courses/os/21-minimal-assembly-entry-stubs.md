@@ -1,0 +1,105 @@
+# Lesson 21 — The Small Assembly Boundary
+
+**Goal:** read the interrupt entry stubs and understand exactly why a small amount of assembly is required.
+
+## Why not write the entire handler in VNT?
+
+The compiler must enter a function with a valid ABI. An interrupt can arrive between arbitrary instructions, not just at a point where a normal function call would be safe. The CPU's stack frame also differs from a normal call frame. Before VNT code can run, the entry path must normalize that frame and preserve the interrupted program's registers.
+
+VNT's current inline-assembly form has no input/output operands, register constraints, or clobber list. Using it to write a complete interrupt entry routine would hide too much information from the compiler. A short standalone assembly file is easier to audit than pretending the current inline assembly feature is a complete interrupt ABI.
+
+## One stub, one normalized frame
+
+In `os/interrupts.S`, a no-error-code entry uses this macro:
+
+```asm
+.macro ISR_NOERR number
+.global isr\number
+isr\number:
+    pushq $0
+    pushq $\number
+    jmp interrupt_common
+.endm
+```
+
+The first push adds a synthetic error code of zero. The second adds the vector number. This makes the top of the stack consistent for exceptions that do not receive an error code from the CPU.
+
+Some exceptions already push an error code. Their `ISR_ERROR` macro pushes only the vector; adding another synthetic error code would shift the frame and make the dispatcher read the wrong values.
+
+## What the common entry must preserve
+
+The common entry saves all 15 general-purpose registers other than RSP itself. It then reads the vector and error code from the normalized frame and passes them as the first two arguments to `interrupt_dispatch`, following the x86-64 System V calling convention used by this build.
+
+Before calling VNT, it aligns the stack to a 16-byte boundary. The original stack pointer is held in R12, which the ABI requires the called function to preserve. After VNT returns, the assembly acknowledges the PIC for hardware IRQ vectors, restores the saved registers, removes the two normalized frame fields, and executes `iretq`.
+
+The interrupt gate clears IF on entry, so the timer interrupt cannot recursively interrupt the dispatcher while it updates the tick count. This implementation intentionally does not enable nested interrupts.
+
+## Why the error-code list matters
+
+The macro list marks the exceptions that push CPU error codes in this target. The exact list is architecture- and CPU-feature-sensitive. If you add another vector or target a different processor mode, check the processor manual before assuming whether an error code exists.
+
+A wrong stack shape can turn one exception into a second fault while trying to report the first one. That is why this code deserves more scrutiny than ordinary shell logic.
+
+## Assembly should stop at the boundary
+
+The assembly file does the jobs that require exact CPU control: creating/loading the IDT, remapping the PIC, programming PIT channel 0, saving registers, and executing `iretq`. The VNT module decides whether a vector is a timer tick or a fatal exception.
+
+That is the design goal—not zero assembly at any cost. The amount of assembly is minimized by giving it a narrow contract.
+
+## Checkpoint
+
+Draw the stack from the vector number down through the CPU-saved return state. Explain the difference between `ret` and `iretq`.
+
+## Exercise
+
+Inspect the push and pop order in `interrupt_common`. Verify that each saved register is restored in reverse order and that the vector/error pair is removed before `iretq`. Do not reorder the pushes as a cleanup.
+
+## Stack-frame arithmetic, not magic numbers
+
+For a no-error-code interrupt, the CPU's current-privilege frame begins with the saved instruction pointer, code selector, and flags. The stub then pushes a synthetic error code and the vector number. For an exception where the CPU already pushed an error code, the stub adds only the vector number.
+
+After the common entry pushes 15 general-purpose registers, the vector is 120 bytes above the current RSP and the error code is 128 bytes above it. Those offsets come from:
+
+`15 registers × 8 bytes = 120 bytes`.
+
+Do not change the register-save list without recalculating these offsets. Adding one push changes both values by eight bytes.
+
+## Why align the stack before calling VNT?
+
+The interrupted instruction could have left RSP at an alignment that is valid for ordinary execution but unsuitable for a compiled function call. The entry code saves the original stack pointer in R12, rounds RSP down to a 16-byte boundary, calls the VNT dispatcher, and restores the saved stack pointer afterward. R12's original value is itself already saved on the interrupt stack and is restored with the other registers.
+
+This assumes the VNT-generated function follows the documented x86-64 calling convention and preserves callee-saved registers. That assumption is part of the kernel ABI and should eventually have explicit compiler regression tests.
+
+## What `iretq` restores
+
+`iretq` consumes the CPU return frame. It restores the instruction pointer, code selector, and flags for a same-privilege return. A return across privilege levels would have additional stack state, but VNTOS has not implemented userspace or such a transition.
+
+The common entry first removes the normalized vector/error fields, then executes `iretq`. Using `ret` would pop the wrong value as a return address and would not restore the processor flags.
+
+## Audit questions
+
+- Does every stub place the vector at the top of the normalized frame?
+- Does the error-code macro avoid pushing a second dummy code?
+- Are all general-purpose registers saved before calling VNT?
+- Is the stack aligned before the call?
+- Does the PIC EOI happen only for vectors 32–47?
+- Are all saved registers restored in reverse order?
+- Are the synthetic vector/error fields removed before `iretq`?
+
+If any answer is unclear, do not edit the assembly yet. Use the offsets and the macro expansion to derive the answer first.
+
+## What the entry code deliberately does not do
+
+The stub does not allocate a new kernel stack, switch page tables, identify a process, or save floating-point/SIMD state. Those omissions are acceptable only for the current single-address-space kernel, where the timer handler does not use SIMD and no task switch occurs. A future scheduler or user-mode transition must revisit the complete architectural state that needs preservation.
+
+The stub also does not make the current VNT compiler's inline assembly safer. It isolates the most delicate interrupt frame in a dedicated file, but other kernel functions still use hard-coded stack offsets. Keep those two facts separate when reviewing the design.
+
+## A controlled review technique
+
+Read the assembly without editing it. Write down the stack pointer's logical contents at four points: immediately after the CPU enters, after the stub adds vector/error fields, after all general registers are pushed, and immediately before `iretq`. Use one row per push or pop. If your diagram does not return to the same CPU frame, stop and fix the reasoning before touching the code.
+
+## Compiler symbol names
+
+The current freestanding backend emits VNT functions with a `vnt_fn_` prefix. Therefore the assembly common entry calls `vnt_fn_interrupt_dispatch`, even though the source-level VNT function is named `interrupt_dispatch`. The assembly initializer has the explicit external name `vntos_interrupts_init`, because the VNT wrapper calls that name from inline assembly.
+
+This distinction is important when reading linker errors. An undefined `vnt_fn_interrupt_dispatch` means the compiled VNT function was not emitted under the expected symbol; an undefined `vntos_interrupts_init` means the external assembly implementation or its object file is missing.

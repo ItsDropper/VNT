@@ -31,6 +31,8 @@ From the repository root, inspect these files in your editor:
 4. `os/linker.ld`
 5. `os/boot.S`
 6. `os/kernel.vnt`
+7. `os/serial.vnt`, `os/console.vnt`, `os/ps2.vnt`, and `os/interrupts.vnt`
+8. `os/interrupts.S`
 
 Do not try to understand every instruction yet. Just identify which file is responsible for building, boot configuration, memory layout, processor startup, and shell behavior.
 
@@ -47,9 +49,9 @@ os/boot.S prepares the CPU
     ↓
 generated VNT entry point
     ↓
-kernel_main() in os/kernel.vnt
+kernel_main() imports VNT device modules
     ↓
-serial command shell
+serial/VGA command shell + IDT/PIT timer IRQ
 ```
 
 Later lessons will refine this diagram. It is more useful to have a rough correct model than to memorize isolated instructions.

@@ -1,0 +1,37 @@
+import "../lib/std/array.vnt" as array
+import "../lib/std/string.vnt" as string
+import "../lib/std/number.vnt" as number
+
+values = [4, 2, 7, 2, 9]
+print(array.contains(values, 7))
+print(array.index_of(values, 2))
+print(array.count(values, 2))
+print(array.sum(values))
+print(array.average(values))
+print(array.min(values))
+print(array.max(values))
+print(array.reverse(values))
+print(array.join(["vnt", "stdlib", "ok"], "-"))
+print(array.sum([]))
+
+print(string.is_empty(""))
+print(string.is_not_empty("vnt"))
+print(string.starts_with("vnt-standard-library", "vnt"))
+print(string.ends_with("vnt-standard-library", "library"))
+print(string.contains("vnt-standard-library", "standard"))
+print(string.index_of("banana", "ana"))
+print(string.count("aaaaa", "aa"))
+print(string.repeat("ab", 3))
+print(string.contains("vnt", "longer"))
+
+print(number.is_even(42))
+print(number.is_odd(17))
+print(number.sign(-12))
+print(number.sign(0))
+print(number.factorial(0))
+print(number.factorial(6))
+print(number.factorial(-1))
+print(number.gcd(54, 24))
+print(number.is_prime(29))
+print(number.is_prime(1))
+print("STDLIB_COLLECTIONS_STRINGS_NUMBERS_OK")

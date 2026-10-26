@@ -1,7 +1,7 @@
 # Copyright (c) 2026 ItsDropper
 # Pattern writes and verification are isolated from allocation policy.
 # Caller must pass a pointer returned by a live arena reservation.
-import "../../../lib/std/mem.vnt" as mem
+import "../../../../lib/std/mem.vnt" as mem
 
 export unsafe fun write_pattern(region: ptr, size: int, seed: int) -> bool {
     if mem.is_null(region) || size <= 0 {

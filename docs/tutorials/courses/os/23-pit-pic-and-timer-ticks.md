@@ -93,3 +93,5 @@ Do not copy the PIC port writes into a driver for a different controller. First 
 ## Why the counter is shared across modules
 
 The storage is declared in `os/boot.S` because that file already owns the initial scalar state layout. The VNT dispatcher does not allocate memory for each tick; it updates the existing slot through `state_set`. The shell later reads that same slot through `state_get`. This is a minimal shared-state contract, and a future cleanup should replace numeric indexes with a documented state interface.
+
+When documenting your measurements, include the QEMU command, the two hexadecimal counter readings, the approximate delay, and whether the kernel was otherwise idle. That makes the observation repeatable and prevents a counter value from being mistaken for a precise clock.

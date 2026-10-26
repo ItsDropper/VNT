@@ -56,3 +56,35 @@ Answer these in order:
 ## Exercise
 
 Trace each arrow in the boot diagram to the relevant file or symbol. If you cannot find a step in the source, mark it as a question rather than inventing an implementation.
+
+## 6. Boot is a sequence of contracts
+
+Every stage must establish the conditions required by the next stage. GRUB must recognize the Multiboot2 header and load the ELF segments. The bootstrap must establish a stack and the page tables needed to execute 64-bit code. The long-mode transition must configure the CPU correctly before control reaches compiled VNT code. The kernel entry must initialize the console before relying on user-visible diagnostics.
+
+This is best understood as a chain of contracts. If a stage fails to meet its contract, later code may never run. For example, adding a debug print to VNT cannot diagnose a fault that occurs before the VNT entry point is reached. Early failures need an earlier observation method, such as a boot marker or QEMU's debugger.
+
+## 7. Build a timeline from source
+
+Open `os/boot.S` and `os/kernel.vnt`. Mark the exact labels and functions that form the handoff. Then find the point where the interrupt subsystem is initialized and the point where the shell begins accepting commands. Do not infer the order from filenames; trace the calls and branches.
+
+Your timeline should distinguish at least these events:
+
+1. GRUB selects and loads the kernel ELF.
+2. The Multiboot entry begins in the bootstrap's initial CPU mode.
+3. The bootstrap establishes page tables and the stack.
+4. The processor enters long mode and jumps to the kernel entry.
+5. VNT code initializes output and device helpers.
+6. The IDT/PIC/PIT path is initialized before maskable IRQs are enabled.
+7. The shell enters its command loop.
+
+If the current source changes, update your timeline from the code.
+
+## 8. The handoff is not a normal function call
+
+The bootloader does not call `kernel_main` using the C or VNT calling convention. It transfers control according to the boot protocol. The bootstrap must therefore establish any CPU state and stack assumptions required by the compiled entry code. Treat the bootloader-provided registers as protocol data, not as arbitrary function parameters.
+
+Similarly, an interrupt does not use the ordinary function-return path. Its entry and exit convention is handled separately in the later interrupt lessons.
+
+## Lab: diagnose a missing marker
+
+Imagine that the build completes but the expected boot marker never appears. List the earliest possible stage where execution could have stopped. For each stage, name an independent observation: artifact existence, ELF headers, GRUB output, a bootstrap marker, serial initialization, or a QEMU debugger breakpoint. Your diagnosis should narrow the stage before proposing a source edit.

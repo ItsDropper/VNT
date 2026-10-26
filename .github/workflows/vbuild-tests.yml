@@ -63,10 +63,18 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'task graph parsing failed' }
             & $binary clean
             if ($LASTEXITCODE -ne 0) { throw 'clean task failed' }
+            Add-Content build.vbuild 'task cycle = none depends cycle'
+            & $binary cycle
+            if ($LASTEXITCODE -eq 0) { throw 'dependency cycle was not rejected' }
+            & $binary test
+            if ($LASTEXITCODE -ne 2) { throw 'unimplemented test task did not return exit code 2' }
+            & $binary clean
+            if ($LASTEXITCODE -ne 0) { throw 'clean task failed' }
             & $binary clean
             if ($LASTEXITCODE -ne 0) { throw 'repeat clean failed' }
-            & $binary invalid-task
-            if ($LASTEXITCODE -ne 2) { throw 'unknown task did not return exit code 2' }
+            Add-Content build.vbuild 'task broken = none depends missing'
+            & $binary tasks
+            if ($LASTEXITCODE -eq 0) { throw 'undefined dependency was not rejected' }
             & $binary init
             if ($LASTEXITCODE -eq 0) { throw 'init overwrote existing project files' }
           } finally {

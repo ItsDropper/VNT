@@ -1,11 +1,10 @@
 # VBuild
 
-VBuild is VNT's native project build driver. The command-line implementation is
-C in `tools/vbuild.c`; it does not require Python or a Python runtime. Build
-the tool itself with a C compiler, then distribute the resulting executable as
-`vbuild.exe` on Windows or `vbuild` on Linux.
+VBuild is VNT's native project build driver. The CLI is implemented in
+`tools/vbuild.c` and has no Python runtime dependency. End users run the
+prebuilt executable; only building VBuild from source requires a C compiler.
 
-## Build the VBuild executable
+## Build VBuild
 
 From the VNT repository root:
 
@@ -19,41 +18,51 @@ On Windows with GCC:
 gcc -std=c11 -O2 tools/vbuild.c -o vbuild.exe
 ```
 
-Put the executable in the VNT project directory (or on PATH). VBuild currently
-expects the VNT compiler executable to be available as `vnt` on PATH, or to be
-named explicitly using the `compiler` property.
-
-## Create and build a project
+## Create a project
 
 ```powershell
 .\vbuild init
+.\vbuild tasks
 .\vbuild build
 .\vbuild run
 .\vbuild check
 .\vbuild clean
 ```
 
-On Linux use `./vbuild init`, etc. `init` creates `build.vbuild`,
-`vbuild.properties`, and `src/main.vnt`. Existing manifests are never
-overwritten.
+On Linux use `./vbuild`. Initialization creates `build.vbuild`,
+`vbuild.properties`, and `src/main.vnt`. It refuses to overwrite either
+configuration file or the starter source.
 
-## build.vbuild
+## build.vbuild task syntax
 
-The initial build script is deliberately declarative and limited to the
-built-in task graph:
+Each line declares a task name, one built-in action, and optionally dependencies:
 
 ```text
 # VBuild task file (version 1)
-task build
-task run depends build
-task check
-task clean
-task test
+task build = build
+task run = run depends build
+task check = check
+task clean = clean
+task test = test
+task verify = none depends check, build
 ```
 
-VBuild validates the declared task set before running a command. Arbitrary
-build-script code and custom task actions are not supported yet; this is a
-small first version, not a general-purpose scripting engine.
+Grammar:
+
+```text
+task NAME = ACTION [depends TASK[, TASK...]]
+```
+
+Supported actions are `build`, `run`, `check`, `clean`, `test`, and
+`none`. The `none` action lets a task group dependencies without running
+another action, as in `verify` above. Run `vbuild verify` to execute the
+dependencies in order. A dependency executes at most once per invocation.
+Unknown dependencies, duplicate task names, invalid actions, and dependency
+cycles are rejected. `vbuild tasks` lists the tasks declared in the file.
+
+This is a deliberately small declarative task graph, not a general-purpose
+scripting language. Custom shell commands are not accepted, so a project file
+cannot inject arbitrary commands into the VBuild process.
 
 ## vbuild.properties
 
@@ -66,27 +75,25 @@ compiler = vnt
 ```
 
 Supported properties are `project.name`, `project.version`, `source`,
-`output`, and `compiler`. The current MVP builds one root source file;
-VNT's existing import/module loader remains responsible for module loading.
-The output file is written to `build/`.
+`output`, and `compiler`. `source` points to the single root VNT source
+file. `output` must be a file name, and the output is written under `build/`.
+VNT's module loader handles imports from that root source.
 
-## Commands and current limits
+## Commands and limitations
 
-- `init`: generate starter files without overwriting existing manifests.
-- `build`: compile the configured source using VNT's existing compiler.
-- `run`: build and execute the host binary.
-- `check`: invoke the compiler's `--dump-ir` validation path.
-- `clean`: remove the generated `build/` directory only.
-- `test`: reports that test discovery/execution is not implemented. It does
-  not claim to run tests.
+- `init`: create the starter project.
+- `tasks`: list task declarations.
+- `build`: compile using the existing VNT compiler.
+- `run`: build and execute the output.
+- `check`: invoke the compiler's `--dump-ir` parsing/lowering/validation path.
+- `clean`: remove generated `build/` output.
+- `test`: explicitly reports that test discovery/execution is not implemented.
 
-The compiler and native linker remain prerequisites for compiling VNT programs.
-The build driver itself requires a C compiler only when building VBuild from
-source; end users can run the prebuilt native executable without Python.
-
-Dependency resolution, incremental builds, test discovery, custom task actions,
-profiles, cross-compilation, and reproducible build guarantees are not
-implemented. The current compiler invocation still relies on host toolchain
-availability. Later work should replace shell-based process invocation with
-platform-specific process APIs, improve executable discovery, and add native
-integration tests on Windows and Linux.
+The VNT compiler and native linker remain prerequisites for compiling programs.
+Compiler invocation is now performed without passing the source/output arguments
+through a shell, reducing quoting and command-injection risks. VBuild currently
+runs the compiler from the current directory, so the compiler's native runtime
+source paths must be available relative to that directory. Toolchain-root
+discovery, a configurable working directory, dependency resolution, incremental
+builds, real test execution, profiles, cross-compilation, and reproducible
+build guarantees remain future work.

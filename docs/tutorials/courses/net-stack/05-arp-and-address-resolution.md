@@ -114,6 +114,19 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Validate ARP's declared address sizes
+
+The Ethernet/IPv4 profile expects hardware type 1, protocol type 0x0800, hardware length 6, and protocol length 4 before interpreting addresses.
+
+```vnt
+if len(packet) < 28 { return [] }
+if bytes.read_be16(packet, 0) != 1 { return [] }
+if bytes.read_be16(packet, 2) != 2048 { return [] }
+if packet[4] != 6 || packet[5] != 4 { return [] }
+```
+
+After validation, decode operation 1 (request) or 2 (reply). Do not treat arbitrary bytes as a MAC or IPv4 address.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

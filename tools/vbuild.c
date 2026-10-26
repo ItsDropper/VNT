@@ -540,6 +540,111 @@ static int run_process(char *const argv[], const char *working_directory) {
     return WAIT_STATUS(status);
 #endif
 }
+
+#define IMPORT_CAP 256
+static char imported_files[IMPORT_CAP][PATH_CAP];
+static int imported_file_count;
+
+static int remember_import(const char *path) {
+    int i;
+    for (i = 0; i < imported_file_count; i++)
+        if (!strcmp(imported_files[i], path)) return 1;
+    if (imported_file_count >= IMPORT_CAP) {
+        fprintf(stderr, "vbuild: import graph exceeds %d source files.\n", IMPORT_CAP);
+        return 0;
+    }
+    if (!copy_value(imported_files[imported_file_count], PATH_CAP, path, "import path")) return 0;
+    imported_file_count++;
+    return 1;
+}
+
+static int resolve_import_for_build(const char *importer, const char *module,
+                                    char *resolved, size_t resolved_cap) {
+    char candidate[PATH_CAP];
+    const char *slash = strrchr(importer, '/');
+    const char *backslash = strrchr(importer, '\\');
+    const char *separator = slash;
+    size_t dir_len;
+    int n, i;
+    if (backslash && (!separator || backslash > separator)) separator = backslash;
+    dir_len = separator ? (size_t)(separator - importer) : 0;
+    n = separator ? snprintf(candidate, sizeof candidate, "%.*s/%s",
+                              (int)dir_len, importer, module)
+                  : snprintf(candidate, sizeof candidate, "%s", module);
+    if (n >= 0 && (size_t)n < sizeof candidate && exists(candidate) && !is_directory(candidate))
+        return copy_value(resolved, resolved_cap, candidate, "resolved import");
+    for (i = 0; i < repository_count; i++) {
+        char root[PATH_CAP];
+        if (!absolute_path(repositories[i], root, sizeof root)) return 0;
+        n = snprintf(candidate, sizeof candidate, "%s/%s", root, module);
+        if (n < 0 || (size_t)n >= sizeof candidate) continue;
+        if (exists(candidate) && !is_directory(candidate))
+            return copy_value(resolved, resolved_cap, candidate, "resolved import");
+    }
+    fprintf(stderr, "vbuild: imported module '%s' (from '%s') was not found.\n", module, importer);
+    return 0;
+}
+
+static int collect_import_graph(const char *path) {
+    FILE *file;
+    char line[LINE_CAP];
+    if (!remember_import(path)) return 0;
+    /* A remembered file is scanned only once, including when imports form a cycle. */
+    {
+        int seen = 0, i;
+        for (i = 0; i < imported_file_count - 1; i++)
+            if (!strcmp(imported_files[i], path)) { seen = 1; break; }
+        if (seen) return 1;
+    }
+    file = fopen(path, "r");
+    if (!file) {
+        fprintf(stderr, "vbuild: cannot read imported source '%s': %s\n", path, strerror(errno));
+        return 0;
+    }
+    while (fgets(line, sizeof line, file)) {
+        char module[PATH_CAP], resolved[PATH_CAP];
+        char *p = line;
+        size_t len = 0;
+        while (isspace((unsigned char)*p)) p++;
+        if (strncmp(p, "import", 6) || !isspace((unsigned char)p[6])) continue;
+        p += 6;
+        while (isspace((unsigned char)*p)) p++;
+        if (*p++ != '"') continue;
+        while (*p && *p != '"' && len + 1 < sizeof module) {
+            if (*p == '\\' && p[1]) p++;
+            module[len++] = *p++;
+        }
+        if (*p != '"' || len == 0 || len + 1 >= sizeof module) continue;
+        module[len] = '\0';
+        if (!resolve_import_for_build(path, module, resolved, sizeof resolved) ||
+            !collect_import_graph(resolved)) {
+            fclose(file);
+            return 0;
+        }
+    }
+    if (ferror(file)) {
+        fprintf(stderr, "vbuild: error reading source '%s'.\n", path);
+        fclose(file);
+        return 0;
+    }
+    fclose(file);
+    return 1;
+}
+
+static int imports_are_current(const char *source, const char *output) {
+    struct stat output_stat;
+    int i;
+    imported_file_count = 0;
+    if (!collect_import_graph(source)) return -1;
+    if (stat(output, &output_stat) != 0) return 0;
+    for (i = 0; i < imported_file_count; i++) {
+        struct stat input_stat;
+        if (stat(imported_files[i], &input_stat) != 0 ||
+            output_stat.st_mtime < input_stat.st_mtime) return 0;
+    }
+    return 1;
+}
+
 static int run_compiler(Config *cfg, int check);
 static int run_tests(Config *cfg);
 
@@ -553,6 +658,7 @@ static int run_compiler(Config *cfg, int check) {
     const char *suffix = NULL;
     struct stat output_stat, source_stat, properties_stat, tasks_stat, compiler_stat;
     int dependencies_current = 1;
+    int import_graph_current;
     int dep_index;
     if (!configure_module_path()) return 1;
     if (!exists(cfg->source)) {
@@ -606,7 +712,10 @@ static int run_compiler(Config *cfg, int check) {
             stat(output, &output_stat) != 0 || output_stat.st_mtime < dependency_stat.st_mtime)
             dependencies_current = 0;
     }
-    if (!check && !force_build && stat(output, &output_stat) == 0 &&
+    import_graph_current = imports_are_current(source, output);
+    if (import_graph_current < 0) return 1;
+    if (!check && !force_build && import_graph_current && dependencies_current &&
+        stat(output, &output_stat) == 0 &&
         stat(source, &source_stat) == 0 && stat("vbuild.properties", &properties_stat) == 0 &&
         stat("build.vbuild", &tasks_stat) == 0 && stat(compiler, &compiler_stat) == 0 &&
         dependencies_current &&

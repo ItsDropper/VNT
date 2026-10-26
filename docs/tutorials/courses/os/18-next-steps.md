@@ -69,3 +69,32 @@ You are ready to continue if you can do all of the following without copying a r
 ## Final note
 
 The right way to grow a kernel is not to add every subsystem at once. Understand the current contract, add one carefully scoped capability, test it at the appropriate level, and record the evidence.
+
+## 8. Order future work by dependency
+
+The next subsystem should be chosen by the prerequisites it needs, not by how impressive the feature sounds. A physical-page allocator needs a trustworthy memory map and reserved-range handling. A heap needs a source of pages and allocation invariants. User mode needs page permissions and controlled entry/exit. A scheduler needs a defined saved-context layout and a timer path that can safely select another task.
+
+Keyboard IRQ handling is not simply unmasking IRQ1. The PS/2 data port currently has a polling consumer. An IRQ design must establish one owner for device reads and provide a bounded queue so the interrupt handler can return quickly. Without that queue and ownership rule, polling and interrupts can race and lose bytes.
+
+## 9. A practical staged roadmap
+
+A defensible progression is:
+
+1. Improve observability and test assertions around the existing boot path.
+2. Document and test the VNT/assembly ABI.
+3. Replace compiler-specific stack-offset tricks with supported compiler features.
+4. Add named, bounded kernel state interfaces.
+5. Define a physical memory map and page-frame allocator.
+6. Add a small heap only after physical allocation is trustworthy.
+7. Add interrupt-safe event queues before enabling more device IRQs.
+8. Add user mode only after memory permissions and syscall transitions exist.
+9. Add scheduling only after context save/restore and timer semantics are explicit.
+10. Add persistent storage after a driver and filesystem boundary are defined.
+
+This is a dependency order, not a promise that all features already exist.
+
+## 10. Choose a graduation project with measurable success
+
+Prefer a project that can be built and tested within one focused change. A stronger exception report is measurable if it reports the vector and error code and preserves the fatal halt. A timer statistics command is measurable if its counter and units are documented. A compiler ABI test is measurable if it catches an unexpected symbol or stack-layout change.
+
+Avoid goals such as "make the OS faster" unless you first choose a workload, define a measurement, and capture a baseline. Kernel progress is meaningful when the behavior and its evidence are reproducible.

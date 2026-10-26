@@ -358,9 +358,11 @@ static int execute_action(Action action, Config *cfg) {
     if (action == ACT_RUN) {
         char output[PATH_CAP];
         char *args[2];
-        int rc = run_compiler(cfg, 0);
-        if (rc) return rc;
         snprintf(output, sizeof output, "build/%s%s", cfg->output, EXE_SUFFIX);
+        if (!exists(output)) {
+            fprintf(stderr, "vbuild: output not found; add 'depends build' to this task or run the build task first.\\n");
+            return 1;
+        }
         args[0] = output; args[1] = NULL;
         return run_process(args);
     }

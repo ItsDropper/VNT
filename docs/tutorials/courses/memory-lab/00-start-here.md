@@ -132,6 +132,18 @@ Call the smallest standard-library function that performs the needed primitive. 
 
 After success, verify that the invariant still holds. In tests, inspect the actual output or bytes rather than only checking a success boolean.
 
+## Worked implementation: Establish a reproducible baseline
+
+Compile the actual multi-file example before editing; this confirms that compiler, imports, and native linker work together.
+
+```powershell
+.\\build.ps1
+.\\vnt.exe --compile examples\\courses\\memory-lab\\src\\main.vnt -o memory-lab.exe
+.\\memory-lab.exe
+```
+
+Run this again after every milestone. Save real compiler output; do not call a file tested merely because it exists.
+
 ## 7. Tests you must write
 
 Do not consider this lesson complete until all of these categories have an explicit test:

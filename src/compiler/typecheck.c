@@ -285,7 +285,9 @@ static void check_call(TypeChecker *tc, AstNode *n) {
         TypeKind actual = expr_type(tc, arg);
         if (expected == TY_UNDECLARED || expected == TY_VOID)
             error(tc, "function parameter uses an invalid type.");
-        else if (!type_compatible(expected, actual))
+        else if (!type_compatible(expected, actual) &&
+                 !(expected == TY_INT && actual == TY_STRING &&
+                   is_string_index_expr(tc, arg)))
             error(tc, "function argument type does not match its parameter annotation.");
     }
 }

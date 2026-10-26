@@ -77,3 +77,22 @@ Before adding userspace, the kernel would need controlled transitions, syscall e
 ## Lab: map one hardware access
 
 Choose one access in `os/serial.vnt`, `os/console.vnt`, or `os/ps2.vnt`. Record the address or port, the width of the access, the status bit or memory layout it relies on, and the function that owns the operation. Explain what would break if the access were moved into the shell without a wrapper.
+
+## 11. Understand why kernel debugging is different
+
+In a hosted application, the operating system usually isolates a process from unrelated processes. In this kernel, most bugs occur in the one privileged execution environment. A bad write can damage the stack, the IDT, page tables, or shell state. A fault handler itself can fail if its stack or code mapping is invalid.
+
+For this reason, begin with passive inspection and reversible QEMU experiments. Prefer reading ELF metadata, adding one serial marker, or examining the current source over intentionally triggering faults on real hardware. A test should have a known reset path and should not depend on a disk image containing personal data.
+
+## 12. Convert an assumption into a check
+
+Examples of assumptions worth checking:
+
+- "This pointer is mapped" → identify the page-table range that maps it.
+- "This function exists in the ELF" → inspect the symbol table.
+- "The timer runs" → read the counter twice and compare values.
+- "The shell reads keyboard input" → identify whether input comes from PS/2 or serial.
+- "The compiler supports this syntax" → build a minimal example and run the relevant test.
+- "The ISO boots" → run QEMU and record the visible boot marker.
+
+A useful kernel developer turns assumptions into checks that another person can repeat.

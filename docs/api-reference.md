@@ -14,7 +14,7 @@ See [compiler architecture](compiler-architecture.md) for the pipeline and [tuto
 
 ## Source-level standard library
 
-The modules are imported by relative path, for example:
+The modules are implemented in ordinary VNT source using existing functions, loops, comparisons, indexing, and arithmetic; no compiler or runtime additions are needed. Import modules by relative path, for example:
 
 ```vnt
 import "lib/std/fs.vnt" as fs
@@ -28,6 +28,9 @@ The import path is relative to the importing source file. Module functions are e
 | `io.vnt` | Read a line, write stdout/stderr | `read_line(prompt)` returns text; input is line-oriented | [io.vnt](../lib/std/io.vnt) |
 | `fs.vnt` | Check paths, read/write/append text, remove/rename paths, create/list directories | Text-oriented; not a binary-safe file API. Check boolean write/delete results | [fs.vnt](../lib/std/fs.vnt) |
 | `math.vnt` | Math helpers and numeric wrappers | Use source for exact names and type behavior | [math.vnt](../lib/std/math.vnt) |
+| `array.vnt` | Search/count values, numeric aggregation, reverse, join | `sum`/min/max/average expect numeric arrays; empty aggregates return 0 | [array.vnt](../lib/std/array.vnt) |
+| `string.vnt` | Empty checks, prefix/suffix/search/count/repeat | Uses current string indexing semantics; count is non-overlapping and empty needles count as zero | [string.vnt](../lib/std/string.vnt) |
+| `number.vnt` | Parity, sign, factorial, GCD, primality | `factorial(n)` returns -1 for negative input | [number.vnt](../lib/std/number.vnt) |
 | `time.vnt` | Millisecond clock and sleep | Clock values are runtime integers; sleep takes milliseconds | [time.vnt](../lib/std/time.vnt) |
 | `os.vnt` | Current directory and environment variables | Environment variables may be absent or platform-specific | [os.vnt](../lib/std/os.vnt) |
 | `process.vnt` | Start, poll, wait for, inspect, and terminate child processes; launch visible programs | Pass an executable and an array of string arguments. Arguments are not shell-parsed by VNT | [process.vnt](../lib/std/process.vnt) |

@@ -307,17 +307,35 @@ export fun right(value, count) {
 }
 
 export fun remove_prefix(value, prefix) {
-    if !starts_with(value, prefix) {
+    prefix_size = len(prefix)
+    if prefix_size > len(value) {
         return value
     }
-    return right(value, len(value) - len(prefix))
+    i = 0
+    while i < prefix_size {
+        if value[i] != prefix[i] {
+            return value
+        }
+        i += 1
+    }
+    return right(value, len(value) - prefix_size)
 }
 
 export fun remove_suffix(value, suffix) {
-    if !ends_with(value, suffix) {
+    suffix_size = len(suffix)
+    value_size = len(value)
+    if suffix_size > value_size {
         return value
     }
-    return left(value, len(value) - len(suffix))
+    offset = value_size - suffix_size
+    i = 0
+    while i < suffix_size {
+        if value[offset + i] != suffix[i] {
+            return value
+        }
+        i += 1
+    }
+    return left(value, value_size - suffix_size)
 }
 
 export fun pad_left(value, target_length, fill) {

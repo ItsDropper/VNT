@@ -114,6 +114,20 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Connect layers in order and reverse them for the reply
+
+Each layer receives only the slice described by the previous validated layer. A response is built from UDP outward through IPv4 and Ethernet.
+
+```vnt
+let eth: array = ethernet.parse_frame(frame)
+let ip_bytes: array = bytes.slice(frame, 14, len(frame) - 14)
+let ip: array = ipv4.parse_ipv4(ip_bytes)
+let udp_bytes: array = bytes.slice(ip_bytes, ip[0], ip[1] - ip[0])
+let udp_fields: array = udp.parse_udp(udp_bytes)
+```
+
+Do not let a later layer read fields from an invalid earlier result. Check each returned array's documented shape before indexing it.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

@@ -4,3 +4,20 @@
 export fun value_at(json_text, key, occurrence) {
     return json_value_at(json_text, key, occurrence)
 }
+
+# Returns fallback when the selected field is absent or empty.
+# An intentionally empty JSON string is therefore indistinguishable from missing data.
+export fun value_or(json_text, key, occurrence, fallback) {
+    value = json_value_at(json_text, key, occurrence)
+    if value == "" {
+        return fallback
+    }
+    return value
+}
+
+# Existence check using a sentinel unlikely to occur in ordinary API data.
+# This remains a convenience wrapper, not a typed JSON parser or DOM.
+export fun has_key(json_text, key, occurrence) {
+    marker = "__VNT_JSON_MISSING_6B41D9__"
+    return json_value_at(json_text, key, occurrence) != marker && json_value_at(json_text, key, occurrence) != ""
+}

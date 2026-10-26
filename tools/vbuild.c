@@ -48,6 +48,11 @@ typedef struct {
 static char project_root[PATH_CAP];
 static int force_build;
 static char selected_target[64] = "exe";
+static char repositories[16][PATH_CAP];
+static int repository_count;
+static char module_dependencies[64][PATH_CAP];
+static int module_dependency_count;
+static char resolved_dependencies[64][PATH_CAP];
 
 typedef enum { ACT_BUILD, ACT_RUN, ACT_CHECK, ACT_CLEAN, ACT_TEST, ACT_NONE } Action;
 typedef struct {
@@ -72,6 +77,41 @@ static void trim(char *s) {
 static int safe_filename(const char *s) {
     return s[0] && !strchr(s, '/') && !strchr(s, '\\') &&
            strcmp(s, ".") && strcmp(s, "..");
+}
+
+static int safe_relative_path(const char *s) {
+    const char *p = s;
+    if (!s[0] || s[0] == '/' || s[0] == '\\' || strchr(s, ':')) return 0;
+    while (*p) {
+        const char *start = p;
+        while (*p && *p != '/' && *p != '\\') p++;
+        if ((p - start == 2 && start[0] == '.' && start[1] == '.') ||
+            (p - start == 1 && start[0] == '.')) return 0;
+        if (*p) p++;
+    }
+    return 1;
+}
+
+static int parse_string_call(const char *line, const char *function, char *out, size_t cap) {
+    size_t fnlen = strlen(function);
+    const char *p = line;
+    while (isspace((unsigned char)*p)) p++;
+    if (strncmp(p, function, fnlen) || p[fnlen] != '(') return 0;
+    p += fnlen + 1;
+    while (isspace((unsigned char)*p)) p++;
+    if (*p++ != '"') return 0;
+    size_t n = 0;
+    while (*p && *p != '"') {
+        if (*p == '\\' || n + 1 >= cap) return 0;
+        out[n++] = *p++;
+    }
+    if (*p++ != '"') return 0;
+    while (isspace((unsigned char)*p)) p++;
+    if (*p++ != ')') return 0;
+    while (isspace((unsigned char)*p)) p++;
+    if (*p && *p != '#') return 0;
+    out[n] = '\0';
+    return n > 0;
 }
 
 static int copy_value(char *dst, size_t cap, const char *src, const char *key) {
@@ -281,6 +321,12 @@ static int init_project(void) {
         "# VBuild task file (version 1)\n"
         "# Select: exe, elf, asm, or freestanding-asm\n"
         "target exe\n"
+        "repositories {\n"
+        "    local(\"libs\")\n"
+        "}\n"
+        "dependencies {\n"
+        "    # implementation(\"math_helpers.vnt\")\n"
+        "}\n"
         "task build = build\n"
         "task run = run depends build\n"
         "task check = check\n"
@@ -336,9 +382,11 @@ static int find_task(const char *name) {
 static int load_tasks(void) {
     FILE *f = fopen("build.vbuild", "r");
     char line[LINE_CAP];
-    int lineno = 0;
+    int lineno = 0, section = 0;
     if (!f) { fprintf(stderr, "vbuild: missing build.vbuild.\n"); return 0; }
     task_count = 0;
+    repository_count = 0;
+    module_dependency_count = 0;
     while (fgets(line, sizeof line, f)) {
         char *p, *name, *action_name, *depends;
         Task *task;
@@ -349,6 +397,35 @@ static int load_tasks(void) {
         }
         trim(line); p = line;
         if (!p[0] || p[0] == '#') continue;
+        if (!strcmp(p, "}")) {
+            if (!section) { fprintf(stderr, "vbuild: build.vbuild:%d: unexpected '}'.\n", lineno); fclose(f); return 0; }
+            section = 0; continue;
+        }
+        if (!strcmp(p, "repositories {")) {
+            if (section) { fprintf(stderr, "vbuild: build.vbuild:%d: nested blocks are unsupported.\n", lineno); fclose(f); return 0; }
+            section = 1; continue;
+        }
+        if (!strcmp(p, "dependencies {")) {
+            if (section) { fprintf(stderr, "vbuild: build.vbuild:%d: nested blocks are unsupported.\n", lineno); fclose(f); return 0; }
+            section = 2; continue;
+        }
+        if (section) {
+            char value[PATH_CAP];
+            if (section == 1) {
+                if (!parse_string_call(p, "local", value, sizeof value) || !safe_relative_path(value) || repository_count >= 16) {
+                    fprintf(stderr, "vbuild: build.vbuild:%d: expected local(\"relative-directory\") in repositories block.\n", lineno);
+                    fclose(f); return 0;
+                }
+                strcpy(repositories[repository_count++], value);
+            } else {
+                if (!parse_string_call(p, "implementation", value, sizeof value) || !safe_relative_path(value) || module_dependency_count >= 64) {
+                    fprintf(stderr, "vbuild: build.vbuild:%d: expected implementation(\"relative-module.vnt\") in dependencies block.\n", lineno);
+                    fclose(f); return 0;
+                }
+                strcpy(module_dependencies[module_dependency_count++], value);
+            }
+            continue;
+        }
         if (!strncmp(p, "target ", 7)) {
             char *target = p + 7;
             trim(target);
@@ -409,6 +486,7 @@ static int load_tasks(void) {
             }
         }
     }
+    if (section) { fprintf(stderr, "vbuild: build.vbuild: unterminated block.\n"); fclose(f); return 0; }
     if (ferror(f)) { fprintf(stderr, "vbuild: error reading build.vbuild.\n"); fclose(f); return 0; }
     fclose(f);
     if (!task_count) { fprintf(stderr, "vbuild: build.vbuild defines no tasks.\n"); return 0; }

@@ -129,6 +129,19 @@ Call the new function from the example's entry point. Avoid duplicating its inte
 
 Every new branch can break earlier behavior. Run the complete relevant test set, not only the newest test.
 
+## Worked implementation: Turn the contract into test cases
+
+Write expected results for exact fit, overflow, invalid alignment, and zero-size requests before running them.
+
+```text
+capacity=16, size=16, alignment=1 -> success
+capacity=16, size=17, alignment=1 -> reject
+capacity=16, size=1, alignment=3 -> reject
+capacity=16, size=0, alignment=1 -> reject
+```
+
+For every rejected request, assert cursor, payload, padding, and allocation count remain unchanged. Null alone is not enough.
+
 ## 6. Test design
 
 Add explicit tests for each applicable category:

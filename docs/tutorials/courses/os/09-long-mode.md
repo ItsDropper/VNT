@@ -88,3 +88,9 @@ For the long-mode transition, list the GDT, stack, page tables, CPU feature cont
 Record the last known-good commit and the exact QEMU command before testing any change to long-mode setup. If the change causes an immediate reset, restore the baseline and reapply only the smallest part needed to reproduce the issue. Do not use a successful compiler exit as evidence that the CPU transition is correct.
 
 A useful review should be able to explain why the GDT selector is valid, why the stack is mapped, why the page-table root is usable, and why the target address is reachable after paging becomes active. Those facts together explain the transition; a single "long mode enabled" comment does not.
+
+## 11. What to include in a review
+
+For a long-mode patch, state the intended processor state before the change, the state afterward, and the exact evidence used to validate the transition. Include the build result, ELF entry point, and QEMU observation. If the first visible marker is missing, say which stage you have ruled out and which remains uncertain.
+
+This is a better review than "fixed boot" because another developer can reproduce the test and understand the architectural claim being made.

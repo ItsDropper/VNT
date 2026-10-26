@@ -69,7 +69,30 @@ export fun index_of(value, needle) {
 }
 
 export fun contains(value, needle) {
-    return index_of(value, needle) >= 0
+    value_size = len(value)
+    needle_size = len(needle)
+    if needle_size == 0 {
+        return true
+    }
+    if needle_size > value_size {
+        return false
+    }
+    start = 0
+    while start <= value_size - needle_size {
+        matched = true
+        i = 0
+        while i < needle_size {
+            if value[start + i] != needle[i] {
+                matched = false
+            }
+            i += 1
+        }
+        if matched {
+            return true
+        }
+        start += 1
+    }
+    return false
 }
 
 # Counts non-overlapping matches. An empty needle returns zero.
@@ -198,6 +221,18 @@ export fun last_index_of(value, needle) {
         start -= 1
     }
     return -1
+}
+
+fun append_item(values, item) {
+    size = len(values)
+    result = range(size + 1)
+    i = 0
+    while i < size {
+        result[i] = values[i]
+        i += 1
+    }
+    result[size] = item
+    return result
 }
 
 # Returns a new array of substrings. Empty delimiter returns [value] to avoid an infinite split.

@@ -1,6 +1,6 @@
 # Memory Lab: Arena Allocator and Inspector
 
-This is the companion implementation for the [20-lesson memory course](../../../docs/tutorials/courses/memory-lab/README.md). It is intentionally more than a one-file pointer demo: it owns a backing allocation, reserves aligned subregions, records allocation metadata, tracks payload and padding separately, checks invariants, writes deterministic patterns, and verifies failure atomicity.
+This is the companion implementation for the [20-lesson memory course](../../../docs/tutorials/courses/memory-lab/README.md). It is an actual multi-file arena implementation rather than a one-file pointer demo: it owns a backing allocation, reserves aligned subregions, records allocation metadata, tracks payload and padding separately, checks invariants, writes deterministic patterns, and verifies failure atomicity.
 
 ## Project layout
 

@@ -91,3 +91,21 @@ The initial page tables map the low 1 GiB, so the IDT and handlers at the kernel
 ## Failure analysis
 
 A missing gate can fault when the event occurs. A wrong selector can cause a general-protection fault. A malformed stack frame can make the return path interpret the error code as RIP. A wrong PIC vector offset can send IRQ0 into an exception handler. These failures look similar from the outside—a frozen VM or reboot—so keep the table layout, stub frame, and PIC configuration as separate review steps.
+
+## A final architecture sanity check
+
+The first 32 vectors belong to CPU-defined exceptions. They are not interchangeable with device IRQ numbers. The legacy PIC mapping used here places IRQ0 at vector 32, IRQ1 at 33, and so on. A modern APIC-based machine has more interrupt-routing machinery; this course intentionally starts with the legacy PIC because the current QEMU kernel uses it.
+
+The IDT table is allocated in the kernel's BSS, not on the stack. The descriptor base points at that static storage, which remains alive after `interrupts_init` returns. If the table were a local variable, the CPU could later follow a pointer into reused stack memory.
+
+When reviewing any future IDT change, answer these questions before running it:
+
+- Is the table base correctly aligned and mapped?
+- Is the limit the final byte index, not the number of entries?
+- Does every installed gate point to executable kernel code?
+- Is the selector valid in the active GDT?
+- Are exception error-code conventions correct?
+- Are hardware IRQs mapped away from the CPU exception range?
+- Is the table loaded before the CPU is allowed to receive maskable IRQs?
+
+These are invariants, not style preferences.

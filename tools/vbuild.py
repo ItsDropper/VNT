@@ -47,6 +47,8 @@ def load_manifest(project: Path) -> dict:
         not isinstance(item, str) or not item.strip() for item in sources
     ):
         raise VBuildError(f"{MANIFEST}: build.sources must be a non-empty array of paths.")
+    if len(sources) != 1:
+        raise VBuildError("This VBuild version accepts one root source; use VNT imports for additional modules.")
     output = build.get("output", name)
     if not isinstance(output, str) or not output.strip() or Path(output).name != output:
         raise VBuildError(f"{MANIFEST}: build.output must be a file name, not a path.")
@@ -173,7 +175,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "run":
             if not executable.is_file():
                 raise VBuildError(f"Compiler reported success but output is missing: {executable}")
-            result = subprocess.run([str(executable), *sys.argv[2:0]], cwd=project, check=False)
+            result = subprocess.run([str(executable)], cwd=project, check=False)
             return result.returncode
         return 0
     except VBuildError as exc:

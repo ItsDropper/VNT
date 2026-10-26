@@ -186,6 +186,64 @@ static int exists(const char *path) {
     return stat(path, &st) == 0;
 }
 
+static int configure_module_path(void) {
+    char search_path[PATH_CAP * 4] = {0};
+    size_t used = 0;
+    int i, j;
+    for (i = 0; i < repository_count; i++) {
+        char root[PATH_CAP];
+        int n;
+        if (!absolute_path(repositories[i], root, sizeof root)) return 0;
+        n = snprintf(search_path + used, sizeof search_path - used, "%s%s",
+#ifdef _WIN32
+                     used ? ";" : "",
+#else
+                     used ? ":" : "",
+#endif
+                     root);
+        if (n < 0 || (size_t)n >= sizeof search_path - used) {
+            fprintf(stderr, "vbuild: combined repository path is too long.\n");
+            return 0;
+        }
+        used += (size_t)n;
+    }
+    for (i = 0; i < module_dependency_count; i++) {
+        int found = 0;
+        for (j = 0; j < repository_count; j++) {
+            char root[PATH_CAP];
+            char candidate[PATH_CAP];
+            int n;
+            if (!absolute_path(repositories[j], root, sizeof root)) return 0;
+            n = snprintf(candidate, sizeof candidate, "%s/%s", root, module_dependencies[i]);
+            if (n < 0 || (size_t)n >= sizeof candidate) {
+                fprintf(stderr, "vbuild: dependency path is too long: %s\n", module_dependencies[i]);
+                return 0;
+            }
+            if (exists(candidate) && !is_directory(candidate)) {
+                if (!copy_value(resolved_dependencies[i], sizeof resolved_dependencies[i],
+                                candidate, "dependency")) return 0;
+                found = 1;
+                break;
+            }
+        }
+        if (!found) {
+            fprintf(stderr, "vbuild: dependency '%s' was not found in any local repository.\n",
+                    module_dependencies[i]);
+            return 0;
+        }
+    }
+#ifdef _WIN32
+    if (_putenv_s("VNT_MODULE_PATH", search_path) != 0) {
+#else
+    if (setenv("VNT_MODULE_PATH", search_path, 1) != 0) {
+#endif
+        fprintf(stderr, "vbuild: could not configure VNT_MODULE_PATH.\n");
+        return 0;
+    }
+    return 1;
+}
+
+
 static int ensure_build_dir(void) {
     struct stat st;
     if (stat("build", &st) == 0) {
@@ -415,6 +473,9 @@ static int run_compiler(Config *cfg, int check) {
     const char *mode = NULL;
     const char *suffix = NULL;
     struct stat output_stat, source_stat, properties_stat, tasks_stat, compiler_stat;
+    int dependencies_current = 1;
+    int dep_index;
+    if (!configure_module_path()) return 1;
     if (!exists(cfg->source)) {
         fprintf(stderr, "vbuild: source file not found: %s\n", cfg->source); return 1;
     }
@@ -460,9 +521,16 @@ static int run_compiler(Config *cfg, int check) {
             fprintf(stderr, "vbuild: output path is too long.\n"); return 1;
         }
     }
+    for (dep_index = 0; dep_index < module_dependency_count; dep_index++) {
+        struct stat dependency_stat;
+        if (stat(resolved_dependencies[dep_index], &dependency_stat) != 0 ||
+            stat(output, &output_stat) != 0 || output_stat.st_mtime < dependency_stat.st_mtime)
+            dependencies_current = 0;
+    }
     if (!check && !force_build && stat(output, &output_stat) == 0 &&
         stat(source, &source_stat) == 0 && stat("vbuild.properties", &properties_stat) == 0 &&
         stat("build.vbuild", &tasks_stat) == 0 && stat(compiler, &compiler_stat) == 0 &&
+        dependencies_current &&
         output_stat.st_mtime >= source_stat.st_mtime &&
         output_stat.st_mtime >= properties_stat.st_mtime &&
         output_stat.st_mtime >= tasks_stat.st_mtime &&

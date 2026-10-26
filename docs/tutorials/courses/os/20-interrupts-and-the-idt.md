@@ -109,3 +109,23 @@ When reviewing any future IDT change, answer these questions before running it:
 - Is the table loaded before the CPU is allowed to receive maskable IRQs?
 
 These are invariants, not style preferences.
+
+## Implementation lab: audit one gate from source to runtime
+
+Do not start by editing the IDT. First pick vector 32, the PIT timer IRQ, and follow it through every representation:
+
+1. Find the `ISR_NOERR 32` expansion in `os/interrupts.S`.
+2. Find the address installed for vector 32 in the IDT initialization.
+3. Confirm the gate selector is the kernel code selector established by the bootstrap GDT.
+4. Confirm the IDTR base points to the static table and its limit is 4095.
+5. Find the VNT dispatcher branch for vector 32.
+6. Find the shared counter read by the `irq` shell command.
+7. Run the kernel and compare two counter readings.
+
+At each step, write the invariant being relied on. For example, the gate address must point to executable mapped code; the selector must be valid; the entry stub must construct the expected frame; and the dispatcher must use the same vector numbering as the assembly.
+
+## Do not assume every unused gate is safe
+
+The initializer installs a default handler for vectors without a dedicated stub. That makes the IDT table fully populated, but it does not mean every unexpected event can be recovered from. The fallback is a diagnostic path, not a general exception recovery framework. Some exceptions have architectural side effects or error codes that require careful interpretation.
+
+A future enhancement should preserve the actual vector in fallback diagnostics instead of reporting only a generic marker. Implement that only after understanding the current frame and verifying that the default path receives the same normalized layout as the dedicated stubs.

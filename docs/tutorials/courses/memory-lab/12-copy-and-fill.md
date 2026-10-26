@@ -129,6 +129,20 @@ Call the new function from the example's entry point. Avoid duplicating its inte
 
 Every new branch can break earlier behavior. Run the complete relevant test set, not only the newest test.
 
+## Worked implementation: Validate both ranges before bulk operations
+
+The source and destination each need a valid live region. Overlap-safe copying does not validate either pointer.
+
+```vnt
+let filled: bool = mem.set(destination, 165, length)
+let copied: bool = mem.copy(destination, source, length)
+if filled && copied {
+    print(mem.read_u8(destination, 0))
+}
+```
+
+Test zero-length operations, overlapping ranges, and a destination that ends exactly at capacity.
+
 ## 6. Test design
 
 Add explicit tests for each applicable category:

@@ -548,7 +548,7 @@ static int imported_file_count;
 static int remember_import(const char *path) {
     int i;
     for (i = 0; i < imported_file_count; i++)
-        if (!strcmp(imported_files[i], path)) return 1;
+        if (!strcmp(imported_files[i], path)) return 2;
     if (imported_file_count >= IMPORT_CAP) {
         fprintf(stderr, "vbuild: import graph exceeds %d source files.\n", IMPORT_CAP);
         return 0;
@@ -588,13 +588,11 @@ static int resolve_import_for_build(const char *importer, const char *module,
 static int collect_import_graph(const char *path) {
     FILE *file;
     char line[LINE_CAP];
-    if (!remember_import(path)) return 0;
-    /* A remembered file is scanned only once, including when imports form a cycle. */
     {
-        int seen = 0, i;
-        for (i = 0; i < imported_file_count - 1; i++)
-            if (!strcmp(imported_files[i], path)) { seen = 1; break; }
-        if (seen) return 1;
+        int remembered = remember_import(path);
+        if (remembered == 0) return 0;
+        /* Already visited: stop cycles and repeated imports. */
+        if (remembered == 2) return 1;
     }
     file = fopen(path, "r");
     if (!file) {

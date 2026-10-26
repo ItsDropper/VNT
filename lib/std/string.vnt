@@ -318,7 +318,13 @@ export fun remove_prefix(value, prefix) {
         }
         i += 1
     }
-    return right(value, len(value) - prefix_size)
+    result = ""
+    i = prefix_size
+    while i < len(value) {
+        result = result + value[i]
+        i += 1
+    }
+    return result
 }
 
 export fun remove_suffix(value, suffix) {
@@ -335,7 +341,13 @@ export fun remove_suffix(value, suffix) {
         }
         i += 1
     }
-    return left(value, value_size - suffix_size)
+    result = ""
+    i = 0
+    while i < value_size - suffix_size {
+        result = result + value[i]
+        i += 1
+    }
+    return result
 }
 
 export fun pad_left(value, target_length, fill) {

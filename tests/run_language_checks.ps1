@@ -317,7 +317,7 @@ try {
         "true", "true", "true", "true", "true", "false",
         "src/main.exe", "C:/VNT/main.elf", ".env.txt",
         "true", "true", "true", "true", "true", "true",
-        "name=Ada&theme=dark", "", "VNT", "fallback", "true", "false",
+        "name=Ada&theme=dark", "", "VNT", "fallback", "true", "false", "fallback", "false",
         "true", "false", "true", "29", "false", "61", "1", "6", "-1",
         "STD_IMPROVED_MODULES_OK"
     )

@@ -78,3 +78,13 @@ When debugging, temporarily reduce output to one marker and confirm the channel.
 ## Lab: build a serial test matrix
 
 Create rows for one-byte transmit, multi-byte transmit, one-byte receive, backspace, empty input, and a line near the input buffer's limit. For each, record the command used, expected output, actual output, and whether VGA or serial was the active path.
+
+## 11. Add diagnostics without creating new failures
+
+A diagnostic routine should be simpler than the subsystem it diagnoses. Prefer a short fixed marker over formatting complex state while the kernel is unstable. Avoid printing from interrupt context unless the output path is explicitly designed for it. A diagnostic that blocks forever can hide the original failure by creating a second one.
+
+When a serial test fails, separate UART setup, transmit readiness, receive readiness, QEMU routing, and shell parsing. Check one at a time. This is especially important because serial is both a user-visible console and a debugging channel in the current kernel.
+
+## Lab: write a minimal I/O report
+
+Record the QEMU invocation, which channel you typed into, which channel displayed output, the first byte or command that failed, and whether the failure reproduces after a fresh boot. Include the relevant function in `os/serial.vnt` and avoid saying "serial is broken" until you have localized the failed stage.

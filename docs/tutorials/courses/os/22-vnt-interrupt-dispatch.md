@@ -92,3 +92,7 @@ The dispatcher is intentionally simple, but its branches model a useful design r
 Do not merge all three cases into a single generic "print and return" branch. Returning from a page fault without fixing the faulting mapping would normally repeat the same fault. Returning from a general-protection fault can hide a broken kernel invariant. The conservative halt makes the failure visible instead of pretending to recover.
 
 A later implementation can add a named exception-message table, but it must preserve the numeric vector and raw error code so the friendly name does not discard useful evidence. For page faults, the CPU's fault-address register must also be read through an architecture-specific primitive; it is not included in the current dispatcher arguments.
+
+## How to verify the ABI boundary
+
+After a successful build, use `nm build/kernel.elf` and search for the interrupt initializer and dispatcher symbols. The ELF should contain both the assembly initializer and the compiler-emitted VNT dispatcher. Use the actual symbol names shown by `nm`; do not infer them from source names when the compiler applies a prefix.

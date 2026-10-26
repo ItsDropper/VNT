@@ -114,6 +114,22 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Choose the most specific matching prefix
+
+Represent a route as four address octets, a prefix length, and a next-hop identifier. Compare only the first prefix bits, retaining the matching route with the longest prefix.
+
+```vnt
+let best_prefix: int = -1
+let best_hop: int = -1
+# For every matching route:
+if matched && prefix > best_prefix {
+    best_prefix = prefix
+    best_hop = hop
+}
+```
+
+Test a default route, an overlapping /24 and /25, a destination outside both, and an invalid prefix length.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

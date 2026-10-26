@@ -68,6 +68,42 @@ The ELF target requires Linux/WSL with GCC, GNU `ld`, and the VNT repository's
 supports a restricted language/runtime subset; a successful build does not
 mean hosted APIs or every language feature is available in a kernel.
 
+## Local repositories and dependencies
+
+VBuild supports source-module dependencies from local repositories. This uses
+the same block-oriented style as Gradle, but it is not a Maven/Maven Central
+client and does not download packages.
+
+```text
+repositories {
+    local("libs")
+}
+
+dependencies {
+    implementation("math_helpers.vnt")
+}
+```
+
+Here, `libs/` is a project-relative directory, and
+`libs/math_helpers.vnt` is the declared module. Import it in VNT source using
+the module's file name:
+
+```vnt
+import "math_helpers.vnt" as math_helpers
+print(math_helpers.square(7))
+```
+
+The compiler first resolves imports relative to the importing file, then
+searches each configured local repository. VBuild validates that every declared
+`implementation` module exists before compiling and adds repository paths to
+`VNT_MODULE_PATH` for the compiler process. Repository and dependency paths
+must be relative and cannot traverse outside the project/repository.
+
+Only `local("directory")` repositories and `implementation("relative-file.vnt")`
+dependencies are currently supported. Dependency coordinates, versions,
+transitive resolution, remote repositories, and package downloads are not
+implemented.
+
 `run` is intentionally limited to `target exe`; it refuses to pretend an
 assembly file or freestanding kernel is a hosted application. The `output`
 property is the artifact basename, and VBuild appends the target's conventional
@@ -105,14 +141,16 @@ file; VNT's module loader handles imports.
 ## Incremental builds
 
 VBuild checks the output timestamp against the configured root source, project
-properties, task file, and compiler executable. If the output is current, it
-prints `Up to date` instead of invoking the compiler. Use
+properties, task file, compiler executable, and every explicitly declared
+`implementation` module. A changed declared dependency invalidates the build.
+If the tracked inputs are current, VBuild prints `Up to date`. Use
 `vbuild build --force` to force recompilation.
 
-This first incremental implementation does not yet fingerprint imported VNT
-modules or every native runtime/linker input. If you change an imported module
-or a runtime file and the output appears current, force a rebuild. Full
-dependency-graph tracking is a follow-up.
+Imports that are not explicitly declared in `dependencies {}`, other
+project-relative imported modules, and native runtime/linker inputs are not yet
+fully fingerprinted. Declare repository modules in the dependency block and use
+`--force` after changing other inputs until full import-graph tracking is
+implemented.
 
 ## Tests
 
@@ -131,5 +169,6 @@ directories and expected-output assertions are not yet supported.
   imports.
 - Test programs are standalone passing executables, not a framework with
   assertions, fixtures, or expected-output files.
-- Incremental dependency tracking, profiles, cross-compilation, arbitrary
-  custom tasks, and reproducible-build guarantees are not implemented.
+- Full transitive import-graph tracking, profiles, cross-compilation, remote
+  repositories, versioned/transitive dependencies, arbitrary custom tasks, and
+  reproducible-build guarantees are not implemented.

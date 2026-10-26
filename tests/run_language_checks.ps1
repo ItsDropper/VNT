@@ -331,7 +331,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "UTF-8 and atomic-write runtime tests did not compile." }
     $runtimeFeaturesOutput = & $RuntimeFeaturesExe
     if ($LASTEXITCODE -ne 0) { throw "UTF-8 and atomic-write runtime test program exited unsuccessfully." }
-    $runtimeFeaturesExpected = @("4", "é中", "🙂", "", "true", "first", "true", "replacement", "true", "RUNTIME_FEATURES_OK")
+    $runtimeFeaturesExpected = @("4", "é中", "🙂", "", "true", "first", "true", "replacement", "true", "9", "1970", "1", "1", "0", "0", "0", "4", "1", "0", "RUNTIME_FEATURES_OK")
     if (($runtimeFeaturesOutput -join "|") -ne ($runtimeFeaturesExpected -join "|")) {
         throw "Unexpected UTF-8/atomic-write output: $($runtimeFeaturesOutput -join ' | ')"
     }

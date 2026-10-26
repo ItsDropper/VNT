@@ -7,6 +7,11 @@ say "A remote research station has gone dark at 03:17."
 say "Find the keycard, restore power, and escape."
 input player "Technician name? "
 say "Welcome, technician. Your name is recorded."
+# Initialize all progression flags so any menu can be visited first.
+set has_key "no"
+set power "no"
+set sample "no"
+set trust "no"
 label hub
 say ""
 say "=== CENTRAL HUB ==="

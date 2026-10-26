@@ -156,7 +156,14 @@ static void merge_branch_symbols(TypeChecker *tc, const SymbolState *before,
     }
 }
 
+static TypeKind expr_type(TypeChecker *tc, AstNode *n);
+
 static int numeric(TypeKind t) { return t == TY_INT || t == TY_I64 || t == TY_FLOAT; }
+
+static int is_string_index_expr(TypeChecker *tc, AstNode *n) {
+    if (!n || n->type != AST_INDEX_EXPRESSION) return 0;
+    return expr_type(tc, n->index_expression.array) == TY_STRING;
+}
 
 static TypeKind type_from_name(const char *name) {
     if (!strcmp(name, "int")) return TY_INT;
@@ -210,7 +217,7 @@ static int builtin_arity(const char *name, int argc) {
         !strcmp(name, "sleep_ms") || !strcmp(name, "process_poll") ||
         !strcmp(name, "process_pid") || !strcmp(name, "process_terminate") ||
         !strcmp(name, "process_stdout") || !strcmp(name, "process_stderr") ||
-        !strcmp(name, "process_exit_code") || !strcmp(name, "process_launch") || !strcmp(name, "io_write") ||
+        !strcmp(name, "process_exit_code") || !strcmp(name, "process_exit") || !strcmp(name, "process_launch") || !strcmp(name, "io_write") ||
         !strcmp(name, "io_write_error")) return argc == 1;
     if (!strcmp(name, "process_wait") || !strcmp(name, "process_start")) return argc == 2;
     if (!strcmp(name, "net_stream_start")) return argc == 4;
@@ -278,7 +285,9 @@ static void check_call(TypeChecker *tc, AstNode *n) {
         TypeKind actual = expr_type(tc, arg);
         if (expected == TY_UNDECLARED || expected == TY_VOID)
             error(tc, "function parameter uses an invalid type.");
-        else if (!type_compatible(expected, actual))
+        else if (!type_compatible(expected, actual) &&
+                 !(expected == TY_INT && actual == TY_STRING &&
+                   is_string_index_expr(tc, arg)))
             error(tc, "function argument type does not match its parameter annotation.");
     }
 }
@@ -317,7 +326,9 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
             if (container != TY_ARRAY && container != TY_STRING &&
                 container != TY_UNKNOWN && container != TY_OBJECT)
                 error(tc, "indexing requires an array, string, or object.");
-            /* A string index is one byte/character, not another string pointer. */
+            /* String indexing is represented as a character value by the
+               current language/runtime; keep its existing string type so
+               character comparisons in the VNT-native VNX interpreter work. */
             return container == TY_STRING ? TY_STRING : TY_UNKNOWN;
         }
 
@@ -465,8 +476,14 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                  * for mixed numeric values. Unknown values remain permitted
                  * because inferred variables can intentionally be dynamic.
                  */
+                int string_byte_comparison =
+                    (left == TY_STRING && right == TY_INT &&
+                     is_string_index_expr(tc, n->binary_expression.left)) ||
+                    (left == TY_INT && right == TY_STRING &&
+                     is_string_index_expr(tc, n->binary_expression.right));
                 if (left != TY_UNKNOWN && right != TY_UNKNOWN &&
-                    left != right && !(numeric(left) && numeric(right))) {
+                    left != right && !(numeric(left) && numeric(right)) &&
+                    !string_byte_comparison) {
                     error(tc, "equality operands must have compatible types.");
                 }
                 return TY_BOOL;
@@ -618,8 +635,11 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
             case AST_ASSIGNMENT: {
                 TypeKind target = expr_type(tc, n->assignment.target);
                 TypeKind value = expr_type(tc, n->assignment.value);
+                int string_byte_store =
+                    is_string_index_expr(tc, n->assignment.target) &&
+                    value == TY_INT;
                 if (target != TY_UNKNOWN && target != TY_UNDECLARED &&
-                    !type_compatible(target, value))
+                    !type_compatible(target, value) && !string_byte_store)
                     error(tc, "assignment changes an incompatible type.");
                 break;
             }

@@ -2,10 +2,10 @@ name: VNX VNT-Native Interpreter Tests
 
 on:
   push:
-    branches: [feature/vnx-language-and-adventure]
+    branches: [main, feature/vnx-language-and-adventure, fix/vnx-ci-errors-and-routes]
     paths: ["vnx/**", "src/**", "include/**", "tests/**", ".github/workflows/vnx-tests.yml"]
   pull_request:
-    paths: ["vnx/**", "src/**", "include/**", ".github/workflows/vnx-tests.yml"]
+    paths: ["vnx/**", "src/**", "include/**", "tests/**", ".github/workflows/vnx-tests.yml"]
 
 permissions:
   contents: read
@@ -35,21 +35,5 @@ jobs:
           ./vnt --compile tests/native_types.vnt -o vnx/build/native-types
           vnx/build/native-types > vnx/build/native-types.out
           grep -F 'Vanta' vnx/build/native-types.out
-      - name: Run language smoke test
-        run: |
-          printf 'vnx/tests/smoke.vnx\n' | vnx/build/vnx > vnx/build/smoke.out
-          cat vnx/build/smoke.out
-          grep -F 'VNX_SMOKE_OK' vnx/build/smoke.out
-          grep -F 'VNX_STATE_OK' vnx/build/smoke.out
-      - name: Run scripted adventure route
-        run: |
-          printf 'vnx/game/last_signal.vnx\nAda\n1\n1\n3\n2\n1\n3\n5\n' | vnx/build/vnx > vnx/build/adventure.out
-          grep -F 'ENDING: HOMEWARD' vnx/build/adventure.out
-      - name: Run alternate signal ending
-        run: |
-          printf 'vnx/game/last_signal.vnx\nAda\n1\n1\n3\n2\n1\n3\n3\n1\n2\nyes\n3\n4\n' | vnx/build/vnx > vnx/build/signal.out
-          grep -F 'ENDING: THE SIGNAL' vnx/build/signal.out
-      - name: Verify malformed source is rejected
-        run: |
-          printf 'vnx/tests/invalid.vnx\n' | vnx/build/vnx > vnx/build/invalid.out
-          grep -F 'VNX parser error' vnx/build/invalid.out
+      - name: Run VNX smoke tests and full adventure routes
+        run: sh vnx/tests/smoke.sh vnx/build/vnx

@@ -104,3 +104,9 @@ Avoid goals such as "make the OS faster" unless you first choose a workload, def
 A subsystem proposal should include a concrete behavior, the invariant it maintains, the API it exposes, its failure policy, and the test that proves it works. For a page allocator, for example, acceptance criteria might include aligned allocation, rejection of invalid sizes, no allocation from reserved ranges, and deterministic failure when no frames remain.
 
 For an interrupt-driven input queue, criteria should include bounded capacity, explicit overflow behavior, one owner for device reads, no slow console output in the handler, and a test that exercises input after many interrupts. These criteria make it clear when the subsystem is finished enough to depend on.
+
+## 12. Prefer a narrow, measurable milestone
+
+For each future subsystem, define one first milestone that does not depend on all the later features. For memory management, first parse and validate a memory map before allocating pages. For input interrupts, first define the event queue and its overflow behavior before unmasking the keyboard IRQ. For userspace, first document the ABI and mapping policy before adding an application loader.
+
+A milestone should end with a reproducible test and an updated limitation list. That is a stronger sign of progress than adding an API name that has no validated implementation behind it.

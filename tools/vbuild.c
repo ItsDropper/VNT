@@ -40,9 +40,12 @@ typedef struct {
     char output[256];
     char compiler[PATH_CAP];
     char toolchain[PATH_CAP];
+    char target[64];
 } Config;
 
 static char project_root[PATH_CAP];
+static int force_build;
+static char selected_target[64] = "exe";
 
 typedef enum { ACT_BUILD, ACT_RUN, ACT_CHECK, ACT_CLEAN, ACT_TEST, ACT_NONE } Action;
 typedef struct {
@@ -136,6 +139,7 @@ static int load_properties(Config *cfg) {
     if (!safe_filename(cfg->output)) {
         fprintf(stderr, "vbuild: output must be a file name inside build/.\n"); return 0;
     }
+    strcpy(cfg->target, selected_target[0] ? selected_target : "exe");
     if (!cfg->version[0]) strcpy(cfg->version, "0.1.0");
     if (!cfg->compiler[0]) strcpy(cfg->compiler, "vnt");
     if (!cfg->toolchain[0]) {
@@ -215,6 +219,8 @@ static int init_project(void) {
         "project.name = hello\nproject.version = 0.1.0\nsource = src/main.vnt\noutput = hello\ncompiler = vnt\ntoolchain = .\n";
     const char *script =
         "# VBuild task file (version 1)\n"
+        "# Select: exe, elf, asm, or freestanding-asm\n"
+        "target exe\n"
         "task build = build\n"
         "task run = run depends build\n"
         "task check = check\n"
@@ -283,6 +289,18 @@ static int load_tasks(void) {
         }
         trim(line); p = line;
         if (!p[0] || p[0] == '#') continue;
+        if (!strncmp(p, "target ", 7)) {
+            char *target = p + 7;
+            trim(target);
+            if (strcmp(target, "exe") && strcmp(target, "elf") &&
+                strcmp(target, "asm") && strcmp(target, "freestanding-asm")) {
+                fprintf(stderr, "vbuild: build.vbuild:%d: target must be exe, elf, asm, or freestanding-asm.\n", lineno);
+                fclose(f); return 0;
+            }
+            if (strlen(target) >= sizeof selected_target) { fclose(f); return 0; }
+            strcpy(selected_target, target);
+            continue;
+        }
         if (strncmp(p, "task ", 5) != 0) {
             fprintf(stderr, "vbuild: build.vbuild:%d: expected 'task'.\n", lineno);
             fclose(f); return 0;
@@ -383,12 +401,18 @@ static int run_process(char *const argv[], const char *working_directory) {
     return WAIT_STATUS(status);
 #endif
 }
+static int run_compiler(Config *cfg, int check);
+static int run_tests(Config *cfg);
+
 static int run_compiler(Config *cfg, int check) {
     char output[PATH_CAP];
     char source[PATH_CAP];
     char compiler[PATH_CAP];
     char toolchain[PATH_CAP];
     char *args[6];
+    const char *mode = NULL;
+    const char *suffix = NULL;
+    struct stat output_stat, source_stat, properties_stat, tasks_stat, compiler_stat;
     if (!exists(cfg->source)) {
         fprintf(stderr, "vbuild: source file not found: %s\n", cfg->source); return 1;
     }
@@ -415,19 +439,40 @@ static int run_compiler(Config *cfg, int check) {
             if (!copy_value(compiler, sizeof compiler, cfg->compiler, "compiler")) return 1;
         }
     }
+    if (!strcmp(cfg->target, "exe")) { mode = "--compile"; suffix = EXE_SUFFIX; }
+    else if (!strcmp(cfg->target, "elf")) { mode = "--build-freestanding"; suffix = ".elf"; }
+    else if (!strcmp(cfg->target, "asm")) { mode = "--emit-asm"; suffix = ".s"; }
+    else if (!strcmp(cfg->target, "freestanding-asm")) { mode = "--emit-freestanding-asm"; suffix = ".s"; }
+    else { fprintf(stderr, "vbuild: unsupported target '%s'.\n", cfg->target); return 1; }
     if (!absolute_path("build", output, sizeof output)) return 1;
     {
         size_t len = strlen(output);
-        int n = snprintf(output + len, sizeof output - len, "/%s%s", cfg->output, EXE_SUFFIX);
+        const char *append = suffix;
+        size_t name_len = strlen(cfg->output);
+        if (!strcmp(cfg->target, "exe") && name_len >= 4 && !strcmp(cfg->output + name_len - 4, ".exe")) append = "";
+        if (!strcmp(cfg->target, "elf") && name_len >= 4 && !strcmp(cfg->output + name_len - 4, ".elf")) append = "";
+        if ((!strcmp(cfg->target, "asm") || !strcmp(cfg->target, "freestanding-asm")) &&
+            name_len >= 2 && !strcmp(cfg->output + name_len - 2, ".s")) append = "";
+        int n = snprintf(output + len, sizeof output - len, "/%s%s", cfg->output, append);
         if (n < 0 || (size_t)n >= sizeof output - len) {
             fprintf(stderr, "vbuild: output path is too long.\n"); return 1;
         }
+    }
+    if (!check && !force_build && stat(output, &output_stat) == 0 &&
+        stat(source, &source_stat) == 0 && stat("vbuild.properties", &properties_stat) == 0 &&
+        stat("build.vbuild", &tasks_stat) == 0 && stat(compiler, &compiler_stat) == 0 &&
+        output_stat.st_mtime >= source_stat.st_mtime &&
+        output_stat.st_mtime >= properties_stat.st_mtime &&
+        output_stat.st_mtime >= tasks_stat.st_mtime &&
+        output_stat.st_mtime >= compiler_stat.st_mtime) {
+        printf("Up to date: %s\n", output);
+        return 0;
     }
     args[0] = compiler;
     if (check) {
         args[1] = "--dump-ir"; args[2] = source; args[3] = NULL;
     } else {
-        args[1] = "--compile"; args[2] = source; args[3] = "-o"; args[4] = output; args[5] = NULL;
+        args[1] = (char *)mode; args[2] = source; args[3] = "-o"; args[4] = output; args[5] = NULL;
     }
     if (run_process(args, toolchain) != 0) {
         fprintf(stderr, "vbuild: compiler command failed.\n"); return 1;
@@ -435,7 +480,7 @@ static int run_compiler(Config *cfg, int check) {
     if (!check && !exists(output)) {
         fprintf(stderr, "vbuild: compiler returned success but output is missing: %s\n", output); return 1;
     }
-    if (!check) printf("Built %s\n", output);
+    if (!check) printf("Built %s (target=%s)\n", output, cfg->target);
     return 0;
 }
 static int clean_build(void) {
@@ -453,9 +498,7 @@ static int execute_action(Action action, Config *cfg) {
     if (action == ACT_BUILD) return run_compiler(cfg, 0);
     if (action == ACT_CHECK) return run_compiler(cfg, 1);
     if (action == ACT_CLEAN) return clean_build();
-    if (action == ACT_TEST) {
-        fprintf(stderr, "vbuild: test discovery/execution is not implemented yet.\n"); return 2;
-    }
+    if (action == ACT_TEST) return run_tests(cfg);
     if (action == ACT_RUN) {
         char output[PATH_CAP];
         char *args[2];
@@ -508,10 +551,11 @@ int main(int argc, char **argv) {
         fprintf(stderr, "vbuild: cannot determine project directory: %s\n", strerror(errno));
         return 1;
     }
-    if (argc != 2) {
-        fprintf(stderr, "Usage: vbuild <task-name|init|tasks>\n");
+    if (argc < 2 || argc > 3 || (argc == 3 && strcmp(argv[2], "--force"))) {
+        fprintf(stderr, "Usage: vbuild <task-name|init|tasks> [--force]\n");
         return 2;
     }
+    force_build = argc == 3;
     if (!strcmp(argv[1], "init")) return init_project();
     if (!load_tasks()) return 1;
     if (!strcmp(argv[1], "tasks")) {

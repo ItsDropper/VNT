@@ -95,3 +95,33 @@ Explain the difference between ordinary VNT code and the kernel's freestanding V
 ## Exercise
 
 Write a tiny VNT function that takes two integers and returns their sum. Compile and run it as an ordinary hosted program using the repository's documented VNT build process. Do not put this test in the kernel yet.
+
+## 8. Work with the compiler's real subset
+
+Kernel code must use syntax the current freestanding backend actually supports. Do not assume every language feature available in a hosted example is supported in the kernel path. When a compile fails, distinguish a VNT parser/type error from an unresolved assembly symbol or a link error. Each points to a different layer.
+
+A useful investigation loop is:
+
+1. Find a nearby working example with the same language construct.
+2. Search the kernel for an existing use of that construct.
+3. Make the smallest isolated test in a scratch source file if the syntax is unclear.
+4. Run the repository's compiler/build tests.
+5. Add the construct to kernel code only after the compiler behavior is understood.
+
+This prevents language uncertainty from becoming mixed with boot debugging.
+
+## 9. Module imports are a source boundary, not a process boundary
+
+The imports at the top of `os/kernel.vnt` bring declarations from `serial.vnt`, `console.vnt`, `ps2.vnt`, and `interrupts.vnt` into the kernel compilation. They do not create separate executables or address spaces. The linked kernel remains one ELF image.
+
+A good module boundary has a reason. The serial module owns UART register access. The console module owns display behavior. The PS/2 module owns controller polling and scan-code state. The interrupt module owns the VNT-side response to CPU/device events. Keep shell command policy in the root rather than making device modules parse user commands.
+
+## 10. Unsafe code requires an invariant
+
+Before writing an unsafe block, state the invariant that makes the operation valid. For a memory-mapped pointer, that might include: the address is mapped, the access width is correct, the hardware is present, and the operation is permitted at the current privilege level. For inline assembly, also state which registers and flags are changed and how values enter and leave the assembly.
+
+The current inline assembly support does not provide the full operand-constraint and clobber model found in mature compilers. This is why architecture-critical interrupt frames are isolated in `os/interrupts.S`. Keep ordinary policy in VNT and do not expand assembly simply because a hardware operation is unfamiliar.
+
+## Lab: move one helper safely
+
+Choose a small pure helper that has no hidden hardware side effects. Move it to an appropriate existing module, add or adjust the import only if needed, rebuild, and inspect the diff. Then explain why the destination module owns the helper. Do not move shared state access or interrupt entry code as a first refactor; those have compiler and ABI constraints that deserve separate analysis.

@@ -11,6 +11,7 @@ export fun parse(text) {
     row = []
     field = ""
     in_quotes = false
+    after_quote = false
     size = len(text)
     i = 0
 
@@ -20,7 +21,6 @@ export fun parse(text) {
 
     while i < size {
         ch = text[i]
-
         if in_quotes {
             if ch == "\"" {
                 if i + 1 < size && text[i + 1] == "\"" {
@@ -28,43 +28,69 @@ export fun parse(text) {
                     i += 2
                 } else {
                     in_quotes = false
+                    after_quote = true
                     i += 1
                 }
             } else {
                 field = field + ch
                 i += 1
             }
-        } else {
-            if ch == "\"" {
-                if len(field) != 0 {
-                    return []
-                }
-                in_quotes = true
-                i += 1
-            } else if ch == "," {
+        } else if after_quote {
+            if ch == "," {
                 row = array.concat(row, [field])
                 field = ""
+                after_quote = false
                 i += 1
             } else if ch == "\n" {
                 row = array.concat(row, [field])
                 rows = array.concat(rows, [row])
                 row = []
                 field = ""
+                after_quote = false
                 i += 1
             } else if ch == "\r" {
                 row = array.concat(row, [field])
                 rows = array.concat(rows, [row])
                 row = []
                 field = ""
+                after_quote = false
                 if i + 1 < size && text[i + 1] == "\n" {
                     i += 2
                 } else {
                     i += 1
                 }
             } else {
-                field = field + ch
+                return []
+            }
+        } else if ch == "\"" {
+            if len(field) != 0 {
+                return []
+            }
+            in_quotes = true
+            i += 1
+        } else if ch == "," {
+            row = array.concat(row, [field])
+            field = ""
+            i += 1
+        } else if ch == "\n" {
+            row = array.concat(row, [field])
+            rows = array.concat(rows, [row])
+            row = []
+            field = ""
+            i += 1
+        } else if ch == "\r" {
+            row = array.concat(row, [field])
+            rows = array.concat(rows, [row])
+            row = []
+            field = ""
+            if i + 1 < size && text[i + 1] == "\n" {
+                i += 2
+            } else {
                 i += 1
             }
+        } else {
+            field = field + ch
+            i += 1
         }
     }
 
@@ -73,12 +99,10 @@ export fun parse(text) {
     }
 
     # A final line ending already emitted its row; don't add a phantom row.
-    if size > 0 {
-        last = text[size - 1]
-        if last != "\n" && last != "\r" {
-            row = array.concat(row, [field])
-            rows = array.concat(rows, [row])
-        }
+    last = text[size - 1]
+    if last != "\n" && last != "\r" {
+        row = array.concat(row, [field])
+        rows = array.concat(rows, [row])
     }
     return rows
 }
@@ -126,7 +150,6 @@ export fun stringify(rows) {
     return output
 }
 
-# Internal source-level helper to avoid adding any runtime dependency.
 fun string_contains(value, needle) {
     value_size = len(value)
     needle_size = len(needle)

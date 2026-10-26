@@ -98,3 +98,21 @@ A later implementation can add a named exception-message table, but it must pres
 After a successful build, use `nm build/kernel.elf` and search for the interrupt initializer and dispatcher symbols. The ELF should contain both the assembly initializer and the compiler-emitted VNT dispatcher. Use the actual symbol names shown by `nm`; do not infer them from source names when the compiler applies a prefix.
 
 For your notes, record the source-level function name, the emitted ELF symbol, and the assembly call site in three separate columns. This is a small ABI exercise: the source interface and machine-level linkage are related, but they are not the same naming layer.
+
+## Implementation lab: add policy without expanding assembly
+
+The dispatcher is intentionally written in VNT. To add a new event policy, first determine whether the assembly already creates a valid normalized frame and whether the vector is installed and routed correctly. Only then change the VNT branch. Avoid changing both the stack layout and the policy in the same patch.
+
+For a new branch, document:
+- the vector or event class it handles;
+- the state it reads and writes;
+- whether it can return safely;
+- whether it must acknowledge a hardware controller;
+- whether the handler can block or print;
+- how QEMU or a unit-level test will demonstrate the behavior.
+
+The assembly owns the architecture mechanics. The VNT dispatcher owns the meaning of the event. A timer counter is a good example because the assembly does not need to know what the counter means; it only needs to deliver vector 32 and return correctly.
+
+## Exception reports are intentionally incomplete
+
+The current fatal path reports a vector and error code, then halts. It does not decode every exception's error-code bits, read the page-fault address register, unwind the stack, or resume execution. Those features should be separate extensions with their own architectural contracts. A friendly message must not discard the raw vector or error code because those values are often the most useful debugging evidence.

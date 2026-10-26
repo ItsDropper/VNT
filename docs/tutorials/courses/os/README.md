@@ -114,3 +114,37 @@ Do not claim that `vbuild build` creates the VNTOS boot image. Read
 limits; use the kernel-specific pipeline for the actual OS.
 
 Start with [Lesson 00](00-start-here.md).
+
+## How to turn a lesson into a real code change
+
+For each implementation lesson, use this repeatable workflow:
+
+1. **Read the current implementation.** Open the named file in the `os/` directory and follow its callers and callees. Do not rely on a copied snippet if the repository has moved on.
+2. **State the invariant.** Examples: the IDT base points to a complete table; the shell never writes beyond its input buffer; the timer handler does not block; the page-table entries cover code needed after paging is enabled.
+3. **Define the observation.** Decide exactly what you expect to see in the build output, ELF metadata, QEMU window, or serial transcript.
+4. **Change one contract.** Keep unrelated cleanup out of the same patch.
+5. **Build from the repository root.** Use `bash os/build.sh`, not a stale generated object or a guessed compiler command.
+6. **Inspect the artifact.** Use `file`, `readelf`, `nm`, and the Multiboot2 check when relevant to the claim.
+7. **Boot in QEMU.** Use the documented command and test the specific behavior plus one existing behavior.
+8. **Review and report.** Run `git diff --check`, inspect the full diff, and record what actually happened.
+
+If a step fails, preserve the first failure and stop. Do not continue to later steps with stale artifacts and then report the overall experiment as successful.
+
+## Evidence vocabulary
+
+Use precise status words in notes and pull requests:
+
+- **Built:** the relevant compile/link command exited successfully.
+- **Validated:** a specific structural check passed, such as the Multiboot2 header check.
+- **Booted:** QEMU executed far enough to reach the observed marker or prompt.
+- **Exercised:** the new behavior was invoked.
+- **Verified:** the test actually checked the claimed property.
+- **Unverified:** the test was not run, did not assert the property, or its result is still pending.
+
+For example, "the `irq` command prints a count" is weaker than "two readings showed the timer counter increasing." Neither statement should be made unless those observations were actually recorded.
+
+## Course completion deliverable
+
+At the end, keep a short technical report with the subsystem diagram, the invariant you changed or preserved, the exact source files involved, the build and QEMU commands, the observed output, the relevant CI run, and the remaining limitations. Include a short explanation of why the assembly boundary remains minimal and which behavior is owned by VNT.
+
+This report is part of the learning goal: kernel development requires not only making a change but being able to explain its assumptions and demonstrate that it works.

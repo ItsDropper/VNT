@@ -188,6 +188,22 @@ try {
     }
     Write-Host "Standard filesystem library: PASS"
 
+    $StdCollectionsExe = Join-Path $OutDir "std_collections_strings_numbers.exe"
+    & .\vnt.exe --compile tests\std_collections_strings_numbers.vnt -o $StdCollectionsExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard array/string/number libraries did not compile." }
+    $collectionsOutput = & $StdCollectionsExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard array/string/number program exited unsuccessfully." }
+    $collectionsExpected = @(
+        "true", "1", "2", "24", "4.8", "2", "9", "[9, 2, 7, 2, 4]",
+        "vnt-stdlib-ok", "0", "true", "true", "true", "true", "true", "1",
+        "2", "ababab", "false", "true", "true", "-1", "0", "1", "720",
+        "-1", "6", "true", "false", "STDLIB_COLLECTIONS_STRINGS_NUMBERS_OK"
+    )
+    if (($collectionsOutput -join "|") -ne ($collectionsExpected -join "|")) {
+        throw "Unexpected standard array/string/number output: $($collectionsOutput -join ' | ')"
+    }
+    Write-Host "Standard array/string/number libraries: PASS"
+
     $StdFoundationExe = Join-Path $OutDir "std_foundation.exe"
     & .\vnt.exe --compile tests\std_foundation.vnt -o $StdFoundationExe
     if ($LASTEXITCODE -ne 0) { throw "Standard foundation libraries did not compile." }

@@ -209,6 +209,7 @@ The source-level standard library lives in `lib/std/`. Available modules include
 | `log.vnt` | File and console logging |
 | `config.vnt` | Plain-text configuration helpers |
 | `json.vnt` | JSON-related source helpers |
+| `csv.vnt` | CSV parsing/serialization with quoted commas, escaped quotes, and multiline fields |
 | `mem.vnt` | Raw pointer allocation, offset, read/write, copy, and fill primitives; see [raw-memory limits](docs/raw-memory.md) |
 
 Example filesystem usage:

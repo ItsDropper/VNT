@@ -114,6 +114,22 @@ Call the new operation from the entry point. Avoid duplicating its internal algo
 
 New branches can break old behavior. Run the complete relevant test set, not only the newest case.
 
+## Worked implementation: Build an echo reply from a validated request
+
+Validate type, code, minimum length, and checksum before copying the message. A reply changes type from 8 to 0 and recomputes the checksum.
+
+```vnt
+let fields: array = parse_echo(request)
+if len(fields) != 3 { return [] }
+let reply: array = bytes.slice(request, 0, len(request))
+reply[0] = 0
+reply[2] = 0
+reply[3] = 0
+bytes.write_be16(reply, 2, checksum.internet_checksum(reply))
+```
+
+Keep ICMP independent of Ethernet and IPv4; the caller decides how to wrap the response in an IP packet.
+
 ## 6. Test design
 
 Write explicit tests for the applicable categories:

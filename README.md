@@ -208,7 +208,7 @@ The source-level standard library lives in `lib/std/`. Available modules include
 | `net.vnt` | Native HTTP/HTTPS requests, status codes/classifiers, form encoding, headers, and downloads |
 | `log.vnt` | File and console logging |
 | `config.vnt` | Load/save files and read INI-style sections, keys, quoted values, and booleans |
-| `json.vnt` | JSON field lookup, fallback values, and key-presence convenience checks (not a full DOM/parser) |
+| `json.vnt` | JSON field lookup, fallback values, and non-empty-value checks (not a full DOM/parser) |
 | `csv.vnt` | CSV parsing/serialization with quoted commas, escaped quotes, and multiline fields |
 | `path.vnt` | Portable separators, basename, dirname, extension/stem replacement, absolute-path detection, and joining |
 | `mem.vnt` | Raw pointer allocation, offset, read/write, copy, and fill primitives; see [raw-memory limits](docs/raw-memory.md) |

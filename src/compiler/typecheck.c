@@ -156,6 +156,8 @@ static void merge_branch_symbols(TypeChecker *tc, const SymbolState *before,
     }
 }
 
+static TypeKind expr_type(TypeChecker *tc, AstNode *n);
+
 static int numeric(TypeKind t) { return t == TY_INT || t == TY_I64 || t == TY_FLOAT; }
 
 static int is_string_index_expr(TypeChecker *tc, AstNode *n) {

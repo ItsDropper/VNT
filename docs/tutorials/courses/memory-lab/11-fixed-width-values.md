@@ -129,6 +129,20 @@ Call the new function from the example's entry point. Avoid duplicating its inte
 
 Every new branch can break earlier behavior. Run the complete relevant test set, not only the newest test.
 
+## Worked implementation: Store fields at explicit byte offsets
+
+Use fixed-width memory helpers instead of assuming a native struct layout.
+
+```vnt
+let wrote: bool = mem.write_u32(region, 0, 305419896)
+if wrote {
+    let value: int = mem.read_u32(region, 0)
+    print(value)
+}
+```
+
+305419896 is hexadecimal 0x12345678. Add byte-level assertions if you want to verify byte order. The current u64 API returns signed i64, not a full unsigned value.
+
 ## 6. Test design
 
 Add explicit tests for each applicable category:

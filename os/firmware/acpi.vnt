@@ -93,7 +93,7 @@ fun acpi_find_rsdp() -> i64 {
         }
         if tag_type == 14 || tag_type == 15 {
             let candidate: i64 = info + cursor + 8
-            if tag_type == 14 && tag_size >= 28 && acpi_is_rsdp(candidate) == 1 {
+            if tag_type == 14 && tag_size >= 28 && acpi_read8(candidate, 15) < 2 && acpi_is_rsdp(candidate) == 1 {
                 return candidate
             }
             if tag_type == 15 && tag_size >= 44 && acpi_is_rsdp(candidate) == 1 {

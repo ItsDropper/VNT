@@ -208,3 +208,27 @@ fun phys_count_usable_pages() -> int {
 fun phys_count_free_pages() -> int {
     return state_get(29)
 }
+
+# Exercise allocation, alignment, free, and double-free rejection. The test
+# restores the free-page count and performs no I/O in allocator internals.
+fun phys_self_test() -> int {
+    let before: int = phys_count_free_pages()
+    let page: i64 = phys_alloc_page()
+    if page == 0 {
+        return 0
+    }
+    let valid: int = 1
+    if page / 4096 * 4096 != page {
+        valid = 0
+    }
+    if phys_free_page(page) != 1 {
+        valid = 0
+    }
+    if phys_free_page(page) != 0 {
+        valid = 0
+    }
+    if phys_count_free_pages() != before {
+        valid = 0
+    }
+    return valid
+}

@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Tee ensimmäinen pieni muutos](17-first-kernel-change.md) · [Seuraava oppitunti: Jaa kernel VNT-moduuleihin →](19-split-the-kernel-into-vnt-modules.md)
 
 ## Koodiesimerkki: käytä olemassa olevaa itsekoetta ennen uutta ominaisuutta
 
@@ -127,3 +126,7 @@ Tässä osiossa teet konkreettisen muutoksen nykyiseen VNTOS-koodiin. Avaa lähd
 ### Muutosraportti
 
 Kirjaa muutetut tiedostot, sopimus, build-komento ja tulos, QEMU-havainto, negatiiviset testit sekä avoimet rajoitukset. Jos jokin tarkistus jäi tekemättä, ilmoita se selvästi.
+
+---
+
+[← Edellinen oppitunti](./17-first-kernel-change.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./19-split-the-kernel-into-vnt-modules.md)

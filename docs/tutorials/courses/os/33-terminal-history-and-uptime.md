@@ -128,4 +128,4 @@ The next terminal step should separate a bounded line editor from shell command 
 
 ---
 
-[← Previous lesson](./32-reserved-memory-map-precedence.md) · [Course index](./README.md) · **Next: improve the bounded terminal line editor.**
+[← Previous lesson](./32-reserved-memory-map-precedence.md) · [Course index](./README.md) · [Next lesson →](./34-terminal-editable-line-editor.md)

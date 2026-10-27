@@ -29,7 +29,7 @@ The default IDT stub currently reports a fallback marker rather than preserving 
 
 The kernel now captures and validates the Multiboot2 information block, parses usable memory-map entries, reserves low memory, the linked image, and the boot-information block, and manages 4-KiB physical frames with usable/allocated/reserved bitmaps. The allocator is limited to the first 1-GiB identity-mapped window.
 
-The next memory milestones are to test the allocator more deeply, define page-table ownership, implement deliberate virtual mappings and page-fault diagnostics, and only then add a heap. Physical allocation and virtual-memory management are distinct pieces.
+The kernel now has an early virtual-memory layer for its existing low 1-GiB mapping. It can split a 2-MiB identity-mapped PDE into 512 4-KiB PTEs, map a page, translate an address, and run `vmtest` to check a temporary remap and restore. The page-table frame is kept allocated as long as the table is live. This layer is not SMP-safe and does not create isolated address spaces or recover from page faults. Physical allocation and virtual-memory management remain distinct pieces.
 
 ## 4. Add a timer and scheduling model
 

@@ -168,7 +168,10 @@ fun smp_start_aps() -> int {
         }
         index = index + 1
     }
-    return smp_online_cpu_count() == discovered
+    if smp_online_cpu_count() == discovered {
+        return 1
+    }
+    return 0
 }
 
 fun smp_discovered_cpu_count() -> int {

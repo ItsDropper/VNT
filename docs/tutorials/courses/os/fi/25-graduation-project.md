@@ -44,3 +44,68 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Fyysinen muisti ja sivukehykset](26-physical-memory-and-page-frames.md) · [Seuraava oppitunti: ACPI, APIC ja usea CPU-ydin →](27-acpi-apic-and-smp.md)
+
+## Toteutuslaboratorio: Loppuprojekti
+
+Tässä osiossa rakennat tai validoit konkreettisen osan nykyisestä VNTOS-kernelistä.
+
+**Tutkittavat tiedostot:** `os/kernel.vnt`, `os/mm/phys.vnt`, `os/interrupts.vnt`
+
+**Tavoite:** Valitse ominaisuus ja toteuta se kokonaan testattavaksi. Projektin pitää sisältää toteutus, negatiiviset testit ja rajojen dokumentointi. Älä esitä suunnitelmaa valmiina ominaisuutena.
+
+### Toteutus vaiheittain
+
+1. **Rajaa vastuu:** Määritä yksi mitattava vaatimus ja hyväksymiskriteeri.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+2. **Etsi nykyinen toteutus:** Valitse moduuli ja määritä sen syötteet, paluuarvot ja virhetilat.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+3. **Kirjaa sopimus:** Kirjoita kolme testiä ennen koodimuutosta: normaali, raja ja virhe.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+4. **Tee pienin muutos:** Toteuta ensin pienin onnistuva polku ja lisää rajatarkistukset.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+5. **Tarkista riippuvuudet:** Käännä, käynnistä QEMU:ssa ja tallenna tuloste.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+6. **Käännä:** Kirjaa täsmällisesti mikä toimii, mikä testattiin ja mikä jäi kesken.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+### Turvallisuus- ja rajapintasopimus
+
+- Validoi osoite, pituus, indeksi, tunniste ja laitetila ennen käyttöä.
+- Älä lue muuttuvamittaista tietorakennetta ilman rajojen tarkistusta.
+- Määritä selkeä virhepolku puuttuvalle laitteelle, virheelliselle datalle ja aikakatkaisulle.
+- Erota “havaittu”, “alustettu”, “online” ja “käytössä” eri tiloiksi, jos ne tarkoittavat eri asioita.
+- Älä oleta, että atominen muistikirjoitus yksin ratkaisee muistijärjestyksen tai omistajuuden.
+- Dokumentoi rajoitukset, joita nykyinen kernel ei vielä ratkaise.
+
+### Todennus
+
+1. Kirjoita odotettu tila ja havainto ennen muutosta.
+2. Suorita `bash os/build.sh` projektin juuressa.
+3. Tarkista ensimmäinen epäonnistunut komento ja erottele build-ongelma laiteongelmasta.
+4. Käynnistä vain QEMU:ssa ja kerää sarjaportin tuloste.
+5. Testaa normaali tapaus, rajatapaus ja virheellinen tai puuttuva tieto.
+6. Toista testi, jos toiminta riippuu ajoituksesta.
+7. Älä väitä CI:n tai laitetestin läpäisseen, ellei siitä ole todellista tulosta.
+
+### Tavalliset virheet
+
+- Firmwaresta saatuun tietoon luotetaan ennen checksum- ja pituustarkistuksia.
+- AP merkitään online-tilaan ennen kuin se saavuttaa sovitun valmiuspisteen.
+- IPI lähetetään ennen kuin IDT ja vastaanottaja ovat valmiita.
+- Jaettua muistia käytetään ilman omistajuus- tai lukitussopimusta.
+- Laskurin kasvaminen tulkitaan liian laajasti todisteeksi ominaisuuden valmiudesta.
+
+### Muutosraportti
+
+Kirjaa muutetut tiedostot, rajapinta, hyväksymiskriteeri, build-tulos, QEMU-havainto, negatiiviset testit ja jäljelle jääneet rajoitukset.

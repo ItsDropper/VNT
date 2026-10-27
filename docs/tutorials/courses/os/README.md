@@ -80,6 +80,7 @@ No prior OS-development experience is required. Basic terminal use helps. Read l
 38. [Test decimal digit extraction without console output](37-decimal-digit-self-test.md)
 39. [Distinguish IRQ delivery counts from controller configuration](38-irq-controller-diagnostics.md)
 40. [Use atomic increments for shared interrupt counters](39-atomic-interrupt-counters.md)
+41. [Stress-test atomic increments across CPUs](40-smp-atomic-counter-self-test.md)
 
 ## Source map
 

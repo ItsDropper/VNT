@@ -5,7 +5,7 @@ without confusing firmware topology with CPUs that are actually executing.
 
 This milestone adds bounded ACPI RSDP/root-table/MADT parsing, conventional PC
 APIC MMIO mappings, Local APIC enablement, masked I/O APIC initialization, and
-a CPU-topology diagnostic command. It does **not** start secondary processors.
+a CPU-topology diagnostic command. It starts secondary processors one at a time through a low-memory real-mode trampoline. Each AP enters VNT code on its own allocated stack, publishes online state, and halts with interrupts disabled. Scheduling and AP interrupt delivery are still disabled.
 
 ## 1. ACPI discovery
 
@@ -47,11 +47,7 @@ contract exists.
 
 ## 4. Why this is not yet SMP
 
-Starting an AP requires more than enumerating it. The kernel still needs a
-low-memory real-mode trampoline, INIT/SIPI sequencing, per-CPU stacks and
-state, a controlled handoff into long mode, and an online handshake. Interrupt
-entry must also become per-CPU safe before IPIs or scheduling are enabled.
-Finally, the physical allocator and shared kernel state need synchronization.
+The AP startup path is now functional, but it is not a scheduler. Each secondary CPU enters VNT, records its APIC ID/online state, then halts with interrupts disabled. Per-CPU IDTs/TSSes, safe IPI handlers, scheduler/context switching, and allocator synchronization are still required before APs can run ordinary work concurrently.
 
 ## 5. Verification
 
@@ -62,5 +58,4 @@ After booting a QEMU image, run:
 - `irq` — verify the legacy PIT path still advances.
 - `memtest` and `vmtest` — ensure the existing memory paths still pass.
 
-Expected at this stage: online CPU count is one, even when QEMU presents more
-than one CPU. Do not interpret the discovered count as an SMP success test.
+The CI boot test launches QEMU with four virtual CPUs and requires all four to become online. The `smp` command should show equal discovered and online counts. APs remain halted after their online handshake; this test does not validate scheduling or concurrent allocation.

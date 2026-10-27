@@ -87,7 +87,7 @@ Approximate uptime seconds (decimal):
 Clock source: PIT at nominal 100 Hz; seconds are approximate.
 ```
 
-Kahden ensimmäisen otsikon jälkeen tulee olla desimaalilukuja ilman `0x`-etuliitettä. `mem`-komennon tulee edelleen käyttää heksadesimaalia osoitteille ja nykyisille varaajan laskureille, kunnes niiden esitystapaa muutetaan erikseen. `irq`-komento ei muutu tässä oppitunnissa.
+Kahden ensimmäisen otsikon jälkeen tulee olla desimaalilukuja ilman `0x`-etuliitettä. `mem`-komento näyttää kernelin osoitteet edelleen heksadesimaalina mutta tulostaa käytettävissä olevien ja vapaiden sivujen määrät desimaalina. `irq`-komento tulostaa nyt myös ajastimen tikit ja IRQ0/IRQ1-laskurit desimaalina. Otsikot kertovat esitystavan; CPU-tunnisteet ja rekisteriarvot pysyvät heksadesimaalisina.
 
 Hyödyllisiä muotoilijan testitapauksia ovat nolla, yksinumeroinen luku, kymmenen potenssi, sisäisiä nollia sisältävä luku ja suuri positiivinen arvo. Myöhemmässä muutoksessa muotoilu kannattaa erottaa puhtaaksi numeropuskuria käyttäväksi apufunktioksi, jota voidaan testata ilman laitteistotulostusta.
 

@@ -75,7 +75,9 @@ perform instead of relying on a vague claim that it works.
 23. [Keep interrupt policy in VNT](22-vnt-interrupt-dispatch.md)
 24. [The PIT, PIC, and timer ticks](23-pit-pic-and-timer-ticks.md)
 25. [Build and verify the interrupt kernel](24-build-and-test-the-interrupt-kernel.md)
-26. [Graduation project: improve a subsystem](25-graduation-project.md)
+### Phase 5 — Physical memory and final project
+26. [Physical memory and page frames](26-physical-memory-and-page-frames.md)
+27. [Graduation project: improve a subsystem](25-graduation-project.md)
 
 ## What you should be able to do at the end
 
@@ -92,6 +94,7 @@ evidence that the kernel still builds and boots.
 | `os/arch/x86_64/boot.S` | Multiboot2 header, early stack, paging, long-mode transition |
 | `os/arch/x86_64/interrupts.S` | IDT, entry stubs, PIC/PIT setup, `iretq` boundary |
 | `os/arch/x86_64/memory.S` | Bounded Multiboot2 memory-map and physical bitmap primitives |
+| `os/arch/x86_64/memory.S` | Bounded Multiboot2 memory-map and physical bitmap primitives |
 | `os/arch/x86_64/README.md` | Architecture ownership and explicit limitations |
 | `os/kernel.vnt` | Kernel entry and ordered subsystem initialization |
 | `os/kernel/core.vnt` | Early shared-state access, kernel bounds, CPU halt/reboot |
@@ -100,6 +103,7 @@ evidence that the kernel still builds and boots.
 | `os/console.vnt` | VGA text output and combined console |
 | `os/ps2.vnt` | Polled keyboard and mouse input |
 | `os/interrupts.vnt` | VNT exception/IRQ dispatch policy |
+| `os/mm/phys.vnt` | Physical page-frame allocation, reservation, and statistics |
 | `os/mm/phys.vnt` | Physical page-frame allocation, reservation, and statistics |
 | `os/linker.ld` | ELF section layout and symbols |
 | `os/grub.cfg` | GRUB Multiboot2 configuration |

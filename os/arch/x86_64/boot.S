@@ -166,3 +166,5 @@ vntos_state:
     .quad 0       /* IRQ13 count */
     .quad 0       /* IRQ14 count */
     .quad 0       /* IRQ15 count */
+    .quad 0       /* Usable physical page count */
+    .quad 0       /* Free physical page count */

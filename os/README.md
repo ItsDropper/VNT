@@ -69,7 +69,7 @@ the general-purpose registers, normalizes the vector/error-code stack shape,
 calls `interrupt_dispatch` in VNT, acknowledges hardware IRQs, restores the
 registers, and returns with `iretq`.
 
-The VNT dispatcher increments a shared tick counter for vector 32. CPU
+The VNT dispatcher calls `kernel_timer_tick()` in `os/kernel/core.vnt` to increment the shared tick counter for vector 32; the shell reads it through `kernel_timer_ticks()`. CPU
 exceptions are reported and halted rather than incorrectly resumed. The
 keyboard and mouse are **still polled**: IRQ1 and the other PIC lines remain
 masked. Do not unmask a device interrupt until its handler and data-ownership

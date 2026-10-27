@@ -45,6 +45,33 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Keskeytykset, poikkeukset ja IDT](20-interrupts-and-the-idt.md) · [Seuraava oppitunti: Käsittele keskeytyksiä VNT-kielellä →](22-vnt-interrupt-dispatch.md)
 
+## Koodiesimerkki: tallenna rekisterit ennen VNT-kutsua
+
+```asm
+interrupt_common:
+    cld
+    pushq %rax
+    pushq %rbx
+    pushq %rcx
+    pushq %rdx
+    pushq %rsi
+    pushq %rdi
+    pushq %rbp
+    pushq %r8
+    pushq %r9
+    pushq %r10
+    pushq %r11
+    pushq %r12
+    pushq %r13
+    pushq %r14
+    pushq %r15
+```
+
+Tämä on os/arch/x86_64/interrupts.S:n common-entryn rekisterien tallennusjärjestyksen alkua. Keskeytys voi tapahtua kesken minkä tahansa kernel-koodin; siksi keskeytyksen käsittelijän on säilytettävä keskeytetyn koodin tila. Koko tiedostossa rekisterit palautetaan vastakkaisessa järjestyksessä ennen `iretq`-käskyä.
+
+**Tee itse:** Piirrä pino jokaisen pushq-käskyn jälkeen. Kun luet palautuspolkua, varmista että jokainen tallennus saa vastinparin oikeassa järjestyksessä. Älä kopioi pelkkää katkelmaa korvaamaan koko yhteistä sisääntuloa.
+
+
 ## Toteutuslaboratorio: Pieni assembly-rajapinta
 
 Tämä harjoitus edellyttää lähdekoodin lukemista ja toteutuksen todentamista.

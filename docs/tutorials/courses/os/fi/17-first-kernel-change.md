@@ -45,6 +45,24 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Testaa toimintaa, älä vain käännöstä](16-testing.md) · [Seuraava oppitunti: Miten jatkaa kurssin jälkeen →](18-next-steps.md)
 
+## Koodiesimerkki: tee ensimmäinen näkyvä VNT-muutos
+
+```vnt
+fun kernel_main() {
+    serial_init()
+    serial_puts("MY_FIRST_KERNEL_CHANGE\r\n")
+    vga_clear()
+    vga_puts("VNTOS\r\n")
+    // Nykyinen alustus jatkuu tässä.
+    return 0
+}
+```
+
+Tämä on pieni havainnollistava esimerkki nykyisen kernel_main-rakenteen pohjalta. Jos lisäät uuden viestin olemassa olevaan funktioon, säilytä sen nykyinen sisältö ja alustusjärjestys; älä korvaa koko kernel_main-funktiota tällä lyhennetyllä esimerkillä.
+
+**Tee itse:** Lisää yksi serial_puts-kutsu olemassa olevaan os/kernel.vnt-tiedostoon ennen shell_run-kutsua. Käännä, käynnistä QEMU:ssa ja varmista että juuri uusi tunniste näkyy sarjaportissa.
+
+
 ## Toteutuslaboratorio: Ensimmäinen kernel-muutos
 
 Tässä osiossa teet konkreettisen muutoksen nykyiseen VNTOS-koodiin. Avaa lähdetiedostot ja varmista, että kuvaus vastaa nykyistä toteutusta.

@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: ELF ja linkkeriskripti](11-elf-and-linker.md) · [Seuraava oppitunti: Sarjaportti debuggausvälineenä →](13-serial-io.md)
 
 ## Koodiesimerkki: VNT ilman käyttöjärjestelmäpalveluja
 
@@ -127,3 +126,7 @@ Tässä harjoituksessa toteutat tai jäljität toimivan osan, et vain kuvaile k�
 ### Kirjaa toteutus
 
 Dokumentoi muutetut tiedostot, funktiosopimus, build-tulos, QEMU-havainto, negatiiviset testit ja rajoitukset. Näin toinen kehittäjä pystyy toistamaan tarkistuksen.
+
+---
+
+[← Edellinen oppitunti](./11-elf-and-linker.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./13-serial-io.md)

@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Valmistele kehitysympäristö](03-setup.md) · [Seuraava oppitunti: Miten lähdekoodista syntyy kernel →](05-build-pipeline.md)
 
 ## Koodiesimerkki: VNT-funktion rakenne ja rajat
 
@@ -125,3 +124,7 @@ Tämä osio täydentää käsitteitä käytännön toteutusmenettelyllä. Lähde
 ### Muutosraportti
 
 Kirjoita muistiin: (1) tiedostot, joita muutit, (2) uuden toiminnon sopimus, (3) tarkka build-tulos, (4) QEMU-havainto, (5) testatut virhepolut ja (6) rajoitukset, joita et ratkaissut. Tämä raportti on osa toteutusta, ei ylimääräistä paperityötä.
+
+---
+
+[← Edellinen oppitunti](./03-setup.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./05-build-pipeline.md)

@@ -139,6 +139,24 @@ static int emit_expression(FreestandingGen *g, size_t index) {
     const VntIrNode *n = &g->ir->nodes[index];
     switch (n->opcode) {
     case VNT_IR_CALL: {
+        /* Resolve linker symbols without relying on generated stack offsets.
+           The symbol must be a literal identifier and the call must be unsafe. */
+        if (n->value.text && !strcmp(n->value.text, "symbol_address")) {
+            const VntIrNode *arg = child_role(g->ir, index, VNT_IR_EDGE_ARGUMENT);
+            if (n->child_count != 1 || !arg || arg->opcode != VNT_IR_STRING ||
+                !arg->value.text || !*arg->value.text) {
+                fail(g, "symbol_address requires one literal linker-symbol name.");
+                return 0;
+            }
+            for (const unsigned char *p = (const unsigned char *)arg->value.text; *p; ++p) {
+                if (!(isalnum(*p) || *p == '_')) {
+                    fail(g, "symbol_address accepts only identifier characters.");
+                    return 0;
+                }
+            }
+            fprintf(g->out, "    leaq %s(%%rip), %%rax\\n", arg->value.text);
+            return 1;
+        }
         /* Freestanding raw-memory and CPU intrinsics emit native instructions.
            Their unsafe boundary is enforced by typecheck.c. */
         if (n->value.text &&

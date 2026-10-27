@@ -4,7 +4,8 @@
 import "../kernel/core.vnt"
 
 # Multiboot2 memory-map parsing and physical-frame bitmap operations are VNT
-# code. Bootstrap assembly only supplies the handoff fields and bitmap storage.
+# code. Bootstrap assembly supplies handoff fields and shared scalar storage.
+# State slot 176 stores the next-fit cursor as a frame index, not a byte address.
 
 fun phys_info_addr() -> i64 {
     let magic_slot: i64 = 0
@@ -434,7 +435,17 @@ fun phys_self_test() -> int {
     if phys_free_page(page + 1) != 0 {
         valid = 0
     }
+    if state_get(176) != expected_hint {
+        valid = 0
+    }
     if phys_free_page(page) != 1 {
+        valid = 0
+    }
+    let expected_free_hint: int = expected_hint
+    if page / 4096 < expected_hint {
+        expected_free_hint = page / 4096
+    }
+    if state_get(176) != expected_free_hint {
         valid = 0
     }
     if phys_free_page(page) != 0 {

@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: x86-64 long mode](09-long-mode.md) · [Seuraava oppitunti: ELF ja linkkeriskripti →](11-elf-and-linker.md)
 
 ## Koodiesimerkki: tarkista sivutaulun present-bitti
 
@@ -137,3 +136,7 @@ Tässä harjoituksessa toteutat tai jäljität toimivan osan, et vain kuvaile k�
 ### Kirjaa toteutus
 
 Dokumentoi muutetut tiedostot, funktiosopimus, build-tulos, QEMU-havainto, negatiiviset testit ja rajoitukset. Näin toinen kehittäjä pystyy toistamaan tarkistuksen.
+
+---
+
+[← Edellinen oppitunti](./09-long-mode.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./11-elf-and-linker.md)

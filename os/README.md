@@ -76,7 +76,7 @@ the general-purpose registers, normalizes the vector/error-code stack shape,
 calls `interrupt_dispatch` in VNT, acknowledges hardware IRQs, restores the
 registers, and returns with `iretq`.
 
-The VNT dispatcher routes vectors 32–47 through `device_irq_record()` in `os/kernel/device_irq.vnt`. IRQ0 also calls `kernel_timer_tick()` in `os/kernel/core.vnt`; the shell reads the named tick API and per-IRQ counters. `os/pic.vnt` exposes legacy PIC mask controls, and kernel startup explicitly keeps IRQ1 masked. CPU exceptions are reported and halted rather than incorrectly resumed. Keyboard and mouse input are **still polled**. Do not unmask a device interrupt until its handler and data-ownership model are implemented.
+The VNT dispatcher routes vectors 32–47 through `device_irq_record()` in `os/kernel/device_irq.vnt`. IRQ0 also calls `kernel_timer_tick()` in `os/kernel/core.vnt`; the shell reads the named tick API and per-IRQ counters. `os/pic.vnt` exposes legacy PIC mask controls, and kernel startup explicitly keeps IRQ1 masked. CPU exceptions are reported and halted rather than incorrectly resumed. Page faults (vector 14) additionally print CR2, the faulting linear address, and the present/write/user/reserved-bit/instruction-fetch error flags. This is diagnostic only; the kernel does not yet resolve faults or recover from them. Keyboard and mouse input are **still polled**. Do not unmask a device interrupt until its handler and data-ownership model are implemented.
 
 ## Current architecture boundary
 

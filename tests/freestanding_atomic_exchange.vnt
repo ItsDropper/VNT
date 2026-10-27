@@ -1,0 +1,12 @@
+# Copyright (c) 2026 ItsDropper
+# Licensed under the MIT License. See LICENSE in the repository root.
+# Compiler regression fixture for the target-specific atomic exchange intrinsic.
+
+fun kernel_main() {
+    let address: i64 = 4096
+    let desired: i64 = 1
+    let previous: i64 = 0
+    unsafe {
+        previous = cpu_atomic_exchange_u64(address, desired)
+    }
+}

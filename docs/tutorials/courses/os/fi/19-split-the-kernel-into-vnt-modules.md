@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Miten jatkaa kurssin jälkeen](18-next-steps.md) · [Seuraava oppitunti: Keskeytykset, poikkeukset ja IDT →](20-interrupts-and-the-idt.md)
 
 ## Koodiesimerkki: tuo moduuli ja kutsu sen rajapintaa
 
@@ -131,3 +130,7 @@ Tässä osiossa teet konkreettisen muutoksen nykyiseen VNTOS-koodiin. Avaa lähd
 ### Muutosraportti
 
 Kirjaa muutetut tiedostot, sopimus, build-komento ja tulos, QEMU-havainto, negatiiviset testit sekä avoimet rajoitukset. Jos jokin tarkistus jäi tekemättä, ilmoita se selvästi.
+
+---
+
+[← Edellinen oppitunti](./18-next-steps.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./20-interrupts-and-the-idt.md)

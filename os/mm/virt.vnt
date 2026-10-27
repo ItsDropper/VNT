@@ -1,0 +1,88 @@
+# Copyright (c) 2026 ItsDropper
+# Licensed under the MIT License. See LICENSE in the repository root.
+#
+# Early virtual-memory helpers for the existing low 1-GiB identity window.
+# The architecture bridge splits 2-MiB bootstrap mappings into 4-KiB tables.
+# This is not SMP-safe and does not yet support addresses outside that window.
+
+import "phys.vnt"
+
+fun virt_translate(address: i64) -> i64 {
+    let result: i64 = -1
+    unsafe {
+        asm volatile("movq -8(%rbp), %rdi; call vntos_vm_translate; movq %rax, -16(%rbp)")
+    }
+    return result
+}
+
+# Returns 1 on success. A newly allocated page-table frame is permanently
+# reserved if consumed by a split; otherwise the unused frame is freed.
+fun virt_map_page(virtual_address: i64, physical_address: i64, flags: int) -> int {
+    let page_table: i64 = phys_alloc_page()
+    if page_table == 0 {
+        return 0
+    }
+    let result: int = 0
+    unsafe {
+        asm volatile("movq -8(%rbp), %rdi; movq -16(%rbp), %rsi; movl -24(%rbp), %edx; movq -32(%rbp), %rcx; call vntos_vm_map_page; movq %rax, -40(%rbp)")
+    }
+    if result == 1 {
+        if phys_reserve_allocated_page(page_table) != 1 {
+            return 0
+        }
+        return 1
+    }
+    phys_free_page(page_table)
+    if result == 2 {
+        return 1
+    }
+    return 0
+}
+
+fun virt_probe(address: i64) -> int {
+    let result: int = 0
+    unsafe {
+        asm volatile("movq -8(%rbp), %rdi; call vntos_vm_probe; movq %rax, -16(%rbp)")
+    }
+    return result
+}
+
+# Controlled QEMU test: temporarily remap 0x10000000 to an allocated frame,
+# write/read a sentinel through the virtual address, then restore identity
+# translation before returning. The split page-table frame remains reserved.
+fun virt_self_test() -> int {
+    let target: i64 = 0x10000000
+    let before: int = phys_count_free_pages()
+    if virt_translate(target) != target {
+        return 0
+    }
+    let page: i64 = phys_alloc_page()
+    if page == 0 {
+        return 0
+    }
+    if virt_map_page(target, page, 3) != 1 {
+        phys_free_page(page)
+        return 0
+    }
+    let valid: int = 1
+    if virt_translate(target) != page {
+        valid = 0
+    }
+    if virt_probe(target) != 1 {
+        valid = 0
+    }
+    if virt_map_page(target, target, 3) != 1 {
+        valid = 0
+    }
+    if virt_translate(target) != target {
+        valid = 0
+    }
+    if phys_free_page(page) != 1 {
+        valid = 0
+    }
+    # Exactly one page-table frame remains allocated after the first split.
+    if phys_count_free_pages() != before - 1 {
+        valid = 0
+    }
+    return valid
+}

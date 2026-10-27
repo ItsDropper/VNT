@@ -154,7 +154,7 @@ static int emit_expression(FreestandingGen *g, size_t index) {
                     return 0;
                 }
             }
-            fprintf(g->out, "    leaq %s(%%rip), %%rax\\n", arg->value.text);
+            fprintf(g->out, "    leaq %s(%%rip), %%rax\n", arg->value.text);
             return 1;
         }
         /* RDMSR/WRMSR are explicit unsafe architecture intrinsics. */
@@ -165,20 +165,20 @@ static int emit_expression(FreestandingGen *g, size_t index) {
             size_t argc = write_msr ? 2 : 1;
             if (n->child_count != argc) { fail(g, "MSR intrinsic has incorrect arity."); return 0; }
             size_t area = ((argc + 1) & ~(size_t)1) * 8;
-            if (area) fprintf(g->out, "    subq $%zu, %%rsp\\n", area);
+            if (area) fprintf(g->out, "    subq $%zu, %%rsp\n", area);
             size_t ai = 0;
             for (size_t c = n->first_child; c != VNT_IR_NO_NODE; c = g->ir->nodes[c].next_sibling) {
                 if (g->ir->nodes[c].role != VNT_IR_EDGE_ARGUMENT) continue;
                 if (!emit_expression(g, c)) return 0;
-                fprintf(g->out, "    movq %%rax, %zu(%%rsp)\\n", ai++ * 8);
+                fprintf(g->out, "    movq %%rax, %zu(%%rsp)\n", ai++ * 8);
             }
-            fputs("    movl 0(%rsp), %ecx\\n", g->out);
+            fputs("    movl 0(%rsp), %ecx\n", g->out);
             if (write_msr) {
-                fputs("    movq 8(%rsp), %rdx\\n    movl %edx, %eax\\n    shrq $32, %rdx\\n    wrmsr\\n    movl $1, %eax\\n", g->out);
+                fputs("    movq 8(%rsp), %rdx\n    movl %edx, %eax\n    shrq $32, %rdx\n    wrmsr\n    movl $1, %eax\n", g->out);
             } else {
-                fputs("    rdmsr\\n    shlq $32, %rdx\\n    orq %rdx, %rax\\n", g->out);
+                fputs("    rdmsr\n    shlq $32, %rdx\n    orq %rdx, %rax\n", g->out);
             }
-            if (area) fprintf(g->out, "    addq $%zu, %%rsp\\n", area);
+            if (area) fprintf(g->out, "    addq $%zu, %%rsp\n", area);
             return 1;
         }
         /* Freestanding raw-memory and CPU intrinsics emit native instructions.

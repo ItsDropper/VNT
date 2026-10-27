@@ -78,7 +78,7 @@ perform instead of relying on a vague claim that it works.
 ## What you should be able to do at the end
 
 You should be able to explain the complete path from GRUB to `kernel_main`,
-follow an import from `kernel.vnt` into a device module, describe why the IDT
+follow imports from `kernel.vnt` into core, shell, and device modules, describe why the IDT
 and interrupt-entry assembly exist, trace IRQ0 from the PIT through the IDT
 and VNT dispatcher back to `iretq`, run the `irq` command, and produce
 evidence that the kernel still builds and boots.
@@ -90,7 +90,9 @@ evidence that the kernel still builds and boots.
 | `os/arch/x86_64/boot.S` | Multiboot2 header, early stack, paging, long-mode transition |
 | `os/arch/x86_64/interrupts.S` | IDT, entry stubs, PIC/PIT setup, `iretq` boundary |
 | `os/arch/x86_64/README.md` | Architecture ownership and explicit limitations |
-| `os/kernel.vnt` | Shared state, CPU control, kernel entry, shell policy |
+| `os/kernel.vnt` | Kernel entry and ordered subsystem initialization |
+| `os/kernel/core.vnt` | Early shared-state access, kernel bounds, CPU halt/reboot |
+| `os/kernel/shell.vnt` | Shell input loop, command parsing, line editing |
 | `os/serial.vnt` | COM1 UART driver |
 | `os/console.vnt` | VGA text output and combined console |
 | `os/ps2.vnt` | Polled keyboard and mouse input |
@@ -154,7 +156,7 @@ This report is part of the learning goal: kernel development requires not only m
 
 The `irq` command is a compact example that crosses the course's main boundaries:
 
-1. The shell in `os/kernel.vnt` recognizes the text `irq`.
+1. The shell in `os/kernel/shell.vnt` recognizes the text `irq`.
 2. It reads shared state slot 11 and passes the value to `console_hex`.
 3. The timer interrupt entry in `os/arch/x86_64/interrupts.S` saves registers and calls the emitted VNT dispatcher symbol.
 4. `os/interrupts.vnt` handles vector 32 by incrementing slot 11 and returning quickly.

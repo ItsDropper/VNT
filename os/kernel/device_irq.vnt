@@ -4,7 +4,7 @@
 # IRQ accounting shared by device drivers and the interrupt dispatcher.
 # This is not a handler registry: an IRQ is only counted until a driver owns it.
 
-import "kernel/core.vnt"
+import "core.vnt"
 
 fun device_irq_record(irq: int) {
     if irq < 0 || irq > 15 {

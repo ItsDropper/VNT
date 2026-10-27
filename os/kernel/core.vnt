@@ -59,3 +59,12 @@ fun kernel_timer_tick() {
 fun kernel_timer_ticks() -> int {
     return state_get(11)
 }
+
+# CR2 is meaningful in the fatal page-fault path before another fault occurs.
+fun kernel_page_fault_address() -> i64 {
+    let result: i64 = 0
+    unsafe {
+        asm volatile("call vntos_read_cr2; movq %rax, -8(%rbp)")
+    }
+    return result
+}

@@ -120,6 +120,7 @@ gdt64_pointer:
 .balign 4096
 pml4_table: .skip 4096
 pdpt_table: .skip 4096
+.global page_directory
 page_directory: .skip 4096
 .balign 16
 boot_stack_bottom: .skip 16384

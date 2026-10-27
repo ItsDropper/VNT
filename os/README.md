@@ -9,8 +9,8 @@ interrupt entry are deliberately split from the VNT policy code.
   tables, transition to long mode, and bootstrap stack.
 - `os/arch/x86_64/interrupts.S`: IDT construction, minimal entry/exit stubs,
   legacy PIC remapping, and PIT setup.
-- `os/arch/x86_64/memory.S`: validated Multiboot2 memory-map accessors and
-  bounded physical-frame bitmap primitives.
+- `os/arch/x86_64/memory.S`: validated Multiboot2 memory-map accessors, physical-frame bitmap primitives, and CR2 access for page-fault diagnostics.
+- `os/arch/x86_64/virtual_memory.S`: bounded 4-KiB page-table splitting, mapping, translation, and probe primitives for the low 1-GiB identity window.
 - `os/kernel.vnt`: kernel entry and ordered subsystem initialization.
 - `os/kernel/core.vnt`: early shared-state access, kernel bounds, and CPU halt/reboot primitives.
 - `os/kernel/shell.vnt`: command parsing, line editing, and shell policy.
@@ -20,6 +20,7 @@ interrupt entry are deliberately split from the VNT policy code.
 - `os/pic.vnt`: VNT-side legacy PIC IRQ mask controls; IRQ entry and EOI remain in assembly.
 - `os/kernel/device_irq.vnt`: bounded accounting for legacy IRQ vectors 32–47; this is not yet a handler registry.
 - `os/mm/phys.vnt`: Multiboot2-backed 4-KiB physical-frame allocator for the first 1-GiB mapped window.
+- `os/mm/virt.vnt`: early virtual translation/mapping policy and a reversible mapping self-test.
 - `os/interrupts.vnt`: VNT-side interrupt dispatch and fatal exception policy.
 - `os/linker.ld`: ELF layout and linker symbols.
 - `os/grub.cfg`: GRUB's Multiboot2 kernel configuration.
@@ -37,8 +38,7 @@ bash os/build.sh
 ```
 
 The script follows imports from `os/kernel.vnt`, emits freestanding assembly,
-assembles the three architecture-boundary files separately, and links a
-freestanding ELF. If GRUB and ISO tools are available, it creates
+assembles the architecture bootstrap, interrupt, memory, and virtual-memory files separately, and links a freestanding ELF. If GRUB and ISO tools are available, it creates
 `build/vntos.iso`. The CI QEMU test validates the Multiboot2 ELF, checks for
 unresolved symbols, exercises the serial shell and keyboard path, and checks
 that the VGA banner replaces stale SeaBIOS text.
@@ -58,10 +58,8 @@ PS/2 keyboard. For serial-only debugging, use:
 qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -serial stdio
 ```
 
-Commands: `help`, `about`, `clear`, `echo TEXT`, `mem`, `memtest`, `irq`,
-`mouse`, `reboot`, and `halt`. The `mem` command reports the kernel bounds
-and usable/free 4-KiB frame counts. `memtest` checks allocation, alignment,
-freeing, double-free rejection, and refusal to free the kernel start frame.
+Commands: `help`, `about`, `clear`, `echo TEXT`, `mem`, `memtest`, `vmtest`,
+`irq`, `mouse`, `reboot`, and `halt`. The `mem` command reports the kernel bounds and usable/free 4-KiB frame counts. `memtest` checks allocation, alignment, freeing, double-free rejection, and refusal to free the kernel start frame. `vmtest` temporarily remaps virtual address 256 MiB to an allocated frame, verifies translation and a write/read sentinel, then restores the identity mapping.
 The `irq` command reports the PIT tick count and the legacy IRQ0/IRQ1 counters.
 Only IRQ0 is expected to advance with the current mask configuration; IRQ1
 remains masked because keyboard input is polled.
@@ -76,7 +74,7 @@ the general-purpose registers, normalizes the vector/error-code stack shape,
 calls `interrupt_dispatch` in VNT, acknowledges hardware IRQs, restores the
 registers, and returns with `iretq`.
 
-The VNT dispatcher routes vectors 32–47 through `device_irq_record()` in `os/kernel/device_irq.vnt`. IRQ0 also calls `kernel_timer_tick()` in `os/kernel/core.vnt`; the shell reads the named tick API and per-IRQ counters. `os/pic.vnt` exposes legacy PIC mask controls, and kernel startup explicitly keeps IRQ1 masked. CPU exceptions are reported and halted rather than incorrectly resumed. Keyboard and mouse input are **still polled**. Do not unmask a device interrupt until its handler and data-ownership model are implemented.
+The VNT dispatcher routes vectors 32–47 through `device_irq_record()` in `os/kernel/device_irq.vnt`. IRQ0 also calls `kernel_timer_tick()` in `os/kernel/core.vnt`; the shell reads the named tick API and per-IRQ counters. `os/pic.vnt` exposes legacy PIC mask controls, and kernel startup explicitly keeps IRQ1 masked. CPU exceptions are reported and halted rather than incorrectly resumed. Page faults additionally print CR2 and the common present/write/user/reserved-bit/instruction-fetch flags; this is diagnostic only and does not recover from faults. Keyboard and mouse input are **still polled**. Do not unmask a device interrupt until its handler and data-ownership model are implemented.
 
 ## Current architecture boundary
 

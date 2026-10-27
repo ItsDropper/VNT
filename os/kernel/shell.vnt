@@ -10,6 +10,7 @@ import "../console.vnt"
 import "../ps2.vnt"
 import "device_irq.vnt"
 import "../mm/phys.vnt"
+import "../mm/virt.vnt"
 
 fun str_eq(left: string, right: string) -> bool {
     let index: int = 0
@@ -59,7 +60,7 @@ fun shell_run() {
             console_puts("\r\n")
             handled = 0
             if str_eq(buffer, "help") {
-                console_puts("Commands: help, about, clear, echo, mem, memtest, irq, mouse, reboot, halt\r\n")
+                console_puts("Commands: help, about, clear, echo, mem, memtest, vmtest, irq, mouse, reboot, halt\r\n")
                 handled = 1
             }
             if str_eq(buffer, "about") {
@@ -88,6 +89,14 @@ fun shell_run() {
                     console_puts("Physical allocator self-test: PASS\r\n")
                 } else {
                     console_puts("Physical allocator self-test: FAIL\r\n")
+                }
+                handled = 1
+            }
+            if str_eq(buffer, "vmtest") {
+                if virt_self_test() == 1 {
+                    console_puts("Virtual-memory self-test: PASS\r\n")
+                } else {
+                    console_puts("Virtual-memory self-test: FAIL\r\n")
                 }
                 handled = 1
             }

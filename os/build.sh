@@ -18,7 +18,8 @@ gcc -c -m64 -ffreestanding -fno-pic -fno-stack-protector -mno-red-zone build/ker
 gcc -c -m64 -ffreestanding -fno-pic -fno-stack-protector -mno-red-zone os/arch/x86_64/boot.S -o build/boot.o
 gcc -c -m64 -ffreestanding -fno-pic -fno-stack-protector -mno-red-zone os/arch/x86_64/interrupts.S -o build/interrupts.o
 gcc -c -m64 -ffreestanding -fno-pic -fno-stack-protector -mno-red-zone os/arch/x86_64/memory.S -o build/memory.o
-ld -nostdlib -static -z max-page-size=0x1000 -T os/linker.ld -o build/kernel.elf build/boot.o build/kernel.o build/interrupts.o build/memory.o
+gcc -c -m64 -ffreestanding -fno-pic -fno-stack-protector -mno-red-zone os/arch/x86_64/virtual_memory.S -o build/virtual_memory.o
+ld -nostdlib -static -z max-page-size=0x1000 -T os/linker.ld -o build/kernel.elf build/boot.o build/kernel.o build/interrupts.o build/memory.o build/virtual_memory.o
 
 if command -v grub-file >/dev/null 2>&1; then
   grub-file --is-x86-multiboot2 build/kernel.elf

@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: ACPI, APIC ja usea CPU-ydin](27-acpi-apic-and-smp.md) · [Seuraava oppitunti: SMP-turvallisuus: synkronoi ennen jaettua muistia →](29-smp-synchronization-contract.md)
 
 ## Koodiesimerkki: lähetä IPI ja odota rajatusti vastausta
 
@@ -133,3 +132,7 @@ Tässä osiossa rakennat tai validoit konkreettisen osan nykyisestä VNTOS-kerne
 ### Muutosraportti
 
 Kirjaa muutetut tiedostot, rajapinta, hyväksymiskriteeri, build-tulos, QEMU-havainto, negatiiviset testit ja jäljelle jääneet rajoitukset.
+
+---
+
+[← Edellinen oppitunti](./27-acpi-apic-and-smp.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./29-smp-synchronization-contract.md)

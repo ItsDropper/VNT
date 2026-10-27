@@ -88,7 +88,7 @@ fun shell_run() {
             handled = 0
             if str_eq(buffer, "help") {
                 console_puts("Commands: help, about, clear, echo, history, uptime\r\n")
-                console_puts("Diagnostics: dectest, synctest, mem, memtest, vmtest, irq, mouse, smp\r\n")
+                console_puts("Diagnostics: dectest, synctest, atomictest, mem, memtest, vmtest, irq, mouse, smp\r\n")
                 console_puts("Power: reboot, halt\r\n")
                 console_puts("Usage: echo TEXT prints TEXT; history shows the previous command.\r\n")
                 handled = 1
@@ -158,6 +158,25 @@ fun shell_run() {
                     console_puts("Spinlock self-test: PASS\r\n")
                 } else {
                     console_puts("Spinlock self-test: FAIL\r\n")
+                }
+                handled = 1
+            }
+            if str_eq(buffer, "atomictest") {
+                let atomic_result: int = smp_atomic_counter_self_test()
+                if atomic_result == 1 {
+                    console_puts("Atomic counter SMP self-test: PASS; CPUs: ")
+                    console_decimal(smp_online_cpu_count())
+                    console_puts("; increments per CPU: 1000; total: ")
+                    console_decimal(state_get(308))
+                    console_puts("\r\n")
+                } else if atomic_result == -1 {
+                    console_puts("Atomic counter SMP self-test: SKIP; requires at least two online CPUs and all discovered CPUs online.\r\n")
+                } else {
+                    console_puts("Atomic counter SMP self-test: FAIL; observed total: ")
+                    console_decimal(state_get(308))
+                    console_puts("; AP completions: ")
+                    console_decimal(state_get(310))
+                    console_puts("\r\n")
                 }
                 handled = 1
             }

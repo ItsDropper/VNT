@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 
 ---
 
-[← Sisällysluettelo](./README.md) · [Seuraava oppitunti: Mitä käyttöjärjestelmä tekee? →](01-what-is-an-os.md)
 
 ## Koodiesimerkki: rakenna ja käynnistä turvallisesti
 
@@ -121,3 +120,7 @@ Tämä osio täydentää käsitteitä käytännön toteutusmenettelyllä. Lähde
 ### Muutosraportti
 
 Kirjoita muistiin: (1) tiedostot, joita muutit, (2) uuden toiminnon sopimus, (3) tarkka build-tulos, (4) QEMU-havainto, (5) testatut virhepolut ja (6) rajoitukset, joita et ratkaissut. Tämä raportti on osa toteutusta, ei ylimääräistä paperityötä.
+
+---
+
+[Seuraava oppitunti: what is an os →](./01-what-is-an-os.md) · [Sisällysluettelo](./README.md)

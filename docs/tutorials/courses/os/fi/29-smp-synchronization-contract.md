@@ -126,4 +126,4 @@ Kirjaa muutetut tiedostot, rajapinta, hyväksymiskriteeri, build-tulos, QEMU-hav
 
 ---
 
-[← Edellinen oppitunti](./28-apic-ipi-service.md) · [Sisällysluettelo](./README.md) · **Kurssi suoritettu.**
+[← Edellinen oppitunti](./28-apic-ipi-service.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./30-physical-allocator-next-fit.md)

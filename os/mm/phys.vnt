@@ -4,7 +4,7 @@
 import "../kernel/core.vnt"
 #
 # Physical frame allocator for the bootstrap's first 1-GiB identity map.
-# One bit marks a frame usable; a second bit tracks reservation/allocation.
+# Separate bitmaps track usable, allocated, and permanently reserved frames.
 # All ranges are clipped to the mapped physical window.
 
 fun phys_mmap_count() -> int {
@@ -139,7 +139,7 @@ fun phys_init() -> int {
     }
 
     # Reserve the complete low-memory range and the linked kernel image,
-    # including its page tables, bootstrap stack, and both allocator bitmaps.
+    # including its page tables, bootstrap stack, and all allocator bitmaps.
     let kernel_end: i64 = kernel_end_addr()
     let reserve_end: i64 = (kernel_end + 4096 - 1) / 4096
     frame = 0
@@ -239,6 +239,9 @@ fun phys_self_test() -> int {
     }
     let valid: int = 1
     if page / 4096 * 4096 != page {
+        valid = 0
+    }
+    if phys_free_page(page + 1) != 0 {
         valid = 0
     }
     if phys_free_page(page) != 1 {

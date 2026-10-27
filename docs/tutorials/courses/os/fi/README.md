@@ -68,6 +68,7 @@ Tämä on aloittelijan kurssi, joka etenee käsitteistä todelliseen toteutuksee
 28. [ACPI, APIC ja usea CPU-ydin](27-acpi-apic-and-smp.md)
 29. [APIC IPI -viestit](28-apic-ipi-service.md)
 30. [SMP-turvallisuus: synkronoi ennen jaettua muistia](29-smp-synchronization-contract.md)
+31. [Paranna sivukehysten varaajaa next-fit-haulla](30-physical-allocator-next-fit.md)
 
 ## Lähdekoodin kartta
 
@@ -75,6 +76,8 @@ Tämä on aloittelijan kurssi, joka etenee käsitteistä todelliseen toteutuksee
 - `os/kernel/shell.vnt` — sarjaportin komentotulkki.
 - `os/interrupts.vnt` ja `os/arch/x86_64/interrupts.S` — keskeytyskäsittely.
 - `os/arch/x86_64/boot.S` — käynnistyksen matalan tason koodi.
+- `os/mm/phys.vnt` — fyysisten sivukehysten bittikartat ja next-fit-varauspolitiikka.
+- `os/mm/virt.vnt` — varhaisten sivutaulujen tarkastelu ja kartoitus VNT-kielellä.
 - `os/mm/phys.vnt` — fyysisten sivukehysten varaaja.
 - `os/mm/virt.vnt` — varhaisen virtuaalimuistin kartoituksen tarkastelu.
 - `os/firmware/acpi.vnt` — ACPI-tiedot.

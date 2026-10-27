@@ -14,8 +14,8 @@ The script runs these stages in order:
 2. Compile the VNT compiler itself from C source files into `build/vnt`.
 3. Ask the compiler to emit freestanding assembly from `os/kernel.vnt`; its imports load the device modules, `kernel/core.vnt`, and `kernel/shell.vnt` into the same compilation unit.
 4. Assemble the generated VNT assembly into `build/kernel.o`.
-5. Assemble `os/arch/x86_64/boot.S`, `os/arch/x86_64/interrupts.S`, and `os/arch/x86_64/memory.S` into three architecture object files.
-6. Link the generated VNT object and all three architecture objects with `os/linker.ld` into `build/kernel.elf`.
+5. Assemble `os/arch/x86_64/boot.S`, `os/arch/x86_64/interrupts.S`, and `os/arch/x86_64/ap_trampoline.S` into three architecture object files.
+6. Link the generated VNT object and those three architecture objects with `os/linker.ld` into `build/kernel.elf`. The physical allocator (`os/mm/phys.vnt`) and early virtual-memory policy (`os/mm/virt.vnt`) are VNT modules in the generated kernel assembly, not separate `.S` files.
 7. If `grub-file` is installed, verify that the ELF has a Multiboot2 header.
 8. If the ISO tools are installed, package the ELF and GRUB configuration into `build/vntos.iso`.
 

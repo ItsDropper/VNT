@@ -345,5 +345,6 @@ vntos_state:
     .quad 0       /* SMP IPI/CPU state 173 */
     .quad 0       /* SMP IPI/CPU state 174 */
     .quad 0       /* SMP IPI/CPU state 175 */
+    .quad 256     /* Physical allocator next-fit hint: frame index 176 */
 
 .section .note.GNU-stack,"",@progbits

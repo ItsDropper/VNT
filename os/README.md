@@ -9,8 +9,6 @@ interrupt entry are deliberately split from the VNT policy code.
   tables, transition to long mode, and bootstrap stack.
 - `os/arch/x86_64/interrupts.S`: IDT construction, minimal entry/exit stubs,
   legacy PIC remapping, and PIT setup.
-- `os/arch/x86_64/memory.S`: validated Multiboot2 memory-map accessors, physical-frame bitmap primitives, and CR2 access for page-fault diagnostics.
-- `os/arch/x86_64/virtual_memory.S`: bounded 4-KiB page-table splitting, mapping, translation, and probe primitives for the low 1-GiB identity window.
 - `os/kernel.vnt`: kernel entry and ordered subsystem initialization.
 - `os/kernel/core.vnt`: early shared-state access, kernel bounds, and CPU halt/reboot primitives.
 - `os/kernel/shell.vnt`: command parsing, line editing, and shell policy.
@@ -19,7 +17,7 @@ interrupt entry are deliberately split from the VNT policy code.
 - `os/ps2.vnt`: polled PS/2 keyboard and mouse routines.
 - `os/pic.vnt`: VNT-side legacy PIC IRQ mask controls; IRQ entry and EOI remain in assembly.
 - `os/kernel/device_irq.vnt`: bounded accounting for legacy IRQ vectors 32–47; this is not yet a handler registry.
-- `os/mm/phys.vnt`: Multiboot2-backed 4-KiB physical-frame allocator for the first 1-GiB mapped window.
+- `os/mm/phys.vnt`: Multiboot2-backed 4-KiB physical-frame allocator with a bounded next-fit search for the first 1-GiB mapped window.
 - `os/mm/virt.vnt`: early virtual translation/mapping policy and a reversible mapping self-test.
 - `os/interrupts.vnt`: VNT-side interrupt dispatch and fatal exception policy.
 - `os/linker.ld`: ELF layout and linker symbols.
@@ -38,7 +36,7 @@ bash os/build.sh
 ```
 
 The script follows imports from `os/kernel.vnt`, emits freestanding assembly,
-assembles the architecture bootstrap, interrupt, memory, and virtual-memory files separately, and links a freestanding ELF. If GRUB and ISO tools are available, it creates
+assembles the architecture bootstrap, interrupt entry, and AP trampoline separately, and links a freestanding ELF. Physical and early virtual-memory policy are currently implemented in VNT using low-level memory/CPU builtins. If GRUB and ISO tools are available, it creates
 `build/vntos.iso`. The CI QEMU test validates the Multiboot2 ELF, checks for
 unresolved symbols, exercises the serial shell and keyboard path, and checks
 that the VGA banner replaces stale SeaBIOS text.
@@ -59,7 +57,7 @@ qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -serial stdio
 ```
 
 Commands: `help`, `about`, `clear`, `echo TEXT`, `mem`, `memtest`, `vmtest`,
-`irq`, `mouse`, `reboot`, and `halt`. The `mem` command reports the kernel bounds and usable/free 4-KiB frame counts. `memtest` checks allocation, alignment, freeing, double-free rejection, and refusal to free the kernel start frame. `vmtest` temporarily remaps virtual address 256 MiB to an allocated frame, verifies translation and a write/read sentinel, then restores the identity mapping.
+`irq`, `mouse`, `reboot`, and `halt`. The `mem` command reports the kernel bounds and usable/free 4-KiB frame counts. `memtest` checks allocation alignment, next-fit cursor advancement, freeing, double-free rejection, and refusal to free the kernel start frame. `vmtest` temporarily remaps virtual address 256 MiB to an allocated frame, verifies translation and a write/read sentinel, then restores the identity mapping.
 The `irq` command reports the PIT tick count and the legacy IRQ0/IRQ1 counters.
 Only IRQ0 is expected to advance with the current mask configuration; IRQ1
 remains masked because keyboard input is polled.
@@ -101,7 +99,7 @@ not evidence of independent modules or memory-safe ownership.
 - **Memory map:** the bootstrap identity-maps the first 1 GiB using 2 MiB
   pages, including the legacy VGA text buffer. The physical allocator parses
   Multiboot2 type-1 regions inside that window and tracks usable, allocated,
-  and reserved frames with bitmaps.
+  and reserved frames with bitmaps. Allocation searches from a cursor and wraps once; this reduces repeated scans of already-used low frames but does not make the allocator SMP-safe.
 - **Timer:** PIT-based, approximately 100 Hz. It is not a calibrated wall
   clock and does not schedule tasks.
 

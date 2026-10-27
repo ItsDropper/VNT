@@ -77,6 +77,7 @@ Tämä on aloittelijan kurssi, joka etenee käsitteistä todelliseen toteutuksee
 
 - `os/kernel.vnt` — kernelin käynnistys ja alustusjärjestys.
 - `os/kernel/shell.vnt` — sarjaportin komentotulkki.
+- `os/kernel/sync.vnt` — atomiseen vaihtoon perustuva spinlock; kilpailutilanteen turvallisuutta ei ole vielä todennettu.
 - `os/interrupts.vnt` ja `os/arch/x86_64/interrupts.S` — keskeytyskäsittely.
 - `os/arch/x86_64/boot.S` — käynnistyksen matalan tason koodi.
 - `os/mm/phys.vnt` — fyysisten sivukehysten bittikartat, next-fit-haku ja yhtenäisten sivualueiden varaus.

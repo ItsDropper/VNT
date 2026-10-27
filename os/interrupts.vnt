@@ -17,6 +17,10 @@ export fun interrupts_init() {
 # This function is called by the assembly common entry after all general
 # registers have been saved. Keep interrupt handlers short and allocation-free.
 export fun interrupt_dispatch(vector: int, error: int) {
+    # APIC spurious interrupts do not receive an EOI.
+    if vector == 255 {
+        return 0
+    }
     if vector >= 32 && vector < 48 {
         # The assembly entry acknowledges the legacy PIC after this returns.
         # Keep interrupt-context work bounded: count the IRQ and account for

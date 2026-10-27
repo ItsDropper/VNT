@@ -7,11 +7,22 @@ import "../kernel/core.vnt"
 # code. Bootstrap assembly only supplies the handoff fields and bitmap storage.
 
 fun phys_info_addr() -> i64 {
-    let result: i64 = 0
+    let magic_slot: i64 = 0
+    let info_slot: i64 = 0
     unsafe {
-        asm volatile("leaq multiboot2_boot_magic(%rip), %rax; cmpl $0x36d76289, (%rax); jne 1f; leaq multiboot2_info_ptr(%rip), %rax; movl (%rax), %eax; testl %eax, %eax; jz 1f; cmpl $0x40000000, %eax; jae 1f; movq %rax, -8(%rbp); jmp 2f; 1: movq $0, -8(%rbp); 2:")
+        magic_slot = symbol_address("multiboot2_boot_magic")
+        info_slot = symbol_address("multiboot2_info_ptr")
     }
-    return result
+    let magic: int = 0
+    let info: i64 = 0
+    unsafe {
+        magic = mem_read_u32(magic_slot, 0)
+        info = mem_read_u32(info_slot, 0)
+    }
+    if magic != 0x36d76289 || info == 0 || info >= 1073741824 {
+        return 0
+    }
+    return info
 }
 
 fun phys_info_size() -> int {
@@ -84,19 +95,13 @@ fun phys_mmap_length(index: int) -> i64 { return phys_mmap_field(index, 1) }
 fun phys_mmap_type(index: int) -> i64 { return phys_mmap_field(index, 2) }
 
 fun phys_usable_bitmap_base() -> i64 {
-    let result: i64 = 0
-    unsafe { asm volatile("leaq vntos_phys_usable_bitmap(%rip), %rax; movq %rax, -8(%rbp)") }
-    return result
+    unsafe { return symbol_address("vntos_phys_usable_bitmap") }
 }
 fun phys_allocated_bitmap_base() -> i64 {
-    let result: i64 = 0
-    unsafe { asm volatile("leaq vntos_phys_allocated_bitmap(%rip), %rax; movq %rax, -8(%rbp)") }
-    return result
+    unsafe { return symbol_address("vntos_phys_allocated_bitmap") }
 }
 fun phys_reserved_bitmap_base() -> i64 {
-    let result: i64 = 0
-    unsafe { asm volatile("leaq vntos_phys_reserved_bitmap(%rip), %rax; movq %rax, -8(%rbp)") }
-    return result
+    unsafe { return symbol_address("vntos_phys_reserved_bitmap") }
 }
 
 fun phys_bitmap_set(base: i64, frame: int, value: int) -> int {

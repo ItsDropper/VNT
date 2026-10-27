@@ -71,7 +71,7 @@ jobs:
       - name: Boot guest and test interactive shell
         shell: bash
         run: |
-          qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -monitor unix:build/qemu-keyboard-monitor.sock,server,nowait -serial unix:build/qemu-serial.sock,server,nowait -debugcon file:build/debug.log -global isa-debugcon.iobase=0xe9 -no-reboot -no-shutdown &
+          qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -smp 4 -display none -monitor unix:build/qemu-keyboard-monitor.sock,server,nowait -serial unix:build/qemu-serial.sock,server,nowait -debugcon file:build/debug.log -global isa-debugcon.iobase=0xe9 -no-reboot -no-shutdown &
           qemu_pid=$!
           cleanup_qemu() {
             kill "$qemu_pid" 2>/dev/null || true
@@ -162,7 +162,7 @@ jobs:
               "CPU online count: 0x",
               "Discovered CPUs: 0x",
               "Online CPUs: 0x",
-              "Secondary CPU startup is not enabled yet.",
+              "Secondary CPU startup: PASS",\n              "Online CPUs: 0x0000000000000004",
               "Usable 4-KiB pages: 0x",
               "Free 4-KiB pages: 0x",
               "Physical allocator self-test: PASS",

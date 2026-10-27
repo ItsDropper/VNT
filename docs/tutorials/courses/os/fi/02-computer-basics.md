@@ -45,6 +45,25 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Mitä käyttöjärjestelmä tekee?](01-what-is-an-os.md) · [Seuraava oppitunti: Valmistele kehitysympäristö →](03-setup.md)
 
+## Koodiesimerkki: virtuaaliosoitteen tarkistus
+
+```vnt
+fun virt_translate(address: i64) -> i64 {
+    if address < 0 || address >= 1073741824 {
+        return -1
+    }
+    let directory: i64 = virt_page_directory_base()
+    let directory_index: int = (address / 2097152) % 512
+    // Nykyinen toteutus jatkaa PDE:n lukemiseen ja validointiin.
+    return address
+}
+```
+
+Esimerkki näyttää nykyisen virt.vnt-moduulin todelliset rajat ja indeksin laskennan, mutta viimeinen return address on vain katkelman havainnollistava täyte eikä korvaa koko käännösalgoritmia. Varsinaisessa toteutuksessa tarkista PDE/PTE:n present-bitti ja laske fyysinen osoite sivun koon ja offsetin perusteella. Osoiteavaruus ei ole sama asia kuin I/O-portti.
+
+**Tee itse:** Avaa koko os/mm/virt.vnt-funktio. Jäljitä osoitteelle 0x10000000 hakemiston indeksi ja sivun offset. Vertaa tulosta virt_translate(0x10000000)-kutsuun kernelin alustuksessa.
+
+
 ## Toteutuslaboratorio: CPU, portit, muisti ja osoitteet
 
 Tämä osio täydentää käsitteitä käytännön toteutusmenettelyllä. Lähdekoodiviitteet ovat projektin nykyisiä polkuja; avaa ne ennen muutosta.

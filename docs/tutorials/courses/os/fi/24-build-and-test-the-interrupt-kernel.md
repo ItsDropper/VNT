@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: PIT, PIC ja ajastimen tikit](23-pit-pic-and-timer-ticks.md) · [Seuraava oppitunti: Fyysinen muisti ja sivukehykset →](26-physical-memory-and-page-frames.md)
 
 ## Koodiesimerkki: varmista assembly ja VNT yhdessä
 
@@ -122,3 +121,7 @@ Tämä harjoitus edellyttää lähdekoodin lukemista ja toteutuksen todentamista
 ### Muutosraportti
 
 Kirjaa muutos, rajapintasopimus, build-tulos, QEMU-havainto, testatut vektorit ja avoimet rajoitukset.
+
+---
+
+[← Edellinen oppitunti](./23-pit-pic-and-timer-ticks.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./25-graduation-project.md)

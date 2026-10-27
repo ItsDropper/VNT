@@ -38,7 +38,7 @@ buffer[0 .. length-1] = näkyvä komento
 buffer[length] = 0
 ```
 
-Näytön laitteistokohdistimen on vastattava loogista `cursor`-arvoa. Nuoli vasemmalle ja oikealle muuttavat molempia; Home siirtää kohdistimen nollaan ja End rivin loppuun. Editori ei tue monirivisiä komentoja, mielivaltaista näytön vieritystä muokkauksen aikana eikä Unicode-grafeemien mukaista liikkumista.
+Näytön laitteistokohdistimen on vastattava loogista `cursor`-arvoa. Erillinen `console_cursor_left()` siirtää kohdistinta merkkiä poistamatta ja lähettää sarjaporttiin ANSI CSI-left -sekvenssin. Nuoli vasemmalle ja oikealle muuttavat molempia; Home siirtää kohdistimen nollaan ja End rivin loppuun. Editori ei tue monirivisiä komentoja, mielivaltaista näytön vieritystä muokkauksen aikana eikä Unicode-grafeemien mukaista liikkumista.
 
 ## Lisää merkki korvaamatta vanhaa
 
@@ -61,7 +61,7 @@ Takaperin siirtäminen estää ylikirjoittamasta merkkejä, jotka täytyy vielä
 
 **Delete** poistaa merkin kohdistimen kohdalta. **Backspace** poistaa välittömästi kohdistinta edeltävän merkin ja siirtää kohdistinta yhden paikan vasemmalle. Molemmat siirtävät jäljellä olevan loppuosan vasemmalle ja lisäävät puskurin lopetusnollan uudelleen.
 
-Apuohjelma `shell_redraw_tail(buffer, cursor, length)` piirtää vain muuttuneen loppuosan. Se tulostaa loppuosan, kirjoittaa välilyönnin vanhan viimeisen merkin poistamiseksi ja lähettää tarvittavan määrän askelpalautuksia, jotta laitteistokohdistin palaa loogiseen lisäyskohtaan. Samat ohjausmerkit lähetetään VGA:lle ja sarjaporttiin, joten tavallinen sarjaporttipääte voi seurata muokkausta.
+Apuohjelma `shell_redraw_tail(buffer, cursor, length)` piirtää vain muuttuneen loppuosan. Se tulostaa loppuosan, kirjoittaa välilyönnin vanhan viimeisen merkin poistamiseksi ja kutsuu `console_cursor_left()`-toimintoa, kunnes kohdistin palaa loogiseen lisäyskohtaan. Tämä ei ole sama kuin Backspace: VGA:n Backspace poistaa edellisen solun merkin. Kohdistintoiminto siirtää VGA:n laitteistokohdistinta tekstiä muuttamatta ja lähettää sarjapäätteelle ANSI CSI-left -sekvenssin.
 
 Ratkaisu on tarkoituksella yksinkertainen. Se olettaa, että pääte käsittelee askelpalautuksen kohdistimen liikkeenä ja että komento mahtuu rajattuun puskuriin. Tämä ei ole yleiskäyttöinen ANSI-pääte.
 
@@ -69,7 +69,7 @@ Ratkaisu on tarkoituksella yksinkertainen. Se olettaa, että pääte käsittelee
 
 Nuoli ylös hakee edelleen yhden edellisen ei-tyhjän komennon. Ennen lataamista komentotulkki siirtää kohdistimen rivin alkuun, korvaa vanhat näkyvät merkit välilyönneillä, palauttaa kohdistimen alkuun ja tulostaa haetun komennon. Looginen puskuri, `length` ja `cursor` on päivitettävä yhdessä.
 
-Älä kirjoita koko riviä tyhjentäessäsi toistuvasti välilyöntiä ja heti perään askelpalautusta: tällöin sama solu ylikirjoitetaan. Etene välilyöntejä tulostaessa ja palaa vasta sen jälkeen alkuun askelpalautuksilla. QEMU-testi tarkistaa historian haun navigoinnin jälkeen.
+Älä kirjoita koko riviä tyhjentäessäsi toistuvasti välilyöntiä ja heti perään askelpalautusta: tällöin sama solu ylikirjoitetaan. Etene välilyöntejä tulostaessa ja siirry vasta sen jälkeen alkuun kohdistinta liikuttavalla toiminnolla, joka ei poista välilyöntejä. QEMU-testi tarkistaa historian haun navigoinnin jälkeen.
 
 ## Automaattinen näppäimistöregressio
 

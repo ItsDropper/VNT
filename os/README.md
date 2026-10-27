@@ -56,8 +56,8 @@ PS/2 keyboard. For serial-only debugging, use:
 qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -serial stdio
 ```
 
-Commands: `help`, `about`, `clear`, `echo TEXT`, `mem`, `memtest`, `vmtest`,
-`irq`, `mouse`, `reboot`, and `halt`. The `mem` command reports the kernel bounds and usable/free 4-KiB frame counts. `memtest` checks allocation alignment, next-fit cursor advancement, freeing, double-free rejection, and refusal to free the kernel start frame. `vmtest` temporarily remaps virtual address 256 MiB to an allocated frame, verifies translation and a write/read sentinel, then restores the identity mapping.
+Commands: `help`, `about`, `clear`, `echo TEXT`, `history`, `uptime`, `mem`, `memtest`, `vmtest`,
+`irq`, `mouse`, `smp`, `reboot`, and `halt`. The PS/2 terminal supports recalling the most recent completed command with the Up arrow. `uptime` reports PIT ticks and an approximate seconds count based on the configured 100 Hz timer. The `mem` command reports the kernel bounds and usable/free 4-KiB frame counts. `memtest` checks allocation alignment, next-fit cursor advancement, freeing, double-free rejection, and refusal to free the kernel start frame. `vmtest` temporarily remaps virtual address 256 MiB to an allocated frame, verifies translation and a write/read sentinel, then restores the identity mapping.
 The `irq` command reports the PIT tick count and the legacy IRQ0/IRQ1 counters.
 Only IRQ0 is expected to advance with the current mask configuration; IRQ1
 remains masked because keyboard input is polled.

@@ -383,7 +383,7 @@ static int find_task(const char *name) {
 static int load_tasks(void) {
     FILE *f = fopen("build.vbuild", "r");
     char line[LINE_CAP];
-    int lineno = 0, section = 0;
+    int lineno = 0, section = 0, target_seen = 0;
     if (!f) { fprintf(stderr, "vbuild: missing build.vbuild.\n"); return 0; }
     task_count = 0;
     repository_count = 0;
@@ -429,6 +429,10 @@ static int load_tasks(void) {
         }
         if (!strncmp(p, "target ", 7)) {
             char *target = p + 7;
+            if (target_seen) {
+                fprintf(stderr, "vbuild: build.vbuild:%d: target may only be declared once.\\n", lineno);
+                fclose(f); return 0;
+            }
             trim(target);
             if (strcmp(target, "exe") && strcmp(target, "elf") &&
                 strcmp(target, "asm") && strcmp(target, "freestanding-asm")) {
@@ -437,6 +441,7 @@ static int load_tasks(void) {
             }
             if (strlen(target) >= sizeof selected_target) { fclose(f); return 0; }
             strcpy(selected_target, target);
+            target_seen = 1;
             continue;
         }
         if (strncmp(p, "task ", 5) != 0) {

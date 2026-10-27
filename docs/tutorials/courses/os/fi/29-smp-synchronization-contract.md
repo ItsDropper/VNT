@@ -137,6 +137,5 @@ Kernelin synkronointityössä on nyt ensimmäinen konkreettinen askel, mutta yle
 Tämä ei vielä todista lukon toimivan kilpailutilanteessa. Fyysisten sivukehysten varaaja ei käytä lukkoa, eikä AP:ita saa vielä päästää yleiseen rinnakkaiseen allokointiin. Seuraava hyväksymiskriteeri on moniydintesti, jossa useat CPU:t yrittävät samaa lukkoa ja tarkistavat, ettei jaettu laskuri tai allokaattorin bittikartta rikkoudu.
 
 ---
----
 
 [← Edellinen oppitunti](./28-apic-ipi-service.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./30-physical-allocator-next-fit.md)

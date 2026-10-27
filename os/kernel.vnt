@@ -9,7 +9,7 @@ import "kernel/core.vnt"
 import "kernel/shell.vnt"
 import "pic.vnt"
 import "mm/phys.vnt"
-import "mm/virt.vnt"
+import "mm/virt.vnt"\nimport "firmware/acpi.vnt"\nimport "arch/x86_64/apic.vnt"\nimport "kernel/smp.vnt"
 
 # Kernel entry owns initialization order. Core primitives and shell policy live
 # in imported modules; the device implementations remain independently located.

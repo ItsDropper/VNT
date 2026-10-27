@@ -78,6 +78,7 @@ Tämä on aloittelijan kurssi, joka etenee käsitteistä todelliseen toteutuksee
 38. [Testaa desimaalimerkin poiminta ilman konsolitulostusta](37-decimal-digit-self-test.md)
 39. [Erota IRQ-laskurit keskeytysohjaimen asetuksista](38-irq-controller-diagnostics.md)
 40. [Käytä atomisia lisäyksiä jaetuissa keskeytyslaskureissa](39-atomic-interrupt-counters.md)
+41. [Testaa atomisia lisäyksiä usealla CPU-ytimellä](40-smp-atomic-counter-self-test.md)
 
 ## Lähdekoodin kartta
 

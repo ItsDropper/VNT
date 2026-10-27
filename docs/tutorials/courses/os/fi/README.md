@@ -71,6 +71,7 @@ Tämä on aloittelijan kurssi, joka etenee käsitteistä todelliseen toteutuksee
 31. [Paranna sivukehysten varaajaa next-fit-haulla](30-physical-allocator-next-fit.md)
 32. [Varaa peräkkäisiä fyysisiä sivuja](31-contiguous-physical-pages.md)
 33. [Anna varatuille muistialueille etusija](32-reserved-memory-map-precedence.md)
+34. [Komentohistoria ja käyttöajan diagnostiikka](33-terminal-history-and-uptime.md)
 
 ## Lähdekoodin kartta
 

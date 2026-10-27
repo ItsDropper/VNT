@@ -45,6 +45,18 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 
 [← Sisällysluettelo](./README.md) · [Seuraava oppitunti: Mitä käyttöjärjestelmä tekee? →](01-what-is-an-os.md)
 
+## Koodiesimerkki: rakenna ja käynnistä turvallisesti
+
+```bash
+bash os/build.sh
+qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -serial stdio
+```
+
+Ensimmäinen komento käyttää projektin omaa build-skriptiä. Skripti luo ensin build/kernel.elf:n ja tekee ISO:n vain, jos GRUB- ja xorriso-työkalut löytyvät. Käynnistä vain virtuaalikoneessa. Jos ISO:ta ei syntynyt, lue buildin lopputuloste äläkä suorita QEMU-komentoa sokkona.
+
+**Tee itse:** Harjoitus: kirjoita ylös buildin luoma tiedosto ja se, mitä QEMU:n sarjaportissa näkyy. Käännös onnistui vasta, kun komento päättyi onnistuneesti; käynnistys onnistui vasta, kun kernelin oma käynnistysviesti näkyy.
+
+
 ## Toteutuslaboratorio: Aloita tästä
 
 Tämä osio täydentää käsitteitä käytännön toteutusmenettelyllä. Lähdekoodiviitteet ovat projektin nykyisiä polkuja; avaa ne ennen muutosta.

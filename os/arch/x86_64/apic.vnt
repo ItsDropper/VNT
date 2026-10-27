@@ -36,6 +36,14 @@ fun ioapic_read_register(index: int) -> int {
     }
 }
 
+fun apic_mask_lvt(offset: int) -> int {
+    let value: int = apic_read32(offset)
+    if (value / 65536) % 2 == 0 {
+        value = value + 65536
+    }
+    return apic_write32(offset, value)
+}
+
 fun apic_mask_ioapic_routes() -> int {
     if acpi_ioapic_count() != 1 {
         state_set(63, 0)
@@ -108,11 +116,31 @@ fun apic_init() -> int {
     }
 
     apic_write32(0x80, 0)
+    let version: int = apic_read32(0x30)
+    let maximum_lvt: int = (version / 65536) % 256
+    apic_mask_lvt(0x320)
+    if maximum_lvt >= 1 {
+        apic_mask_lvt(0x330)
+    }
+    if maximum_lvt >= 2 {
+        apic_mask_lvt(0x340)
+    }
+    if maximum_lvt >= 3 {
+        apic_mask_lvt(0x350)
+    }
+    if maximum_lvt >= 4 {
+        apic_mask_lvt(0x360)
+    }
+    if maximum_lvt >= 5 {
+        apic_mask_lvt(0x370)
+    }
+    if maximum_lvt >= 6 {
+        apic_mask_lvt(0x2f0)
+    }
     # Vector 255 is reserved for the APIC spurious-interrupt vector.
     apic_write32(0xf0, 0x1ff)
     let id_register: int = apic_read32(0x20)
     let apic_id: int = (id_register / 16777216) % 256
-    let version: int = apic_read32(0x30)
     state_set(58, 1)
     state_set(59, apic_id)
     state_set(61, version % 256)

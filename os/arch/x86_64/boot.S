@@ -140,3 +140,19 @@ vntos_state:
     .quad 0       /* Keyboard shift state */
     .quad 0       /* Keyboard caps-lock state */
     .quad 0       /* PIT timer interrupt count */
+    .quad 0       /* IRQ0 count */
+    .quad 0       /* IRQ1 count */
+    .quad 0       /* IRQ2 count */
+    .quad 0       /* IRQ3 count */
+    .quad 0       /* IRQ4 count */
+    .quad 0       /* IRQ5 count */
+    .quad 0       /* IRQ6 count */
+    .quad 0       /* IRQ7 count */
+    .quad 0       /* IRQ8 count */
+    .quad 0       /* IRQ9 count */
+    .quad 0       /* IRQ10 count */
+    .quad 0       /* IRQ11 count */
+    .quad 0       /* IRQ12 count */
+    .quad 0       /* IRQ13 count */
+    .quad 0       /* IRQ14 count */
+    .quad 0       /* IRQ15 count */

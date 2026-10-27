@@ -45,6 +45,31 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Loppuprojekti: tee todennettava parannus](25-graduation-project.md) · [Seuraava oppitunti: APIC IPI -viestit →](28-apic-ipi-service.md)
 
+## Koodiesimerkki: tarkista ACPI-taulun checksum
+
+```vnt
+fun acpi_checksum(address: i64, length: int) -> int {
+    if address <= 0 || length <= 0 || address + length > 1073741824 {
+        return 0
+    }
+    let sum: int = 0
+    let i: int = 0
+    while i < length {
+        sum = (sum + acpi_read8(address, i)) % 256
+        i = i + 1
+    }
+    if sum == 0 {
+        return 1
+    }
+    return 0
+}
+```
+
+Tämä on nykyisen os/firmware/acpi.vnt-tiedoston funktio. ACPI-taulun checksum tarkistetaan laskemalla tavut yhteen modulo 256; kelvollisen taulun summa on nolla. Ennen lukemista tarkistetaan osoite, pituus ja se, että alue pysyy bootstrapin kartoittamassa muistissa.
+
+**Tee itse:** Tarkista, että jokainen ACPI-tietorakenne validoidaan ennen sen kenttien käyttöä. MADT:n muuttuvamittaisia merkintöjä kuljetaan entry_length-kentän mukaan ja pituus tarkistetaan ennen kenttien lukemista.
+
+
 ## Toteutuslaboratorio: ACPI, APIC ja SMP
 
 Tässä osiossa rakennat tai validoit konkreettisen osan nykyisestä VNTOS-kernelistä.

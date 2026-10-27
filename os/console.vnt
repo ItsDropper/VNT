@@ -28,6 +28,18 @@ fun vga_puts(text: string) {
     return 0
 }
 
+# Move the VGA hardware cursor and the serial terminal cursor left without
+# erasing the character under/behind the cursor. This is distinct from BS.
+fun console_cursor_left() {
+    unsafe {
+        asm volatile("movq vntos_state(%rip), %rcx; testq %rcx, %rcx; jz 1f; decq %rcx; movq %rcx, vntos_state(%rip); movw $0x3d4, %dx; movb $14, %al; outb %al, %dx; movw $0x3d5, %dx; movl %ecx, %eax; shrl $8, %eax; outb %al, %dx; movw $0x3d4, %dx; movb $15, %al; outb %al, %dx; movw $0x3d5, %dx; movl vntos_state(%rip), %eax; outb %al, %dx; 1:")
+    }
+    serial_putc(27)
+    serial_putc(91)
+    serial_putc(68)
+    return 0
+}
+
 fun console_putc(value: int) {
     vga_putc(value)
     serial_putc(value)

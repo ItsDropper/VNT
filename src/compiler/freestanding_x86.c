@@ -181,6 +181,32 @@ static int emit_expression(FreestandingGen *g, size_t index) {
             if (area) fprintf(g->out, "    addq $%zu, %%rsp\n", area);
             return 1;
         }
+        /* Atomic exchange is a first-class memory operation, not arbitrary
+           inline assembly. XCHG with a memory operand is implicitly locked
+           on x86; RAX receives the value that was present before the swap. */
+        if (n->value.text && !strcmp(n->value.text, "cpu_atomic_exchange_u64")) {
+            if (n->child_count != 2) {
+                fail(g, "cpu_atomic_exchange_u64 requires an address and a value.");
+                return 0;
+            }
+            fputs("    subq $16, %rsp\n", g->out);
+            size_t ai = 0;
+            for (size_t c = n->first_child; c != VNT_IR_NO_NODE;
+                 c = g->ir->nodes[c].next_sibling) {
+                if (g->ir->nodes[c].role != VNT_IR_EDGE_ARGUMENT) continue;
+                if (ai >= 2 || !emit_expression(g, c)) return 0;
+                fprintf(g->out, "    movq %%rax, %zu(%%rsp)\n", ai++ * 8);
+            }
+            if (ai != 2) {
+                fail(g, "cpu_atomic_exchange_u64 requires exactly two arguments.");
+                return 0;
+            }
+            fputs("    movq 0(%rsp), %rdi\n"
+                  "    movq 8(%rsp), %rax\n"
+                  "    xchgq %rax, (%rdi)\n"
+                  "    addq $16, %rsp\n", g->out);
+            return 1;
+        }
         /* Freestanding raw-memory and CPU intrinsics emit native instructions.
            Their unsafe boundary is enforced by typecheck.c. */
         if (n->value.text &&

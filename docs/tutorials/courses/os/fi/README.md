@@ -73,6 +73,7 @@ Tämä on aloittelijan kurssi, joka etenee käsitteistä todelliseen toteutuksee
 33. [Anna varatuille muistialueille etusija](32-reserved-memory-map-precedence.md)
 34. [Komentohistoria ja käyttöajan diagnostiikka](33-terminal-history-and-uptime.md)
 35. [Rakenna kohdistinta tukeva komentorivieditori](34-terminal-editable-line-editor.md)
+36. [Tulosta käyttöaika ja laskurit luettavina desimaalilukuina](35-terminal-decimal-uptime.md)
 
 ## Lähdekoodin kartta
 

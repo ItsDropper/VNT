@@ -1,4 +1,4 @@
-# Lesson 25 — Graduation Project: Make One Kernel Subsystem Better
+# Lesson 27 — Graduation Project: Make One Kernel Subsystem Better
 
 **Goal:** finish by changing a real VNTOS subsystem, not by writing disconnected pseudocode.
 
@@ -8,8 +8,9 @@ Before you change anything, build and boot the current kernel. Verify:
 
 - the Multiboot2 ELF is accepted by `grub-file`;
 - QEMU reaches `VNTOS_COMMAND_LINE_READY`;
-- `help`, `about`, `echo test`, `mem`, and `irq` work;
+- `help`, `about`, `echo test`, `mem`, `memtest`, and `irq` work;
 - the timer count increases between two `irq` commands;
+- `memtest` prints `Physical allocator self-test: PASS`;
 - unknown commands still produce the expected error.
 
 Keep a recoverable Git branch. Kernel changes can break boot long before the compiler can tell you what went wrong.

@@ -5,8 +5,8 @@
 # APIC MMIO windows are mapped by the x86-64 bootstrap at their conventional
 # PC addresses. Nonstandard MADT overrides are rejected rather than dereferenced.
 
-import "../kernel/core.vnt"
-import "../firmware/acpi.vnt"
+import "../../kernel/core.vnt"
+import "../../firmware/acpi.vnt"
 
 fun apic_read32(offset: int) -> int {
     unsafe {

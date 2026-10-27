@@ -45,6 +45,26 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: GRUB ja Multiboot2](07-grub-and-multiboot2.md) · [Seuraava oppitunti: x86-64 long mode →](09-long-mode.md)
 
+## Koodiesimerkki: säilytä bootloaderin rekisterit
+
+```asm
+boot32_entry:
+    /* Preserve the Multiboot2 register contract before using EAX/EBX. */
+    movl %eax, multiboot2_boot_magic
+    movl %ebx, multiboot2_info_ptr
+    movw $0xe9, %dx
+    movb $66, %al
+    outb %al, %dx
+    cli
+    cld
+    movl $boot_stack_top, %esp
+```
+
+`EAX` sisältää Multiboot2-magic-arvon ja `EBX` osoittaa bootloaderin tietorakenteeseen. Ne tallennetaan ennen kuin rekistereitä käytetään muuhun. `cli` estää maskattavat keskeytykset bootstrapin aikana, `cld` asettaa merkkijonokäskyjen suunnan ja `ESP` saa bootstrap-pinon osoitteen.
+
+**Tee itse:** Jäljitä jokainen käsky taulukkoon: rekisteri ennen käskyä, käskyn vaikutus ja rekisteri sen jälkeen. Älä muuta rekisterin käyttöä ennen kuin olet selvittänyt, käytetäänkö sen alkuperäistä arvoa myöhemmin.
+
+
 ## Toteutuslaboratorio: Käynnistysassemblyn lukeminen
 
 Tämä on toteutusohje, ei vain aiheesta kertova yhteenveto. Avaa lähdetiedostot ennen kuin muutat niitä.

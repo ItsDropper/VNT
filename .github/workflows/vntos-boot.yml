@@ -68,6 +68,16 @@ jobs:
           grep -F 'rdmsr' build/freestanding-msr.s
           grep -F 'wrmsr' build/freestanding-msr.s
 
+      - name: Verify freestanding atomic exchange code generation
+        run: |
+          ./build/vnt --emit-freestanding-asm tests/freestanding_atomic_exchange.vnt -o build/freestanding-atomic-exchange.s
+          grep -F 'xchgq %rax, (%rdi)' build/freestanding-atomic-exchange.s
+
+          if ./build/vnt --emit-freestanding-asm tests/freestanding_atomic_exchange_rejected.vnt -o build/atomic-exchange-rejected.s; then
+            echo "Atomic exchange unexpectedly compiled outside unsafe { ... }" >&2
+            exit 1
+          fi
+
       - name: Boot guest and test interactive shell
         shell: bash
         run: |
@@ -144,7 +154,7 @@ jobs:
           press("up")
           press("ret")
           drain(0.35)
-          for command in ("history", "uptime", "mem", "memtest", "vmtest", "irq", "mouse", "smp", "badcommand", "clear", "halt"):
+          for command in ("history", "uptime", "synctest", "mem", "memtest", "vmtest", "irq", "mouse", "smp", "badcommand", "clear", "halt"):
               type_command(command)
           monitor.close()
           drain(0.5)
@@ -156,7 +166,8 @@ jobs:
           required = [
               "VNTOS_BOOT_OK",
               "VNTOS_COMMAND_LINE_READY",
-              "Commands: help, about, clear, echo, history, uptime, mem, memtest, vmtest, irq, mouse, smp, reboot, halt",
+              "Commands: help, about, clear, echo, history, uptime, synctest, mem, memtest, vmtest, irq, mouse, smp, reboot, halt",
+              "Spinlock self-test: PASS",
               "Last command: echo test",
               "Approximate uptime seconds: 0x",
               "VNTOS: VNT-compiled freestanding x86-64 kernel.",

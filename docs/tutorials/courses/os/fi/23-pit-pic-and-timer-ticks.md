@@ -45,6 +45,24 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Käsittele keskeytyksiä VNT-kielellä](22-vnt-interrupt-dispatch.md) · [Seuraava oppitunti: Rakenna ja testaa keskeytyskernel →](24-build-and-test-the-interrupt-kernel.md)
 
+## Koodiesimerkki: PIT-tikki ei ole vielä scheduler
+
+```vnt
+fun kernel_timer_tick() {
+    state_set(11, state_get(11) + 1)
+    return 0
+}
+
+fun kernel_timer_ticks() -> int {
+    return state_get(11)
+}
+```
+
+Tämä on nykyisen os/kernel/core.vnt-tiedoston nimetty rajapinta. IRQ0:n käsittely kasvattaa laskuria; komentotulkki voi lukea sen myöhemmin. Laskuri kertoo tikkejä, ei tarkkaa seinäkelloaikaa eikä sitä, että prosessien ajastus olisi toteutettu.
+
+**Tee itse:** Käynnistä QEMU, suorita `irq`-komento kahdesti ja vertaa tikkejä. Erota toisistaan PIT:n ohjelmointi, PIC-maskit, IRQ:n laskenta ja scheduler; nykyinen laskuri toteuttaa vain tikin kirjaamisen.
+
+
 ## Toteutuslaboratorio: PIT, PIC ja ajastimen tikit
 
 Tämä harjoitus edellyttää lähdekoodin lukemista ja toteutuksen todentamista.

@@ -45,6 +45,30 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Jaa kernel VNT-moduuleihin](19-split-the-kernel-into-vnt-modules.md) · [Seuraava oppitunti: Pidä assembly-rajapinta pienenä →](21-minimal-assembly-entry-stubs.md)
 
+## Koodiesimerkki: IDT-stub normalisoi pinon
+
+```asm
+.macro ISR_NOERR number
+.global isr\number
+isr\number:
+    pushq $0
+    pushq $\number
+    jmp interrupt_common
+.endm
+
+.macro ISR_ERROR number
+.global isr\number
+isr\number:
+    pushq $\number
+    jmp interrupt_common
+.endm
+```
+
+Nämä makrot ovat os/arch/x86_64/interrupts.S-tiedostosta. CPU työntää virhekoodin vain tiettyjen poikkeusten yhteydessä. ISR_NOERR lisää itse nollan, kun taas ISR_ERROR säilyttää CPU:n jo työntämän virhekoodin. Molemmat lisäävät vektorin ja siirtyvät yhteiseen sisääntuloon, jotta VNT saa yhdenmukaisen kehyksen.
+
+**Tee itse:** Älä vaihda ISR_ERROR- ja ISR_NOERR-tyyppiä arvaamalla. Vertaa vektorin CPU-arkkitehtuurin määrittelyä makrolistaan ja tarkista, että common entry lukee pinon kentät samassa järjestyksessä.
+
+
 ## Toteutuslaboratorio: Keskeytykset ja IDT
 
 Tämä harjoitus edellyttää lähdekoodin lukemista ja toteutuksen todentamista.

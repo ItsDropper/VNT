@@ -1,5 +1,7 @@
 # Copyright (c) 2026 ItsDropper
 # Licensed under the MIT License. See LICENSE in the repository root.
+
+import "../kernel/core.vnt"
 #
 # Physical frame allocator for the bootstrap's first 1-GiB identity map.
 # One bit marks a frame usable; a second bit tracks reservation/allocation.
@@ -147,6 +149,23 @@ fun phys_init() -> int {
             frame = frame + 1
         }
     }
+
+    # Count usable and immediately allocatable frames once during early boot.
+    # Cached counters keep the interactive shell responsive.
+    let total_pages: int = 0
+    let free_pages: int = 0
+    frame = 0
+    while frame < 262144 {
+        if phys_usable_get(frame) == 1 {
+            total_pages = total_pages + 1
+            if frame >= 256 && phys_allocated_get(frame) == 0 {
+                free_pages = free_pages + 1
+            }
+        }
+        frame = frame + 1
+    }
+    state_set(28, total_pages)
+    state_set(29, free_pages)
     return 1
 }
 
@@ -156,6 +175,7 @@ fun phys_alloc_page() -> i64 {
     while frame < 262144 {
         if phys_usable_get(frame) == 1 && phys_allocated_get(frame) == 0 {
             phys_allocated_set(frame, 1)
+            state_set(29, state_get(29) - 1)
             return frame * 4096
         }
         frame = frame + 1
@@ -177,29 +197,14 @@ fun phys_free_page(address: i64) -> int {
         return 0
     }
     phys_allocated_set(frame, 0)
+    state_set(29, state_get(29) + 1)
     return 1
 }
 
 fun phys_count_usable_pages() -> int {
-    let frame: int = 0
-    let count: int = 0
-    while frame < 262144 {
-        if phys_usable_get(frame) == 1 {
-            count = count + 1
-        }
-        frame = frame + 1
-    }
-    return count
+    return state_get(28)
 }
 
 fun phys_count_free_pages() -> int {
-    let frame: int = 256
-    let count: int = 0
-    while frame < 262144 {
-        if phys_usable_get(frame) == 1 && phys_allocated_get(frame) == 0 {
-            count = count + 1
-        }
-        frame = frame + 1
-    }
-    return count
+    return state_get(29)
 }

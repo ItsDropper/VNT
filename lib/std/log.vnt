@@ -1,0 +1,20 @@
+# VNT standard logging.
+# Log records are appended locally; no network access is used.
+
+export fun info(message) {
+    line = "[INFO] " + message + "\n"
+    fs_append("vnt.log", line)
+    return io_write(line)
+}
+
+export fun warn(message) {
+    line = "[WARN] " + message + "\n"
+    fs_append("vnt.log", line)
+    return io_write_error(line)
+}
+
+export fun error(message) {
+    line = "[ERROR] " + message + "\n"
+    fs_append("vnt.log", line)
+    return io_write_error(line)
+}

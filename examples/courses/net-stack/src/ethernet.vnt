@@ -1,0 +1,50 @@
+# Copyright (c) 2026 ItsDropper
+# Ethernet II framing only. This module does not validate IPv4 or ARP payloads.
+import "./bytes.vnt" as bytes
+
+export fun parse_frame(frame: array) -> array {
+    # Ethernet II header: destination MAC (6), source MAC (6), EtherType (2).
+    if len(frame) < 14 {
+        return []
+    }
+    let ether_type: int = bytes.read_be16(frame, 12)
+    if ether_type < 0 {
+        return []
+    }
+    # Result: [dst0..dst5, src0..src5, etherType, payloadOffset].
+    let result: array = range(14)
+    let i: int = 0
+    while i < 6 {
+        result[i] = frame[i]
+        result[6 + i] = frame[6 + i]
+        i += 1
+    }
+    result[12] = ether_type
+    result[13] = 14
+    return result
+}
+
+export fun build_frame(destination: array, source: array, ether_type: int, payload: array) -> array {
+    if len(destination) != 6 || len(source) != 6 || ether_type < 0 || ether_type > 65535 {
+        return []
+    }
+    let frame: array = range(14 + len(payload))
+    let i: int = 0
+    while i < 6 {
+        if destination[i] < 0 || destination[i] > 255 || source[i] < 0 || source[i] > 255 {
+            return []
+        }
+        frame[i] = destination[i]
+        frame[6 + i] = source[i]
+        i += 1
+    }
+    if !bytes.write_be16(frame, 12, ether_type) {
+        return []
+    }
+    i = 0
+    while i < len(payload) {
+        frame[14 + i] = payload[i]
+        i += 1
+    }
+    return frame
+}

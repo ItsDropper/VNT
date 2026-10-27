@@ -1,0 +1,11 @@
+global_path = "vnt_desk.log"
+global_count = 1
+
+fun read_globals() {
+    print("Journal: " + global_path)
+    global_count = global_count + 1
+    return global_count
+}
+
+print(read_globals())
+print(global_count)

@@ -1,0 +1,18 @@
+vnt.exe
+*.o
+*.obj
+.vscode/
+.idea/
+benchmarks/out/
+lowlevel_test.vnt
+
+# Generated binaries and compiler output
+*.exe
+*.exe.s
+*.log
+*.disasm.txt
+tests/out/
+vanta_one.settings
+vanta_one_modrinth_response.json
+vanta_one_profile*_name.txt
+vanta_one_profile*_path.txt

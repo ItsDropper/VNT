@@ -1,0 +1,42 @@
+# Copyright (c) 2026 ItsDropper
+# Longest-prefix route lookup over a flat array of [IPv4, prefix length, next-hop id].
+# Each route uses six integers: address octets 0..3, prefix bits 0..32, next-hop id.
+# This is a pure in-memory decision helper, not a real router.
+export fun route_lookup(destination: array, routes: array) -> int {
+    if len(destination) != 4 || len(routes) % 6 != 0 {
+        return -1
+    }
+    let best_prefix: int = -1
+    let best_hop: int = -1
+    let route_index: int = 0
+    while route_index < len(routes) {
+        let prefix: int = routes[route_index + 4]
+        let hop: int = routes[route_index + 5]
+        if prefix >= 0 && prefix <= 32 {
+            let matched: bool = true
+            let bit: int = 0
+            while bit < prefix {
+                let octet_index: int = bit / 8
+                let bit_in_octet: int = 7 - (bit % 8)
+                let divisor: int = 1
+                let k: int = 0
+                while k < bit_in_octet {
+                    divisor *= 2
+                    k += 1
+                }
+                let destination_bit: int = (destination[octet_index] / divisor) % 2
+                let route_bit: int = (routes[route_index + octet_index] / divisor) % 2
+                if destination_bit != route_bit {
+                    matched = false
+                }
+                bit += 1
+            }
+            if matched && prefix > best_prefix {
+                best_prefix = prefix
+                best_hop = hop
+            }
+        }
+        route_index += 6
+    }
+    return best_hop
+}

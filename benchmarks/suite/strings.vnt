@@ -1,0 +1,8 @@
+text = ""
+i = 0
+while i < 300 {
+    text = text + "vnt"
+    i += 1
+}
+print(len(text))
+print("STRINGS_OK")

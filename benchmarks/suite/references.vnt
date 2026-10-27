@@ -1,0 +1,6 @@
+x = 10
+p = &x
+print(*p)
+*p = 42
+print(x)
+print("REFERENCES_OK")

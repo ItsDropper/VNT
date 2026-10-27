@@ -1,0 +1,8 @@
+import "../lib/std/mem.vnt" as mem
+
+unsafe {
+    let pointer: ptr = mem.alloc(8)
+    let freed: bool = mem.free(pointer)
+    let invalid: ptr = mem.offset(pointer, 1)
+    print("NULL_POINTER_OFFSET_MUST_NOT_SUCCEED")
+}

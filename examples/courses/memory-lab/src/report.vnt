@@ -1,0 +1,35 @@
+# Copyright (c) 2026 ItsDropper
+# Human-readable reporting is deliberately separate from allocator policy.
+import "./arena.vnt" as arena
+
+export fun print_arena_report() {
+    print("=== Memory Arena Report ===")
+    print("initialized:")
+    print(arena.arena_is_initialized())
+    print("capacity:")
+    print(arena.arena_capacity())
+    print("consumed including padding:")
+    print(arena.arena_consumed())
+    print("payload bytes:")
+    print(arena.arena_payload_bytes())
+    print("alignment padding:")
+    print(arena.arena_padding_bytes())
+    print("remaining bytes:")
+    print(arena.arena_remaining())
+    print("reservation count:")
+    print(arena.arena_allocation_count())
+    print("invariants hold:")
+    print(arena.arena_invariants_hold())
+}
+
+export fun print_allocation_table() {
+    print("id | offset | size | alignment")
+    let i: int = 0
+    while i < arena.arena_allocation_count() {
+        print(i + 1)
+        print(arena.arena_allocation_offset(i))
+        print(arena.arena_allocation_size(i))
+        print(arena.arena_allocation_alignment(i))
+        i += 1
+    }
+}

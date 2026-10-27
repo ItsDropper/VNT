@@ -1,0 +1,2 @@
+import "missing.vnt" unexpected
+print("should not compile")

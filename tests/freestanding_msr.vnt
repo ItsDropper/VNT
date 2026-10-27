@@ -1,0 +1,13 @@
+# Copyright (c) 2026 ItsDropper
+# Licensed under the MIT License. See LICENSE in the repository root.
+#
+# Compiler-only regression fixture. The WRMSR path is never executed here.
+
+fun kernel_main() {
+    let value: i64 = 0
+    let status: int = 0
+    unsafe {
+        value = cpu_read_msr(0x1b)
+        status = cpu_write_msr(0x1b, value)
+    }
+}

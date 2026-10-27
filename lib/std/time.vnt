@@ -1,0 +1,137 @@
+# VNT standard time utilities.
+# Durations passed to sleep_ms are milliseconds.
+
+export fun now_ms() {
+    return time_ms()
+}
+
+export fun sleep_ms(milliseconds) {
+    return sleep_ms(milliseconds)
+}
+
+export fun elapsed_ms(start_ms) {
+    return time_ms() - start_ms
+}
+
+export fun seconds_to_ms(seconds) {
+    return seconds * 1000
+}
+
+export fun ms_to_seconds(milliseconds) {
+    return milliseconds / 1000
+}
+
+export fun minutes_to_ms(minutes) {
+    return seconds_to_ms(minutes * 60)
+}
+
+export fun hours_to_ms(hours) {
+    return minutes_to_ms(hours * 60)
+}
+
+export fun days_to_ms(days) {
+    return hours_to_ms(days * 24)
+}
+
+export fun ms_to_minutes(milliseconds) {
+    return ms_to_seconds(milliseconds) / 60
+}
+
+export fun ms_to_hours(milliseconds) {
+    return ms_to_minutes(milliseconds) / 60
+}
+
+export fun ms_to_days(milliseconds) {
+    return ms_to_hours(milliseconds) / 24
+}
+
+# Deadline helpers use the runtime clock exposed by time_ms; they are not a
+# monotonic-clock guarantee and should not be used as a security timer.
+export fun deadline_after(duration_ms) {
+    return time_ms() + duration_ms
+}
+
+export fun remaining_ms(deadline_ms) {
+    remaining = deadline_ms - time_ms()
+    if remaining < 0 {
+        return 0
+    }
+    return remaining
+}
+
+export fun has_elapsed(start_ms, duration_ms) {
+    return time_ms() - start_ms >= duration_ms
+}
+
+# Proleptic Gregorian calendar helpers. Years start at 1; no timezone/DST
+# conversion is performed. weekday() uses 0=Sunday through 6=Saturday.
+export fun is_leap_year(year) {
+    if mod(year, 400) == 0 {
+        return true
+    }
+    if mod(year, 100) == 0 {
+        return false
+    }
+    return mod(year, 4) == 0
+}
+
+export fun days_in_month(year, month) {
+    if month < 1 || month > 12 {
+        return 0
+    }
+    if month == 2 {
+        if is_leap_year(year) {
+            return 29
+        }
+        return 28
+    }
+    if month == 4 || month == 6 || month == 9 || month == 11 {
+        return 30
+    }
+    return 31
+}
+
+export fun is_valid_date(year, month, day) {
+    if year < 1 || day < 1 {
+        return false
+    }
+    month_days = days_in_month(year, month)
+    return month_days > 0 && day <= month_days
+}
+
+export fun day_of_year(year, month, day) {
+    if !is_valid_date(year, month, day) {
+        return -1
+    }
+    total = day
+    current_month = 1
+    while current_month < month {
+        total += days_in_month(year, current_month)
+        current_month += 1
+    }
+    return total
+}
+
+export fun weekday(year, month, day) {
+    if !is_valid_date(year, month, day) {
+        return -1
+    }
+    adjusted_year = year
+    if month < 3 {
+        adjusted_year -= 1
+    }
+    offsets = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4]
+    return mod(adjusted_year + adjusted_year / 4 - adjusted_year / 100 + adjusted_year / 400 + offsets[month - 1] + day, 7)
+}
+
+# Convert Unix epoch milliseconds to calendar fields using the host timezone.
+# Returns [year, month, day, hour, minute, second, weekday, day_of_year, is_dst].
+# weekday is 0=Sunday; is_dst is 0 or 1. Invalid/out-of-range timestamps return [].
+export fun local_parts(epoch_ms) {
+    return time_local_parts(epoch_ms)
+}
+
+# Same field layout as local_parts, always in UTC.
+export fun utc_parts(epoch_ms) {
+    return time_utc_parts(epoch_ms)
+}

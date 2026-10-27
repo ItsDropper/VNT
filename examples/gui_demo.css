@@ -1,0 +1,21 @@
+/* VNT's supported CSS subset: window, label, button, button:hover */
+window {
+    background-color: #F5F7FA;
+}
+
+label {
+    color: #192030;
+    font-size: 18;
+}
+
+button {
+    background-color: #2878D0;
+    color: #FFFFFF;
+    font-size: 16;
+    padding: 10;
+    border-radius: 8;
+}
+
+button:hover {
+    background-color: #1D5FA8;
+}

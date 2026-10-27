@@ -1,0 +1,83 @@
+# Copyright (c) 2026 ItsDropper
+# IPv4 parser and builder for the offline simulator.
+# No raw sockets, NICs, or external network access are used.
+import "./bytes.vnt" as bytes
+import "./checksum.vnt" as checksum
+
+export fun parse_ipv4(packet: array) -> array {
+    if len(packet) < 20 {
+        return []
+    }
+    let version: int = packet[0] / 16
+    let ihl: int = packet[0] % 16
+    if version != 4 || ihl < 5 {
+        return []
+    }
+    let header_length: int = ihl * 4
+    if header_length > len(packet) {
+        return []
+    }
+    let total_length: int = bytes.read_be16(packet, 2)
+    if total_length < header_length || total_length > len(packet) {
+        return []
+    }
+    if !checksum.checksum_is_valid(bytes.slice(packet, 0, header_length)) {
+        return []
+    }
+    let result: array = range(12)
+    result[0] = header_length
+    result[1] = total_length
+    result[2] = packet[8]
+    result[3] = packet[9]
+    let i: int = 0
+    while i < 4 {
+        result[4 + i] = packet[12 + i]
+        result[8 + i] = packet[16 + i]
+        i += 1
+    }
+    return result
+}
+
+export fun build_ipv4(source: array, destination: array, protocol: int, ttl: int, identification: int, payload: array) -> array {
+    if len(source) != 4 || len(destination) != 4 || protocol < 0 || protocol > 255 || ttl < 1 || ttl > 255 {
+        return []
+    }
+    if identification < 0 || identification > 65535 || len(payload) > 65515 {
+        return []
+    }
+    let total_length: int = 20 + len(payload)
+    let packet: array = range(total_length)
+    packet[0] = 69
+    packet[1] = 0
+    if !bytes.write_be16(packet, 2, total_length) || !bytes.write_be16(packet, 4, identification) {
+        return []
+    }
+    # This teaching builder emits a non-fragmented packet with DF/fragment bits zero.
+    if !bytes.write_be16(packet, 6, 0) {
+        return []
+    }
+    packet[8] = ttl
+    packet[9] = protocol
+    if !bytes.write_be16(packet, 10, 0) {
+        return []
+    }
+    let i: int = 0
+    while i < 4 {
+        if source[i] < 0 || source[i] > 255 || destination[i] < 0 || destination[i] > 255 {
+            return []
+        }
+        packet[12 + i] = source[i]
+        packet[16 + i] = destination[i]
+        i += 1
+    }
+    let header_checksum: int = checksum.internet_checksum(bytes.slice(packet, 0, 20))
+    if !bytes.write_be16(packet, 10, header_checksum) {
+        return []
+    }
+    i = 0
+    while i < len(payload) {
+        packet[20 + i] = payload[i]
+        i += 1
+    }
+    return packet
+}

@@ -1,0 +1,249 @@
+name: VNTOS Boot and Serial Shell
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'os/**'
+      - 'src/**'
+      - 'include/**'
+      - 'freestanding/**'
+      - '.github/workflows/vntos-boot.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'os/**'
+      - 'src/**'
+      - 'include/**'
+      - 'freestanding/**'
+      - '.github/workflows/vntos-boot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vntos-boot-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  boot-and-shell:
+    name: Build VNTOS and test serial shell in QEMU
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install boot and emulator tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes gcc binutils grub-pc-bin grub-common xorriso mtools qemu-system-x86 python3
+
+      - name: Build the freestanding VNTOS image
+        run: |
+          bash os/build.sh
+          grub-file --is-x86-multiboot2 build/kernel.elf
+          readelf -h build/kernel.elf | grep -F 'ELF64'
+          test -s build/vntos.iso
+          test -z "$(nm -u build/kernel.elf)"
+
+      - name: Verify freestanding unsafe-memory code generation
+        run: |
+          ./build/vnt --emit-freestanding-asm tests/freestanding_unsafe_memory.vnt -o build/freestanding-unsafe-memory.s
+          grep -F 'movq (%rdi,%rsi), %rax' build/freestanding-unsafe-memory.s
+          grep -F 'movq %rdx, (%rdi,%rsi)' build/freestanding-unsafe-memory.s
+          grep -F 'movq %cr2, %rax' build/freestanding-unsafe-memory.s
+          grep -F 'invlpg (%rdi)' build/freestanding-unsafe-memory.s
+          grep -F 'leaq test_memory_symbol(%rip), %rax' build/freestanding-unsafe-memory.s
+
+          if ./build/vnt --emit-freestanding-asm tests/freestanding_unsafe_memory_rejected.vnt -o build/unsafe-memory-rejected.s; then
+            echo "Unsafe memory intrinsic unexpectedly compiled outside unsafe { ... }" >&2
+            exit 1
+          fi
+
+      - name: Verify freestanding MSR code generation
+        run: |
+          ./build/vnt --emit-freestanding-asm tests/freestanding_msr.vnt -o build/freestanding-msr.s
+          grep -F 'rdmsr' build/freestanding-msr.s
+          grep -F 'wrmsr' build/freestanding-msr.s
+
+      - name: Boot guest and test interactive shell
+        shell: bash
+        run: |
+          qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -smp 4 -display none -monitor unix:build/qemu-keyboard-monitor.sock,server,nowait -serial unix:build/qemu-serial.sock,server,nowait -debugcon file:build/debug.log -global isa-debugcon.iobase=0xe9 -no-reboot -no-shutdown &
+          qemu_pid=$!
+          cleanup_qemu() {
+            kill "$qemu_pid" 2>/dev/null || true
+            wait "$qemu_pid" 2>/dev/null || true
+          }
+          trap cleanup_qemu EXIT
+          python3 - <<'PY'
+          import socket
+          import time
+
+          serial = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+          serial.settimeout(0.15)
+          path = "build/qemu-serial.sock"
+          for _ in range(150):
+              try:
+                  serial.connect(path)
+                  break
+              except OSError:
+                  time.sleep(0.1)
+          else:
+              raise SystemExit("QEMU serial socket did not become available")
+
+          output = bytearray()
+          def drain(seconds=0.2):
+              deadline = time.monotonic() + seconds
+              while time.monotonic() < deadline:
+                  try:
+                      data = serial.recv(4096)
+                      if not data:
+                          break
+                      output.extend(data)
+                  except socket.timeout:
+                      pass
+
+          # Wait for the guest's ready marker before sending any input.
+          deadline = time.monotonic() + 12
+          while b"VNTOS_COMMAND_LINE_READY" not in output and time.monotonic() < deadline:
+              drain(0.15)
+          if b"VNTOS_COMMAND_LINE_READY" not in output:
+              print(output.decode("ascii", errors="replace"))
+              raise SystemExit("VNTOS did not reach its interactive command prompt")
+
+          monitor = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+          monitor.settimeout(0.2)
+          for _ in range(100):
+              try:
+                  monitor.connect("build/qemu-keyboard-monitor.sock")
+                  break
+              except OSError:
+                  time.sleep(0.05)
+          else:
+              raise SystemExit("QEMU keyboard-test monitor socket did not become available")
+
+          def press(key):
+              if key == " ":
+                  key = "spc"
+              monitor.sendall(("sendkey " + key + "\n").encode("ascii"))
+              time.sleep(0.12)
+
+          def type_command(command):
+              for key in command:
+                  press(key)
+              press("ret")
+              drain(0.35)
+
+          # Exercise the real PS/2 keyboard path, not only the serial RX path.
+          for command in ("help", "about", "echo test", "mem", "memtest", "vmtest", "irq", "mouse", "smp", "badcommand", "clear", "halt"):
+              type_command(command)
+          monitor.close()
+          drain(0.5)
+          serial.close()
+
+          transcript = output.decode("ascii", errors="replace")
+          print("VNTOS serial transcript:")
+          print(transcript)
+          required = [
+              "VNTOS_BOOT_OK",
+              "VNTOS_COMMAND_LINE_READY",
+              "Commands: help, about, clear, echo, mem, memtest, vmtest, irq, mouse, smp, reboot, halt",
+              "VNTOS: VNT-compiled freestanding x86-64 kernel.",
+              "test",
+              "Kernel start: 0x",
+              "Kernel end: 0x",
+              "Identity map: first 1 GiB",
+              "Physical page allocator initialized.",
+              "ACPI MADT discovered. Firmware CPUs: 0x",
+              "Local APIC enabled. BSP APIC ID: 0x",
+              "CPU online count: 0x",
+              "Discovered CPUs: 0x",
+              "Online CPUs: 0x",
+              "Secondary CPU startup: PASS",
+              "APIC IPI self-test: PASS. AP responses: 0x0000000000000003",
+              "Online CPUs: 0x0000000000000004",
+              "Usable 4-KiB pages: 0x",
+              "Free 4-KiB pages: 0x",
+              "Physical allocator self-test: PASS",
+              "Virtual page-table inspection initialized.",
+              "Virtual-memory self-test: PASS",
+              "Timer ticks: 0x",
+              "PS/2 mouse x=",
+              "Unknown command. Type help.",
+              "CPU halted.",
+          ]
+          missing = [item for item in required if item not in transcript]
+          if missing:
+              raise SystemExit("Missing shell output: " + ", ".join(missing))
+          PY
+          grep -F 'B1234L' build/debug.log
+
+      - name: Verify VGA banner and SeaBIOS cleanup in QEMU
+        shell: bash
+        run: |
+          qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -monitor unix:build/qemu-vga-monitor.sock,server,nowait -serial unix:build/qemu-vga-serial.sock,server,nowait -debugcon file:build/debug-vga.log -global isa-debugcon.iobase=0xe9 -no-reboot -no-shutdown &
+          qemu_pid=$!
+          cleanup_vga_qemu() {
+            kill "$qemu_pid" 2>/dev/null || true
+            wait "$qemu_pid" 2>/dev/null || true
+          }
+          trap cleanup_vga_qemu EXIT
+          python3 - <<'PY'
+          import os
+          import socket
+          import time
+
+          serial = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+          serial.settimeout(0.15)
+          for _ in range(150):
+              try:
+                  serial.connect("build/qemu-vga-serial.sock")
+                  break
+              except OSError:
+                  time.sleep(0.1)
+          else:
+              raise SystemExit("QEMU VGA-test serial socket did not become available")
+
+          output = bytearray()
+          deadline = time.monotonic() + 12
+          while b"VNTOS_COMMAND_LINE_READY" not in output and time.monotonic() < deadline:
+              try:
+                  chunk = serial.recv(4096)
+                  if chunk:
+                      output.extend(chunk)
+              except socket.timeout:
+                  pass
+          if b"VNTOS_COMMAND_LINE_READY" not in output:
+              raise SystemExit("VNTOS did not reach its prompt during VGA test")
+
+          monitor = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+          monitor.settimeout(0.2)
+          for _ in range(100):
+              try:
+                  monitor.connect("build/qemu-vga-monitor.sock")
+                  break
+              except OSError:
+                  time.sleep(0.05)
+          else:
+              raise SystemExit("QEMU VGA-test monitor socket did not become available")
+          monitor.sendall(b"pmemsave 0xb8000 4000 build/vga.bin\n")
+          deadline = time.monotonic() + 3
+          while not os.path.exists("build/vga.bin") and time.monotonic() < deadline:
+              time.sleep(0.05)
+          monitor.close()
+          serial.close()
+          if not os.path.exists("build/vga.bin") or os.path.getsize("build/vga.bin") != 4000:
+              raise SystemExit("Could not snapshot the VGA text buffer")
+          with open("build/vga.bin", "rb") as image:
+              vga = image.read()
+          vga_chars = vga[0::2]
+          if b"VNTOS" not in vga_chars:
+              raise SystemExit("VGA text buffer does not contain the VNTOS banner")
+          if b"Booting from DVD/CD..." in vga_chars:
+              raise SystemExit("SeaBIOS boot text remains in the VGA buffer")
+          print("VGA banner present; stale SeaBIOS boot text cleared.")
+          PY
+

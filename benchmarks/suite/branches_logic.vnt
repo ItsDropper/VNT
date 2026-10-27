@@ -1,0 +1,14 @@
+i = 0
+checksum = 0
+while i < 100000 {
+    if (i % 3 == 0) && (i > 100) {
+        checksum += 3
+    } else {
+        if (i % 2 == 0) || (i < 10) {
+            checksum += 1
+        }
+    }
+    i += 1
+}
+print(checksum)
+print("BRANCHES_LOGIC_OK")

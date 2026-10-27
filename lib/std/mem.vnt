@@ -1,0 +1,81 @@
+# VNT native pointer and memory primitives
+# Caller must uphold pointer validity, bounds, lifetime, and ownership.
+# Import with: import "../lib/std/mem.vnt" as mem
+
+export unsafe fun alloc(size: int) -> ptr {
+    unsafe {
+        return mem_alloc(size)
+    }
+}
+
+export unsafe fun is_null(pointer: ptr) -> bool {
+    unsafe {
+        return mem_is_null(pointer)
+    }
+}
+
+export unsafe fun free(pointer: ptr) -> bool {
+    unsafe {
+        return mem_free(pointer)
+    }
+}
+
+export unsafe fun realloc(pointer: ptr, size: int) -> ptr {
+    unsafe {
+        return mem_realloc(pointer, size)
+    }
+}
+
+export unsafe fun offset(pointer: ptr, bytes: int) -> ptr {
+    unsafe {
+        return mem_ptr_add(pointer, bytes)
+    }
+}
+
+export unsafe fun read_u8(pointer: ptr, offset: int) -> int {
+    unsafe {
+        return mem_read_u8(pointer, offset)
+    }
+}
+
+export unsafe fun read_u32(pointer: ptr, offset: int) -> int {
+    unsafe {
+        return mem_read_u32(pointer, offset)
+    }
+}
+
+export unsafe fun write_u8(pointer: ptr, offset: int, value: int) -> bool {
+    unsafe {
+        return mem_write_u8(pointer, offset, value)
+    }
+}
+
+export unsafe fun write_u32(pointer: ptr, offset: int, value: int) -> bool {
+    unsafe {
+        return mem_write_u32(pointer, offset, value)
+    }
+}
+
+export unsafe fun copy(destination: ptr, source: ptr, length: int) -> bool {
+    unsafe {
+        return mem_copy(destination, source, length)
+    }
+}
+
+export unsafe fun set(destination: ptr, byte_value: int, length: int) -> bool {
+    unsafe {
+        return mem_set(destination, byte_value, length)
+    }
+}
+
+export unsafe fun read_u64(pointer: ptr, offset: int) -> i64 {
+    unsafe {
+        return mem_read_u64(pointer, offset)
+    }
+}
+
+export unsafe fun write_u64(pointer: ptr, offset: int, value: i64) -> bool {
+    unsafe {
+        return mem_write_u64(pointer, offset, value)
+    }
+}

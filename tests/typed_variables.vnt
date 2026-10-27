@@ -1,0 +1,10 @@
+let score: int = 100
+let username: string = "ItsDropper"
+let enabled: bool = true
+let accuracy: float = 0.98
+
+print(score)
+print(username)
+print(enabled)
+print(accuracy)
+print("TYPED_VARIABLES_OK")

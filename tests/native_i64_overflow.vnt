@@ -1,0 +1,5 @@
+# Copyright (c) 2026 ItsDropper
+# Licensed under the MIT License. See LICENSE in the repository root.
+
+# Signed overflow must be diagnosed by the hosted runtime, not wrap silently.
+print(9223372036854775807 + 1)

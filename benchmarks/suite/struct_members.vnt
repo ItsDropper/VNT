@@ -1,0 +1,10 @@
+struct Vec2 {
+    x,
+    y
+}
+point = Vec2()
+point.x = 12
+point.y = 30
+print(point.x)
+print(point.y)
+print("STRUCTS_OK")

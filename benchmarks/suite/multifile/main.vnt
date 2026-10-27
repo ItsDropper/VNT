@@ -1,0 +1,12 @@
+import "arithmetic.vnt"
+import "sequence.vnt"
+
+i = 0
+checksum = 0
+while i < 50000 {
+    checksum += add_scaled(i, 2)
+    i += 1
+}
+print(checksum)
+print(sequence_value(40))
+print("MULTIFILE_OK")

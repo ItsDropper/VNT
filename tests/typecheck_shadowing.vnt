@@ -1,0 +1,26 @@
+value = 10
+
+if true {
+    let value: int = value + 5
+    print(value)
+} else {
+    print("UNREACHABLE")
+}
+print(value)
+
+if true {
+    let value: int = 99
+    print(value)
+}
+print(value)
+
+fun shadow_parameter(value: int) -> int {
+    if true {
+        let value: int = value + 1
+        print(value)
+    }
+    return value
+}
+
+print(shadow_parameter(10))
+print("SYMBOL_SHADOW_OK")

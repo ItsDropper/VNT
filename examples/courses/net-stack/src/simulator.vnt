@@ -1,0 +1,47 @@
+# Copyright (c) 2026 ItsDropper
+# Offline Ethernet -> IPv4 -> UDP echo path. No network device is opened.
+import "./bytes.vnt" as bytes
+import "./ethernet.vnt" as ethernet
+import "./ipv4.vnt" as ipv4
+import "./udp.vnt" as udp
+
+export fun process_synthetic_frame(frame: array) -> array {
+    let ethernet_fields: array = ethernet.parse_frame(frame)
+    if len(ethernet_fields) != 14 {
+        return []
+    }
+    if ethernet_fields[12] != 2048 {
+        return []
+    }
+    let ip_packet: array = bytes.slice(frame, 14, len(frame) - 14)
+    let ip_fields: array = ipv4.parse_ipv4(ip_packet)
+    if len(ip_fields) != 12 {
+        return []
+    }
+    if ip_fields[3] != 17 {
+        return []
+    }
+    let ip_payload: array = bytes.slice(ip_packet, ip_fields[0], ip_fields[1] - ip_fields[0])
+    let udp_fields: array = udp.parse_udp(ip_payload)
+    if len(udp_fields) != 5 {
+        return []
+    }
+    # This simulator exposes a UDP echo service on destination port 7 only.
+    if udp_fields[1] != 7 {
+        return []
+    }
+    let request_payload: array = udp.udp_payload(ip_payload)
+    let response_udp: array = udp.build_udp(7, udp_fields[0], request_payload)
+    if len(response_udp) == 0 {
+        return []
+    }
+    let source_ip: array = bytes.slice(ip_fields, 8, 4)
+    let destination_ip: array = bytes.slice(ip_fields, 4, 4)
+    let response_ip: array = ipv4.build_ipv4(destination_ip, source_ip, 17, 64, 1, response_udp)
+    if len(response_ip) == 0 {
+        return []
+    }
+    let destination_mac: array = bytes.slice(ethernet_fields, 6, 6)
+    let source_mac: array = bytes.slice(ethernet_fields, 0, 6)
+    return ethernet.build_frame(destination_mac, source_mac, 2048, response_ip)
+}

@@ -1,0 +1,14 @@
+import "../lib/std/path.vnt" as path
+
+print(path.normalize_separators("src\\main\\file.vnt"))
+print(path.basename("C:\\Users\\dropper\\project\\main.vnt"))
+print(path.dirname("C:\\Users\\dropper\\project\\main.vnt"))
+print(path.extension("archive.tar.gz"))
+print(path.stem("archive.tar.gz"))
+print(path.extension(".env"))
+print(path.stem(".env"))
+print(path.dirname("main.vnt"))
+print(path.basename("/"))
+print(path.join("src\\main", "file.vnt"))
+print(path.join("src", "/absolute/file"))
+print("PATH_STANDARD_LIBRARY_OK")

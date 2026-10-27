@@ -1,0 +1,229 @@
+name: VBuild Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/vbuild.c'
+      - 'docs/VBUILD.md'
+      - '.github/workflows/vbuild-tests.yml'
+      - 'src/**'
+      - 'include/**'
+      - 'build.ps1'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/vbuild.c'
+      - 'docs/VBUILD.md'
+      - '.github/workflows/vbuild-tests.yml'
+      - 'src/**'
+      - 'include/**'
+      - 'build.ps1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vbuild-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  vbuild-native:
+    name: Native VBuild (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Compile native VBuild
+        shell: pwsh
+        run: |
+          if ($IsWindows) {
+            gcc -std=c11 -Wall -Wextra -Werror -O2 tools/vbuild.c -o vbuild.exe
+          } else {
+            gcc -std=c11 -Wall -Wextra -Werror -O2 tools/vbuild.c -o vbuild
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Native VBuild compilation failed' }
+      - name: Smoke-test project lifecycle and task parsing
+        shell: pwsh
+        run: |
+          $binaryName = if ($IsWindows) { 'vbuild.exe' } else { 'vbuild' }
+          $binary = Join-Path $env:GITHUB_WORKSPACE $binaryName
+          $project = Join-Path $env:RUNNER_TEMP 'vbuild smoke project'
+          New-Item -ItemType Directory -Force -Path $project | Out-Null
+          Push-Location $project
+          try {
+            & $binary init
+            if ($LASTEXITCODE -ne 0) { throw 'vbuild init failed' }
+            foreach ($path in @('build.vbuild', 'vbuild.properties', 'src/main.vnt')) {
+              if (-not (Test-Path $path)) { throw "init did not create $path" }
+            }
+            Add-Content build.vbuild 'task verify = none depends check, build'
+            & $binary tasks
+            if ($LASTEXITCODE -ne 0) { throw 'task graph parsing failed' }
+            & $binary clean
+            if ($LASTEXITCODE -ne 0) { throw 'clean task failed' }
+            Add-Content build.vbuild 'task cycle = none depends cycle'
+            & $binary cycle
+            if ($LASTEXITCODE -eq 0) { throw 'dependency cycle was not rejected' }
+            & $binary test
+            if ($LASTEXITCODE -ne 1) { throw 'test task without a tests/ directory should fail clearly' }
+            & $binary clean
+            if ($LASTEXITCODE -ne 0) { throw 'clean task failed' }
+            & $binary clean
+            if ($LASTEXITCODE -ne 0) { throw 'repeat clean failed' }
+            Add-Content build.vbuild 'task broken = none depends missing'
+            & $binary tasks
+            if ($LASTEXITCODE -eq 0) { throw 'undefined dependency was not rejected' }
+            & $binary init
+            if ($LASTEXITCODE -eq 0) { throw 'init overwrote existing project files' }
+            $global:LASTEXITCODE = 0
+          } finally {
+            Pop-Location
+          }
+
+  vbuild-real-compiler:
+    name: VBuild compiles and runs a real VNT program (Ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Build VNT compiler
+        shell: bash
+        run: |
+          gcc -O3 -Iinclude -Isrc/compiler \
+            src/main.c src/modules.c src/lexer.c \
+            src/parser/parser.c src/parser/primary.c src/parser/unary.c \
+            src/parser/binary.c src/parser/functions.c src/parser/statements.c \
+            src/parser/simple_statements.c src/parser/control.c src/parser/loops.c \
+            src/parser/assignments.c src/ast.c src/compiler/compiler.c \
+            src/compiler/typecheck.c src/compiler/ir.c src/compiler/ir_lower.c \
+            src/compiler/cfg.c src/compiler/x86_backend.c src/compiler/freestanding_x86.c \
+            -o vnt
+      - name: Build native VBuild
+        run: gcc -std=c11 -Wall -Wextra -Werror -O2 tools/vbuild.c -o vbuild
+      - name: Compile and run starter project through VBuild
+        shell: bash
+        run: |
+          project="$RUNNER_TEMP/vbuild integration project"
+          mkdir -p "$project"
+          cd "$project"
+          "$GITHUB_WORKSPACE/vbuild" init
+          cat > vbuild.properties <<EOF
+          project.name = hello
+          project.version = 0.1.0
+          source = src/main.vnt
+          output = hello
+          compiler = vnt
+          toolchain = $GITHUB_WORKSPACE
+          EOF
+          mkdir -p libs
+          mkdir -p libs/nested
+          cat > libs/math_helpers.vnt <<'EOF'
+          import "nested/bonus.vnt" as bonus
+          export fun square(value: int) -> int {
+              return value * value + bonus.increment()
+          }
+          EOF
+          cat > libs/nested/bonus.vnt <<'EOF'
+          export fun increment() -> int {
+              return 0
+          }
+          EOF
+          cat > src/main.vnt <<'EOF'
+          import "math_helpers.vnt" as math_helpers
+          print(math_helpers.square(7))
+          EOF
+          cat > build.vbuild <<'EOF'
+          target exe
+          repositories {
+              local("libs")
+          }
+          dependencies {
+              implementation("math_helpers.vnt")
+          }
+          task build = build
+          task run = run depends build
+          task check = check
+          task clean = clean
+          task test = test
+          EOF
+          "$GITHUB_WORKSPACE/vbuild" build
+          test -x build/hello
+          output="$("$GITHUB_WORKSPACE/vbuild" run)"
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" | grep -Fq '49'
+          incremental="$("$GITHUB_WORKSPACE/vbuild" build)"
+          printf '%s\n' "$incremental" | grep -Fq 'Up to date:'
+          sleep 1
+          cat > libs/nested/bonus.vnt <<'EOF'
+          export fun increment() -> int {
+              return 1
+          }
+          EOF
+          transitive_rebuild="$("$GITHUB_WORKSPACE/vbuild" build)"
+          printf '%s\\n' "$transitive_rebuild" | grep -Fq 'Built '
+          output="$("$GITHUB_WORKSPACE/vbuild" run)"
+          printf '%s\\n' "$output" | grep -Fq '50'
+          sleep 1
+          cat > libs/math_helpers.vnt <<'EOF'
+          import "nested/bonus.vnt" as bonus
+          export fun square(value: int) -> int {
+              return value * value + bonus.increment() + 1
+          }
+          EOF
+          dependency_rebuild="$("$GITHUB_WORKSPACE/vbuild" build)"
+          printf '%s\\n' "$dependency_rebuild" | grep -Fq 'Built '
+          output="$("$GITHUB_WORKSPACE/vbuild" run)"
+          printf '%s\\n' "$output" | grep -Fq '51'
+          sleep 1
+          touch "$GITHUB_WORKSPACE/src/compiler/native_runtime.c"
+          runtime_rebuild="$("$GITHUB_WORKSPACE/vbuild" build)"
+          printf '%s\\n' "$runtime_rebuild" | grep -Fq 'Built '
+          output="$("$GITHUB_WORKSPACE/vbuild" run)"
+          printf '%s\\n' "$output" | grep -Fq '51'
+          # Content changes must invalidate the build even when mtime is restored.
+          cp -p libs/nested/bonus.vnt "$RUNNER_TEMP/vbuild-bonus-backup.vnt"
+          sed -i 's/return 1/return 2/' libs/nested/bonus.vnt
+          touch -r "$RUNNER_TEMP/vbuild-bonus-backup.vnt" libs/nested/bonus.vnt
+          same_mtime_rebuild="$("$GITHUB_WORKSPACE/vbuild" build)"
+          printf '%s\n' "$same_mtime_rebuild" | grep -Fq 'Built '
+          output="$("$GITHUB_WORKSPACE/vbuild" run)"
+          printf '%s\n' "$output" | grep -Fq '52'
+          forced="$("$GITHUB_WORKSPACE/vbuild" build --force)"
+          printf '%s\n' "$forced" | grep -Fq 'Built '
+          mkdir -p tests
+          printf 'print("VBUILD_TEST_OK")\n' > tests/smoke.vnt
+          test_output="$("$GITHUB_WORKSPACE/vbuild" test)"
+          printf '%s\n' "$test_output"
+          printf '%s\n' "$test_output" | grep -Fq 'VBUILD_TEST_OK'
+      - name: Build a freestanding ELF through VBuild
+        shell: bash
+        run: |
+          project="$RUNNER_TEMP/vbuild elf integration project"
+          mkdir -p "$project"
+          cd "$project"
+          "$GITHUB_WORKSPACE/vbuild" init
+          cp "$GITHUB_WORKSPACE/tests/freestanding_minimal.vnt" src/main.vnt
+          cat > vbuild.properties <<EOF
+          project.name = kernel
+          project.version = 0.1.0
+          source = src/main.vnt
+          output = kernel
+          compiler = vnt
+          toolchain = $GITHUB_WORKSPACE
+          EOF
+          sed -i 's/^target exe$/target elf/' build.vbuild
+          "$GITHUB_WORKSPACE/vbuild" build
+          test -x build/kernel.elf
+          readelf -h build/kernel.elf | grep -Fq 'ELF64'
+          sleep 1
+          touch "$GITHUB_WORKSPACE/freestanding/x86_64.ld"
+          linker_rebuild="$("$GITHUB_WORKSPACE/vbuild" build)"
+          printf '%s\\n' "$linker_rebuild" | grep -Fq 'Built '
+          test -x build/kernel.elf
+          readelf -h build/kernel.elf | grep -Fq 'ELF64'

@@ -1,0 +1,130 @@
+# VNT native showcase
+# Exercises arrays, strings, functions, nested loops,
+# mutation, comparisons, short-circuit logic, break/continue,
+# recursion, and a small prime-number analysis.
+
+fun is_prime(n) {
+    if n < 2 {
+        return false
+    }
+
+    divisor = 2
+
+    while divisor * divisor <= n {
+        if n % divisor == 0 {
+            return false
+        }
+
+        divisor += 1
+    }
+
+    return true
+}
+
+fun fibonacci(n) {
+    if n <= 1 {
+        return n
+    }
+
+    a = 0
+    b = 1
+    i = 2
+
+    while i <= n {
+        next = a + b
+        a = b
+        b = next
+        i += 1
+    }
+
+    return b
+}
+
+fun factorial(n) {
+    result = 1
+
+    while n > 1 {
+        result *= n
+        n -= 1
+    }
+
+    return result
+}
+
+numbers = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
+
+print("=== VNT Native Showcase ===")
+print("Numbers:")
+print(numbers)
+
+prime_count = 0
+prime_sum = 0
+largest_prime = 0
+
+i = 0
+
+while i < len(numbers) {
+    value = numbers[i]
+
+    if is_prime(value) {
+        prime_count += 1
+        prime_sum += value
+        largest_prime = value
+    }
+
+    i += 1
+}
+
+print("Prime count:")
+print(prime_count)
+
+print("Prime sum:")
+print(prime_sum)
+
+print("Largest prime:")
+print(largest_prime)
+
+print("Fibonacci sequence:")
+f = 0
+
+while f <= 10 {
+    print(fibonacci(f))
+    f += 1
+}
+
+print("Factorials:")
+n = 1
+
+while n <= 7 {
+    print(factorial(n))
+    n += 1
+}
+
+print("Nested-loop multiplication check:")
+row = 1
+checksum = 0
+
+while row <= 5 {
+    column = 1
+
+    while column <= 5 {
+        product = row * column
+
+        if product % 2 == 0 {
+            checksum += product
+        }
+
+        column += 1
+    }
+
+    row += 1
+}
+
+print("Even-product checksum:")
+print(checksum)
+
+print("Short-circuit logic:")
+print((prime_count > 0) && (largest_prime > 20))
+print((prime_count == 0) || (prime_sum > 100))
+
+print("=== Done ===")

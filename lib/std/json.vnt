@@ -1,0 +1,23 @@
+# Small JSON field accessor backed by VNT's native runtime.
+# value_at(json_text, key, occurrence) returns a string or scalar value.
+# It is intended for simple API response display; it is not a full JSON DOM.
+export fun value_at(json_text, key, occurrence) {
+    return json_value_at(json_text, key, occurrence)
+}
+
+# Returns fallback when the selected field is absent or empty.
+# An intentionally empty JSON string is therefore indistinguishable from missing data.
+export fun value_or(json_text, key, occurrence, fallback) {
+    value = json_value_at(json_text, key, occurrence)
+    if value == "" {
+        return fallback
+    }
+    return value
+}
+
+# Tests whether lookup returns a non-empty value. Empty strings and missing fields
+# are indistinguishable through the current native accessor.
+export fun has_nonempty_value(json_text, key, occurrence) {
+    value = json_value_at(json_text, key, occurrence)
+    return value != ""
+}

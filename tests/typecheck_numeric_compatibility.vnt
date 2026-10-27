@@ -1,0 +1,11 @@
+fun accept_float(value: float) -> float {
+    return value
+}
+
+fun integer_result() -> int {
+    return 3.0
+}
+
+print(accept_float(2))
+print(integer_result())
+print("NUMERIC_COMPATIBILITY_OK")

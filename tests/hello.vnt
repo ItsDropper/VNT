@@ -1,0 +1,8 @@
+fun test() {
+    temporary = 123
+    print(temporary)
+}
+
+test()
+
+print(temporary)

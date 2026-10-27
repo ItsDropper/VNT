@@ -1,0 +1,8 @@
+unsafe {
+    asm volatile("nop")
+    let pointer: ptr = mem_alloc(16)
+    let wrote: bool = mem_write_u32(pointer, 0, 123456789)
+    print(mem_read_u32(pointer, 0))
+    let released: bool = mem_free(pointer)
+}
+print("UNSAFE_BLOCK_OK")

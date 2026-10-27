@@ -1,0 +1,164 @@
+# VNT standard configuration helpers.
+# File operations remain plain-text. INI helpers support [sections], key=value,
+# blank lines, and lines beginning with # or ; comments.
+# Values may be wrapped in double quotes; escape sequences are not interpreted.
+import "string.vnt" as strutil
+
+export fun load_or_create(path, defaults) {
+    if fs_exists(path) {
+        return fs_read(path)
+    } else {
+        fs_write(path, defaults)
+        return defaults
+    }
+}
+
+export fun save(path, contents) {
+    return fs_write(path, contents)
+}
+
+export fun append(path, contents) {
+    return fs_append(path, contents)
+}
+
+export fun exists(path) {
+    return fs_exists(path)
+}
+
+# Read a value from an INI document. If section is empty, read a key before
+# the first section header. The supplied default is returned when absent.
+export fun get(text, section, key, default_value) {
+    current_section = ""
+    size = len(text)
+    start = 0
+    while start < size {
+        end = start
+        while end < size && text[end] != "\n" {
+            end += 1
+        }
+        line = ""
+        i = start
+        while i < end {
+            if text[i] != "\r" {
+                line = line + text[i]
+            }
+            i += 1
+        }
+        line = strutil.trim(line)
+        if len(line) > 0 && line[0] != "#" && line[0] != ";" {
+            if line[0] == "[" && line[len(line) - 1] == "]" {
+                current_section = strutil.trim(slice_inner(line))
+            } else if current_section == section {
+                equals = find_char(line, "=")
+                if equals > 0 {
+                    found_key = strutil.trim(prefix(line, equals))
+                    if found_key == key {
+                        value = strutil.trim(suffix(line, equals + 1))
+                        if len(value) >= 2 && value[0] == "\"" && value[len(value) - 1] == "\"" {
+                            return unquote(value)
+                        }
+                        return value
+                    }
+                }
+            }
+        }
+        start = end + 1
+    }
+    return default_value
+}
+
+export fun get_bool(text, section, key, default_value) {
+    value = get(text, section, key, "")
+    if value == "true" || value == "1" || value == "yes" {
+        return true
+    }
+    if value == "false" || value == "0" || value == "no" {
+        return false
+    }
+    return default_value
+}
+
+export fun has_key(text, section, key) {
+    marker = "__VNT_CONFIG_KEY_NOT_FOUND_7F2A__"
+    return get(text, section, key, marker) != marker
+}
+
+export fun section_exists(text, section) {
+    current_section = ""
+    size = len(text)
+    start = 0
+    while start < size {
+        end = start
+        while end < size && text[end] != "\n" {
+            end += 1
+        }
+        line = ""
+        i = start
+        while i < end {
+            if text[i] != "\r" {
+                line = line + text[i]
+            }
+            i += 1
+        }
+        line = strutil.trim(line)
+        if len(line) > 1 && line[0] == "[" && line[len(line) - 1] == "]" {
+            current_section = strutil.trim(slice_inner(line))
+            if current_section == section {
+                return true
+            }
+        }
+        start = end + 1
+    }
+    return false
+}
+
+fun find_char(value, target) {
+    i = 0
+    while i < len(value) {
+        if value[i] == target {
+            return i
+        }
+        i += 1
+    }
+    return -1
+}
+
+fun prefix(value, count) {
+    result = ""
+    i = 0
+    while i < count {
+        result = result + value[i]
+        i += 1
+    }
+    return result
+}
+
+fun suffix(value, start) {
+    result = ""
+    i = start
+    while i < len(value) {
+        result = result + value[i]
+        i += 1
+    }
+    return result
+}
+
+fun slice_inner(value) {
+    result = ""
+    i = 1
+    while i < len(value) - 1 {
+        result = result + value[i]
+        i += 1
+    }
+    return result
+}
+
+fun unquote(value) {
+    result = ""
+    i = 1
+    while i < len(value) - 1 {
+        result = result + value[i]
+        i += 1
+    }
+    return result
+}

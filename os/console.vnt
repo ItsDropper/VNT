@@ -1,0 +1,65 @@
+# Copyright (c) 2026 ItsDropper
+# Licensed under the MIT License. See LICENSE in the repository root.
+# VGA text output and the combined VGA/serial console.
+
+fun vga_putc(value: int) {
+    let keep_cursor: int = state_get(0)
+    let keep_color: int = state_get(1)
+    unsafe {
+        asm volatile("movl -8(%rbp), %eax; movq vntos_state(%rip), %rcx; cmpb $10, %al; je 1f; cmpb $13, %al; je 2f; cmpb $8, %al; je 3f; movabsq $0xb8000, %rdi; leaq (%rdi,%rcx,2), %rdi; movb %al, (%rdi); movq vntos_state+8(%rip), %rax; movb %al, 1(%rdi); incq %rcx; jmp 4f; 1: movq %rcx, %rax; xorq %rdx, %rdx; movq $80, %rsi; divq %rsi; incq %rax; imulq $80, %rax, %rcx; jmp 4f; 2: movq %rcx, %rax; xorq %rdx, %rdx; movq $80, %rsi; divq %rsi; imulq $80, %rax, %rcx; jmp 4f; 3: testq %rcx, %rcx; jz 4f; decq %rcx; movabsq $0xb8000, %rdi; leaq (%rdi,%rcx,2), %rdi; movw $0x0f20, (%rdi); 4: cmpq $2000, %rcx; jb 5f; movabsq $0xb8000, %rsi; leaq 160(%rsi), %rsi; movabsq $0xb8000, %rdi; movl $3840, %ecx; rep movsb; movabsq $0xb8000, %rdi; addq $3840, %rdi; movl $80, %ecx; 6: movw $0x0f20, (%rdi); addq $2, %rdi; loop 6b; movq $1920, %rcx; 5: movq %rcx, vntos_state(%rip); movw $0x3d4, %dx; movb $14, %al; outb %al, %dx; movw $0x3d5, %dx; movl %ecx, %eax; shrl $8, %eax; outb %al, %dx; movw $0x3d4, %dx; movb $15, %al; outb %al, %dx; movw $0x3d5, %dx; movl vntos_state(%rip), %eax; outb %al, %dx")
+    }
+    return 0
+}
+
+fun vga_clear() {
+    unsafe {
+        asm volatile("cld; movabsq $0xb8000, %rdi; movw $0x0f20, %ax; movl $2000, %ecx; rep stosw; movw $0x3d4, %dx; movb $14, %al; outb %al, %dx; movw $0x3d5, %dx; xorb %al, %al; outb %al, %dx; movw $0x3d4, %dx; movb $15, %al; outb %al, %dx; movw $0x3d5, %dx; xorb %al, %al; outb %al, %dx")
+    }
+    state_set(0, 0)
+    return 0
+}
+
+fun vga_puts(text: string) {
+    let index: int = 0
+    while text[index] != 0 {
+        vga_putc(text[index])
+        index = index + 1
+    }
+    return 0
+}
+
+fun console_putc(value: int) {
+    vga_putc(value)
+    serial_putc(value)
+    return 0
+}
+
+fun console_puts(text: string) {
+    vga_puts(text)
+    serial_puts(text)
+    return 0
+}
+
+fun console_puts_offset(text: string, offset: int) {
+    let index: int = 0
+    while text[index + offset] != 0 {
+        console_putc(text[index + offset])
+        index = index + 1
+    }
+    return 0
+}
+
+fun console_hex(value: i64) {
+    console_puts("0x")
+    let divisor: i64 = 1152921504606846976
+    let count: int = 0
+    while count < 16 {
+        let digit: int = (value / divisor) % 16
+        console_putc("0123456789abcdef"[digit])
+        value = value % divisor
+        divisor = divisor / 16
+        count = count + 1
+    }
+    console_puts("\r\n")
+    return 0
+}

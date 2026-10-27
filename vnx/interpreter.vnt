@@ -1,0 +1,385 @@
+# Copyright (c) 2026 ItsDropper
+# Licensed under the MIT License.
+# VNX v0 interpreter: lexer -> token list -> AST -> execution, all in VNT.
+
+tokens = object()
+current = object()
+program = object()
+last_token = object()
+last_node = object()
+environment = object()
+failed = false
+halted = false
+steps = 0
+
+fun make_token(kind: string, text: string, line: int) -> object {
+    t = object()
+    t.kind = kind
+    t.text = text
+    t.line = line
+    t.next = object()
+    t.next.kind = "END"
+    return t
+}
+fun emit(kind: string, text: string, line: int) {
+    t = make_token(kind, text, line)
+    last_token.next = t
+    last_token = t
+}
+fun lex(source: string) {
+    tokens = object()
+    tokens.kind = "HEAD"
+    last_token = tokens
+    i = 0
+    line = 1
+    while i < len(source) {
+        ch = source[i]
+        if ch == " " || ch == "\t" || ch == "\r" {
+            i = i + 1
+        } else {
+            if ch == "\n" {
+                emit("NL", "", line)
+                line = line + 1
+                i = i + 1
+            } else {
+                if ch == "#" {
+                    while i < len(source) && source[i] != "\n" {
+                        i = i + 1
+                    }
+                } else {
+                    if ch == "\"" {
+                        i = i + 1
+                        value = ""
+                        closed = false
+                        while i < len(source) && !closed {
+                            ch = source[i]
+                            if ch == "\"" {
+                                closed = true
+                                i = i + 1
+                            } else {
+                                if ch == "\\" && i + 1 < len(source) {
+                                    i = i + 1
+                                    escaped = source[i]
+                                    if escaped == "n" {
+                                        value = value + "\n"
+                                    } else {
+                                        if escaped == "t" {
+                                            value = value + "\t"
+                                        } else {
+                                            value = value + escaped
+                                        }
+                                    }
+                                    i = i + 1
+                                } else {
+                                    value = value + ch
+                                    i = i + 1
+                                }
+                            }
+                        }
+                        if closed {
+                            emit("STR", value, line)
+                        } else {
+                            print("VNX lexer error at line " + line + ": unterminated string")
+                            failed = true
+                        }
+                    } else {
+                        if ch == "=" && i + 1 < len(source) && source[i + 1] == "=" {
+                            emit("EQ", "==", line)
+                            i = i + 2
+                        } else {
+                            word = ""
+                            scanning_word = true
+                            while i < len(source) && scanning_word {
+                                ch = source[i]
+                                if is_delimiter(ch) {
+                                    scanning_word = false
+                                } else {
+                                    word = word + ch
+                                    i = i + 1
+                                }
+                            }
+                            if word == "" {
+                                print("VNX lexer error: unexpected character")
+                                failed = true
+                                i = i + 1
+                            } else {
+                                emit("ID", word, line)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    emit("EOF", "", line)
+    current = tokens.next
+}
+fun is_delimiter(ch: string) -> bool {
+    if ch == " " {
+        return true
+    }
+    if ch == "\t" {
+        return true
+    }
+    if ch == "\r" {
+        return true
+    }
+    if ch == "\n" {
+        return true
+    }
+    if ch == "=" {
+        return true
+    }
+    if ch == "#" {
+        return true
+    }
+    return false
+}
+fun take() -> object {
+    old = current
+    if current.kind != "EOF" {
+        current = current.next
+    }
+    return old
+}
+fun expect(kind: string, what: string) -> object {
+    if current.kind == kind {
+        return take()
+    }
+    print("VNX parser error at line " + current.line + ": expected " + what)
+    failed = true
+    return make_token("BAD", "", current.line)
+}
+fun make_node(kind: string, line: int) -> object {
+    n = object()
+    n.kind = kind
+    n.line = line
+    n.a = ""
+    n.b = ""
+    n.c = ""
+    n.next = object()
+    n.next.kind = "SENTINEL"
+    return n
+}
+fun add_node(n: object) {
+    last_node.next = n
+    last_node = n
+}
+fun skip_lines() {
+    while current.kind == "NL" {
+        take()
+    }
+}
+fun parse() {
+    program = object()
+    program.kind = "HEAD"
+    last_node = program
+    skip_lines()
+    while current.kind != "EOF" && !failed {
+        kw = expect("ID", "statement keyword")
+        n = make_node("BAD", kw.line)
+        if kw.text == "say" {
+            if current.kind == "STR" {
+                v = take()
+                n = make_node("SAY", kw.line)
+                n.a = v.text
+            } else {
+                v = expect("ID", "string literal or variable")
+                n = make_node("SAYVAR", kw.line)
+                n.a = v.text
+            }
+        } else {
+            if kw.text == "set" {
+                name = expect("ID", "variable name")
+                value = expect("STR", "quoted value")
+                n = make_node("SET", kw.line)
+                n.a = name.text
+                n.b = value.text
+            } else {
+                if kw.text == "input" {
+                    name = expect("ID", "variable name")
+                    prompt = expect("STR", "quoted prompt")
+                    n = make_node("INPUT", kw.line)
+                    n.a = name.text
+                    n.b = prompt.text
+                } else {
+                    if kw.text == "label" {
+                        name = expect("ID", "label name")
+                        n = make_node("LABEL", kw.line)
+                        n.a = name.text
+                    } else {
+                        if kw.text == "jump" {
+                            name = expect("ID", "label name")
+                            n = make_node("JUMP", kw.line)
+                            n.a = name.text
+                        } else {
+                            if kw.text == "when" {
+                                name = expect("ID", "variable name")
+                                expect("EQ", "==")
+                                value = expect("STR", "quoted comparison value")
+                                expect("ID", "jump keyword")
+                                dest = expect("ID", "label name")
+                                n = make_node("WHEN", kw.line)
+                                n.a = name.text
+                                n.b = value.text
+                                n.c = dest.text
+                            } else {
+                                if kw.text == "end" {
+                                    n = make_node("END", kw.line)
+                                } else {
+                                    print("VNX parser error at line " + kw.line + ": unknown statement " + kw.text)
+                                    failed = true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if !failed {
+            add_node(n)
+        }
+        if current.kind == "NL" {
+            skip_lines()
+        } else {
+            if current.kind != "EOF" && !failed {
+                print("VNX parser error at line " + current.line + ": expected end of line; got " + current.kind + " [" + current.text + "]")
+                failed = true
+            }
+        }
+    }
+}
+fun find_value(name: string) -> object {
+    e = environment
+    while e.kind != "HEAD" && e.kind != "END" {
+        if e.name == name {
+            return e
+        }
+        e = e.next
+    }
+    missing = object()
+    missing.kind = "MISSING"
+    missing.next = object()
+    missing.next.kind = "END"
+    return missing
+}
+fun store_value(name: string, value: string) {
+    e = find_value(name)
+    if e.kind == "MISSING" {
+        e = object()
+        e.kind = "VALUE"
+        e.name = name
+        e.value = value
+        e.next = environment
+        environment = e
+    } else {
+        e.value = value
+    }
+}
+fun find_label(name: string) -> object {
+    n = program.next
+    while n.kind != "SENTINEL" {
+        if n.kind == "LABEL" && n.a == name {
+            return n
+        }
+        n = n.next
+    }
+    missing = object()
+    missing.kind = "MISSING"
+    missing.next = object()
+    missing.next.kind = "END"
+    return missing
+}
+fun execute() {
+    environment = object()
+    environment.kind = "HEAD"
+    pc = program.next
+    while pc.kind != "SENTINEL" && !halted && !failed {
+        steps = steps + 1
+        if steps > 100000 {
+            print("VNX runtime error: instruction limit exceeded")
+            failed = true
+        } else {
+            next_pc = pc.next
+            if pc.kind == "SAY" {
+                print(pc.a)
+            } else {
+                if pc.kind == "SAYVAR" {
+                    e = find_value(pc.a)
+                    if e.kind == "MISSING" {
+                        print("VNX runtime error at line " + pc.line + ": unknown variable " + pc.a)
+                        failed = true
+                    } else {
+                        print(e.value)
+                    }
+                } else {
+                    if pc.kind == "SET" {
+                        store_value(pc.a, pc.b)
+                    } else {
+                        if pc.kind == "INPUT" {
+                            answer = input(pc.b)
+                            store_value(pc.a, answer)
+                        } else {
+                            if pc.kind == "WHEN" {
+                                e = find_value(pc.a)
+                                if e.kind == "MISSING" {
+                                    print("VNX runtime error at line " + pc.line + ": unknown variable " + pc.a)
+                                    failed = true
+                                } else {
+                                    if e.value == pc.b {
+                                        dest = find_label(pc.c)
+                                        if dest.kind == "MISSING" {
+                                            print("VNX runtime error at line " + pc.line + ": unknown label " + pc.c)
+                                            failed = true
+                                        } else {
+                                            next_pc = dest
+                                        }
+                                    }
+                                }
+                            } else {
+                                if pc.kind == "JUMP" {
+                                    dest = find_label(pc.a)
+                                    if dest.kind == "MISSING" {
+                                        print("VNX runtime error at line " + pc.line + ": unknown label " + pc.a)
+                                        failed = true
+                                    } else {
+                                        next_pc = dest
+                                    }
+                                } else {
+                                    if pc.kind == "END" {
+                                        halted = true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            pc = next_pc
+        }
+    }
+}
+print("VNX interpreter (implemented in VNT)")
+path = input("VNX source file [vnx/game/last_signal.vnx]: ")
+if path == "" {
+    path = "vnx/game/last_signal.vnx"
+}
+source = fs_read(path)
+if source == "" {
+    print("VNX error: could not read source file: " + path)
+    process_exit(1)
+} else {
+    failed = false
+    halted = false
+    steps = 0
+    lex(source)
+    if !failed {
+        parse()
+    }
+    if !failed {
+        execute()
+    }
+    if failed {
+        process_exit(1)
+    }
+}

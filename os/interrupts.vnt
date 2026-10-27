@@ -1,0 +1,68 @@
+# Copyright (c) 2026 ItsDropper
+# Licensed under the MIT License. See LICENSE in the repository root.
+#
+# VNT owns interrupt policy and diagnostics. interrupts.S is limited to the
+# architectural entry/exit frame, IDT construction, PIC/PIT setup, and iretq.
+
+import "kernel/core.vnt"
+import "kernel/device_irq.vnt"
+import "kernel/smp.vnt"
+
+export fun interrupts_init() {
+    unsafe {
+        asm volatile("call vntos_interrupts_init")
+    }
+    return 0
+}
+
+# This function is called by the assembly common entry after all general
+# registers have been saved. Keep interrupt handlers short and allocation-free.
+export fun interrupt_dispatch(vector: int, error: int) {
+    # APIC spurious interrupts do not receive an EOI.
+    if vector == 255 {
+        return 0
+    }
+    if vector == 240 {
+        smp_handle_ipi()
+        return 0
+    }
+    if vector >= 32 && vector < 48 {
+        # The assembly entry acknowledges the legacy PIC after this returns.
+        # Keep interrupt-context work bounded: count the IRQ and account for
+        # the PIT tick, but do not print, allocate, or run device work here.
+        let irq: int = vector - 32
+        device_irq_record(irq)
+        if irq == 0 {
+            kernel_timer_tick()
+        }
+        return 0
+    }
+
+    if vector < 32 {
+        console_puts("\r\nVNTOS FATAL: CPU exception vector ")
+        console_hex(vector)
+        console_puts("Error code: ")
+        console_hex(error)
+        if vector == 14 {
+            console_puts("Page-fault linear address (CR2): ")
+            console_hex(kernel_page_fault_address())
+            console_puts("Page-fault flags: present=")
+            console_hex(error % 2)
+            console_puts("write=")
+            console_hex((error / 2) % 2)
+            console_puts("user=")
+            console_hex((error / 4) % 2)
+            console_puts("reserved-bit=")
+            console_hex((error / 8) % 2)
+            console_puts("instruction-fetch=")
+            console_hex((error / 16) % 2)
+        }
+        cpu_halt()
+        return 0
+    }
+
+    console_puts("\r\nVNTOS FATAL: unexpected interrupt vector ")
+    console_hex(vector)
+    cpu_halt()
+    return 0
+}

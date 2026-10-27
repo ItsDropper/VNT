@@ -1,0 +1,32 @@
+# Copyright (c) 2026 ItsDropper
+# Smoke test for success, byte round-trip, accounting, and cleanup.
+import "../../../../lib/std/mem.vnt" as mem
+import "../src/arena.vnt" as arena
+
+if arena.arena_init(64) {
+    unsafe {
+        let region: ptr = arena.arena_reserve(8, 8)
+        if region == null {
+            print("MEMORY_LAB_FAIL: reserve")
+        } else {
+            let w0: bool = mem.write_u8(region, 0, 18)
+            let w1: bool = mem.write_u8(region, 1, 52)
+            let w2: bool = mem.write_u8(region, 2, 86)
+            if !w0 || !w1 || !w2 {
+                print("MEMORY_LAB_FAIL: write")
+            } else if mem.read_u8(region, 0) != 18 || mem.read_u8(region, 1) != 52 || mem.read_u8(region, 2) != 86 {
+                print("MEMORY_LAB_FAIL: byte round-trip")
+            } else {
+                print("MEMORY_LAB_PASS: byte round-trip")
+            }
+        }
+    }
+    if arena.arena_payload_bytes() != 8 {
+        print("MEMORY_LAB_FAIL: payload accounting")
+    } else {
+        print("MEMORY_LAB_PASS: payload accounting")
+    }
+    print(arena.arena_destroy())
+} else {
+    print("MEMORY_LAB_FAIL: init")
+}

@@ -1,0 +1,8 @@
+value = 1
+if true {
+    value = "text"
+} else {
+    value = 2
+}
+print(value)
+print("BRANCH_MERGE_OK")

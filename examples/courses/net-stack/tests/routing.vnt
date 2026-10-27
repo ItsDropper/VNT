@@ -1,0 +1,17 @@
+# Copyright (c) 2026 ItsDropper
+# Routes are [a,b,c,d,prefix,nextHop] repeated for each route.
+import "../src/routing.vnt" as routing
+
+let routes: array = [
+    0, 0, 0, 0, 0, 1,
+    192, 0, 2, 0, 24, 2,
+    192, 0, 2, 128, 25, 3
+]
+let broad: int = routing.route_lookup([192, 0, 2, 42], routes)
+let narrow: int = routing.route_lookup([192, 0, 2, 200], routes)
+if broad != 2 { print("NET_STACK_FAIL: /24 route") }
+if narrow != 3 { print("NET_STACK_FAIL: longest-prefix route") }
+if routing.route_lookup([198, 51, 100, 5], routes) != 1 {
+    print("NET_STACK_FAIL: default route")
+}
+print("NET_STACK_ROUTE_TESTS_FINISHED")

@@ -1,0 +1,255 @@
+name: VNT Quick Language Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'freestanding/**'
+      - 'os/**'
+      - 'include/**'
+      - 'tests/*.vnt'
+      - 'tests/**/*.py'
+      - 'lib/std/**'
+      - 'examples/**'
+      - 'docs/tutorials/**'
+      - '.github/workflows/quick-language-tests.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'freestanding/**'
+      - 'include/**'
+      - 'tests/*.vnt'
+      - 'tests/**/*.py'
+      - 'lib/std/**'
+      - 'examples/**'
+      - 'docs/tutorials/**'
+      - '.github/workflows/quick-language-tests.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quick-language-tests:
+    name: Build and run VNT smoke tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up MSYS2 (Windows)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-python
+
+      - name: Install compiler toolchain (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes gcc libssl-dev python3 grub-pc-bin grub-common xorriso mtools qemu-system-x86
+
+      - name: Build VNT compiler
+        shell: bash
+        run: |
+          gcc -O2 -Iinclude -Isrc/compiler \
+            src/main.c \
+            src/modules.c \
+            src/lexer.c \
+            src/parser/parser.c \
+            src/parser/primary.c \
+            src/parser/unary.c \
+            src/parser/binary.c \
+            src/parser/functions.c \
+            src/parser/statements.c \
+            src/parser/simple_statements.c \
+            src/parser/control.c \
+            src/parser/loops.c \
+            src/parser/assignments.c \
+            src/ast.c \
+            src/compiler/compiler.c \
+            src/compiler/typecheck.c \
+            src/compiler/ir.c \
+            src/compiler/ir_lower.c \
+            src/compiler/cfg.c \
+            src/compiler/x86_backend.c \
+            src/compiler/freestanding_x86.c \
+            -o vnt
+
+      - name: Build and run HIR/CFG invariant tests
+        shell: bash
+        run: |
+          gcc -O2 -Wall -Wextra -Iinclude \
+            tests/hir_invariants.c src/ast.c src/compiler/ir.c \
+            src/compiler/ir_lower.c src/compiler/cfg.c \
+            -o hir-invariants
+          ./hir-invariants
+
+      - name: Emit assembly without invoking the hosted linker
+        shell: bash
+        run: |
+          ./vnt --emit-asm examples/global_variables.vnt -o vnt-assembly-only.s
+          test -s vnt-assembly-only.s
+          grep -F '.globl main' vnt-assembly-only.s
+
+      - name: Build freestanding x86-64 ELF without hosted runtime (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          ./vnt --build-freestanding tests/freestanding_minimal.vnt -o freestanding-kernel.elf
+          test -z "$(nm -u freestanding-kernel.elf)"
+          readelf -h freestanding-kernel.elf | grep -F 'ELF64'
+          readelf -h freestanding-kernel.elf | grep -F 'Entry point address'
+          readelf -l freestanding-kernel.elf | grep -F 'LOAD'
+          ./vnt --emit-freestanding-asm tests/freestanding_i64.vnt -o freestanding-i64.s
+          grep -F 'addq %rcx, %rax' freestanding-i64.s
+          grep -F 'cmpq %rcx, %rax' freestanding-i64.s
+          if ./vnt --emit-freestanding-asm tests/freestanding_hosted_rejected.vnt -o freestanding-invalid.s; then
+            echo "Freestanding backend incorrectly accepted a hosted print operation."
+            exit 1
+          fi
+          test ! -e freestanding-invalid.s
+
+      - name: Compile raw memory regression program
+        shell: bash
+        run: ./vnt --compile tests/unsafe_memory.vnt -o vnt-memory-smoke.exe
+
+      - name: Run raw memory regression program
+        shell: bash
+        run: |
+          ./vnt-memory-smoke.exe > vnt-memory-actual.txt
+          tr -d '\r' < vnt-memory-actual.txt > vnt-memory-actual-lf.txt
+          printf '305419896\n305419896\n255\n42\ntrue\n1\n1\n2\n3\ntrue\n165\n165\ntrue\ntrue\ntrue\ntrue\nRAW_MEMORY_OK\n' > vnt-memory-expected.txt
+          diff -u vnt-memory-expected.txt vnt-memory-actual-lf.txt
+
+      - name: Reject pointer arithmetic on a null pointer
+        shell: bash
+        run: |
+          ./vnt --compile tests/unsafe_null_offset_rejected.vnt -o vnt-null-offset.exe
+          if ./vnt-null-offset.exe > vnt-null-offset-output.txt 2>&1; then
+            echo "Compiler runtime incorrectly accepted pointer arithmetic on null."
+            exit 1
+          fi
+          grep -F "Runtime error: invalid pointer offset." vnt-null-offset-output.txt
+
+      - name: Compile unsafe-block regression program
+        shell: bash
+        run: ./vnt --compile tests/unsafe_block.vnt -o vnt-unsafe-smoke.exe
+
+      - name: Run unsafe-block regression program
+        shell: bash
+        run: |
+          ./vnt-unsafe-smoke.exe > vnt-unsafe-actual.txt
+          tr -d '\r' < vnt-unsafe-actual.txt > vnt-unsafe-actual-lf.txt
+          printf '123456789\nUNSAFE_BLOCK_OK\n' > vnt-unsafe-expected.txt
+          diff -u vnt-unsafe-expected.txt vnt-unsafe-actual-lf.txt
+
+      - name: Reject raw memory outside unsafe
+        shell: bash
+        run: |
+          if ./vnt --compile tests/unsafe_context_rejected.vnt -o vnt-unsafe-invalid.exe; then
+            echo "Compiler incorrectly accepted raw memory outside unsafe."
+            exit 1
+          fi
+
+      - name: Reject unsafe library call outside unsafe
+        shell: bash
+        run: |
+          if ./vnt --compile tests/unsafe_function_rejected.vnt -o vnt-unsafe-function-invalid.exe; then
+            echo "Compiler incorrectly accepted an unsafe function call outside unsafe."
+            exit 1
+          fi
+
+      - name: Reject inline assembly outside unsafe
+        shell: bash
+        run: |
+          if ./vnt --compile tests/asm_context_rejected.vnt -o vnt-asm-invalid.exe; then
+            echo "Compiler incorrectly accepted inline assembly outside unsafe."
+            exit 1
+          fi
+
+      - name: Compile complete task tracker example
+        shell: bash
+        run: ./vnt --compile examples/task_tracker.vnt -o vnt-task-tracker-smoke.exe
+
+      - name: Compile VNT regression programs
+        shell: bash
+        run: |
+          ./vnt --compile tests/native_compiler.vnt -o vnt-native-smoke.exe
+          ./vnt --compile tests/hir_constant_folding.vnt -o vnt-hir-smoke.exe
+          ./vnt --compile tests/native_i64.vnt -o vnt-i64-smoke.exe
+          ./vnt --compile tests/native_i64_overflow.vnt -o vnt-i64-overflow-smoke.exe
+          ./vnt --compile tests/native_memory_u64.vnt -o vnt-memory-u64-smoke.exe
+
+      - name: Run native networking integration tests
+        shell: bash
+        run: python3 tests/run_native_networking.py
+
+      - name: Run native programs and verify output
+        shell: bash
+        run: |
+          ./vnt-native-smoke.exe > vnt-native-actual.txt
+          tr -d '\r' < vnt-native-actual.txt > vnt-native-actual-lf.txt
+          printf 'IR:\n14\ntrue\ntrue\nNative compiler OK\n' > vnt-native-expected.txt
+          diff -u vnt-native-expected.txt vnt-native-actual-lf.txt
+
+          ./vnt-hir-smoke.exe > vnt-hir-actual.txt
+          tr -d '\r' < vnt-hir-actual.txt > vnt-hir-actual-lf.txt
+          printf '14\n4\nfalse\n3.75\n10\n3\ntrue\n-7\ntrue\n-2.5\nHIR_CONSTANT_FOLDING_OK\n' > vnt-hir-expected.txt
+          diff -u vnt-hir-expected.txt vnt-hir-actual-lf.txt
+
+          set +e
+          ./vnt-i64-smoke.exe > vnt-i64-actual.txt 2> vnt-i64-stderr.txt
+          i64_status=$?
+          set -e
+          if [ "$i64_status" -ne 0 ]; then
+            echo "native i64 test exited with status $i64_status"
+            cat vnt-i64-stderr.txt || true
+            cat vnt_crash.log || true
+            cat vnt-i64-actual.txt || true
+            grep -nE 'movabsq|vnt_int|vnt_print|vnt_add|vnt_mul|vnt_fn_main|main:' vnt-i64-smoke.exe.s || true
+            exit "$i64_status"
+          fi
+          echo 'Native i64 stdout:'
+          cat vnt-i64-actual.txt
+          echo 'Native i64 generated calls:'
+          grep -nE 'movabsq|vnt_int|vnt_print|vnt_add|vnt_mul|vnt_fn_main|main:' vnt-i64-smoke.exe.s || true
+          tr -d '\r' < vnt-i64-actual.txt > vnt-i64-actual-lf.txt
+          printf '6442450944\n4294967296\n12884901888\nNATIVE_I64_OK\n9007199254740992\n9007199254740993\n-9223372036854775808\n' > vnt-i64-expected.txt
+          diff -u vnt-i64-expected.txt vnt-i64-actual-lf.txt
+
+          set +e
+          ./vnt-memory-u64-smoke.exe > vnt-memory-u64-actual.txt 2> vnt-memory-u64-stderr.txt
+          mem_u64_status=$?
+          set -e
+          if [ "$mem_u64_status" -ne 0 ]; then
+            cat vnt-memory-u64-stderr.txt || true
+            cat vnt_crash.log || true
+            exit "$mem_u64_status"
+          fi
+          tr -d '\r' < vnt-memory-u64-actual.txt > vnt-memory-u64-actual-lf.txt
+          printf 'true\n81985529216486895\n239\n1\ntrue\ntrue\nMEM_U64_OK\n' > vnt-memory-u64-expected.txt
+          diff -u vnt-memory-u64-expected.txt vnt-memory-u64-actual-lf.txt
+
+          set +e
+          ./vnt-i64-overflow-smoke.exe > vnt-i64-overflow-actual.txt 2> vnt-i64-overflow-stderr.txt
+          overflow_status=$?
+          set -e
+          if [ "$overflow_status" -eq 0 ]; then
+            echo "Signed 64-bit overflow incorrectly succeeded."
+            exit 1
+          fi
+          grep -F "Runtime error: signed 64-bit integer overflow in addition." vnt-i64-overflow-stderr.txt

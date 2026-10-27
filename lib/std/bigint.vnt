@@ -1,0 +1,15 @@
+# Arbitrary-precision signed decimal integer operations.
+# Values are decimal strings to avoid overflow in the native 64-bit integer type.
+export fun add(left: string, right: string) -> string {
+    return bigint_add(left, right)
+}
+export fun subtract(left: string, right: string) -> string {
+    return bigint_sub(left, right)
+}
+export fun multiply(left: string, right: string) -> string {
+    return bigint_mul(left, right)
+}
+# Returns -1, 0, or 1 based on numeric ordering.
+export fun compare(left: string, right: string) -> int {
+    return bigint_compare(left, right)
+}

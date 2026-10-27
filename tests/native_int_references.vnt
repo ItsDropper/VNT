@@ -1,0 +1,7 @@
+# Taking a reference must keep the referenced variable boxed.
+value = 5
+reference = &value
+print(*reference)
+*reference = 9
+print(value)
+print("NATIVE_INT_REFERENCES_OK")

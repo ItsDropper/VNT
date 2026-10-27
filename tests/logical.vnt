@@ -1,0 +1,12 @@
+# Logical operators
+
+print(false && true)
+print(true && true)
+print(true || false)
+print(false || true)
+
+# Short-circuit AND: the undefined variable must not be evaluated.
+print(false && undefined_variable)
+
+# Short-circuit OR: the undefined variable must not be evaluated.
+print(true || undefined_variable)

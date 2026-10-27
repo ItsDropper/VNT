@@ -1,0 +1,51 @@
+# Copyright (c) 2026 ItsDropper
+# UDP parser/builder for IPv4's optional-zero-checksum teaching profile.
+# The parser receives only the IPv4 payload, never an Ethernet frame.
+import "./bytes.vnt" as bytes
+
+export fun parse_udp(payload: array) -> array {
+    if len(payload) < 8 {
+        return []
+    }
+    let source_port: int = bytes.read_be16(payload, 0)
+    let destination_port: int = bytes.read_be16(payload, 2)
+    let length: int = bytes.read_be16(payload, 4)
+    let checksum: int = bytes.read_be16(payload, 6)
+    if source_port < 0 || destination_port < 0 || length < 8 || length > len(payload) {
+        return []
+    }
+    # [sourcePort, destinationPort, udpLength, checksum, payloadLength]
+    return [source_port, destination_port, length, checksum, length - 8]
+}
+
+export fun udp_payload(datagram: array) -> array {
+    let fields: array = parse_udp(datagram)
+    if len(fields) != 5 {
+        return []
+    }
+    return bytes.slice(datagram, 8, fields[2] - 8)
+}
+
+export fun build_udp(source_port: int, destination_port: int, payload: array) -> array {
+    if source_port < 0 || source_port > 65535 || destination_port < 0 || destination_port > 65535 {
+        return []
+    }
+    if len(payload) > 65527 {
+        return []
+    }
+    let length: int = 8 + len(payload)
+    let datagram: array = range(length)
+    if !bytes.write_be16(datagram, 0, source_port) || !bytes.write_be16(datagram, 2, destination_port) {
+        return []
+    }
+    if !bytes.write_be16(datagram, 4, length) || !bytes.write_be16(datagram, 6, 0) {
+        return []
+    }
+    # IPv4 permits a zero UDP checksum. A pseudoheader checksum is a separate extension.
+    let i: int = 0
+    while i < len(payload) {
+        datagram[8 + i] = payload[i]
+        i += 1
+    }
+    return datagram
+}

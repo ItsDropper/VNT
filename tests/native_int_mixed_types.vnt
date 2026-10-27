@@ -1,0 +1,5 @@
+# A later non-integer assignment must keep the variable boxed throughout.
+value = 7
+value = "mixed"
+print(value)
+print("NATIVE_INT_MIXED_TYPES_OK")

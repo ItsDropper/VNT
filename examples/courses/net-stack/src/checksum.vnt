@@ -1,0 +1,35 @@
+# Copyright (c) 2026 ItsDropper
+# Internet checksum over a byte array in network byte order.
+# A complete IPv4 header including its checksum should produce zero.
+import "./bytes.vnt" as bytes
+
+export fun internet_checksum(data: array) -> int {
+    let total: int = 0
+    let i: int = 0
+    while i + 1 < len(data) {
+        total += data[i] * 256 + data[i + 1]
+        i += 2
+    }
+    if i < len(data) {
+        # An odd final byte occupies the high half of a 16-bit network word.
+        total += data[i] * 256
+    }
+    while total > 65535 {
+        total = (total % 65536) + total / 65536
+    }
+    return 65535 - total
+}
+
+export fun checksum_is_valid(data: array) -> bool {
+    return internet_checksum(data) == 0
+}
+
+export fun checksum_with_zeroed_field(data: array, checksum_offset: int) -> int {
+    if checksum_offset < 0 || len(data) < 2 || checksum_offset > len(data) - 2 {
+        return -1
+    }
+    let copy: array = bytes.slice(data, 0, len(data))
+    copy[checksum_offset] = 0
+    copy[checksum_offset + 1] = 0
+    return internet_checksum(copy)
+}

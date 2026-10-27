@@ -5,6 +5,7 @@
 # drivers; this module deliberately does not enable keyboard interrupts.
 
 import "core.vnt"
+import "sync.vnt"
 import "../serial.vnt"
 import "../console.vnt"
 import "../ps2.vnt"
@@ -63,7 +64,7 @@ fun shell_run() {
             console_puts("\r\n")
             handled = 0
             if str_eq(buffer, "help") {
-                console_puts("Commands: help, about, clear, echo, history, uptime, mem, memtest, vmtest, irq, mouse, smp, reboot, halt\r\n")
+                console_puts("Commands: help, about, clear, echo, history, uptime, synctest, mem, memtest, vmtest, irq, mouse, smp, reboot, halt\r\n")
                 handled = 1
             }
             if str_eq(buffer, "about") {
@@ -90,6 +91,14 @@ fun shell_run() {
                 console_hex(ticks)
                 console_puts("Approximate uptime seconds: ")
                 console_hex(ticks / 100)
+                handled = 1
+            }
+            if str_eq(buffer, "synctest") {
+                if sync_self_test() == 1 {
+                    console_puts("Spinlock self-test: PASS\r\n")
+                } else {
+                    console_puts("Spinlock self-test: FAIL\r\n")
+                }
                 handled = 1
             }
             if str_eq(buffer, "clear") {

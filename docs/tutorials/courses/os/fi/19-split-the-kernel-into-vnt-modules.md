@@ -45,6 +45,25 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Miten jatkaa kurssin jälkeen](18-next-steps.md) · [Seuraava oppitunti: Keskeytykset, poikkeukset ja IDT →](20-interrupts-and-the-idt.md)
 
+## Koodiesimerkki: tuo moduuli ja kutsu sen rajapintaa
+
+```vnt
+import "serial.vnt"
+import "console.vnt"
+import "kernel/core.vnt"
+
+fun kernel_main() {
+    serial_init()
+    console_puts("Kernel modules are reachable.\r\n")
+    return 0
+}
+```
+
+Tämä näyttää nykyisen kernelin import-tyylin ja olemassa olevien moduulien funktiokutsut. `import` tuo lähdetiedoston käännösyksikköön; se ei automaattisesti luo erillistä prosessia tai itsenäisesti linkitettävää binääriä. VNT-kääntäjä litistää importatut moduulit nykyisessä buildissa yhdeksi käännösyksiköksi.
+
+**Tee itse:** Kun siirrät funktion, etsi kaikki kutsujat ja lisää import oikeaan tiedostoon. Säilytä funktion nimi ja sopimus ensimmäisessä muutoksessa, jotta voit erottaa moduulirajan muutoksen toiminnallisesta muutoksesta.
+
+
 ## Toteutuslaboratorio: Modulaarinen kernel
 
 Tässä osiossa teet konkreettisen muutoksen nykyiseen VNTOS-koodiin. Avaa lähdetiedostot ja varmista, että kuvaus vastaa nykyistä toteutusta.

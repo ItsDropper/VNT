@@ -19,6 +19,15 @@ fun state_set(index: int, value: int) {
     return 0
 }
 
+# Atomic increment for aligned shared counters in interrupt context.
+# LOCK INC serializes competing CPUs without acquiring a software spinlock.
+fun state_increment_atomic(index: int) {
+    unsafe {
+        asm volatile("leaq vntos_state(%rip), %rax; movq -8(%rbp), %rcx; lock incq (%rax,%rcx,8)")
+    }
+    return 0
+}
+
 fun kernel_start_addr() -> i64 {
     let result: i64 = 0
     unsafe {
@@ -52,7 +61,7 @@ fun cpu_reboot() {
 # Named timer interface keeps the shared-state slot out of interrupt policy
 # and shell command code. The counter remains a tick count, not wall-clock time.
 fun kernel_timer_tick() {
-    state_set(11, state_get(11) + 1)
+    state_increment_atomic(11)
     return 0
 }
 

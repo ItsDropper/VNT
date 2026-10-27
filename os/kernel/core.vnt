@@ -1,0 +1,50 @@
+# Copyright (c) 2026 ItsDropper
+# Licensed under the MIT License. See LICENSE in the repository root.
+#
+# Early kernel primitives. These preserve the current bootstrap ABI; they are
+# intentionally isolated until the compiler has a supported global-state ABI.
+
+fun state_get(index: int) -> int {
+    let result: int = 0
+    unsafe {
+        asm volatile("leaq vntos_state(%rip), %rax; movq -8(%rbp), %rcx; movq (%rax,%rcx,8), %rdx; movq %rdx, -16(%rbp)")
+    }
+    return result
+}
+
+fun state_set(index: int, value: int) {
+    unsafe {
+        asm volatile("leaq vntos_state(%rip), %rax; movq -8(%rbp), %rcx; movq -16(%rbp), %rdx; movq %rdx, (%rax,%rcx,8)")
+    }
+    return 0
+}
+
+fun kernel_start_addr() -> i64 {
+    let result: i64 = 0
+    unsafe {
+        asm volatile("leaq __kernel_start(%rip), %rax; movq %rax, -8(%rbp)")
+    }
+    return result
+}
+
+fun kernel_end_addr() -> i64 {
+    let result: i64 = 0
+    unsafe {
+        asm volatile("leaq __kernel_end(%rip), %rax; movq %rax, -8(%rbp)")
+    }
+    return result
+}
+
+fun cpu_halt() {
+    unsafe {
+        asm volatile("cli; 1: hlt; jmp 1b")
+    }
+    return 0
+}
+
+fun cpu_reboot() {
+    unsafe {
+        asm volatile("1: inb $0x64, %al; testb $2, %al; jnz 1b; movb $0xfe, %al; outb %al, $0x64; jmp 1b")
+    }
+    return 0
+}

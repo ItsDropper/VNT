@@ -20,7 +20,7 @@ Uusi `acpi_irq_gsi(irq)` tarkistaa, että IRQ on välillä 0–15, ja etsii sit�
 
 `acpi_irq_override_flags(irq)` käyttää samaa hakuperiaatetta. Se palauttaa nollan, jos ohitusta ei ole, raakaliput yhden osuman tapauksessa, `-1` virheellisestä syötteestä ja `-2` päällekkäisistä merkinnöistä. Lippuja ei tässä vaiheessa tulkita napaisuudeksi tai liipaisutilaksi.
 
-Shellin `irq`-komento näyttää nyt IRQ0:n ja IRQ1:n tehokkaat GSI-numerot sekä raakamuotoiset ohitusliput. CI tarkistaa tulostetut kentät olettamatta tietyn emulaattorin tai laiteohjelmiston tarkkaa ohitustaulukkoa.
+Shellin `irq`-komento näyttää nyt IRQ0:n ja IRQ1:n tehokkaat GSI-numerot sekä raakamuotoiset ohitusliput. `acpitest`-komento vertaa kaikki 16 IRQ-arvoa jäsennettyyn ohitustaulukkoon ja testaa virheelliset IRQ-syötteet. Se ilmoittaa SKIP, jos MADT-taulukkoa ei löytynyt, ja FAIL, jos lähde-IRQ on päällekkäinen tai ratkaistu arvo ei vastaa taulukkoa. QEMU-työnkulku suorittaa komennon ja tarkistaa PASS-tuloksen sarjaportin tulosteesta. CI tarkistaa myös diagnostiikkakenttien olemassaolon olettamatta tietyn emulaattorin tai laiteohjelmiston tarkkaa ohitustaulukkoa.
 
 ## Turvaraja
 
@@ -42,6 +42,7 @@ Nykyinen ydin pitää I/O APIC -reitit peitettyinä. Tätä turvarajaa ei pidä 
 - [ ] Puuttuva ohitus käyttää identiteettikuvausta ja nollalippuja.
 - [ ] Päällekkäiset lähde-IRQ-merkinnät ilmoitetaan epäselviksi.
 - [ ] Shell näyttää IRQ0:n ja IRQ1:n GSI-numerot ja raakamuotoiset liput.
+- [ ] `acpitest` vertaa kaikki 16 IRQ-arvoa jäsennettyyn taulukkoon.
 - [ ] CI tarkistaa tulosteen kentät olettamatta tiettyä laiteohjelmiston taulukkoa.
 - [ ] Muutos ei avaa I/O APIC -reittejä.
 

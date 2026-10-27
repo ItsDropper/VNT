@@ -126,4 +126,4 @@ This change makes the bitmap construction more conservative; it does not add mem
 
 ---
 
-[← Previous lesson](./31-contiguous-physical-pages.md) · [Course index](./README.md) · **Course completed.**
+[← Previous lesson](./31-contiguous-physical-pages.md) · [Next lesson →](./33-terminal-history-and-uptime.md) · [Course index](./README.md)

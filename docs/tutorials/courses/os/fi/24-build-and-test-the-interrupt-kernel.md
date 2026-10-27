@@ -45,6 +45,19 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: PIT, PIC ja ajastimen tikit](23-pit-pic-and-timer-ticks.md) · [Seuraava oppitunti: Fyysinen muisti ja sivukehykset →](26-physical-memory-and-page-frames.md)
 
+## Koodiesimerkki: varmista assembly ja VNT yhdessä
+
+```bash
+bash os/build.sh
+readelf -s build/kernel.elf | grep -E 'interrupt_dispatch|vntos_interrupts_init|isr32'
+qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -serial stdio
+```
+
+Build-skripti kokoaa os/arch/x86_64/interrupts.S:n erilliseksi interrupts.o-tiedostoksi ja linkittää sen kernel-objektin kanssa. Symbolien tarkistus auttaa havaitsemaan, puuttuuko linkityksestä VNT-dispatcher tai assemblyn aloitusfunktio. QEMU-testi tarkistaa, pääseekö kernel käynnistymään.
+
+**Tee itse:** Kirjaa buildin tulos, symbolit ja QEMU:n sarjaporttiloki erillisinä havaintoina. Jos kernel pysähtyy keskeytyksen jälkeen, rajaa vika sisääntulokehykseen, dispatchiin, EOI:hin tai paluupolkuun sen sijaan, että muuttaisit kaikkea yhtä aikaa.
+
+
 ## Toteutuslaboratorio: Keskeytyskernelin build ja testaus
 
 Tämä harjoitus edellyttää lähdekoodin lukemista ja toteutuksen todentamista.

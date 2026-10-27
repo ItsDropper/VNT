@@ -44,3 +44,68 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Rakenna ja testaa keskeytyskernel](24-build-and-test-the-interrupt-kernel.md) · [Seuraava oppitunti: Loppuprojekti: tee todennettava parannus →](25-graduation-project.md)
+
+## Toteutuslaboratorio: Fyysinen muisti ja sivukehykset
+
+Tässä osiossa rakennat tai validoit konkreettisen osan nykyisestä VNTOS-kernelistä.
+
+**Tutkittavat tiedostot:** `os/mm/phys.vnt`, `os/arch/x86_64/boot.S`
+
+**Tavoite:** Toteuta muistokartan lukeminen ja kehysvarauksen rajat turvallisesti. Multiboot2-data on ulkoista dataa ja tagien pituus vaihtelee. Nykyinen allokaattori on rajattu ensimmäiseen 1 GiB:n ikkunaan.
+
+### Toteutus vaiheittain
+
+1. **Rajaa vastuu:** Tarkista boot-magic, tietorakenteen koko ja osoiterajat ennen tagien lukua.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+2. **Etsi nykyinen toteutus:** Kulje tageissa tag_size-kentän mukaan ja hylkää virheellinen koko.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+3. **Kirjaa sopimus:** Erota käytettävät alueet kernelin ja bootstrapin varaamista alueista.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+4. **Tee pienin muutos:** Määritä bitmapin bitin merkitys ja sivukehyksen kohdistus.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+5. **Tarkista riippuvuudet:** Testaa tyhjä muistikartta, yksi vapaa kehys, loppunut muisti ja toistuva vapautus.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+6. **Käännä:** Älä palauta kehystä, jonka omistus tai rajat eivät ole tiedossa.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+### Turvallisuus- ja rajapintasopimus
+
+- Validoi osoite, pituus, indeksi, tunniste ja laitetila ennen käyttöä.
+- Älä lue muuttuvamittaista tietorakennetta ilman rajojen tarkistusta.
+- Määritä selkeä virhepolku puuttuvalle laitteelle, virheelliselle datalle ja aikakatkaisulle.
+- Erota “havaittu”, “alustettu”, “online” ja “käytössä” eri tiloiksi, jos ne tarkoittavat eri asioita.
+- Älä oleta, että atominen muistikirjoitus yksin ratkaisee muistijärjestyksen tai omistajuuden.
+- Dokumentoi rajoitukset, joita nykyinen kernel ei vielä ratkaise.
+
+### Todennus
+
+1. Kirjoita odotettu tila ja havainto ennen muutosta.
+2. Suorita `bash os/build.sh` projektin juuressa.
+3. Tarkista ensimmäinen epäonnistunut komento ja erottele build-ongelma laiteongelmasta.
+4. Käynnistä vain QEMU:ssa ja kerää sarjaportin tuloste.
+5. Testaa normaali tapaus, rajatapaus ja virheellinen tai puuttuva tieto.
+6. Toista testi, jos toiminta riippuu ajoituksesta.
+7. Älä väitä CI:n tai laitetestin läpäisseen, ellei siitä ole todellista tulosta.
+
+### Tavalliset virheet
+
+- Firmwaresta saatuun tietoon luotetaan ennen checksum- ja pituustarkistuksia.
+- AP merkitään online-tilaan ennen kuin se saavuttaa sovitun valmiuspisteen.
+- IPI lähetetään ennen kuin IDT ja vastaanottaja ovat valmiita.
+- Jaettua muistia käytetään ilman omistajuus- tai lukitussopimusta.
+- Laskurin kasvaminen tulkitaan liian laajasti todisteeksi ominaisuuden valmiudesta.
+
+### Muutosraportti
+
+Kirjaa muutetut tiedostot, rajapinta, hyväksymiskriteeri, build-tulos, QEMU-havainto, negatiiviset testit ja jäljelle jääneet rajoitukset.

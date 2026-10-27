@@ -361,40 +361,42 @@ fun acpi_irq_gsi(irq: int) -> int {
     if irq < 0 || irq > 15 {
         return -1
     }
-    let found: int = -1
+    # Track the entry index separately: every 32-bit GSI value is data, not
+    # a sentinel, and duplicate detection must not depend on the GSI itself.
+    let found_index: int = -1
     let index: int = 0
     while index < acpi_iso_count() && index < 16 {
         if acpi_iso_source(index) == irq {
-            if found != -1 {
+            if found_index != -1 {
                 return -2
             }
-            found = acpi_iso_gsi(index)
+            found_index = index
         }
         index = index + 1
     }
-    if found == -1 {
+    if found_index == -1 {
         return irq
     }
-    return found
+    return acpi_iso_gsi(found_index)
 }
 
 fun acpi_irq_override_flags(irq: int) -> int {
     if irq < 0 || irq > 15 {
         return -1
     }
-    let found: int = -1
+    let found_index: int = -1
     let index: int = 0
     while index < acpi_iso_count() && index < 16 {
         if acpi_iso_source(index) == irq {
-            if found != -1 {
+            if found_index != -1 {
                 return -2
             }
-            found = acpi_iso_flags(index)
+            found_index = index
         }
         index = index + 1
     }
-    if found == -1 {
+    if found_index == -1 {
         return 0
     }
-    return found
+    return acpi_iso_flags(found_index)
 }

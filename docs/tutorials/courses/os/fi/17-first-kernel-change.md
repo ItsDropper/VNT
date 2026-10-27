@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Testaa toimintaa, älä vain käännöstä](16-testing.md) · [Seuraava oppitunti: Miten jatkaa kurssin jälkeen →](18-next-steps.md)
 
 ## Koodiesimerkki: tee ensimmäinen näkyvä VNT-muutos
 
@@ -130,3 +129,7 @@ Tässä osiossa teet konkreettisen muutoksen nykyiseen VNTOS-koodiin. Avaa lähd
 ### Muutosraportti
 
 Kirjaa muutetut tiedostot, sopimus, build-komento ja tulos, QEMU-havainto, negatiiviset testit sekä avoimet rajoitukset. Jos jokin tarkistus jäi tekemättä, ilmoita se selvästi.
+
+---
+
+[← Edellinen oppitunti](./16-testing.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./18-next-steps.md)

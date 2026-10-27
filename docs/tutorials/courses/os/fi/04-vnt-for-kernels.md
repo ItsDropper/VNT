@@ -45,6 +45,22 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Valmistele kehitysympäristö](03-setup.md) · [Seuraava oppitunti: Miten lähdekoodista syntyy kernel →](05-build-pipeline.md)
 
+## Koodiesimerkki: VNT-funktion rakenne ja rajat
+
+```vnt
+fun device_irq_count(irq: int) -> int {
+    if irq < 0 || irq > 15 {
+        return -1
+    }
+    return state_get(12 + irq)
+}
+```
+
+Tämä on nykyisen os/kernel/device_irq.vnt-tiedoston funktio. `fun` määrittelee funktion, `-> int` paluuarvon tyypin, `if` tarkistaa rajan ja `return` päättää funktion. IRQ-numero tarkistetaan ennen kuin sillä lasketaan jaetun tilan indeksiä.
+
+**Tee itse:** Kopioi rakenne omalle harjoitusfunktiollesi mutta vaihda nimi, parametrit ja rajat tarpeen mukaan. Määritä ensin virhetilan paluuarvo ja tarkista, miten kutsuja käsittelee sen. Älä käytä unsafe-lohkoa, ellei muistia tai laitteistoa todella tarvitse käsitellä.
+
+
 ## Toteutuslaboratorio: VNT kernelissä
 
 Tämä osio täydentää käsitteitä käytännön toteutusmenettelyllä. Lähdekoodiviitteet ovat projektin nykyisiä polkuja; avaa ne ennen muutosta.

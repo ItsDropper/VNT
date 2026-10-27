@@ -12,6 +12,7 @@ interrupt entry are deliberately split from the VNT policy code.
 - `os/kernel.vnt`: kernel entry and ordered subsystem initialization.
 - `os/kernel/core.vnt`: early shared-state access, kernel bounds, and CPU halt/reboot primitives.
 - `os/kernel/shell.vnt`: command parsing, line editing, and shell policy.
+- `os/kernel/sync.vnt`: initial x86-64 spinlock primitives and an uncontended contract self-test.
 - `os/serial.vnt`: COM1 UART setup and polling I/O.
 - `os/console.vnt`: VGA text output and the combined VGA/serial console.
 - `os/ps2.vnt`: polled PS/2 keyboard and mouse routines.

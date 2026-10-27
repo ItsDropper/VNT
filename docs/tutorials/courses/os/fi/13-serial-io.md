@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Freestanding-ohjelma](12-freestanding-vnt.md) · [Seuraava oppitunti: Sarjaportin komentotulkki →](14-the-serial-shell.md)
 
 ## Koodiesimerkki: sarjaportin lähetys ja vastaanotto
 
@@ -133,3 +132,7 @@ Tässä harjoituksessa toteutat tai jäljität toimivan osan, et vain kuvaile k�
 ### Kirjaa toteutus
 
 Dokumentoi muutetut tiedostot, funktiosopimus, build-tulos, QEMU-havainto, negatiiviset testit ja rajoitukset. Näin toinen kehittäjä pystyy toistamaan tarkistuksen.
+
+---
+
+[← Edellinen oppitunti](./12-freestanding-vnt.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./14-the-serial-shell.md)

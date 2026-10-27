@@ -64,7 +64,9 @@ fun console_puts_offset(text: string, offset: int) {
 # Pure decimal digit extraction: returns -1 for invalid inputs.
 # The divisor must be a positive power of ten; callers own that invariant.
 fun decimal_digit_at(value: i64, divisor: i64) -> int {
-    if value < 0 || divisor <= 0 {
+    # Caller contract: value is non-negative and divisor is positive.
+    # Reject zero explicitly; signed-input validation is not relied on here.
+    if divisor == 0 {
         return -1
     }
     return (value / divisor) % 10

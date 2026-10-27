@@ -258,7 +258,7 @@ fun acpi_discover() -> int {
             if count < 16 {
                 state_set(64 + count * 3, acpi_read8(madt, cursor + 3))
                 state_set(65 + count * 3, acpi_read32(madt, cursor + 4))
-                state_set(66 + count * 3, acpi_read16(madt, cursor + 8))
+                state_set(66 + count * 3, acpi_read8(madt, cursor + 8) + acpi_read8(madt, cursor + 9) * 256)
                 state_set(38, count + 1)
             }
         }

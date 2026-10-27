@@ -45,6 +45,34 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Alkuvaiheen sivutaulut](10-initial-paging.md) · [Seuraava oppitunti: Freestanding-ohjelma →](12-freestanding-vnt.md)
 
+## Koodiesimerkki: ELF:n muistiasettelu
+
+```ld
+OUTPUT_FORMAT(elf64-x86-64)
+OUTPUT_ARCH(i386:x86-64)
+ENTRY(boot32_entry)
+
+PHDRS
+{
+    text PT_LOAD FLAGS(5);
+    data PT_LOAD FLAGS(6);
+}
+
+SECTIONS
+{
+    . = 0x00100000;
+    __kernel_start = .;
+    .multiboot ALIGN(8) : { KEEP(*(.multiboot)) } :text
+    .boot32 ALIGN(16) : { KEEP(*(.boot32)) } :text
+    .text ALIGN(0x1000) : { *(.text .text.*) } :text
+}
+```
+
+Tämä on os/linker.ld:n ote. ENTRY määrittää aloitussymbolin, PT_LOAD-segmentit kertovat lataajalle mitä muistialueita ladataan ja KEEP säilyttää Multiboot2-otsakkeen. `.` on linkkerin nykyinen osoite; ALIGN siirtää seuraavan osion oikeaan kohdistukseen.
+
+**Tee itse:** Käännä kernel ja tarkista `readelf -h -l -s build/kernel.elf`. Etsi entry-symboli, PT_LOAD-segmentit ja __kernel_start. Jos muokkaat linker-skriptiä, vertaa ennen/jälkeen -tulosta sekä GRUB-tarkistusta.
+
+
 ## Toteutuslaboratorio: ELF ja linkkeriskripti
 
 Tässä harjoituksessa toteutat tai jäljität toimivan osan, et vain kuvaile käsitettä.

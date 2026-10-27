@@ -3,28 +3,33 @@
 Copyright (c) 2026 ItsDropper  
 Licensed under the MIT License. See the repository root `LICENSE`.
 
-This directory owns the instructions and data structures that are specific to
-the current x86-64 boot/interrupt path.
+This directory owns the x86-64 bootstrap, CPU entry/exit, and architecture
+operations that cannot yet be expressed through a stable VNT ABI.
 
-- `boot.S` contains the Multiboot2 entry, initial page-table setup, long-mode
-  transition, bootstrap stack, and current shared scalar storage.
-- `interrupts.S` contains IDT gate encoding, exception/IRQ entry stubs, the
-  register-save/restore boundary, PIC remapping, PIT programming, and `iretq`.
+- `boot.S` contains Multiboot2 entry, initial page tables, long-mode transition,
+  the bootstrap stack, and shared scalar storage. It identity-maps the first
+  GiB for early kernel memory and separately maps the conventional PC IOAPIC
+  (`0xFEC00000`) and Local APIC (`0xFEE00000`) 2-MiB MMIO windows.
+- `interrupts.S` contains IDT gate encoding, exception/IRQ entry stubs,
+  register save/restore, legacy PIC/PIT setup, and `iretq`.
+- `apic.vnt` owns Local APIC enablement and I/O APIC register policy in VNT.
+  The I/O APIC is only initialized when the MADT describes one controller at
+  the mapped conventional address; redirection entries are masked, not routed.
 
-The VNT policy code stays in `os/kernel.vnt` and `os/interrupts.vnt`. In
-particular, `interrupt_dispatch` decides what an interrupt means; the assembly
-stub only establishes the CPU frame and returns through the architecture-defined
-interrupt-return instruction.
+ACPI discovery and MADT parsing live in `os/firmware/acpi.vnt`; CPU topology
+bookkeeping lives in `os/kernel/smp.vnt`. The parser validates RSDP and table
+checksums, table bounds, and MADT record lengths before using entries.
 
-## Constraints not solved by this move
+## Current limitations
 
-This is a real source/build separation, not a finished architecture abstraction.
-The boot file still defines `vntos_state`, which VNT functions access with
-inline assembly. Several VNT routines depend on compiler-generated stack
-offsets. Imported VNT modules are flattened into one compilation unit, and the
-current compiler does not yet provide a robust typed boundary for port I/O,
-CPU state, interrupt frames, or context switching.
+This is APIC and SMP groundwork, not a finished SMP kernel. Only the bootstrap
+processor executes kernel code. MADT CPU entries are discovered, but secondary
+processors are not started yet; there is no AP trampoline, per-CPU stack/TSS,
+per-CPU interrupt state, IPI API, scheduler, or SMP-safe allocator. The current
+physical allocator is single-core and limited to the first GiB.
 
-Do not implement a scheduler, general allocator, or interrupt-driven keyboard
-on top of these constraints without first establishing and testing the relevant
-ABI and ownership contracts. Keep IRQ1 masked while input remains polled.
+Only conventional xAPIC MMIO addresses are mapped. x2APIC mode, nonstandard
+Local APIC/I/O APIC address overrides, multiple I/O APIC controllers, and
+interrupt-source override routing are parsed or detected but not activated.
+Legacy PIC/PIT timer handling remains in place. Keep keyboard IRQ1 masked while
+input is polled, and do not unmask I/O APIC routes before installing handlers.

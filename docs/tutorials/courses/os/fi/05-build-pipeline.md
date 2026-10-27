@@ -45,6 +45,20 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: VNT-kielen perusteet kernel-koodissa](04-vnt-for-kernels.md) · [Seuraava oppitunti: Mitä käynnistyksessä tapahtuu? →](06-the-boot-sequence.md)
 
+## Koodiesimerkki: build-putken todelliset vaiheet
+
+```bash
+./build/vnt --emit-freestanding-asm os/kernel.vnt -o build/kernel.s
+gcc -c -m64 -ffreestanding -fno-pic -fno-stack-protector -mno-red-zone build/kernel.s -o build/kernel.o
+gcc -c -m64 -ffreestanding -fno-pic -fno-stack-protector -mno-red-zone os/arch/x86_64/boot.S -o build/boot.o
+ld -nostdlib -static -z max-page-size=0x1000 -T os/linker.ld -o build/kernel.elf build/boot.o build/kernel.o build/interrupts.o build/ap_trampoline.o
+```
+
+Nämä komennot ovat os/build.sh-tiedostosta. VNT-kääntäjä emittoi ensin assemblyn. GCC:n assembler-vaihe tuottaa objektitiedostoja, ja ld yhdistää objektit linker-skriptin määrittelemäksi ELF-kerneliksi. Jokainen vaihe voi epäonnistua eri syystä.
+
+**Tee itse:** Avaa os/build.sh ja seuraa nämä komennot samassa järjestyksessä. Kun virhe tulee, selvitä ensimmäinen epäonnistunut vaihe ja tarkista sen syötetiedosto ennen myöhempien virheilmoitusten tutkimista.
+
+
 ## Toteutuslaboratorio: Käännösputki
 
 Tämä on toteutusohje, ei vain aiheesta kertova yhteenveto. Avaa lähdetiedostot ennen kuin muutat niitä.

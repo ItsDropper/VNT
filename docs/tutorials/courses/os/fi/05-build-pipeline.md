@@ -44,3 +44,68 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: VNT-kielen perusteet kernel-koodissa](04-vnt-for-kernels.md) · [Seuraava oppitunti: Mitä käynnistyksessä tapahtuu? →](06-the-boot-sequence.md)
+
+## Toteutuslaboratorio: Käännösputki
+
+Tämä on toteutusohje, ei vain aiheesta kertova yhteenveto. Avaa lähdetiedostot ennen kuin muutat niitä.
+
+**Tutkittavat tiedostot:** `os/build.sh`, `src/compiler/freestanding_x86.c`
+
+**Tavoite:** Jäljitä lähdekoodista linkitettyyn ELF:ään. Älä sekoita kääntäjän, assemblerin ja linkkerin virheitä. Todista jokainen vaihe erikseen.
+
+### Toteutus vaiheittain
+
+1. **Rajaa vastuu:** Kirjoita ylös jokaisen build.sh-komennon syöte ja tuloste.
+   - Kirjaa havainto ja perustele se lähdekoodilla.
+   - Älä jatka seuraavaan muutokseen, jos tämä vaihe on epäselvä.
+
+2. **Etsi nykyinen toteutus:** Tarkista, missä VNT-koodi muuttuu assemblyksi ja missä assembly objektiksi.
+   - Kirjaa havainto ja perustele se lähdekoodilla.
+   - Älä jatka seuraavaan muutokseen, jos tämä vaihe on epäselvä.
+
+3. **Kirjaa sopimus:** Tarkista linkityksen syöteobjektit ja lopputuloksen polku.
+   - Kirjaa havainto ja perustele se lähdekoodilla.
+   - Älä jatka seuraavaan muutokseen, jos tämä vaihe on epäselvä.
+
+4. **Tee pienin muutos:** Tee virhe, jonka voi havaita vain linkitysvaiheessa, erillisessä kokeessa äläkä riko main-haaraa.
+   - Kirjaa havainto ja perustele se lähdekoodilla.
+   - Älä jatka seuraavaan muutokseen, jos tämä vaihe on epäselvä.
+
+5. **Tarkista riippuvuudet:** Tarkista että valinnaiset grub-file ja grub-mkrescue vaiheet eivät sekoitu ELF:n kääntöön.
+   - Kirjaa havainto ja perustele se lähdekoodilla.
+   - Älä jatka seuraavaan muutokseen, jos tämä vaihe on epäselvä.
+
+6. **Käännä:** Kirjaa ensimmäinen epäonnistunut komento ja sen poistumiskoodi.
+   - Kirjaa havainto ja perustele se lähdekoodilla.
+   - Älä jatka seuraavaan muutokseen, jos tämä vaihe on epäselvä.
+
+### Rajapinnan tarkistus
+
+- Mikä funktio tai symboli aloittaa toiminnon?
+- Kuka kutsuu sitä ja mitä arvoja kutsuja olettaa?
+- Mitkä rekisterit, osoitteet tai muistialueet ovat käytössä?
+- Mikä tarkistus tehdään ennen muistilukua tai laitekirjoitusta?
+- Mitä tapahtuu, jos tarvittava tieto puuttuu tai on virheellinen?
+- Mitkä osat ovat VNT-politiikkaa ja mitkä arkkitehtuurin pakottamaa assemblyä?
+- Mitkä ominaisuudet ovat vielä toteuttamatta?
+
+### Hyväksymistesti
+
+1. Kirjoita odotettu tulos ennen käännöstä.
+2. Suorita `bash os/build.sh` projektin juuressa.
+3. Tarkista ensimmäinen epäonnistunut komento, älä vain viimeistä virheilmoitusta.
+4. Käynnistä kernel QEMU:ssa ja kerää sarjaportin tuloste.
+5. Testaa normaali tapaus, raja ja virheellinen syöte.
+6. Älä ilmoita testiä läpäistyksi, jos et suorittanut sitä.
+
+### Virheiden välttäminen
+
+- Käännös ei todista, että GRUB tunnistaa ELF:n.
+- ELF:n syntyminen ei todista, että CPU saavuttaa VNT-koodin.
+- Älä tee useita toisistaan riippuvia muutoksia ennen ensimmäistä testiä.
+- Älä poista diagnostisia merkkejä ennen kuin tiedät, mikä vaihe oli vikana.
+- Älä kovakoodaa osoitetta, jos sen pitäisi tulla linker-symbolista tai bootloaderin tietorakenteesta.
+
+### Muutosraportti
+
+Kirjaa muutetut tiedostot, toteutettu sopimus, build-tulos, QEMU-havainto, virhepolut ja tunnetut rajoitukset. Jos testaus jäi tekemättä, merkitse se avoimeksi työksi.

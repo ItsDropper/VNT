@@ -14,6 +14,8 @@ architecture-specific assembly boundary in the working VNTOS build.
 | `os/console.vnt` | VGA text output, cursor, scrolling, combined console, hexadecimal output |
 | `os/ps2.vnt` | polled 8042 keyboard/mouse input and scan-code translation |
 | `os/interrupts.vnt` | VNT-side interrupt dispatch and fatal exception policy |
+| `os/kernel/device_irq.vnt` | Bounds-checked accounting for legacy IRQ lines 0–15 |
+| `os/pic.vnt` | Legacy 8259 PIC mask controls; not a handler registry |
 | `os/arch/x86_64/boot.S` | Multiboot2 bootstrap and transition into 64-bit mode |
 | `os/arch/x86_64/interrupts.S` | IDT setup, CPU entry/exit, PIC remapping and PIT setup |
 
@@ -57,8 +59,10 @@ ABI boundary.
 Shared state and CPU halt/reboot primitives are isolated in `os/kernel/core.vnt`. This is a source boundary only: the current assembly-backed state access still depends on compiler-specific stack offsets.
 
 Now trace the timer path: `os/arch/x86_64/interrupts.S` enters the CPU-defined
-frame, `os/interrupts.vnt` handles vector 32, and the shell reads the counter
-when the `irq` command is executed. The counter is not a scheduler.
+frame, `os/interrupts.vnt` classifies vectors 32–47, and `os/kernel/device_irq.vnt`
+records the IRQ count. Vector 32 additionally increments the named timer count;
+the shell reads both through `irq`. The counter is not a scheduler. `os/pic.vnt`
+can mask or unmask a legacy PIC line, but it does not create a safe device handler.
 
 ## Build and verify
 

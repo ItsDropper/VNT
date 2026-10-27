@@ -43,9 +43,8 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Mitä käyttöjärjestelmä tekee?](01-what-is-an-os.md) · [Seuraava oppitunti: Valmistele kehitysympäristö →](03-setup.md)
 
-## Koodiesimerkki: virtuaaliosoitteen tarkistus
+## Koodiesimerkki: tarkista sivutaulun present-bitti
 
 ```vnt
 fun virt_translate(address: i64) -> i64 {
@@ -54,15 +53,24 @@ fun virt_translate(address: i64) -> i64 {
     }
     let directory: i64 = virt_page_directory_base()
     let directory_index: int = (address / 2097152) % 512
-    // Nykyinen toteutus jatkaa PDE:n lukemiseen ja validointiin.
-    return address
+    let pde: i64 = 0
+    unsafe {
+        pde = mem_read_u64(directory, directory_index * 8)
+    }
+    if pde % 2 == 0 {
+        return -1
+    }
+    if (pde / 128) % 2 == 1 {
+        let base: i64 = pde - (pde % 2097152)
+        return base + (address % 2097152)
+    }
+    // Varsinainen funktio jatkaa tästä 4 KiB:n PTE:n käsittelyyn.
 }
 ```
 
-Esimerkki näyttää nykyisen virt.vnt-moduulin todelliset rajat ja indeksin laskennan, mutta viimeinen return address on vain katkelman havainnollistava täyte eikä korvaa koko käännösalgoritmia. Varsinaisessa toteutuksessa tarkista PDE/PTE:n present-bitti ja laske fyysinen osoite sivun koon ja offsetin perusteella. Osoiteavaruus ei ole sama asia kuin I/O-portti.
+Tämä on nykyisen `os/mm/virt.vnt`-tiedoston funktio-ote; koodilohko näyttää rajatarkistuksen, PDE:n lukemisen ja 2 MiB:n sivun käsittelyn. Täysi funktio jatkaa 4 KiB:n sivutaulun kautta, jos PDE ei kuvaa suurta sivua. Ote on tarkoitettu lähdekoodin lukemiseen, ei koko funktion korvaajaksi.
 
-**Tee itse:** Avaa koko os/mm/virt.vnt-funktio. Jäljitä osoitteelle 0x10000000 hakemiston indeksi ja sivun offset. Vertaa tulosta virt_translate(0x10000000)-kutsuun kernelin alustuksessa.
-
+**Tee itse:** Jäljitä koko `virt_translate`-funktiota. Selvitä, miten se käsittelee 4 KiB:n PTE:n, puuttuvan kartoituksen ja sivun sisäisen offsetin.
 
 ## Toteutuslaboratorio: CPU, portit, muisti ja osoitteet
 
@@ -128,3 +136,7 @@ Tämä osio täydentää käsitteitä käytännön toteutusmenettelyllä. Lähde
 ### Muutosraportti
 
 Kirjoita muistiin: (1) tiedostot, joita muutit, (2) uuden toiminnon sopimus, (3) tarkka build-tulos, (4) QEMU-havainto, (5) testatut virhepolut ja (6) rajoitukset, joita et ratkaissut. Tämä raportti on osa toteutusta, ei ylimääräistä paperityötä.
+
+---
+
+[← Edellinen oppitunti](./01-what-is-an-os.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./03-setup.md)

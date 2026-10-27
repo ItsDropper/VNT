@@ -47,11 +47,11 @@ fun virt_probe(address: i64) -> int {
     return result
 }
 
-# Controlled QEMU test: temporarily remap 0x10000000 to an allocated frame,
+# Controlled QEMU test: temporarily remap 268435456 to an allocated frame,
 # write/read a sentinel through the virtual address, then restore identity
 # translation before returning. The split page-table frame remains reserved.
 fun virt_self_test() -> int {
-    let target: i64 = 0x10000000
+    let target: i64 = 268435456
     let before: int = phys_count_free_pages()
     if virt_translate(target) != target {
         return 0

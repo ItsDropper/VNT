@@ -7,7 +7,9 @@
 import "phys.vnt"
 
 fun virt_page_directory_base() -> i64 {
-    unsafe { return symbol_address("page_directory") }
+    unsafe {
+        return symbol_address("page_directory")
+    }
 }
 
 fun virt_translate(address: i64) -> i64 {
@@ -49,10 +51,14 @@ fun virt_map_page(virtual_address: i64, physical_address: i64, flags: int) -> in
         let huge_base: i64 = pde - (pde % 2097152)
         let i: int = 0
         while i < 512 {
-            unsafe { mem_write_u64(new_table, i * 8, huge_base + i * 4096 + 3) }
+            unsafe {
+                mem_write_u64(new_table, i * 8, huge_base + i * 4096 + 3)
+            }
             i = i + 1
         }
-        unsafe { mem_write_u64(directory, directory_index * 8, new_table + 3) }
+        unsafe {
+            mem_write_u64(directory, directory_index * 8, new_table + 3)
+        }
         if phys_reserve_allocated_page(new_table) != 1 {
             return 0
         }

@@ -1,24 +1,12 @@
 # Build VNTOS: A Beginner's Operating-System Course
 
-**Goal:** understand, build, boot, inspect, and safely extend the real VNTOS
-kernel in `os/`. This course starts at the bootloader and ends with a modular
-VNT kernel that handles CPU exceptions and a periodic timer interrupt.
+**Goal:** understand, build, boot, inspect, and safely extend the real VNTOS kernel in `os/`. The course follows the current implementation rather than treating planned features as completed.
 
-This is a practical course, not a claim that VNTOS is a finished desktop OS.
-The current kernel has a Multiboot2 bootstrap, a 1 GiB initial identity map,
-a VNT serial/VGA console, polled PS/2 input, an IDT, fatal exception reporting,
-and a PIT timer IRQ. It also parses the Multiboot2 memory map and has a bounded
-physical page-frame allocator. It does **not** have a scheduler, userspace,
-filesystem, general heap allocator, virtual-memory manager, or general
-device-driver framework.
+VNTOS is an experimental x86-64 learning kernel. It has a Multiboot2 bootstrap and initial 1-GiB identity map, VNT serial/VGA console, polled PS/2 input, IDT and exception handling, PIT/PIC timer interrupts, a bounded physical page-frame allocator, early virtual-memory mapping/probing, ACPI/MADT discovery, Local APIC setup, AP startup, and a fixed-vector APIC IPI test. It does **not** yet have a scheduler, process isolation, ring-3 execution, a filesystem, a general heap, or a generally SMP-safe allocator.
 
 ## Who this is for
 
-No prior OS-development experience is required. Basic terminal use helps.
-Read the early lessons in order: later lessons depend on concepts introduced
-earlier. Every implementation lesson points to the real files, explains the
-reason for each boundary, gives exact commands, and includes a check you can
-perform instead of relying on a vague claim that it works.
+No prior OS-development experience is required. Basic terminal use helps. Read lessons in order: later lessons depend on concepts introduced earlier. Implementation lessons point to the real files, explain design decisions and failure cases, and provide commands and observable checks.
 
 ## Safety and working rules
 
@@ -27,19 +15,17 @@ perform instead of relying on a vague claim that it works.
 - Run build commands from the repository root unless a lesson says otherwise.
 - Inspect the first build error. Later linker errors can be consequences.
 - A successful compile is not proof of a successful boot or interrupt.
-- The current VNT freestanding compiler subset is experimental. If the course
-  and the source disagree, the source and current CI behavior win.
+- The freestanding VNT compiler subset is experimental. If course text and source disagree, source and current CI behavior win.
 - Make one change at a time and retain a recoverable Git branch.
 
 ## How to study a lesson
 
 1. Read the goal and vocabulary.
-2. Open the exact source file named by the lesson.
-3. Trace the call path before editing.
-4. Run the command shown and compare the observed output with the expectation.
-5. Answer the checkpoint in your own words.
-6. Make the exercise change only after you can explain its failure modes.
-7. Rebuild and boot in QEMU; inspect GitHub Actions for the corresponding run.
+2. Open the exact source files named by the lesson and trace the call path.
+3. Run the stated build/test commands and compare the observed output with the expectation.
+4. Answer the checkpoint in your own words.
+5. Change code only after you can explain its failure modes.
+6. Rebuild, boot in QEMU, and inspect the relevant GitHub Actions run.
 
 ## Course map
 
@@ -68,111 +54,51 @@ perform instead of relying on a vague claim that it works.
 18. [Make your first kernel change](17-first-kernel-change.md)
 19. [What comes next?](18-next-steps.md)
 
-### Phase 4 — A real modular kernel and interrupts
+### Phase 4 — A modular kernel and interrupts
 20. [Split the kernel into VNT modules](19-split-the-kernel-into-vnt-modules.md)
 21. [Interrupts, exceptions, and the IDT](20-interrupts-and-the-idt.md)
 22. [The small assembly boundary](21-minimal-assembly-entry-stubs.md)
 23. [Keep interrupt policy in VNT](22-vnt-interrupt-dispatch.md)
 24. [The PIT, PIC, and timer ticks](23-pit-pic-and-timer-ticks.md)
 25. [Build and verify the interrupt kernel](24-build-and-test-the-interrupt-kernel.md)
-### Phase 5 — Physical memory and final project
+
+### Phase 5 — Memory management
 26. [Physical memory and page frames](26-physical-memory-and-page-frames.md)
 27. [Graduation project: improve a subsystem](25-graduation-project.md)
 
-## What you should be able to do at the end
-
-You should be able to explain the complete path from GRUB to `kernel_main`,
-follow imports from `kernel.vnt` into core, shell, and device modules, describe why the IDT
-and interrupt-entry assembly exist, trace IRQ0 from the PIT through the IDT
-and VNT dispatcher back to `iretq`, run the `irq` command, and produce
-evidence that the kernel still builds and boots.
+### Phase 6 — Firmware, SMP, and synchronization
+28. [ACPI, APIC, and the road to SMP](27-acpi-apic-and-smp.md)
+29. [Fixed-vector APIC IPIs](28-apic-ipi-service.md)
+30. [SMP safety: synchronization before shared memory](29-smp-synchronization-contract.md)
 
 ## Source map
 
 | File | Responsibility |
 | --- | --- |
-| `os/arch/x86_64/boot.S` | Multiboot2 header, early stack, paging, long-mode transition |
-| `os/arch/x86_64/interrupts.S` | IDT, entry stubs, PIC/PIT setup, `iretq` boundary |
+| `os/arch/x86_64/boot.S` | Multiboot2 header, early stack, initial paging, long-mode transition, AP startup support |
+| `os/arch/x86_64/interrupts.S` | IDT gate construction, minimal interrupt entry/exit, PIC/PIT setup |
 | `os/arch/x86_64/memory.S` | Bounded Multiboot2 memory-map and physical bitmap primitives |
-| `os/arch/x86_64/memory.S` | Bounded Multiboot2 memory-map and physical bitmap primitives |
-| `os/arch/x86_64/README.md` | Architecture ownership and explicit limitations |
-| `os/kernel.vnt` | Kernel entry and ordered subsystem initialization |
-| `os/kernel/core.vnt` | Early shared-state access, kernel bounds, CPU halt/reboot |
-| `os/kernel/shell.vnt` | Shell input loop, command parsing, line editing |
-| `os/serial.vnt` | COM1 UART driver |
-| `os/console.vnt` | VGA text output and combined console |
-| `os/ps2.vnt` | Polled keyboard and mouse input |
-| `os/interrupts.vnt` | VNT exception/IRQ dispatch policy |
-| `os/mm/phys.vnt` | Physical page-frame allocation, reservation, and statistics |
-| `os/mm/phys.vnt` | Physical page-frame allocation, reservation, and statistics |
-| `os/linker.ld` | ELF section layout and symbols |
-| `os/grub.cfg` | GRUB Multiboot2 configuration |
-| `os/build.sh` | Compiler, assembler, linker, and ISO pipeline |
+| `os/arch/x86_64/virtual_memory.S` | Early page-table operations and translation primitives |
+| `os/arch/x86_64/ap_trampoline.S` | Low-memory secondary-CPU startup trampoline |
+| `os/firmware/acpi.vnt` | ACPI tables and MADT CPU/controller discovery |
+| `os/arch/x86_64/apic.vnt` | Local APIC and I/O APIC policy in VNT |
+| `os/kernel/smp.vnt` | AP startup, online bookkeeping, fixed-vector IPI test |
+| `os/kernel.vnt` | Ordered initialization and top-level kernel flow |
+| `os/kernel/core.vnt` | Shared-state access, timer ticks, CPU halt/reboot primitives |
+| `os/kernel/shell.vnt` | Shell command parsing and input loop |
+| `os/interrupts.vnt` | VNT-side exception and IRQ dispatch policy |
+| `os/mm/phys.vnt` | Bounded physical page-frame allocator |
+| `os/mm/virt.vnt` | Early virtual translation/mapping policy and self-test |
+| `.github/workflows/vntos-boot.yml` | Build, compiler-codegen checks, and QEMU shell/boot assertions |
 
 ## Build tooling note: VBuild
 
-VBuild is the native build driver for ordinary VNT projects. Its current
-freestanding `elf` target does not link this mixed kernel with both assembly
-objects, the custom `os/linker.ld`, and the GRUB ISO layout. The authoritative
-kernel build remains:
+The authoritative VNTOS build remains:
 
 ```sh
 bash os/build.sh
 ```
 
-Do not claim that `vbuild build` creates the VNTOS boot image. Read
-[`docs/VBUILD.md`](../../../VBUILD.md) for VBuild's supported targets and
-limits; use the kernel-specific pipeline for the actual OS.
+The generic VBuild `elf` target does not replace this mixed VNT/assembly kernel pipeline with its custom linker script and GRUB ISO packaging. See [VBuild documentation](../../../VBUILD.md) for supported targets and limitations.
 
 Start with [Lesson 00](00-start-here.md).
-
-## How to turn a lesson into a real code change
-
-For each implementation lesson, use this repeatable workflow:
-
-1. **Read the current implementation.** Open the named file in the `os/` directory and follow its callers and callees. Do not rely on a copied snippet if the repository has moved on.
-2. **State the invariant.** Examples: the IDT base points to a complete table; the shell never writes beyond its input buffer; the timer handler does not block; the page-table entries cover code needed after paging is enabled.
-3. **Define the observation.** Decide exactly what you expect to see in the build output, ELF metadata, QEMU window, or serial transcript.
-4. **Change one contract.** Keep unrelated cleanup out of the same patch.
-5. **Build from the repository root.** Use `bash os/build.sh`, not a stale generated object or a guessed compiler command.
-6. **Inspect the artifact.** Use `file`, `readelf`, `nm`, and the Multiboot2 check when relevant to the claim.
-7. **Boot in QEMU.** Use the documented command and test the specific behavior plus one existing behavior.
-8. **Review and report.** Run `git diff --check`, inspect the full diff, and record what actually happened.
-
-If a step fails, preserve the first failure and stop. Do not continue to later steps with stale artifacts and then report the overall experiment as successful.
-
-## Evidence vocabulary
-
-Use precise status words in notes and pull requests:
-
-- **Built:** the relevant compile/link command exited successfully.
-- **Validated:** a specific structural check passed, such as the Multiboot2 header check.
-- **Booted:** QEMU executed far enough to reach the observed marker or prompt.
-- **Exercised:** the new behavior was invoked.
-- **Verified:** the test actually checked the claimed property.
-- **Unverified:** the test was not run, did not assert the property, or its result is still pending.
-
-For example, "the `irq` command prints a count" is weaker than "two readings showed the timer counter increasing." Neither statement should be made unless those observations were actually recorded.
-
-## Course completion deliverable
-
-At the end, keep a short technical report with the subsystem diagram, the invariant you changed or preserved, the exact source files involved, the build and QEMU commands, the observed output, the relevant CI run, and the remaining limitations. Include a short explanation of why the assembly boundary remains minimal and which behavior is owned by VNT.
-
-This report is part of the learning goal: kernel development requires not only making a change but being able to explain its assumptions and demonstrate that it works.
-
-## Worked trace: from a shell command to hardware state
-
-The `irq` command is a compact example that crosses the course's main boundaries:
-
-1. The shell in `os/kernel/shell.vnt` recognizes the text `irq`.
-2. It reads shared state slot 11 and passes the value to `console_hex`.
-3. The timer interrupt entry in `os/arch/x86_64/interrupts.S` saves registers and calls the emitted VNT dispatcher symbol.
-4. `os/interrupts.vnt` handles vector 32 by incrementing slot 11 and returning quickly.
-5. The assembly entry acknowledges the PIC, restores registers, and executes `iretq`.
-6. The shell later displays the updated counter in ordinary kernel context.
-
-Trace both directions: command-to-output and hardware-event-to-state. This demonstrates why the VNT dispatcher does not print on every tick and why the shell does not need to know the PIC's port addresses.
-
-The shared state array is a compact teaching mechanism, not a finished type-safe kernel API. A future improvement would give the timer count a named interface and define how concurrent reads and writes are synchronized. Do not claim the current design already provides a general concurrency abstraction.
-
-- [28. Fixed-vector APIC IPIs](28-apic-ipi-service.md) — shared IDT loading on APs, local APIC setup, fixed-vector delivery, and response-counter verification.

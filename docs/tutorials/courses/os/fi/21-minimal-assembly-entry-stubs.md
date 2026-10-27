@@ -44,3 +44,68 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Keskeytykset, poikkeukset ja IDT](20-interrupts-and-the-idt.md) · [Seuraava oppitunti: Käsittele keskeytyksiä VNT-kielellä →](22-vnt-interrupt-dispatch.md)
+
+## Toteutuslaboratorio: Pieni assembly-rajapinta
+
+Tämä harjoitus edellyttää lähdekoodin lukemista ja toteutuksen todentamista.
+
+**Tutkittavat tiedostot:** `os/arch/x86_64/interrupts.S`, `os/arch/x86_64/boot.S`
+
+**Tavoite:** Pidä assemblyssä vain CPU:n ja ABI:n vaatima mekanismi. Älä siirrä kernelin politiikkaa assembly-makroihin. Dokumentoi pinon muoto tarkasti.
+
+### Toteutus vaiheittain
+
+1. **Rajaa vastuu:** Etsi mikä osa vaatii käskyjä, joita VNT ei voi turvallisesti ilmaista.
+   - Kirjaa lähdekoodin kohta, joka todistaa havainnon.
+   - Tarkista, että kutsuja ja kutsuttava käyttävät samaa sopimusta.
+
+2. **Etsi nykyinen toteutus:** Määritä VNT:n odottama kehys ja järjestä pinon kentät täsmälleen siihen.
+   - Kirjaa lähdekoodin kohta, joka todistaa havainnon.
+   - Tarkista, että kutsuja ja kutsuttava käyttävät samaa sopimusta.
+
+3. **Kirjaa sopimus:** Varmista rekisterien tallennus ja palautus symmetrisesti.
+   - Kirjaa lähdekoodin kohta, joka todistaa havainnon.
+   - Tarkista, että kutsuja ja kutsuttava käyttävät samaa sopimusta.
+
+4. **Tee pienin muutos:** Tarkista stack alignment ennen jokaista ulkoista kutsua.
+   - Kirjaa lähdekoodin kohta, joka todistaa havainnon.
+   - Tarkista, että kutsuja ja kutsuttava käyttävät samaa sopimusta.
+
+5. **Tarkista riippuvuudet:** Varmista ettei red zone ole käytössä ja että käännös käyttää -mno-red-zone.
+   - Kirjaa lähdekoodin kohta, joka todistaa havainnon.
+   - Tarkista, että kutsuja ja kutsuttava käyttävät samaa sopimusta.
+
+6. **Käännä:** Testaa yksi stub ja vertaa pinon rakennetta debuggerilla tai lähdekoodin laskelmalla.
+   - Kirjaa lähdekoodin kohta, joka todistaa havainnon.
+   - Tarkista, että kutsuja ja kutsuttava käyttävät samaa sopimusta.
+
+### Rajapinta- ja turvallisuustarkistus
+
+- Varmista, että vektori, pino, rekisterit ja paluuarvo ovat täsmälleen sovitussa muodossa.
+- Tarkista kaikki rajat ennen kuin luet muistia tai kirjoitat laitteistorekisteriin.
+- Erota CPU:n vaatima assembly VNT:n politiikasta.
+- Määritä virhetilanne: diagnoosi, hallittu pysäytys tai turvallinen ohitus.
+- Tarkista, ettei uusi haara tee työtä, joka voi odottaa keskeytyksen jälkeen.
+- Dokumentoi ominaisuudet, joita tämä muutos ei vielä toteuta.
+
+### Todennus
+
+1. Kirjoita odotettu vektori ja tulos ennen muutosta.
+2. Suorita `bash os/build.sh` projektin juuressa.
+3. Tarkista ensimmäinen epäonnistunut build-vaihe.
+4. Tarkista symbolit ja linkitetyt objektit, jos muutat ABI:a.
+5. Käynnistä QEMU:ssa ja tallenna sarjaportin tuloste.
+6. Testaa normaali vektori, rajavektori ja virhepolku.
+7. Älä ilmoita testausta läpäistyksi ilman havaintoa.
+
+### Tavalliset virheet
+
+- Väärä stub-tyyppi siirtää pinon kentät.
+- Rekisteri jää tallentamatta tai palautetaan väärässä järjestyksessä.
+- EOI puuttuu tai tehdään kahdesti.
+- IDT-portti osoittaa väärään symboliin.
+- Keskeytyskäsittelijä jää odottamaan laitetta tai tekee pitkän tulostuksen.
+
+### Muutosraportti
+
+Kirjaa muutos, rajapintasopimus, build-tulos, QEMU-havainto, testatut vektorit ja avoimet rajoitukset.

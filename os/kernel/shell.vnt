@@ -77,6 +77,11 @@ fun shell_run() {
             continue
         }
         if character == 13 || character == 10 {
+            # Finish the visible line before advancing to the next prompt line.
+            while cursor < length {
+                console_putc(buffer[cursor])
+                cursor = cursor + 1
+            }
             buffer[length] = 0
             console_puts("\r\n")
             handled = 0

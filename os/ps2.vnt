@@ -237,7 +237,20 @@ fun keyboard_poll() -> int {
         asm volatile("movw $0x60, %dx; inb %dx, %al; movzbl %al, %eax; movq %rax, -8(%rbp)")
     }
     scan = status
+    # Extended Set 1 keys begin with E0. Consume the prefix and translate
+    # navigation keys on the following make code; key releases are ignored.
+    if state_get(177) == 1 {
+        state_set(177, 0)
+        if scan == 0x48 {
+            return 257
+        }
+        if scan == 0x50 {
+            return 258
+        }
+        return 256
+    }
     if scan == 0xe0 {
+        state_set(177, 1)
         return 256
     }
     if scan >= 0x80 {

@@ -16,6 +16,8 @@ interrupt entry are deliberately split from the VNT policy code.
 - `os/serial.vnt`: COM1 UART setup and polling I/O.
 - `os/console.vnt`: VGA text output and the combined VGA/serial console.
 - `os/ps2.vnt`: polled PS/2 keyboard and mouse routines.
+- `os/pic.vnt`: VNT-side legacy PIC IRQ mask controls; IRQ entry and EOI remain in assembly.
+- `os/kernel/device_irq.vnt`: bounded accounting for legacy IRQ vectors 32–47; this is not yet a handler registry.
 - `os/interrupts.vnt`: VNT-side interrupt dispatch and fatal exception policy.
 - `os/linker.ld`: ELF layout and linker symbols.
 - `os/grub.cfg`: GRUB's Multiboot2 kernel configuration.
@@ -55,9 +57,10 @@ qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -serial stdio
 ```
 
 Commands: `help`, `about`, `clear`, `echo TEXT`, `mem`, `irq`,
-`mouse`, `reboot`, and `halt`. The `irq` command reports the count of
-PIT timer interrupts delivered since initialization. Run it twice with a
-delay between commands; the count should increase.
+`mouse`, `reboot`, and `halt`. The `irq` command reports the PIT tick count
+and the legacy IRQ0/IRQ1 accounting counters. Only IRQ0 is expected to advance
+with the current mask configuration; IRQ1 remains masked because keyboard
+input is polled.
 
 ## Interrupt architecture
 
@@ -69,17 +72,14 @@ the general-purpose registers, normalizes the vector/error-code stack shape,
 calls `interrupt_dispatch` in VNT, acknowledges hardware IRQs, restores the
 registers, and returns with `iretq`.
 
-The VNT dispatcher calls `kernel_timer_tick()` in `os/kernel/core.vnt` to increment the shared tick counter for vector 32; the shell reads it through `kernel_timer_ticks()`. CPU
-exceptions are reported and halted rather than incorrectly resumed. The
-keyboard and mouse are **still polled**: IRQ1 and the other PIC lines remain
-masked. Do not unmask a device interrupt until its handler and data-ownership
-model are implemented.
+The VNT dispatcher routes vectors 32–47 through `device_irq_record()` in `os/kernel/device_irq.vnt`. IRQ0 also calls `kernel_timer_tick()` in `os/kernel/core.vnt`; the shell reads the named tick API and per-IRQ counters. `os/pic.vnt` exposes legacy PIC mask controls, and kernel startup explicitly keeps IRQ1 masked. CPU exceptions are reported and halted rather than incorrectly resumed. Keyboard and mouse input are **still polled**. Do not unmask a device interrupt until its handler and data-ownership model are implemented.
 
 ## Current architecture boundary
 
-`arch/x86_64/` now owns the boot entry and the IDT/interrupt/PIC/PIT assembly
-implementation. Generic interrupt policy remains in `interrupts.vnt`, and
-the existing shell and device routines retain their behavior. Kernel entry now owns initialization order, while core primitives and shell policy live in `os/kernel/core.vnt` and `os/kernel/shell.vnt`. This
+`arch/x86_64/` owns the boot entry and the IDT/interrupt entry/EOI/PIT setup.
+VNT-side policy is split between `interrupts.vnt`, `kernel/device_irq.vnt`,
+and `pic.vnt`; the latter changes PIC masks but does not install handlers.
+The existing shell and device routines retain their behavior. Kernel entry now owns initialization order, while core primitives and shell policy live in `os/kernel/core.vnt` and `os/kernel/shell.vnt`. This
 is a source/build boundary, not yet a fully abstract architecture interface:
 the VNT compiler currently flattens imported modules into one compilation
 unit, and some low-level VNT functions use compiler-specific stack offsets.

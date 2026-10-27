@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Rakenna ja testaa keskeytyskernel](24-build-and-test-the-interrupt-kernel.md) · [Seuraava oppitunti: Loppuprojekti: tee todennettava parannus →](25-graduation-project.md)
 
 ## Koodiesimerkki: validoi Multiboot2-muistitiedon rajat
 
@@ -133,3 +132,7 @@ Tässä osiossa rakennat tai validoit konkreettisen osan nykyisestä VNTOS-kerne
 ### Muutosraportti
 
 Kirjaa muutetut tiedostot, rajapinta, hyväksymiskriteeri, build-tulos, QEMU-havainto, negatiiviset testit ja jäljelle jääneet rajoitukset.
+
+---
+
+[← Edellinen oppitunti](./25-graduation-project.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./27-acpi-apic-and-smp.md)

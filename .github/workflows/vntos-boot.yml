@@ -91,6 +91,7 @@ jobs:
           python3 - <<'PY'
           import socket
           import time
+          import re
 
           serial = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
           serial.settimeout(0.15)
@@ -230,6 +231,19 @@ jobs:
           missing = [item for item in required if item not in transcript]
           if missing:
               raise SystemExit("Missing shell output: " + ", ".join(missing))
+          decimal_labels = [
+              "Timer ticks (decimal):",
+              "Approximate uptime seconds (decimal):",
+              "Usable 4-KiB pages (decimal):",
+              "Free 4-KiB pages (decimal):",
+              "IRQ0 count (decimal):",
+              "IRQ1 count (decimal):",
+          ]
+          for label in decimal_labels:
+              if not re.search(re.escape(label) + r"\\s*[0-9]+", transcript):
+                  raise SystemExit("Expected decimal digits after: " + label)
+          if re.search(r"Approximate uptime seconds \(decimal\):\\s*0x", transcript):
+              raise SystemExit("Uptime seconds unexpectedly formatted as hexadecimal")
           PY
           grep -F 'B1234L' build/debug.log
 

@@ -172,6 +172,17 @@ jobs:
           press("ret")
           drain(0.3)
 
+          # Backspace in the middle: End, move left four places, then remove
+          # the extra first 't' from "echo ttest".
+          for key in "echo ttest":
+              press(key)
+          press("end")
+          for _ in range(4):
+              press("left")
+          press("backspace")
+          press("ret")
+          drain(0.3)
+
           # Up-arrow must recall the prior command into the live input buffer.
           press("up")
           press("ret")

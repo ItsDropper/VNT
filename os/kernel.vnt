@@ -48,6 +48,14 @@ fun kernel_main() {
             if smp_start_aps() == 1 {
                 console_puts("Secondary CPU startup: PASS. Online CPUs: ")
                 console_hex(smp_online_cpu_count())
+                let ipi_responses: int = smp_test_ipis()
+                if ipi_responses == smp_online_cpu_count() - 1 {
+                    console_puts("APIC IPI self-test: PASS. AP responses: ")
+                    console_hex(ipi_responses)
+                } else {
+                    console_puts("APIC IPI self-test: FAIL. AP responses: ")
+                    console_hex(ipi_responses)
+                }
             } else {
                 console_puts("Secondary CPU startup: FAIL. Online CPUs: ")
                 console_hex(smp_online_cpu_count())

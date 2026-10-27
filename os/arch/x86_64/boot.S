@@ -313,5 +313,37 @@ vntos_state:
     .quad 0       /* SMP CPU state 141 */
     .quad 0       /* SMP CPU state 142 */
     .quad 0       /* SMP CPU state 143 */
+    .quad 0       /* SMP IPI/CPU state 144 */
+    .quad 0       /* SMP IPI/CPU state 145 */
+    .quad 0       /* SMP IPI/CPU state 146 */
+    .quad 0       /* SMP IPI/CPU state 147 */
+    .quad 0       /* SMP IPI/CPU state 148 */
+    .quad 0       /* SMP IPI/CPU state 149 */
+    .quad 0       /* SMP IPI/CPU state 150 */
+    .quad 0       /* SMP IPI/CPU state 151 */
+    .quad 0       /* SMP IPI/CPU state 152 */
+    .quad 0       /* SMP IPI/CPU state 153 */
+    .quad 0       /* SMP IPI/CPU state 154 */
+    .quad 0       /* SMP IPI/CPU state 155 */
+    .quad 0       /* SMP IPI/CPU state 156 */
+    .quad 0       /* SMP IPI/CPU state 157 */
+    .quad 0       /* SMP IPI/CPU state 158 */
+    .quad 0       /* SMP IPI/CPU state 159 */
+    .quad 0       /* SMP IPI/CPU state 160 */
+    .quad 0       /* SMP IPI/CPU state 161 */
+    .quad 0       /* SMP IPI/CPU state 162 */
+    .quad 0       /* SMP IPI/CPU state 163 */
+    .quad 0       /* SMP IPI/CPU state 164 */
+    .quad 0       /* SMP IPI/CPU state 165 */
+    .quad 0       /* SMP IPI/CPU state 166 */
+    .quad 0       /* SMP IPI/CPU state 167 */
+    .quad 0       /* SMP IPI/CPU state 168 */
+    .quad 0       /* SMP IPI/CPU state 169 */
+    .quad 0       /* SMP IPI/CPU state 170 */
+    .quad 0       /* SMP IPI/CPU state 171 */
+    .quad 0       /* SMP IPI/CPU state 172 */
+    .quad 0       /* SMP IPI/CPU state 173 */
+    .quad 0       /* SMP IPI/CPU state 174 */
+    .quad 0       /* SMP IPI/CPU state 175 */
 
 .section .note.GNU-stack,"",@progbits

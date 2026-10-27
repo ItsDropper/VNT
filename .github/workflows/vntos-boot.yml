@@ -163,6 +163,7 @@ jobs:
               "Discovered CPUs: 0x",
               "Online CPUs: 0x",
               "Secondary CPU startup: PASS",
+              "APIC IPI self-test: PASS. AP responses: 0x0000000000000003",
               "Online CPUs: 0x0000000000000004",
               "Usable 4-KiB pages: 0x",
               "Free 4-KiB pages: 0x",

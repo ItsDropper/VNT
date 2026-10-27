@@ -82,6 +82,7 @@ ISR_NOERR 44
 ISR_NOERR 45
 ISR_NOERR 46
 ISR_NOERR 47
+ISR_NOERR 240
 
 default_interrupt_stub:
     pushq $0
@@ -199,6 +200,22 @@ vntos_interrupts_init:
 
     lidt idt_pointer(%rip)
 
+    /* Vector 240 is the fixed IPI service vector used by the SMP test. */
+    leaq idt_table(%rip), %rdi
+    addq $3840, %rdi
+    leaq isr240(%rip), %rdx
+    movw %dx, 0(%rdi)
+    movw $0x08, 2(%rdi)
+    movb $0, 4(%rdi)
+    movb $0x8e, 5(%rdi)
+    movq %rdx, %rax
+    shrq $16, %rax
+    movw %ax, 6(%rdi)
+    movq %rdx, %rax
+    shrq $32, %rax
+    movl %eax, 8(%rdi)
+    movl $0, 12(%rdi)
+
     /* Remap the 8259 PIC away from CPU exception vectors 0..31. */
     movb $0x11, %al
     outb %al, $0x20
@@ -231,6 +248,13 @@ vntos_interrupts_init:
     sti
     ret
 .size vntos_interrupts_init, .-vntos_interrupts_init
+
+.global vntos_load_idt
+.type vntos_load_idt,@function
+vntos_load_idt:
+    lidt idt_pointer(%rip)
+    ret
+.size vntos_load_idt, .-vntos_load_idt
 
 .section .rodata
 .balign 8

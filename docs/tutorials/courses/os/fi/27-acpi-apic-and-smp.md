@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Loppuprojekti: tee todennettava parannus](25-graduation-project.md) · [Seuraava oppitunti: APIC IPI -viestit →](28-apic-ipi-service.md)
 
 ## Koodiesimerkki: tarkista ACPI-taulun checksum
 
@@ -130,3 +129,7 @@ Tässä osiossa rakennat tai validoit konkreettisen osan nykyisestä VNTOS-kerne
 ### Muutosraportti
 
 Kirjaa muutetut tiedostot, rajapinta, hyväksymiskriteeri, build-tulos, QEMU-havainto, negatiiviset testit ja jäljelle jääneet rajoitukset.
+
+---
+
+[← Edellinen oppitunti](./26-physical-memory-and-page-frames.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./28-apic-ipi-service.md)

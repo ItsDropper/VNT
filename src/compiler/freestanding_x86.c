@@ -139,6 +139,49 @@ static int emit_expression(FreestandingGen *g, size_t index) {
     const VntIrNode *n = &g->ir->nodes[index];
     switch (n->opcode) {
     case VNT_IR_CALL: {
+        /* Freestanding raw-memory and CPU intrinsics emit native instructions.
+           Their unsafe boundary is enforced by typecheck.c. */
+        if (n->value.text &&
+            (!strcmp(n->value.text, "mem_read_u8") ||
+             !strcmp(n->value.text, "mem_read_u32") ||
+             !strcmp(n->value.text, "mem_read_u64") ||
+             !strcmp(n->value.text, "mem_write_u8") ||
+             !strcmp(n->value.text, "mem_write_u32") ||
+             !strcmp(n->value.text, "mem_write_u64") ||
+             !strcmp(n->value.text, "cpu_read_cr2") ||
+             !strcmp(n->value.text, "cpu_invlpg"))) {
+            const char *name = n->value.text;
+            int read_cr2 = !strcmp(name, "cpu_read_cr2");
+            int invlpg = !strcmp(name, "cpu_invlpg");
+            int is_read = !strncmp(name, "mem_read_", 9);
+            int width = strstr(name, "u8") ? 8 : strstr(name, "u32") ? 32 : 64;
+            size_t argc = read_cr2 ? 0 : invlpg ? 1 : is_read ? 2 : 3;
+            if (n->child_count != argc) { fail(g, "raw-memory intrinsic has incorrect arity."); return 0; }
+            if (read_cr2) { fputs("    movq %cr2, %rax\n", g->out); return 1; }
+            static const char *regs[] = {"%rdi", "%rsi", "%rdx"};
+            size_t area = ((argc + 1) & ~(size_t)1) * 8;
+            if (area) fprintf(g->out, "    subq $%zu, %%rsp\n", area);
+            size_t ai = 0;
+            for (size_t c = n->first_child; c != VNT_IR_NO_NODE; c = g->ir->nodes[c].next_sibling) {
+                if (g->ir->nodes[c].role != VNT_IR_EDGE_ARGUMENT) continue;
+                if (!emit_expression(g, c)) return 0;
+                fprintf(g->out, "    movq %%rax, %zu(%%rsp)\n", ai++ * 8);
+            }
+            for (size_t i = 0; i < argc; ++i) fprintf(g->out, "    movq %zu(%%rsp), %s\n", i * 8, regs[i]);
+            if (invlpg) fputs("    invlpg (%rdi)\n    movl $1, %eax\n", g->out);
+            else if (is_read) {
+                if (width == 8) fputs("    movzbl (%rdi,%rsi), %eax\n", g->out);
+                else if (width == 32) fputs("    movl (%rdi,%rsi), %eax\n", g->out);
+                else fputs("    movq (%rdi,%rsi), %rax\n", g->out);
+            } else {
+                if (width == 8) fputs("    movb %dl, (%rdi,%rsi)\n", g->out);
+                else if (width == 32) fputs("    movl %edx, (%rdi,%rsi)\n", g->out);
+                else fputs("    movq %rdx, (%rdi,%rsi)\n", g->out);
+                fputs("    movl $1, %eax\n", g->out);
+            }
+            if (area) fprintf(g->out, "    addq $%zu, %%rsp\n", area);
+            return 1;
+        }
         if (!n->value.text) { fail(g, "call has no function name."); return 0; }
         const VntIrNode *target = find_function(g->ir, n->value.text);
         if (!target) { fail(g, "call to unknown freestanding function."); return 0; }

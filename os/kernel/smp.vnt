@@ -83,6 +83,7 @@ fun smp_wait_for_online(previous_online: int) -> int {
 
 fun smp_init() -> int {
     state_set(60, 1)
+    state_set(143, 0)
     let index: int = 0
     while index < acpi_cpu_count() && index < 16 {
         state_set(112 + index, 0)
@@ -120,9 +121,11 @@ fun smp_start_aps() -> int {
     # State storage and the trampoline intentionally cap this first SMP step
     # at sixteen MADT processors. Refuse partial startup on larger topologies.
     if discovered > 16 || apic_is_enabled() != 1 {
+        state_set(143, 1)
         return 0
     }
     if smp_prepare_trampoline() != 1 {
+        state_set(143, 2)
         return 0
     }
 
@@ -132,9 +135,11 @@ fun smp_start_aps() -> int {
         if apic_id >= 0 && apic_id != smp_bsp_apic_id() {
             let stack_page: i64 = phys_alloc_page()
             if stack_page == 0 {
+                state_set(143, 3)
                 return 0
             }
             if phys_reserve_allocated_page(stack_page) != 1 {
+                state_set(143, 4)
                 return 0
             }
             let stack_top: i64 = stack_page + 4096
@@ -143,25 +148,31 @@ fun smp_start_aps() -> int {
 
             let previous_online: int = smp_online_cpu_count()
             if apic_send_icr(apic_id, 0xc500) != 1 {
+                state_set(143, 5)
                 return 0
             }
             let tick: int = kernel_timer_ticks()
             if smp_wait_for_tick(tick) != 1 {
+                state_set(143, 6)
                 return 0
             }
             if apic_send_icr(apic_id, 0x8500) != 1 {
+                state_set(143, 7)
                 return 0
             }
             tick = kernel_timer_ticks()
             if smp_wait_for_tick(tick) != 1 {
+                state_set(143, 8)
                 return 0
             }
             if apic_send_icr(apic_id, 0x608) != 1 {
+                state_set(143, 9)
                 return 0
             }
             if smp_wait_for_online(previous_online) != 1 {
                 apic_send_icr(apic_id, 0x608)
                 if smp_wait_for_online(previous_online) != 1 {
+                    state_set(143, 10)
                     return 0
                 }
             }
@@ -169,8 +180,10 @@ fun smp_start_aps() -> int {
         index = index + 1
     }
     if smp_online_cpu_count() == discovered {
+        state_set(143, 0)
         return 1
     }
+    state_set(143, 11)
     return 0
 }
 

@@ -1,0 +1,50 @@
+# Copyright (c) 2026 ItsDropper
+# Licensed under the MIT License. See LICENSE in the repository root.
+#
+# Legacy 8259 PIC mask controls. The IDT/EOI entry path remains in assembly;
+# this module provides policy-level mask operations for future device drivers.
+
+fun pic_disable_irq(irq: int) {
+    if irq < 0 || irq > 15 {
+        return 0
+    }
+
+    if irq < 8 {
+        unsafe {
+            asm volatile("movw $0x21, %dx; inb %dx, %al; movzbl %al, %eax; movl -8(%rbp), %ecx; btsl %ecx, %eax; outb %al, %dx")
+        }
+    } else {
+        unsafe {
+            asm volatile("movw $0xa1, %dx; inb %dx, %al; movzbl %al, %eax; movl -8(%rbp), %ecx; subl $8, %ecx; btsl %ecx, %eax; outb %al, %dx")
+        }
+    }
+    return 0
+}
+
+fun pic_enable_irq(irq: int) {
+    if irq < 0 || irq > 15 {
+        return 0
+    }
+
+    if irq < 8 {
+        unsafe {
+            asm volatile("movw $0x21, %dx; inb %dx, %al; movzbl %al, %eax; movl -8(%rbp), %ecx; btrl %ecx, %eax; outb %al, %dx")
+        }
+    } else {
+        unsafe {
+            asm volatile("movw $0xa1, %dx; inb %dx, %al; movzbl %al, %eax; movl -8(%rbp), %ecx; subl $8, %ecx; btrl %ecx, %eax; outb %al, %dx")
+        }
+        # A slave IRQ requires the master PIC's cascade line (IRQ2).
+        unsafe {
+            asm volatile("movw $0x21, %dx; inb %dx, %al; andb $0xfb, %al; outb %al, %dx")
+        }
+    }
+    return 0
+}
+
+fun pic_disable_all() {
+    unsafe {
+        asm volatile("movw $0x21, %dx; movb $0xff, %al; outb %al, %dx; movw $0xa1, %dx; outb %al, %dx")
+    }
+    return 0
+}

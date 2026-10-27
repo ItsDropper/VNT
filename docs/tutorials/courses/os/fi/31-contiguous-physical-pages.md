@@ -131,4 +131,4 @@ Varaaja kattaa yhä vain ensimmäisen 1 GiB:n identiteettikartoituksen ja käytt
 
 ---
 
-[← Edellinen oppitunti](./30-physical-allocator-next-fit.md) · [Sisällysluettelo](./README.md) · **Kurssi suoritettu.**
+[← Edellinen oppitunti](./30-physical-allocator-next-fit.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./32-reserved-memory-map-precedence.md)

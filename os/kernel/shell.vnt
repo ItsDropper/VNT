@@ -121,6 +121,15 @@ fun shell_run() {
                 handled = 1
             }
             if str_eq(buffer, "dectest") {
+                console_puts("Decimal digit diagnostic values follow (expected 0, 1, 9, 0, 4, 1, -1, -1):\\r\\n")
+                console_decimal(decimal_digit_at(0, 1))
+                console_decimal(decimal_digit_at(10, 10))
+                console_decimal(decimal_digit_at(907, 100))
+                console_decimal(decimal_digit_at(907, 10))
+                console_decimal(decimal_digit_at(1234, 1))
+                console_decimal(decimal_digit_at(1234, 1000))
+                console_decimal(decimal_digit_at(1234, 0))
+                console_decimal(decimal_digit_at(-1, 1))
                 let passed: int = 1
                 if decimal_digit_at(0, 1) != 0 {
                     passed = 0
@@ -164,9 +173,10 @@ fun shell_run() {
             if str_eq(buffer, "atomictest") {
                 let atomic_result: int = smp_atomic_counter_self_test()
                 if atomic_result == 1 {
-                    console_puts("Atomic counter SMP self-test: PASS; CPUs: ")
+                    console_puts("Atomic counter SMP self-test: PASS\\r\\n")
+                    console_puts("Atomic counter CPUs: ")
                     console_decimal(smp_online_cpu_count())
-                    console_puts("; increments per CPU: 1000; total: ")
+                    console_puts("Atomic counter increments per CPU: 1000; total: ")
                     console_decimal(state_get(308))
                     console_puts("\r\n")
                 } else if atomic_result == -1 {

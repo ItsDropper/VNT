@@ -136,6 +136,7 @@ multiboot2_boot_magic: .long 0
 multiboot2_info_ptr: .long 0
 
 /* Physical-frame bitmap storage; bitmap algorithms live in os/mm/phys.vnt. */
+.section .bss
 .balign 4096
 .global vntos_phys_usable_bitmap
 vntos_phys_usable_bitmap:
@@ -149,6 +150,7 @@ vntos_phys_allocated_bitmap:
 vntos_phys_reserved_bitmap:
     .skip 32768
 
+.section .data
 /* Shared scalar state for the VNT-compiled VGA/PS2 drivers. */
 .balign 8
 .global vntos_state

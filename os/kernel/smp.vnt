@@ -1,0 +1,35 @@
+# Copyright (c) 2026 ItsDropper
+# Licensed under the MIT License. See LICENSE in the repository root.
+#
+# CPU topology inventory. A CPU is online only after it has entered the kernel
+# and published that state; MADT presence alone never increments online count.
+
+import "../kernel/core.vnt"
+import "../firmware/acpi.vnt"
+import "../arch/x86_64/apic.vnt"
+
+fun smp_init() -> int {
+    # The BSP is already executing kernel code. APs remain offline until a
+    # separate low-memory trampoline and per-CPU startup path are installed.
+    state_set(60, 1)
+    return 1
+}
+
+fun smp_discovered_cpu_count() -> int {
+    return acpi_cpu_count()
+}
+
+fun smp_online_cpu_count() -> int {
+    return state_get(60)
+}
+
+fun smp_cpu_apic_id(index: int) -> int {
+    return acpi_cpu_apic_id(index)
+}
+
+fun smp_bsp_apic_id() -> int {
+    if apic_is_enabled() == 1 {
+        return apic_bsp_id()
+    }
+    return -1
+}

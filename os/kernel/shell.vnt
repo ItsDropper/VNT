@@ -113,7 +113,7 @@ fun shell_run() {
                 console_decimal(ticks)
                 console_puts("Approximate uptime seconds (decimal): ")
                 console_decimal(ticks / 100)
-                console_puts("Clock source: PIT at nominal 100 Hz; seconds are approximate.\\r\\n")
+                console_puts("Clock source: PIT at nominal 100 Hz; seconds are approximate.\r\n")
                 handled = 1
             }
             if str_eq(buffer, "synctest") {

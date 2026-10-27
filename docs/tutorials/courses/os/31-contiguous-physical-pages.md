@@ -131,4 +131,4 @@ The allocator still covers only the first 1-GiB identity-mapped window and uses 
 
 ---
 
-[← Previous lesson](./30-physical-allocator-next-fit.md) · [Course index](./README.md) · **Course completed.**
+[← Previous lesson](./30-physical-allocator-next-fit.md) · [Course index](./README.md) · [Next lesson →](./32-reserved-memory-map-precedence.md)

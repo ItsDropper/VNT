@@ -125,12 +125,6 @@ fun apic_init() -> int {
     if maximum_lvt >= 2 {
         apic_mask_lvt(0x340)
     }
-    if maximum_lvt >= 3 {
-        apic_mask_lvt(0x350)
-    }
-    if maximum_lvt >= 4 {
-        apic_mask_lvt(0x360)
-    }
     if maximum_lvt >= 5 {
         apic_mask_lvt(0x370)
     }

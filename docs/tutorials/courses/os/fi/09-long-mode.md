@@ -45,6 +45,30 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Lue käynnistys-assemblya](08-reading-boot-assembly.md) · [Seuraava oppitunti: Alkuvaiheen sivutaulut →](10-initial-paging.md)
 
+## Koodiesimerkki: long mode -siirtymän edellytykset
+
+```asm
+    movl %cr4, %eax
+    orl $0x20, %eax
+    movl %eax, %cr4
+    movl $pml4_table, %eax
+    movl %eax, %cr3
+    movl $0xc0000080, %ecx
+    rdmsr
+    orl $0x100, %eax
+    wrmsr
+    lgdt gdt64_pointer
+    movl %cr0, %eax
+    orl $0x80000000, %eax
+    movl %eax, %cr0
+    ljmp $0x08, $long_mode_entry
+```
+
+Katkelma on nykyisestä boot.S-tiedostosta. CR4.PAE otetaan käyttöön, CR3 saa sivutaulujen osoitteen, EFER.LME asetetaan MSR:n kautta, GDT ladataan ja CR0.PG kytketään päälle ennen kaukohyppyä 64-bittiseen koodisegmenttiin. Nämä asetukset ovat riippuvaisia toisistaan; pelkkä `.code64`-direktiivi ei vaihda CPU:n tilaa.
+
+**Tee itse:** Tarkista tiedostosta järjestys ja debug-merkinnät `1`, `2`, `3`, `4` sekä `L`. Jos käynnistys pysähtyy, etsi viimeinen merkki ja rajaa vika juuri sitä seuraavaan vaiheeseen.
+
+
 ## Toteutuslaboratorio: x86-64 long mode
 
 Tämä on toteutusohje, ei vain aiheesta kertova yhteenveto. Avaa lähdetiedostot ennen kuin muutat niitä.

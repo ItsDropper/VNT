@@ -45,6 +45,30 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: ACPI, APIC ja usea CPU-ydin](27-acpi-apic-and-smp.md) · [Seuraava oppitunti: SMP-turvallisuus: synkronoi ennen jaettua muistia →](29-smp-synchronization-contract.md)
 
+## Koodiesimerkki: lähetä IPI ja odota rajatusti vastausta
+
+```vnt
+let previous: int = smp_ipi_count(index)
+if apic_send_icr(apic_id, 0xf0) != 1 {
+    state_set(143, 12)
+    return 0
+}
+let spins: int = 0
+while smp_ipi_count(index) == previous && spins < 50000000 {
+    spins = spins + 1
+}
+if smp_ipi_count(index) == previous {
+    state_set(143, 13)
+    return 0
+}
+successes = successes + 1
+```
+
+Tämä on nykyisestä os/kernel/smp.vnt-tiedostosta. Koodi lukee vastaanottajan laskurin ennen IPI:tä, lähettää vektorin 0xF0 ja odottaa rajatun ajan, että laskuri muuttuu. Lähetyksen onnistuminen ja vastaanottajan vastaus ovat kaksi eri asiaa; siksi molemmat tarkistetaan.
+
+**Tee itse:** Testaa ensin yhdellä AP:lla. Jos vastausta ei tule, tarkista AP:n online-tila, IDT:n vektori 240, APICin tila ja keskeytyksen vastaanottopolku. Älä tulkitse timeoutin poistamista korjaukseksi.
+
+
 ## Toteutuslaboratorio: APIC IPI -viestit
 
 Tässä osiossa rakennat tai validoit konkreettisen osan nykyisestä VNTOS-kernelistä.

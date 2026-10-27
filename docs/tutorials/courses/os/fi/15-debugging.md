@@ -45,6 +45,19 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Sarjaportin komentotulkki](14-the-serial-shell.md) · [Seuraava oppitunti: Testaa toimintaa, älä vain käännöstä →](16-testing.md)
 
+## Koodiesimerkki: debug-merkki boot-vaiheiden väliin
+
+```asm
+movw $0xe9, %dx
+movb $66, %al
+outb %al, %dx
+```
+
+Tätä portti 0xE9 -merkkiä käytetään jo nykyisessä boot.S-tiedostossa. Se on QEMU:n debug-porttiin kirjoitettu tavu, jolla voi merkitä, että suoritus saavutti tietyn kohdan. Käytä eri merkkiä eri vaiheissa, jotta sarjaportin tai debug-lokin viimeisestä merkistä voi rajata pysähdyksen sijainnin.
+
+**Tee itse:** Lisää merkki vain yhteen kohtaan ja testaa. Kun se toimii, lisää toinen epäillyn vaiheen jälkeen. Älä muuta useita boot-vaiheita samalla kertaa.
+
+
 ## Toteutuslaboratorio: Debuggaus
 
 Tässä osiossa teet konkreettisen muutoksen nykyiseen VNTOS-koodiin. Avaa lähdetiedostot ja varmista, että kuvaus vastaa nykyistä toteutusta.

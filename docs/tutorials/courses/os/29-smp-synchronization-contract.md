@@ -53,16 +53,16 @@ The current freestanding backend recognizes a closed set of unsafe architecture 
 
 The backend also emits inline assembly text directly from the IR node. That interface does not declare input/output operands, register clobbers, or a compiler memory clobber. Therefore, a line such as `asm volatile("lock; ...")` is not a safe substitute for a first-class atomic operation: the compiler cannot infer the memory effects or register constraints from an arbitrary text string.
 
-The first extension is an explicitly named operation with a fixed signature, not a general inline-assembly escape hatch. The implemented `cpu_atomic_exchange_u64(address, value)` operation:
+The implemented operation has a fixed signature rather than opening a general inline-assembly escape hatch:
 
-- Require an aligned, valid pointer to a 64-bit storage location in the kernel's mapped address space.
-- Emit x86-64 `xchgq` against memory, which is implicitly locked when the operand is memory.
-- Return the value observed before the exchange.
-- Provide acquire-release ordering for this x86 target, and be documented as a target-specific primitive rather than pretending to implement a portable C memory model.
-- Be callable only from an unsafe context, consistently with other raw-memory operations.
-- Have a compiler fixture whose generated assembly is checked by CI, plus a negative fixture that proves the unsafe-context restriction.
+- It requires an aligned, valid pointer to a 64-bit storage location in the kernel's mapped address space.
+- It emits x86-64 `xchgq` against memory, which is implicitly locked when the operand is memory.
+- It returns the value observed before the exchange.
+- It provides the x86 target's full ordering for this operation; this is a target-specific primitive, not a claim to implement a portable C memory model.
+- It can be called only from an unsafe context, consistently with other raw-memory operations.
+- A compiler fixture checks the emitted assembly, and a negative fixture checks the unsafe-context restriction.
 
-This operation alone would not make the allocator safe. A spinlock still needs a carefully specified lock state, acquire/release behavior, interrupt-context policy, and a real multi-CPU contention test. Do not ship a lock based only on a grep assertion for `xchgq`.
+This operation alone would not make the allocator safe. A spinlock still needs a carefully specified lock state, acquire/release behavior, interrupt-context policy, and a real multi-CPU contention test. Do not treat a lock as validated based only on a grep assertion for `xchgq`.
 
 ## 4. Requirements for the next implementation
 
@@ -70,7 +70,7 @@ The next implementation must keep its scope narrow and prove the lock under cont
 
 - Keep the atomic-exchange contract explicit: aligned mapped `u64` pointer, old value returned, unsafe-only use, and x86 `xchgq` semantics.
 - Specify failure behavior and the memory-ordering guarantees; x86 instruction ordering does not excuse an undocumented compiler contract.
-- Validate the initial VNT spinlock on top of that primitive. The lock state must have a stable, aligned storage location and a known initialization value.
+- Stress-test the initial VNT spinlock under contention. The lock state must have a stable, aligned storage location and a known initialization value.
 - Keep the critical section short. Never wait for an IPI, print to the console, or sleep while holding a spinlock.
 - Define interrupt interaction before using the lock from interrupt context. A CPU must not deadlock by taking a lock in ordinary code and then being interrupted by a handler that tries to take that same lock.
 - Only then protect allocator bitmap changes and cached counts as one transaction.

@@ -45,6 +45,30 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Freestanding-ohjelma](12-freestanding-vnt.md) · [Seuraava oppitunti: Sarjaportin komentotulkki →](14-the-serial-shell.md)
 
+## Koodiesimerkki: sarjaportin lähetys ja vastaanotto
+
+```vnt
+fun serial_putc(value: int) {
+    unsafe {
+        asm volatile("movl -8(%rbp), %eax; movw $0x3fd, %dx; 1: inb %dx, %al; testb $0x20, %al; jz 1b; movw $0x3f8, %dx; movl -8(%rbp), %eax; outb %al, %dx")
+    }
+    return 0
+}
+
+fun serial_try_getc() -> int {
+    let result: int = -1
+    unsafe {
+        asm volatile("movw $0x3fd, %dx; inb %dx, %al; testb $1, %al; jz 1f; movw $0x3f8, %dx; inb %dx, %al; movzbl %al, %eax; movq %rax, -8(%rbp); jmp 2f; 1: movq $-1, -8(%rbp); 2:")
+    }
+    return result
+}
+```
+
+Tämä on todellinen toteutus os/serial.vnt-tiedostosta. COM1:n 0x3FD on line-status-rekisteri: bitillä 0 tarkistetaan vastaanotettu data ja bitillä 5 lähetysvalmius. 0x3F8 on datarekisteri. `serial_try_getc` palauttaa -1, jos merkkiä ei ole vielä saatavilla. Nykyiset inline-assembly-rutiinit käyttävät kääntäjän nykyisiä pinon offsetteja, joten niitä ei pidä kopioida sokkona muihin funktioihin.
+
+**Tee itse:** Lisää diagnostiikkaa kutsumalla serial_puts olemassa olevassa alustuskohdassa. Älä tee rajoittamatonta polling-silmukkaa vastaanotolle: tyhjä syöte pitää pystyä tunnistamaan ja ohjaus palauttamaan kutsujalle.
+
+
 ## Toteutuslaboratorio: Sarjaportti
 
 Tässä harjoituksessa toteutat tai jäljität toimivan osan, et vain kuvaile käsitettä.

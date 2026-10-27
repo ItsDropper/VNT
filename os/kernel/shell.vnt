@@ -8,6 +8,7 @@ import "core.vnt"
 import "../serial.vnt"
 import "../console.vnt"
 import "../ps2.vnt"
+import "device_irq.vnt"
 
 fun str_eq(left: string, right: string) -> bool {
     let index: int = 0
@@ -80,6 +81,10 @@ fun shell_run() {
             if str_eq(buffer, "irq") {
                 console_puts("Timer ticks: ")
                 console_hex(kernel_timer_ticks())
+                console_puts("IRQ0 count: ")
+                console_hex(device_irq_count(0))
+                console_puts("IRQ1 count: ")
+                console_hex(device_irq_count(1))
                 handled = 1
             }
             if str_eq(buffer, "mouse") {

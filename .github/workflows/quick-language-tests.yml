@@ -116,6 +116,11 @@ jobs:
             exit 1
           fi
           test ! -e void-assignment-invalid.exe
+          if ./vnt --compile tests/typecheck_void_nested_expression_rejected.vnt -o void-nested-invalid.exe; then
+            echo "Compiler incorrectly accepted void-returning calls inside a binary expression."
+            exit 1
+          fi
+          test ! -e void-nested-invalid.exe
 
       - name: Emit assembly without invoking the hosted linker
         shell: bash

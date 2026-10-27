@@ -27,18 +27,28 @@ fun phys_info_addr() -> i64 {
 
 fun phys_info_size() -> int {
     let info: i64 = phys_info_addr()
-    if info == 0 { return 0 }
+    if info == 0 {
+        return 0
+    }
     let size: int = 0
-    unsafe { size = mem_read_u32(info, 0) }
-    if size < 16 || info + size > 1073741824 { return 0 }
+    unsafe {
+        size = mem_read_u32(info, 0)
+    }
+    if size < 16 || info + size > 1073741824 {
+        return 0
+    }
     return size
 }
 
 fun phys_mmap_count() -> int {
     let info: i64 = phys_info_addr()
-    if info == 0 { return -1 }
+    if info == 0 {
+        return -1
+    }
     let total: int = phys_info_size()
-    if total < 16 { return -1 }
+    if total < 16 {
+        return -1
+    }
     let cursor: int = 8
     while cursor + 8 <= total {
         let tag_type: int = 0
@@ -47,13 +57,23 @@ fun phys_mmap_count() -> int {
             tag_type = mem_read_u32(info, cursor)
             tag_size = mem_read_u32(info, cursor + 4)
         }
-        if tag_size < 8 || cursor + tag_size > total { return -1 }
-        if tag_type == 0 { return 0 }
+        if tag_size < 8 || cursor + tag_size > total {
+            return -1
+        }
+        if tag_type == 0 {
+            return 0
+        }
         if tag_type == 6 {
-            if tag_size < 16 { return -1 }
+            if tag_size < 16 {
+                return -1
+            }
             let entry_size: int = 0
-            unsafe { entry_size = mem_read_u32(info, cursor + 8) }
-            if entry_size < 24 { return -1 }
+            unsafe {
+                entry_size = mem_read_u32(info, cursor + 8)
+            }
+            if entry_size < 24 {
+                return -1
+            }
             return (tag_size - 16) / entry_size
         }
         cursor = cursor + ((tag_size + 7) / 8) * 8
@@ -62,11 +82,17 @@ fun phys_mmap_count() -> int {
 }
 
 fun phys_mmap_field(index: int, field: int) -> i64 {
-    if index < 0 || field < 0 || field > 2 { return 0 }
+    if index < 0 || field < 0 || field > 2 {
+        return 0
+    }
     let info: i64 = phys_info_addr()
-    if info == 0 { return 0 }
+    if info == 0 {
+        return 0
+    }
     let total: int = phys_info_size()
-    if total < 16 { return 0 }
+    if total < 16 {
+        return 0
+    }
     let cursor: int = 8
     while cursor + 8 <= total {
         let tag_type: int = 0
@@ -75,14 +101,26 @@ fun phys_mmap_field(index: int, field: int) -> i64 {
             tag_type = mem_read_u32(info, cursor)
             tag_size = mem_read_u32(info, cursor + 4)
         }
-        if tag_size < 8 || cursor + tag_size > total { return 0 }
-        if tag_type == 0 { return 0 }
+        if tag_size < 8 || cursor + tag_size > total {
+            return 0
+        }
+        if tag_type == 0 {
+            return 0
+        }
         if tag_type == 6 {
-            if tag_size < 16 { return 0 }
+            if tag_size < 16 {
+                return 0
+            }
             let entry_size: int = 0
-            unsafe { entry_size = mem_read_u32(info, cursor + 8) }
-            if entry_size < 24 { return 0 }
-            if index >= (tag_size - 16) / entry_size { return 0 }
+            unsafe {
+                entry_size = mem_read_u32(info, cursor + 8)
+            }
+            if entry_size < 24 {
+                return 0
+            }
+            if index >= (tag_size - 16) / entry_size {
+                return 0
+            }
             let offset: int = cursor + 16 + index * entry_size
             if field == 0 {
                 unsafe {
@@ -103,9 +141,15 @@ fun phys_mmap_field(index: int, field: int) -> i64 {
     return 0
 }
 
-fun phys_mmap_base(index: int) -> i64 { return phys_mmap_field(index, 0) }
-fun phys_mmap_length(index: int) -> i64 { return phys_mmap_field(index, 1) }
-fun phys_mmap_type(index: int) -> i64 { return phys_mmap_field(index, 2) }
+fun phys_mmap_base(index: int) -> i64 {
+    return phys_mmap_field(index, 0)
+}
+fun phys_mmap_length(index: int) -> i64 {
+    return phys_mmap_field(index, 1)
+}
+fun phys_mmap_type(index: int) -> i64 {
+    return phys_mmap_field(index, 2)
+}
 
 fun phys_usable_bitmap_base() -> i64 {
     unsafe {
@@ -124,14 +168,21 @@ fun phys_reserved_bitmap_base() -> i64 {
 }
 
 fun phys_bitmap_set(base: i64, frame: int, value: int) -> int {
-    if frame < 0 || frame >= 262144 { return 0 }
+    if frame < 0 || frame >= 262144 {
+        return 0
+    }
     let byte_offset: int = frame / 8
     let bit: int = frame % 8
     let mask: int = 1
     let i: int = 0
-    while i < bit { mask = mask * 2; i = i + 1 }
+    while i < bit {
+        mask = mask * 2
+        i = i + 1
+    }
     let byte: int = 0
-    unsafe { byte = mem_read_u8(base, byte_offset) }
+    unsafe {
+        byte = mem_read_u8(base, byte_offset)
+    }
     let present: int = (byte / mask) % 2
     if value != 0 {
         if present == 0 {
@@ -149,13 +200,20 @@ fun phys_bitmap_set(base: i64, frame: int, value: int) -> int {
     return 1
 }
 fun phys_bitmap_get(base: i64, frame: int) -> int {
-    if frame < 0 || frame >= 262144 { return 0 }
+    if frame < 0 || frame >= 262144 {
+        return 0
+    }
     let mask: int = 1
     let bit: int = frame % 8
     let i: int = 0
-    while i < bit { mask = mask * 2; i = i + 1 }
+    while i < bit {
+        mask = mask * 2
+        i = i + 1
+    }
     let byte: int = 0
-    unsafe { byte = mem_read_u8(base, frame / 8) }
+    unsafe {
+        byte = mem_read_u8(base, frame / 8)
+    }
     return (byte / mask) % 2
 }
 fun phys_usable_set(frame: int, value: int) -> int {

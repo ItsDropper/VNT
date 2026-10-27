@@ -98,6 +98,15 @@ jobs:
             -o hir-invariants
           ./hir-invariants
 
+      - name: Reject void-returning calls used as values
+        shell: bash
+        run: |
+          if ./vnt --compile tests/typecheck_void_value_rejected.vnt -o void-value-invalid.exe; then
+            echo "Compiler incorrectly accepted a void-returning call as a variable initializer."
+            exit 1
+          fi
+          test ! -e void-value-invalid.exe
+
       - name: Emit assembly without invoking the hosted linker
         shell: bash
         run: |

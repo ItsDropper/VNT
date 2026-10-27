@@ -197,7 +197,17 @@ fun smp_start_aps() -> int {
 
 
 # Fixed-vector IPI handler. Keep interrupt-context work bounded.
+# During atomictest, each AP performs a fixed batch against a dedicated counter.
+# The BSP arms the test before sending IPIs and disarms it after all APs finish.
 fun smp_handle_ipi() -> int {
+    if state_get(309) == 1 {
+        let work: int = 0
+        while work < 1000 {
+            state_increment_atomic(308)
+            work = work + 1
+        }
+        state_increment_atomic(310)
+    }
     let apic_id: int = apic_current_id()
     let index: int = 0
     while index < acpi_cpu_count() && index < 16 {
@@ -208,6 +218,54 @@ fun smp_handle_ipi() -> int {
         index = index + 1
     }
     apic_eoi()
+    return 1
+}
+
+# Run a deterministic counter test on the BSP and every online AP.
+# Returns 1 on exact count, 0 on failure, and -1 if fewer than two CPUs are online.
+# Slots 308..310 are reserved exclusively for this test; live IRQ counters are untouched.
+fun smp_atomic_counter_self_test() -> int {
+    let online: int = smp_online_cpu_count()
+    if online < 2 || online != smp_discovered_cpu_count() {
+        return -1
+    }
+
+    state_set(308, 0)
+    state_set(309, 1)
+    state_set(310, 0)
+
+    let index: int = 0
+    while index < acpi_cpu_count() && index < 16 {
+        let apic_id: int = acpi_cpu_apic_id(index)
+        if smp_cpu_online(index) == 1 && apic_id != smp_bsp_apic_id() {
+            if apic_send_icr(apic_id, 0xf0) != 1 {
+                state_set(309, 0)
+                return 0
+            }
+        }
+        index = index + 1
+    }
+
+    # BSP participates in the same workload while AP handlers run concurrently.
+    let work: int = 0
+    while work < 1000 {
+        state_increment_atomic(308)
+        work = work + 1
+    }
+
+    let expected_completions: int = online - 1
+    let spins: int = 0
+    while state_get(310) < expected_completions && spins < 50000000 {
+        spins = spins + 1
+    }
+    state_set(309, 0)
+
+    if state_get(310) != expected_completions {
+        return 0
+    }
+    if state_get(308) != online * 1000 {
+        return 0
+    }
     return 1
 }
 

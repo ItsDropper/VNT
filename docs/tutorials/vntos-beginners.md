@@ -36,7 +36,7 @@ bash os/build.sh
 
 The script builds the VNT compiler from the repository's C sources, asks VNT's
 freestanding backend to compile `os/kernel.vnt`, assembles the x86-64 boot
-support in `os/boot.S`, and links the kernel without a hosted C runtime. GRUB
+support in `os/arch/x86_64/boot.S`, and links the kernel without a hosted C runtime. GRUB
 and xorriso then package it into a bootable ISO.
 
 Expected artifacts:
@@ -78,7 +78,7 @@ emulator; you are not installing anything on the host computer.
 ## How the boot path works
 
 1. GRUB loads the kernel ELF using the Multiboot2 protocol.
-2. `os/boot.S` starts in 32-bit protected mode and builds page tables mapping
+2. `os/arch/x86_64/boot.S` starts in 32-bit protected mode and builds page tables mapping
    the first 1 GiB with 2 MiB pages.
 3. The bootstrap enables PAE and long mode, then jumps into 64-bit mode.
 4. The generated VNT entry calls `kernel_main()` from `os/kernel.vnt`.

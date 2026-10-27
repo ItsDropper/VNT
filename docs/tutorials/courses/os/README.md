@@ -72,6 +72,7 @@ No prior OS-development experience is required. Basic terminal use helps. Read l
 30. [SMP safety: synchronization before shared memory](29-smp-synchronization-contract.md)
 31. [Improve physical-frame allocation with next-fit](30-physical-allocator-next-fit.md)
 32. [Allocate contiguous physical pages](31-contiguous-physical-pages.md)
+33. [Give reserved memory-map regions precedence](32-reserved-memory-map-precedence.md)
 
 ## Source map
 

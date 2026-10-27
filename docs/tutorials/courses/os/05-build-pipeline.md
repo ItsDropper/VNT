@@ -14,8 +14,8 @@ The script runs these stages in order:
 2. Compile the VNT compiler itself from C source files into `build/vnt`.
 3. Ask the compiler to emit freestanding assembly from `os/kernel.vnt`; its imports load the device modules, `kernel/core.vnt`, and `kernel/shell.vnt` into the same compilation unit.
 4. Assemble the generated VNT assembly into `build/kernel.o`.
-5. Assemble `os/arch/x86_64/boot.S` into `build/boot.o` and `os/arch/x86_64/interrupts.S` into `build/interrupts.o`.
-6. Link all three object files with `os/linker.ld` into `build/kernel.elf`.
+5. Assemble `os/arch/x86_64/boot.S`, `os/arch/x86_64/interrupts.S`, and `os/arch/x86_64/memory.S` into three architecture object files.
+6. Link the generated VNT object and all three architecture objects with `os/linker.ld` into `build/kernel.elf`.
 7. If `grub-file` is installed, verify that the ELF has a Multiboot2 header.
 8. If the ISO tools are installed, package the ELF and GRUB configuration into `build/vntos.iso`.
 
@@ -46,7 +46,7 @@ The script uses `set -euo pipefail`, so a failing command stops the build rather
 After a successful build:
 
 ```sh
-file build/kernel.elf build/boot.o build/kernel.o build/interrupts.o
+file build/kernel.elf build/boot.o build/kernel.o build/interrupts.o build/memory.o
 readelf -h build/kernel.elf
 readelf -l build/kernel.elf
 nm -u build/kernel.elf
@@ -60,11 +60,11 @@ Compilation checks that source can be translated. Linking checks that object fil
 
 ## Checkpoint
 
-Draw the pipeline from the imported VNT modules, `os/arch/x86_64/boot.S`, and `os/arch/x86_64/interrupts.S` to `kernel.elf`, then from the ELF to the ISO. Label which tool handles each transformation.
+Draw the pipeline from the imported VNT modules and the three architecture files (`boot.S`, `interrupts.S`, `memory.S`) to `kernel.elf`, then from the ELF to the ISO. Label which tool handles each transformation.
 
 ## Exercise
 
-Find the exact command that links `build/boot.o`, `build/kernel.o`, and `build/interrupts.o`. Do not edit the script in this lesson.
+Find the exact command that links `build/boot.o`, `build/kernel.o`, `build/interrupts.o`, and `build/memory.o`. Do not edit the script in this lesson.
 
 ## 7. What the architecture boundary does—and does not—mean
 

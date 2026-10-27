@@ -5,75 +5,13 @@ import "serial.vnt"
 import "console.vnt"
 import "ps2.vnt"
 import "interrupts.vnt"
+import "kernel/core.vnt"
+import "kernel/shell.vnt"
+import "pic.vnt"
+import "mm/phys.vnt"
 
-# Kernel entry and shell policy stay here; device implementations are imported below.
-
-fun state_get(index: int) -> int {
-    let result: int = 0
-    unsafe {
-        asm volatile("leaq vntos_state(%rip), %rax; movq -8(%rbp), %rcx; movq (%rax,%rcx,8), %rdx; movq %rdx, -16(%rbp)")
-    }
-    return result
-}
-
-fun state_set(index: int, value: int) {
-    unsafe {
-        asm volatile("leaq vntos_state(%rip), %rax; movq -8(%rbp), %rcx; movq -16(%rbp), %rdx; movq %rdx, (%rax,%rcx,8)")
-    }
-    return 0
-}
-
-fun str_eq(left: string, right: string) -> bool {
-    let index: int = 0
-    while left[index] == right[index] {
-        if left[index] == 0 {
-            return true
-        }
-        index = index + 1
-    }
-    return false
-}
-
-fun starts_with(text: string, prefix: string) -> bool {
-    let index: int = 0
-    while prefix[index] != 0 {
-        if text[index] != prefix[index] {
-            return false
-        }
-        index = index + 1
-    }
-    return true
-}
-
-fun kernel_start_addr() -> i64 {
-    let result: i64 = 0
-    unsafe {
-        asm volatile("leaq __kernel_start(%rip), %rax; movq %rax, -8(%rbp)")
-    }
-    return result
-}
-
-fun kernel_end_addr() -> i64 {
-    let result: i64 = 0
-    unsafe {
-        asm volatile("leaq __kernel_end(%rip), %rax; movq %rax, -8(%rbp)")
-    }
-    return result
-}
-
-fun cpu_halt() {
-    unsafe {
-        asm volatile("cli; 1: hlt; jmp 1b")
-    }
-    return 0
-}
-
-fun cpu_reboot() {
-    unsafe {
-        asm volatile("1: inb $0x64, %al; testb $2, %al; jnz 1b; movb $0xfe, %al; outb %al, $0x64; jmp 1b")
-    }
-    return 0
-}
+# Kernel entry owns initialization order. Core primitives and shell policy live
+# in imported modules; the device implementations remain independently located.
 
 fun kernel_main() {
     serial_init()
@@ -83,103 +21,19 @@ fun kernel_main() {
     vga_puts("VGA console active. PS/2 keyboard and mouse polling enabled.\r\n")
     vga_puts("Type help. Serial COM1 remains available for diagnostics.\r\n\r\n")
     serial_puts("VNTOS_BOOT_OK\r\nVNTOS - freestanding x86-64 console\r\nType help for commands.\r\n")
+    # Keep legacy lines masked while the architecture code remaps the PIC.
+    pic_disable_all()
+    if phys_init() == 1 {
+        console_puts("Physical page allocator initialized.\r\n")
+    }
+    if phys_count_usable_pages() == 0 {
+        console_puts("WARNING: Multiboot2 memory map unavailable; physical allocation disabled.\r\n")
+    }
     interrupts_init()
-    console_puts("PIT timer interrupts enabled.\r\n")
+    # Input is polled for now; do not enable keyboard IRQ1 without a handler.
+    pic_disable_irq(1)
+    console_puts("PIT timer interrupts enabled; keyboard IRQ remains masked.\r\n")
     ps2_init()
-    vga_puts("VNTOS> ")
-    serial_puts("VNTOS_COMMAND_LINE_READY\r\n")
-    serial_puts("VNTOS> ")
-    let buffer: string = ""
-    unsafe {
-        asm volatile("subq $128, %rsp; leaq -160(%rbp), %rax; movq %rax, -8(%rbp)")
-    }
-    let length: int = 0
-    let character: int = -1
-    let handled: int = 0
-
-    while 1 == 1 {
-        mouse_poll()
-        character = keyboard_poll()
-        if character == 256 {
-            character = serial_try_getc()
-        }
-        if character < 0 {
-            continue
-        }
-        if character == 13 || character == 10 {
-            buffer[length] = 0
-            console_puts("\r\n")
-            handled = 0
-            if str_eq(buffer, "help") {
-                console_puts("Commands: help, about, clear, echo, mem, irq, mouse, reboot, halt\r\n")
-                handled = 1
-            }
-            if str_eq(buffer, "about") {
-                console_puts("VNTOS: VNT-compiled freestanding x86-64 kernel.\r\n")
-                handled = 1
-            }
-            if str_eq(buffer, "clear") {
-                vga_clear()
-                console_puts("VNTOS screen cleared.\r\n")
-                handled = 1
-            }
-            if str_eq(buffer, "mem") {
-                console_puts("Kernel start: ")
-                console_hex(kernel_start_addr())
-                console_puts("Kernel end: ")
-                console_hex(kernel_end_addr())
-                console_puts("Identity map: first 1 GiB\r\n")
-                handled = 1
-            }
-            if str_eq(buffer, "irq") {
-                console_puts("Timer ticks: ")
-                console_hex(state_get(11))
-                handled = 1
-            }
-            if str_eq(buffer, "mouse") {
-                console_puts("PS/2 mouse x=")
-                console_hex(state_get(2))
-                console_puts("y=")
-                console_hex(state_get(3))
-                console_puts("buttons=")
-                console_hex(state_get(4))
-                handled = 1
-            }
-            if starts_with(buffer, "echo ") {
-                console_puts_offset(buffer, 5)
-                console_puts("\r\n")
-                handled = 1
-            }
-            if str_eq(buffer, "reboot") {
-                console_puts("Rebooting...\r\n")
-                cpu_reboot()
-            }
-            if str_eq(buffer, "halt") {
-                console_puts("CPU halted.\r\n")
-                cpu_halt()
-            }
-            if handled == 0 && length != 0 {
-                console_puts("Unknown command. Type help.\r\n")
-            }
-            length = 0
-            buffer[0] = 0
-            console_puts("VNTOS> ")
-        } else if character == 8 || character == 127 {
-            if length > 0 {
-                length = length - 1
-                buffer[length] = 0
-                console_putc(8)
-                console_putc(32)
-                console_putc(8)
-            }
-        } else if character >= 32 && character != 127 {
-            if length < 127 {
-                buffer[length] = character
-                length = length + 1
-                console_putc(character)
-            }
-        }
-        character = -1
-    }
+    shell_run()
     return 0
 }

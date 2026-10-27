@@ -27,9 +27,9 @@ The default IDT stub currently reports a fallback marker rather than preserving 
 
 ## 3. Build a real memory subsystem
 
-Before allocating arbitrary memory, the kernel needs to parse bootloader memory information, reserve occupied regions, manage free physical pages, and build deliberate virtual mappings. The current 1 GiB identity map is only an initial bootstrap mapping.
+The kernel now captures and validates the Multiboot2 information block, parses usable memory-map entries, reserves low memory, the linked image, and the boot-information block, and manages 4-KiB physical frames with usable/allocated/reserved bitmaps. The allocator is limited to the first 1-GiB identity-mapped window.
 
-A physical-page allocator, virtual-memory manager, heap, and page-fault handler are related but distinct pieces. Implement and test them incrementally.
+The next memory milestones are to test the allocator more deeply, define page-table ownership, implement deliberate virtual mappings and page-fault diagnostics, and only then add a heap. Physical allocation and virtual-memory management are distinct pieces.
 
 ## 4. Add a timer and scheduling model
 
@@ -84,12 +84,14 @@ A defensible progression is:
 2. Document and test the VNT/assembly ABI.
 3. Replace compiler-specific stack-offset tricks with supported compiler features.
 4. Add named, bounded kernel state interfaces.
-5. Define a physical memory map and page-frame allocator.
-6. Add a small heap only after physical allocation is trustworthy.
-7. Add interrupt-safe event queues before enabling more device IRQs.
-8. Add user mode only after memory permissions and syscall transitions exist.
-9. Add scheduling only after context save/restore and timer semantics are explicit.
-10. Add persistent storage after a driver and filesystem boundary are defined.
+5. Parse the Multiboot2 map and reserve all boot-owned ranges.
+6. Implement and test the physical page-frame allocator.
+7. Add virtual page-table management and page-fault diagnostics.
+8. Add a small heap only after physical and virtual allocation are trustworthy.
+9. Add interrupt-safe event queues before enabling more device IRQs.
+10. Add user mode only after memory permissions and syscall transitions exist.
+11. Add scheduling only after context save/restore and timer semantics are explicit.
+12. Add persistent storage after a driver and filesystem boundary are defined.
 
 This is a dependency order, not a promise that all features already exist.
 
@@ -107,6 +109,6 @@ For an interrupt-driven input queue, criteria should include bounded capacity, e
 
 ## 12. Prefer a narrow, measurable milestone
 
-For each future subsystem, define one first milestone that does not depend on all the later features. For memory management, first parse and validate a memory map before allocating pages. For input interrupts, first define the event queue and its overflow behavior before unmasking the keyboard IRQ. For userspace, first document the ABI and mapping policy before adding an application loader.
+For each future subsystem, define one first milestone that does not depend on all the later features. For memory management, validate the Multiboot2 map, reserve all boot-owned ranges, and prove that allocation/free preserves the free-page count before adding virtual mappings. For input interrupts, first define the event queue and its overflow behavior before unmasking the keyboard IRQ. For userspace, first document the ABI and mapping policy before adding an application loader.
 
 A milestone should end with a reproducible test and an updated limitation list. That is a stronger sign of progress than adding an API name that has no validated implementation behind it.

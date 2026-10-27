@@ -4,6 +4,9 @@
 # VNT owns interrupt policy and diagnostics. interrupts.S is limited to the
 # architectural entry/exit frame, IDT construction, PIC/PIT setup, and iretq.
 
+import "kernel/core.vnt"
+import "kernel/device_irq.vnt"
+
 export fun interrupts_init() {
     unsafe {
         asm volatile("call vntos_interrupts_init")
@@ -14,10 +17,15 @@ export fun interrupts_init() {
 # This function is called by the assembly common entry after all general
 # registers have been saved. Keep interrupt handlers short and allocation-free.
 export fun interrupt_dispatch(vector: int, error: int) {
-    if vector == 32 {
-        # IRQ0 is the PIT timer. Do not print from interrupt context: the UART
-        # is polled and output there could stall the entire machine.
-        state_set(11, state_get(11) + 1)
+    if vector >= 32 && vector < 48 {
+        # The assembly entry acknowledges the legacy PIC after this returns.
+        # Keep interrupt-context work bounded: count the IRQ and account for
+        # the PIT tick, but do not print, allocate, or run device work here.
+        let irq: int = vector - 32
+        device_irq_record(irq)
+        if irq == 0 {
+            kernel_timer_tick()
+        }
         return 0
     }
 

@@ -1,9 +1,10 @@
-/* Copyright (c) 2026 ItsDropper
+/*
+ * Copyright (c) 2026 ItsDropper
  * Licensed under the MIT License. See LICENSE in the repository root.
  *
- * The only new assembly dedicated to interrupts is the CPU entry/exit boundary.
- * IDT policy and exception reporting live in VNT. The bootstrap still owns
- * the initial CPU-mode transition in os/boot.S.
+ * x86-64 interrupt entry/exit and legacy PIC/PIT setup. The common entry
+ * constructs the ABI frame consumed by VNT's interrupt_dispatch policy.
+ * Keep this file limited to CPU-defined frames and hardware setup.
  */
 .section .text
 .code64

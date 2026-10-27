@@ -2,8 +2,9 @@
  * Copyright (c) 2026 ItsDropper
  * Licensed under the MIT License. See LICENSE in the repository root.
  *
- * Multiboot2 32-bit entry transitions to long mode with a 1 GiB identity map.
- * The freestanding VNT kernel owns shell behavior; this file only bootstraps the CPU.
+ * x86-64 Multiboot2 bootstrap. This is the architecture-specific entry path:
+ * it establishes the initial identity map and enters long mode before calling
+ * the compiler-generated kernel entry point.
  */
 .section .multiboot,"a"
 .balign 8
@@ -23,6 +24,9 @@ multiboot2_header_end:
 .global boot32_entry
 .type boot32_entry,@function
 boot32_entry:
+    /* Preserve the Multiboot2 register contract before using EAX/EBX. */
+    movl %eax, multiboot2_boot_magic
+    movl %ebx, multiboot2_info_ptr
     movw $0xe9, %dx
     movb $66, %al
     outb %al, %dx
@@ -122,8 +126,15 @@ boot_stack_bottom: .skip 16384
 boot_stack_top:
 
 
-/* Shared scalar state for the VNT-compiled VGA/PS2 drivers. */
+/* Multiboot2 values captured at the 32-bit entry point. */
 .section .data
+.balign 4
+.global multiboot2_boot_magic
+multiboot2_boot_magic: .long 0
+.global multiboot2_info_ptr
+multiboot2_info_ptr: .long 0
+
+/* Shared scalar state for the VNT-compiled VGA/PS2 drivers. */
 .balign 8
 .global vntos_state
 vntos_state:
@@ -139,3 +150,21 @@ vntos_state:
     .quad 0       /* Keyboard shift state */
     .quad 0       /* Keyboard caps-lock state */
     .quad 0       /* PIT timer interrupt count */
+    .quad 0       /* IRQ0 count */
+    .quad 0       /* IRQ1 count */
+    .quad 0       /* IRQ2 count */
+    .quad 0       /* IRQ3 count */
+    .quad 0       /* IRQ4 count */
+    .quad 0       /* IRQ5 count */
+    .quad 0       /* IRQ6 count */
+    .quad 0       /* IRQ7 count */
+    .quad 0       /* IRQ8 count */
+    .quad 0       /* IRQ9 count */
+    .quad 0       /* IRQ10 count */
+    .quad 0       /* IRQ11 count */
+    .quad 0       /* IRQ12 count */
+    .quad 0       /* IRQ13 count */
+    .quad 0       /* IRQ14 count */
+    .quad 0       /* IRQ15 count */
+    .quad 0       /* Usable physical page count */
+    .quad 0       /* Free physical page count */

@@ -10,7 +10,7 @@ VNT's current inline-assembly form has no input/output operands, register constr
 
 ## One stub, one normalized frame
 
-In `os/interrupts.S`, a no-error-code entry uses this macro:
+In `os/arch/x86_64/interrupts.S`, a no-error-code entry uses this macro:
 
 ```asm
 .macro ISR_NOERR number

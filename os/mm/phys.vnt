@@ -1,0 +1,260 @@
+# Copyright (c) 2026 ItsDropper
+# Licensed under the MIT License. See LICENSE in the repository root.
+
+import "../kernel/core.vnt"
+#
+# Physical frame allocator for the bootstrap's first 1-GiB identity map.
+# Separate bitmaps track usable, allocated, and permanently reserved frames.
+# All ranges are clipped to the mapped physical window.
+
+fun phys_mmap_count() -> int {
+    let result: int = -1
+    unsafe {
+        asm volatile("call vntos_mmap_count; movq %rax, -8(%rbp)")
+    }
+    return result
+}
+
+fun phys_mmap_field(index: int, field: int) -> i64 {
+    let result: i64 = 0
+    unsafe {
+        asm volatile("movl -8(%rbp), %edi; movl -16(%rbp), %esi; call vntos_mmap_field; movq %rax, -24(%rbp)")
+    }
+    return result
+}
+
+fun phys_mmap_base(index: int) -> i64 {
+    return phys_mmap_field(index, 0)
+}
+
+fun phys_mmap_length(index: int) -> i64 {
+    return phys_mmap_field(index, 1)
+}
+
+fun phys_mmap_type(index: int) -> i64 {
+    return phys_mmap_field(index, 2)
+}
+
+fun phys_info_addr() -> i64 {
+    let result: i64 = 0
+    unsafe {
+        asm volatile("call vntos_multiboot_info_addr; movq %rax, -8(%rbp)")
+    }
+    return result
+}
+
+fun phys_info_size() -> int {
+    let result: int = 0
+    unsafe {
+        asm volatile("call vntos_multiboot_info_size; movq %rax, -8(%rbp)")
+    }
+    return result
+}
+
+fun phys_usable_set(frame: int, value: int) {
+    unsafe {
+        asm volatile("movl -8(%rbp), %edi; movl -16(%rbp), %esi; call vntos_phys_usable_set")
+    }
+    return 0
+}
+
+fun phys_usable_get(frame: int) -> int {
+    let result: int = 0
+    unsafe {
+        asm volatile("movl -8(%rbp), %edi; call vntos_phys_usable_get; movq %rax, -16(%rbp)")
+    }
+    return result
+}
+
+fun phys_allocated_set(frame: int, value: int) {
+    unsafe {
+        asm volatile("movl -8(%rbp), %edi; movl -16(%rbp), %esi; call vntos_phys_allocated_set")
+    }
+    return 0
+}
+
+fun phys_allocated_get(frame: int) -> int {
+    let result: int = 0
+    unsafe {
+        asm volatile("movl -8(%rbp), %edi; call vntos_phys_allocated_get; movq %rax, -16(%rbp)")
+    }
+    return result
+}
+
+fun phys_reserved_set(frame: int, value: int) {
+    unsafe {
+        asm volatile("movl -8(%rbp), %edi; movl -16(%rbp), %esi; call vntos_phys_reserved_set")
+    }
+    return 0
+}
+
+fun phys_reserved_get(frame: int) -> int {
+    let result: int = 0
+    unsafe {
+        asm volatile("movl -8(%rbp), %edi; call vntos_phys_reserved_get; movq %rax, -16(%rbp)")
+    }
+    return result
+}
+
+# Returns 1 on success. The kernel continues in diagnostic mode if the
+# bootloader did not provide a valid Multiboot2 memory-map tag.
+fun phys_init() -> int {
+    let region_count: int = phys_mmap_count()
+    if region_count <= 0 {
+        return 0
+    }
+
+    let region: int = 0
+    let base: i64 = 0
+    let length: i64 = 0
+    let start_frame: int = 0
+    let end_frame: int = 0
+    let frame: int = 0
+    let limit: i64 = 1073741824
+
+    while region < region_count {
+        if phys_mmap_type(region) == 1 {
+            base = phys_mmap_base(region)
+            length = phys_mmap_length(region)
+            if base >= 0 && base < limit && length > 0 {
+                if length > limit - base {
+                    length = limit - base
+                }
+                start_frame = (base + 4096 - 1) / 4096
+                end_frame = (base + length) / 4096
+                if start_frame < 256 {
+                    start_frame = 256
+                }
+                if end_frame > 262144 {
+                    end_frame = 262144
+                }
+                frame = start_frame
+                while frame < end_frame {
+                    phys_usable_set(frame, 1)
+                    frame = frame + 1
+                }
+            }
+        }
+        region = region + 1
+    }
+
+    # Reserve the complete low-memory range and the linked kernel image,
+    # including its page tables, bootstrap stack, and all allocator bitmaps.
+    let kernel_end: i64 = kernel_end_addr()
+    let reserve_end: i64 = (kernel_end + 4096 - 1) / 4096
+    frame = 0
+    while frame < reserve_end && frame < 262144 {
+        phys_allocated_set(frame, 1)
+        phys_reserved_set(frame, 1)
+        frame = frame + 1
+    }
+
+    # The bootloader-owned information block may live outside the kernel image.
+    let info_start: i64 = phys_info_addr()
+    let info_size: int = phys_info_size()
+    if info_start > 0 && info_size > 0 && info_start < limit {
+        let info_end: i64 = info_start + info_size
+        let info_first: int = info_start / 4096
+        let info_last: int = (info_end + 4096 - 1) / 4096
+        if info_last > 262144 {
+            info_last = 262144
+        }
+        frame = info_first
+        while frame < info_last {
+            phys_allocated_set(frame, 1)
+            phys_reserved_set(frame, 1)
+            frame = frame + 1
+        }
+    }
+
+    # Count usable and immediately allocatable frames once during early boot.
+    # Cached counters keep the interactive shell responsive.
+    let total_pages: int = 0
+    let free_pages: int = 0
+    frame = 0
+    while frame < 262144 {
+        if phys_usable_get(frame) == 1 {
+            total_pages = total_pages + 1
+            if frame >= 256 && phys_allocated_get(frame) == 0 {
+                free_pages = free_pages + 1
+            }
+        }
+        frame = frame + 1
+    }
+    state_set(28, total_pages)
+    state_set(29, free_pages)
+    return 1
+}
+
+# Returns a 4-KiB-aligned physical address, or zero when exhausted.
+fun phys_alloc_page() -> i64 {
+    let frame: int = 256
+    while frame < 262144 {
+        if phys_usable_get(frame) == 1 && phys_allocated_get(frame) == 0 {
+            phys_allocated_set(frame, 1)
+            state_set(29, state_get(29) - 1)
+            return frame * 4096
+        }
+        frame = frame + 1
+    }
+    return 0
+}
+
+# Only frees an allocated, usable frame in the current identity-mapped window.
+# Returns 1 if freed; returns 0 for unaligned, reserved, invalid, or double frees.
+fun phys_free_page(address: i64) -> int {
+    if address < 256 * 4096 || address >= 1073741824 {
+        return 0
+    }
+    let frame: int = address / 4096
+    if frame * 4096 != address {
+        return 0
+    }
+    if phys_usable_get(frame) != 1 || phys_allocated_get(frame) != 1 {
+        return 0
+    }
+    if phys_reserved_get(frame) == 1 {
+        return 0
+    }
+    phys_allocated_set(frame, 0)
+    state_set(29, state_get(29) + 1)
+    return 1
+}
+
+fun phys_count_usable_pages() -> int {
+    return state_get(28)
+}
+
+fun phys_count_free_pages() -> int {
+    return state_get(29)
+}
+
+# Exercise allocation, alignment, free, and double-free rejection. The test
+# restores the free-page count and performs no I/O in allocator internals.
+fun phys_self_test() -> int {
+    let before: int = phys_count_free_pages()
+    let page: i64 = phys_alloc_page()
+    if page == 0 {
+        return 0
+    }
+    let valid: int = 1
+    if page / 4096 * 4096 != page {
+        valid = 0
+    }
+    if phys_free_page(page + 1) != 0 {
+        valid = 0
+    }
+    if phys_free_page(page) != 1 {
+        valid = 0
+    }
+    if phys_free_page(page) != 0 {
+        valid = 0
+    }
+    if phys_free_page(kernel_start_addr()) != 0 {
+        valid = 0
+    }
+    if phys_count_free_pages() != before {
+        valid = 0
+    }
+    return valid
+}

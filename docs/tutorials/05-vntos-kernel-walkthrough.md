@@ -4,7 +4,7 @@ This walkthrough explains the kernel in `os/` and how its VNT source becomes a b
 
 ## 1. What is in `os/`?
 
-- `os/boot.S`: Multiboot2 header and the low-level CPU bootstrap. It starts in 32-bit mode, sets up page tables, enables long mode, and transfers control to the kernel entry.
+- `os/arch/x86_64/boot.S`: Multiboot2 header and the low-level CPU bootstrap. It starts in 32-bit mode, sets up page tables, enables long mode, and transfers control to the kernel entry.
 - `os/kernel.vnt`: VNT source for the kernel's high-level entry and shell logic supported by the current branch.
 - `os/linker.ld`: Linker layout, including where the kernel is placed and the symbols used to describe its boundaries.
 - `os/grub.cfg`: GRUB configuration for loading the kernel using Multiboot2.

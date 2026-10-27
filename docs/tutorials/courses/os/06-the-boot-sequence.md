@@ -41,7 +41,7 @@ The kernel later initializes COM1 and prints readable text to the serial console
 
 ## 5. What information crosses the handoff?
 
-A boot protocol can pass information such as memory maps or boot-device details. The current bootstrap shown in `os/boot.S` does not implement a complete Multiboot2 information parser. Do not assume VNTOS currently uses a bootloader-provided memory map simply because it uses Multiboot2.
+A boot protocol can pass information such as memory maps or boot-device details. The current bootstrap shown in `os/arch/x86_64/boot.S` does not implement a complete Multiboot2 information parser. Do not assume VNTOS currently uses a bootloader-provided memory map simply because it uses Multiboot2.
 
 This matters: a real memory manager must learn which physical memory is usable and which regions are reserved before allocating pages.
 
@@ -65,7 +65,7 @@ This is best understood as a chain of contracts. If a stage fails to meet its co
 
 ## 7. Build a timeline from source
 
-Open `os/boot.S` and `os/kernel.vnt`. Mark the exact labels and functions that form the handoff. Then find the point where the interrupt subsystem is initialized and the point where the shell begins accepting commands. Do not infer the order from filenames; trace the calls and branches.
+Open `os/arch/x86_64/boot.S` and `os/kernel.vnt`. Mark the exact labels and functions that form the handoff. Then find the point where the interrupt subsystem is initialized and the point where the shell begins accepting commands. Do not infer the order from filenames; trace the calls and branches.
 
 Your timeline should distinguish at least these events:
 

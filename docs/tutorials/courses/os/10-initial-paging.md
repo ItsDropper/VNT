@@ -48,7 +48,7 @@ Explain the difference between a virtual address, a physical address, a page-tab
 
 ## Exercise
 
-Find the loop labelled `.Los_map_2m` in `os/boot.S`. Explain why it loops 512 times and why each entry advances by 2 MiB. Do not change the page-table flags as an experiment on physical hardware.
+Find the loop labelled `.Los_map_2m` in `os/arch/x86_64/boot.S`. Explain why it loops 512 times and why each entry advances by 2 MiB. Do not change the page-table flags as an experiment on physical hardware.
 
 ## 6. Walk one virtual address through the current mapping
 

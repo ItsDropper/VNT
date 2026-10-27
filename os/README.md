@@ -5,16 +5,22 @@ interrupt entry are deliberately split from the VNT policy code.
 
 ## Source layout
 
-- `os/boot.S`: Multiboot2 header, 32-bit bootstrap, initial page tables,
-  transition to long mode, and bootstrap stack.
-- `os/kernel.vnt`: kernel entry, shared state helpers, CPU control, and shell
-  command policy. It imports the other VNT modules.
+- `os/arch/x86_64/boot.S`: Multiboot2 header, 32-bit bootstrap, initial page
+  tables, transition to long mode, and bootstrap stack.
+- `os/arch/x86_64/interrupts.S`: IDT construction, minimal entry/exit stubs,
+  legacy PIC remapping, and PIT setup.
+- `os/arch/x86_64/memory.S`: validated Multiboot2 memory-map accessors and
+  bounded physical-frame bitmap primitives.
+- `os/kernel.vnt`: kernel entry and ordered subsystem initialization.
+- `os/kernel/core.vnt`: early shared-state access, kernel bounds, and CPU halt/reboot primitives.
+- `os/kernel/shell.vnt`: command parsing, line editing, and shell policy.
 - `os/serial.vnt`: COM1 UART setup and polling I/O.
 - `os/console.vnt`: VGA text output and the combined VGA/serial console.
 - `os/ps2.vnt`: polled PS/2 keyboard and mouse routines.
+- `os/pic.vnt`: VNT-side legacy PIC IRQ mask controls; IRQ entry and EOI remain in assembly.
+- `os/kernel/device_irq.vnt`: bounded accounting for legacy IRQ vectors 32–47; this is not yet a handler registry.
+- `os/mm/phys.vnt`: Multiboot2-backed 4-KiB physical-frame allocator for the first 1-GiB mapped window.
 - `os/interrupts.vnt`: VNT-side interrupt dispatch and fatal exception policy.
-- `os/interrupts.S`: IDT construction, minimal entry/exit stubs, legacy PIC
-  remapping, and PIT setup. Assembly is limited to the CPU/ABI boundary.
 - `os/linker.ld`: ELF layout and linker symbols.
 - `os/grub.cfg`: GRUB's Multiboot2 kernel configuration.
 - `os/build.sh`: compiler build, VNT module compilation, assembly, linking,
@@ -31,7 +37,7 @@ bash os/build.sh
 ```
 
 The script follows imports from `os/kernel.vnt`, emits freestanding assembly,
-assembles the boot and interrupt boundary files separately, and links a
+assembles the three architecture-boundary files separately, and links a
 freestanding ELF. If GRUB and ISO tools are available, it creates
 `build/vntos.iso`. The CI QEMU test validates the Multiboot2 ELF, checks for
 unresolved symbols, exercises the serial shell and keyboard path, and checks
@@ -52,26 +58,38 @@ PS/2 keyboard. For serial-only debugging, use:
 qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -serial stdio
 ```
 
-Commands: `help`, `about`, `clear`, `echo TEXT`, `mem`, `irq`,
-`mouse`, `reboot`, and `halt`. The `irq` command reports the count of
-PIT timer interrupts delivered since initialization. Run it twice with a
-delay between commands; the count should increase.
+Commands: `help`, `about`, `clear`, `echo TEXT`, `mem`, `memtest`, `irq`,
+`mouse`, `reboot`, and `halt`. The `mem` command reports the kernel bounds
+and usable/free 4-KiB frame counts. `memtest` checks allocation, alignment,
+freeing, double-free rejection, and refusal to free the kernel start frame.
+The `irq` command reports the PIT tick count and the legacy IRQ0/IRQ1 counters.
+Only IRQ0 is expected to advance with the current mask configuration; IRQ1
+remains masked because keyboard input is polled.
 
 ## Interrupt architecture
 
-The IDT contains 256 gates. The assembly initializer fills the table, installs
-dedicated stubs for CPU exception vectors 0–31 and legacy PIC vectors 32–47,
-loads the IDT, remaps the PIC, programs PIT channel 0, unmasks only IRQ0, and
-then enables maskable interrupts. The common stub saves the general-purpose
-registers, normalizes the vector/error-code stack shape, calls
-`interrupt_dispatch` in VNT, acknowledges hardware IRQs, restores the
+The IDT contains 256 gates. The architecture-specific initializer fills the
+table, installs dedicated stubs for CPU exception vectors 0–31 and legacy PIC
+vectors 32–47, loads the IDT, remaps the PIC, programs PIT channel 0, unmasks
+only IRQ0, and then enables maskable interrupts. The common assembly stub saves
+the general-purpose registers, normalizes the vector/error-code stack shape,
+calls `interrupt_dispatch` in VNT, acknowledges hardware IRQs, restores the
 registers, and returns with `iretq`.
 
-The VNT dispatcher increments a shared tick counter for vector 32. CPU
-exceptions are reported and halted rather than incorrectly resumed. The
-keyboard and mouse are **still polled**: IRQ1 and the other PIC lines remain
-masked. Do not unmask a device interrupt until its handler and data-ownership
-model are implemented.
+The VNT dispatcher routes vectors 32–47 through `device_irq_record()` in `os/kernel/device_irq.vnt`. IRQ0 also calls `kernel_timer_tick()` in `os/kernel/core.vnt`; the shell reads the named tick API and per-IRQ counters. `os/pic.vnt` exposes legacy PIC mask controls, and kernel startup explicitly keeps IRQ1 masked. CPU exceptions are reported and halted rather than incorrectly resumed. Keyboard and mouse input are **still polled**. Do not unmask a device interrupt until its handler and data-ownership model are implemented.
+
+## Current architecture boundary
+
+`arch/x86_64/` owns the boot entry and the IDT/interrupt entry/EOI/PIT setup.
+VNT-side policy is split between `interrupts.vnt`, `kernel/device_irq.vnt`,
+and `pic.vnt`; the latter changes PIC masks but does not install handlers.
+The existing shell and device routines retain their behavior. Kernel entry now owns initialization order, while core primitives and shell policy live in `os/kernel/core.vnt` and `os/kernel/shell.vnt`. This
+is a source/build boundary, not yet a fully abstract architecture interface:
+the VNT compiler currently flattens imported modules into one compilation
+unit, and some low-level VNT functions use compiler-specific stack offsets.
+The shared scalar state is still defined by the bootstrap assembly and read
+or written through inline assembly in VNT. These are explicit follow-up tasks,
+not evidence of independent modules or memory-safe ownership.
 
 ## Hardware implementation and limits
 
@@ -83,7 +101,9 @@ model are implemented.
 - **PS/2 mouse:** polls and assembles three-byte packets, tracking clamped
   text-cell coordinates and button bits. There is no graphical pointer.
 - **Memory map:** the bootstrap identity-maps the first 1 GiB using 2 MiB
-  pages, including the legacy VGA text buffer.
+  pages, including the legacy VGA text buffer. The physical allocator parses
+  Multiboot2 type-1 regions inside that window and tracks usable, allocated,
+  and reserved frames with bitmaps.
 - **Timer:** PIT-based, approximately 100 Hz. It is not a calibrated wall
   clock and does not schedule tasks.
 
@@ -93,7 +113,9 @@ graphics environments. PS/2 input depends on the emulator or machine exposing
 a compatible controller.
 
 VNTOS still has no scheduler, userspace, filesystem, general heap allocator,
-physical-page allocator, or general device-driver framework. The VNT
+virtual-memory manager, or general device-driver framework. The physical
+allocator is limited to the current 1-GiB identity-mapped window and is not
+safe for concurrent allocation from multiple CPUs. The VNT
 freestanding backend is experimental and some existing low-level routines
 still rely on compiler-specific stack offsets. Treat this as a learning kernel,
 not production-ready OS code.

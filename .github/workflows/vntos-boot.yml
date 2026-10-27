@@ -118,7 +118,7 @@ jobs:
               drain(0.35)
 
           # Exercise the real PS/2 keyboard path, not only the serial RX path.
-          for command in ("help", "about", "echo test", "mem", "irq", "mouse", "badcommand", "clear", "halt"):
+          for command in ("help", "about", "echo test", "mem", "memtest", "irq", "mouse", "badcommand", "clear", "halt"):
               type_command(command)
           monitor.close()
           drain(0.5)
@@ -130,12 +130,16 @@ jobs:
           required = [
               "VNTOS_BOOT_OK",
               "VNTOS_COMMAND_LINE_READY",
-              "Commands: help, about, clear, echo, mem, irq, mouse, reboot, halt",
+              "Commands: help, about, clear, echo, mem, memtest, irq, mouse, reboot, halt",
               "VNTOS: VNT-compiled freestanding x86-64 kernel.",
               "test",
               "Kernel start: 0x",
               "Kernel end: 0x",
               "Identity map: first 1 GiB",
+              "Physical page allocator initialized.",
+              "Usable 4-KiB pages: 0x",
+              "Free 4-KiB pages: 0x",
+              "Physical allocator self-test: PASS",
               "Timer ticks: 0x",
               "PS/2 mouse x=",
               "Unknown command. Type help.",

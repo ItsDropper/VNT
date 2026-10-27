@@ -29,10 +29,10 @@ From the repository root, inspect these files in your editor:
 2. `os/build.sh`
 3. `os/grub.cfg`
 4. `os/linker.ld`
-5. `os/boot.S`
+5. `os/arch/x86_64/boot.S`
 6. `os/kernel.vnt`
 7. `os/serial.vnt`, `os/console.vnt`, `os/ps2.vnt`, and `os/interrupts.vnt`
-8. `os/interrupts.S`
+8. `os/arch/x86_64/interrupts.S`
 
 Do not try to understand every instruction yet. Just identify which file is responsible for building, boot configuration, memory layout, processor startup, and shell behavior.
 
@@ -45,7 +45,7 @@ Computer / QEMU
     ↓
 GRUB loads the kernel ELF
     ↓
-os/boot.S prepares the CPU
+os/arch/x86_64/boot.S prepares the CPU
     ↓
 generated VNT entry point
     ↓
@@ -69,7 +69,7 @@ Without looking back, answer:
 3. Which file contains the shell?
 4. Why do we use QEMU?
 
-**Answers to check:** GRUB loads the kernel; `os/boot.S` performs the early bootstrap; `os/kernel.vnt` contains the shell; QEMU lets us test without booting the kernel directly on physical hardware.
+**Answers to check:** GRUB loads the kernel; `os/arch/x86_64/boot.S` performs the early bootstrap; `os/kernel.vnt` contains the shell; QEMU lets us test without booting the kernel directly on physical hardware.
 
 ## Exercise
 

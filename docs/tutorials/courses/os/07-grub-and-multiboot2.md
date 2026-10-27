@@ -26,7 +26,7 @@ The `multiboot2` command tells GRUB to load the named kernel using the Multiboot
 
 ## 3. The header in `boot.S`
 
-The beginning of `os/boot.S` defines a section named `.multiboot`. It includes a magic value, architecture field, header length, checksum, and an end tag. These fields allow a compliant bootloader to recognize the image as a Multiboot2 kernel.
+The beginning of `os/arch/x86_64/boot.S` defines a section named `.multiboot`. It includes a magic value, architecture field, header length, checksum, and an end tag. These fields allow a compliant bootloader to recognize the image as a Multiboot2 kernel.
 
 The header must be placed where the bootloader can find it in the kernel file, and its values must satisfy the protocol. This is one reason the linker script preserves the section using `KEEP(*(.multiboot))`.
 
@@ -50,11 +50,11 @@ Do not conflate “GRUB loaded the kernel” with “the kernel has completed it
 
 ## Checkpoint
 
-Explain the difference between `os/grub.cfg`, the Multiboot2 header in `os/boot.S`, and `os/linker.ld`.
+Explain the difference between `os/grub.cfg`, the Multiboot2 header in `os/arch/x86_64/boot.S`, and `os/linker.ld`.
 
 ## Exercise
 
-Find the four header fields listed in Section 3 in `os/boot.S`. Then find the `KEEP` directive in the linker script and explain why the kernel needs that section to survive linking.
+Find the four header fields listed in Section 3 in `os/arch/x86_64/boot.S`. Then find the `KEEP` directive in the linker script and explain why the kernel needs that section to survive linking.
 
 ## 6. Understand the Multiboot2 header fields
 

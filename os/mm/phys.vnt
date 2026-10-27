@@ -322,17 +322,56 @@ fun phys_init() -> int {
     }
     state_set(28, total_pages)
     state_set(29, free_pages)
+    # Start the next-fit search at the first allocatable frame (1 MiB).
+    state_set(176, 256)
     return 1
 }
 
+# Try one frame. This helper is single-CPU code until the kernel has a
+# compiler-supported atomic/locking contract; it is not an SMP allocation API.
+fun phys_alloc_try_frame(frame: int) -> i64 {
+    if frame < 256 || frame >= 262144 {
+        return 0
+    }
+    if phys_usable_get(frame) != 1 || phys_allocated_get(frame) != 0 {
+        return 0
+    }
+    if phys_allocated_set(frame, 1) != 1 {
+        return 0
+    }
+    state_set(29, state_get(29) - 1)
+    let next_frame: int = frame + 1
+    if next_frame >= 262144 {
+        next_frame = 256
+    }
+    state_set(176, next_frame)
+    return frame * 4096
+}
+
 # Returns a 4-KiB-aligned physical address, or zero when exhausted.
+# Search from the last successful allocation, then wrap once to 1 MiB.
+# This avoids rescanning the low-address prefix for every allocation.
 fun phys_alloc_page() -> i64 {
-    let frame: int = 256
+    let start: int = state_get(176)
+    if start < 256 || start >= 262144 {
+        start = 256
+        state_set(176, start)
+    }
+
+    let frame: int = start
     while frame < 262144 {
-        if phys_usable_get(frame) == 1 && phys_allocated_get(frame) == 0 {
-            phys_allocated_set(frame, 1)
-            state_set(29, state_get(29) - 1)
-            return frame * 4096
+        let page: i64 = phys_alloc_try_frame(frame)
+        if page != 0 {
+            return page
+        }
+        frame = frame + 1
+    }
+
+    frame = 256
+    while frame < start {
+        let page: i64 = phys_alloc_try_frame(frame)
+        if page != 0 {
+            return page
         }
         frame = frame + 1
     }
@@ -357,6 +396,11 @@ fun phys_free_page(address: i64) -> int {
     }
     phys_allocated_set(frame, 0)
     state_set(29, state_get(29) + 1)
+    # If the freed frame is before the cursor, make it eligible on the next scan.
+    let hint: int = state_get(176)
+    if hint < 256 || hint >= 262144 || frame < hint {
+        state_set(176, frame)
+    }
     return 1
 }
 
@@ -377,6 +421,13 @@ fun phys_self_test() -> int {
         return 0
     }
     let valid: int = 1
+    let expected_hint: int = page / 4096 + 1
+    if expected_hint >= 262144 {
+        expected_hint = 256
+    }
+    if state_get(176) != expected_hint {
+        valid = 0
+    }
     if page / 4096 * 4096 != page {
         valid = 0
     }

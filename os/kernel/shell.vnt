@@ -87,7 +87,7 @@ fun shell_run() {
             handled = 0
             if str_eq(buffer, "help") {
                 console_puts("Commands: help, about, clear, echo, history, uptime\r\n")
-                console_puts("Diagnostics: synctest, mem, memtest, vmtest, irq, mouse, smp\r\n")
+                console_puts("Diagnostics: dectest, synctest, mem, memtest, vmtest, irq, mouse, smp\r\n")
                 console_puts("Power: reboot, halt\r\n")
                 console_puts("Usage: echo TEXT prints TEXT; history shows the previous command.\r\n")
                 handled = 1
@@ -117,6 +117,39 @@ fun shell_run() {
                 console_puts("Approximate uptime seconds (decimal): ")
                 console_decimal(ticks / 100)
                 console_puts("Clock source: PIT at nominal 100 Hz; seconds are approximate.\r\n")
+                handled = 1
+            }
+            if str_eq(buffer, "dectest") {
+                let passed: int = 1
+                if decimal_digit_at(0, 1) != 0 {
+                    passed = 0
+                }
+                if decimal_digit_at(10, 10) != 1 {
+                    passed = 0
+                }
+                if decimal_digit_at(907, 100) != 9 {
+                    passed = 0
+                }
+                if decimal_digit_at(907, 10) != 0 {
+                    passed = 0
+                }
+                if decimal_digit_at(1234, 1) != 4 {
+                    passed = 0
+                }
+                if decimal_digit_at(1234, 1000) != 1 {
+                    passed = 0
+                }
+                if decimal_digit_at(1234, 0) != -1 {
+                    passed = 0
+                }
+                if decimal_digit_at(-1, 1) != -1 {
+                    passed = 0
+                }
+                if passed == 1 {
+                    console_puts("Decimal digit self-test: PASS\\r\\n")
+                } else {
+                    console_puts("Decimal digit self-test: FAIL\\r\\n")
+                }
                 handled = 1
             }
             if str_eq(buffer, "synctest") {

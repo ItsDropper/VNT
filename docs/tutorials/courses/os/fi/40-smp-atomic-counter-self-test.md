@@ -16,7 +16,9 @@ Laskuri voi näyttää toimivan yhden CPU-ytimen testissä, vaikka päivitys koo
 
 - Paikka 308: jaettu atominen laskuri.
 - Paikka 309: testin aktiivisuuslippu.
-- Paikka 310: eräajon suorittaneiden AP-ytimien määrä.
+- Paikka 310: erän suorittaneiden AP-ytimien määrä.
+- Paikka 311: aloitusesteellä odottavien AP-ytimien määrä.
+- Paikka 312: aloitusesteen vapautuslippu.
 
 Paikat lisätään komentohistorian jälkeen, joten aiemmat indeksit säilyvät.
 
@@ -27,8 +29,8 @@ Toteutus on tiedostossa `os/kernel/smp.vnt`, ja käyttäjälle näkyvä komento 
 1. Vaadi vähintään kaksi verkossa olevaa ydintä ja että kaikki löydetyt ytimet ovat verkossa. Muussa tapauksessa tulos on `SKIP`, ei `PASS`.
 2. Nollaa oma laskuri ja valmistumisindikaattori sekä aktivoi testi.
 3. Lähetä kiinteän vektorin IPI 240 (heksana `0xf0`) jokaiselle verkossa olevalle AP-ytimelle.
-4. IPI-käsittelijässä kukin aktiivisuuslipun näkevä AP suorittaa 1 000 kutsua funktiolle `state_increment_atomic(308)` ja kasvattaa sitten AP-valmistumislaskuria atomisesti.
-5. BSP suorittaa samat 1 000 lisäystä samalla kun AP:t käsittelevät IPI-viestejä.
+4. Kukin AP kasvattaa valmiuslaskuria atomisesti ja odottaa rajatulla aloitusesteellä.
+5. BSP odottaa kaikkien AP-ytimien olevan valmiita, vapauttaa esteen ja suorittaa omat 1 000 lisäystään AP-ytimien kanssa. AP kasvattaa valmistumislaskuria atomisesti erän jälkeen.
 6. Odota AP-erien valmistumista rajatulla spin-loopilla, poista aktiivisuuslippu ja vertaa tulosta arvoon `online_cpu_count * 1000`.
 
 Ydintoiminto on tarkoituksella pieni:
@@ -66,7 +68,7 @@ CI-työnkulku suorittaa komennon neljän ytimen QEMUssa ja tarkistaa täsmällis
 - Testi käyttää projektin nykyistä kääntäjäkohtaista inline-assemblyn kutsusopimusta. `state_increment_atomic` lukee ensimmäisen argumentin osoitteesta `-8(%rbp)`; freestanding-ABI:n muuttaminen edellyttää primitiivin uudelleenarviointia.
 - Testi olettaa AP-ytimien käynnistyneen ja pystyvän vastaanottamaan olemassa olevan kiinteän vektorin IPI:n. Testi ohitetaan, jos kaikkia löydettyjä ytimiä ei ole saatu verkkoon.
 - Testi käynnistetään komentotulkista BSP:llä normaalin keskeytyskäsittelyn ollessa käytössä. AP-käsittelijät tekevät rajatun työmäärän ja kuittaavat IPI:n erän jälkeen.
-- Aktiivisuuslippu on testin ohjaustila, ei yleiskäyttöinen synkronointiprimitiivi.
+- Aktiivisuuslippu ja valmius-/vapautuseste ovat testikohtaista ohjaustilaa, eivät yleiskäyttöisiä synkronointiprimitiivejä. AP:n odotus on rajattu, jotta epäonnistunut este ei jätä ydintä pyörimään ikuisesti.
 - Testin läpäisy ei todista fyysisen muistinvaraajan, komentohistorian, CPU-laskurin, spinlockin kilpailutilanteen tai mielivaltaisen jaetun datan olevan turvallista rinnakkaisessa käytössä.
 - Aikakatkaisu tai epäonnistunut IPI on virhe, ei onnistunut testi pienemmällä tuloksella.
 

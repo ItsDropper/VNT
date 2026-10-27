@@ -252,6 +252,8 @@ fun phys_init() -> int {
     let frame: int = 0
     let limit: i64 = 1073741824
 
+    # Pass one: accept only complete 4-KiB frames inside type-1 regions.
+    # Partial frames at the edges are deliberately not marked usable.
     while region < region_count {
         if phys_mmap_type(region) == 1 {
             base = phys_mmap_base(region)
@@ -271,6 +273,38 @@ fun phys_init() -> int {
                 frame = start_frame
                 while frame < end_frame {
                     phys_usable_set(frame, 1)
+                    frame = frame + 1
+                }
+            }
+        }
+        region = region + 1
+    }
+
+    # Pass two: reserved firmware regions win if a memory map contains
+    # overlapping entries. Any 4-KiB frame touched by a non-type-1 region
+    # is removed from the usable bitmap, including partially covered frames.
+    # Clamp before addition so the end calculation stays inside the 1-GiB
+    # window; floor the start and ceil the end to reserve every touched page.
+    region = 0
+    while region < region_count {
+        if phys_mmap_type(region) != 1 {
+            base = phys_mmap_base(region)
+            length = phys_mmap_length(region)
+            if base >= 0 && base < limit && length > 0 {
+                if length > limit - base {
+                    length = limit - base
+                }
+                start_frame = base / 4096
+                end_frame = (base + length + 4095) / 4096
+                if start_frame < 0 {
+                    start_frame = 0
+                }
+                if end_frame > 262144 {
+                    end_frame = 262144
+                }
+                frame = start_frame
+                while frame < end_frame {
+                    phys_usable_set(frame, 0)
                     frame = frame + 1
                 }
             }

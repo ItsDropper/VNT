@@ -62,9 +62,9 @@ Commands: `help`, `about`, `clear`, `echo TEXT`, `mem`, `memtest`, `irq`,
 `mouse`, `reboot`, and `halt`. The `mem` command reports the kernel bounds
 and usable/free 4-KiB frame counts. `memtest` checks allocation, alignment,
 freeing, double-free rejection, and refusal to free the kernel start frame.
-The `irq` command reports the PIT tick count and the legacy IRQ0/IRQ1 counters. Only IRQ0 is expected to advance
-with the current mask configuration; IRQ1 remains masked because keyboard
-input is polled.
+The `irq` command reports the PIT tick count and the legacy IRQ0/IRQ1 counters.
+Only IRQ0 is expected to advance with the current mask configuration; IRQ1
+remains masked because keyboard input is polled.
 
 ## Interrupt architecture
 

@@ -14,6 +14,7 @@ import "../mm/phys.vnt"
 import "../mm/virt.vnt"
 import "../firmware/acpi.vnt"
 import "../arch/x86_64/apic.vnt"
+import "../pic.vnt"
 import "smp.vnt"
 
 fun str_eq(left: string, right: string) -> bool {
@@ -234,6 +235,17 @@ fun shell_run() {
                 console_decimal(device_irq_count(0))
                 console_puts("IRQ1 count (decimal): ")
                 console_decimal(device_irq_count(1))
+                console_puts("PIC IRQ0 masked (0=no, 1=yes): ")
+                console_decimal(pic_irq_is_masked(0))
+                console_puts("PIC IRQ1 masked (0=no, 1=yes): ")
+                console_decimal(pic_irq_is_masked(1))
+                console_puts("Local APIC enabled (0=no, 1=yes): ")
+                console_decimal(apic_is_enabled())
+                console_puts("IOAPIC routing setup ready (0=no, 1=yes): ")
+                console_decimal(apic_ioapic_ready())
+                console_puts("IOAPIC redirection entries masked: ")
+                console_decimal(apic_ioapic_route_count())
+                console_puts("Counts are delivered legacy PIC vectors, not device health.\r\n")
                 handled = 1
             }
             if str_eq(buffer, "mouse") {

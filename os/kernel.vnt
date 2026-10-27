@@ -45,6 +45,13 @@ fun kernel_main() {
         console_hex(acpi_ioapic_count())
         if apic_init() == 1 {
             smp_init()
+            if smp_start_aps() == 1 {
+                console_puts("Secondary CPU startup: PASS. Online CPUs: ")
+                console_hex(smp_online_cpu_count())
+            } else {
+                console_puts("Secondary CPU startup: FAIL. Online CPUs: ")
+                console_hex(smp_online_cpu_count())
+            }
             console_puts("Local APIC enabled. BSP APIC ID: ")
             console_hex(smp_bsp_apic_id())
             console_puts("CPU online count: ")

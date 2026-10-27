@@ -48,9 +48,9 @@ boot32_entry:
     movl %eax, pdpt_table+24
     movl $0, pdpt_table+28
     /* IOAPIC at 0xFEC00000 and Local APIC at 0xFEE00000. */
-    movl $0xfec00083, mmio_page_directory+4016
+    movl $0xfec0009b, mmio_page_directory+4016
     movl $0, mmio_page_directory+4020
-    movl $0xfee00083, mmio_page_directory+4024
+    movl $0xfee0009b, mmio_page_directory+4024
     movl $0, mmio_page_directory+4028
 
     /* Identity-map the first GiB using 512 2-MiB pages. */

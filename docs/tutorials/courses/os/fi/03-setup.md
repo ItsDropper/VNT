@@ -44,3 +44,68 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Tietokoneen osat kernelin näkökulmasta](02-computer-basics.md) · [Seuraava oppitunti: VNT-kielen perusteet kernel-koodissa →](04-vnt-for-kernels.md)
+
+## Toteutuslaboratorio: Kehitysympäristön valmistelu
+
+Tämä osio täydentää käsitteitä käytännön toteutusmenettelyllä. Lähdekoodiviitteet ovat projektin nykyisiä polkuja; avaa ne ennen muutosta.
+
+**Tutkittavat tiedostot:** `os/build.sh`, `.github/workflows/vntos-boot.yml`
+
+**Tavoite:** Tee ympäristöstä toistettava. Tarkista työkalujen olemassaolo ennen kuin tulkitset käännösvirhettä. Varmista, että virtuaalitesti ei koske oikeita levyjä.
+
+### Tee työ järjestyksessä
+
+1. **Rajaa vastuu:** Avaa build-skripti ja luettele gcc, ld, VNT-kääntäjä ja valinnaiset GRUB-työkalut.
+   - Kirjaa havainto ennen kuin muokkaat lähdekoodia.
+   - Vertaa toteutusta sen kutsujan odotuksiin.
+
+2. **Etsi nykyinen toteutus:** Varmista projektin juurihakemisto ja Git-työpuun tila.
+   - Kirjaa havainto ennen kuin muokkaat lähdekoodia.
+   - Vertaa toteutusta sen kutsujan odotuksiin.
+
+3. **Kirjaa sopimus:** Aja build-komento ja tallenna poistumiskoodi sekä ensimmäinen virhe.
+   - Kirjaa havainto ennen kuin muokkaat lähdekoodia.
+   - Vertaa toteutusta sen kutsujan odotuksiin.
+
+4. **Tee pienin muutos:** Jos ISO-työkaluja puuttuu, erota ELF:n kääntö ISO:n luomisesta.
+   - Kirjaa havainto ennen kuin muokkaat lähdekoodia.
+   - Vertaa toteutusta sen kutsujan odotuksiin.
+
+5. **Tarkista riippuvuudet:** Käytä QEMU:n väliaikaista levyä ja sarjaportin ulostuloa.
+   - Kirjaa havainto ennen kuin muokkaat lähdekoodia.
+   - Vertaa toteutusta sen kutsujan odotuksiin.
+
+6. **Käännä:** Älä tulkitse puuttuvaa valinnaista työkalua kernelin lähdekoodivirheeksi.
+   - Kirjaa havainto ennen kuin muokkaat lähdekoodia.
+   - Vertaa toteutusta sen kutsujan odotuksiin.
+
+### Selvitä jokainen rajapinta
+
+- Mikä funktio aloittaa toiminnon, ja kuka sitä kutsuu?
+- Mitä arvoja funktio lukee, mitä se muuttaa ja mitä se palauttaa?
+- Mitkä muistiosoitteet, indeksit tai laitearvot tulevat ulkopuolelta?
+- Mikä tarkistus tapahtuu ennen kuin arvoa käytetään?
+- Mikä on selkeä virhetilan paluuarvo tai diagnostiikka?
+- Mikä osa on VNT:tä ja mikä osa on CPU:n vaatimaa assemblyä?
+- Mitä nykyinen toteutus nimenomaisesti ei tue?
+
+### Hyväksymistesti
+
+1. Kirjoita ennen käännöstä odotettu tuloste tai tilamuutos.
+2. Suorita `bash os/build.sh` projektin juuressa.
+3. Käynnistä syntynyt kernel vain QEMU:ssa.
+4. Tarkista sarjaportin tai konsolin tuloste ja vertaa sitä odotukseen.
+5. Toista testi rajatapauksella ja virheellisellä syötteellä.
+6. Jos et voi suorittaa testiä, ilmoita se avoimesti äläkä merkitse sitä läpäistyksi.
+
+### Yleiset toteutusvirheet
+
+- Uuden funktion lisääminen ilman kutsuja tai importtia: koodi ei ole osa käynnistyspolkua.
+- Oletus, että käännös tarkoittaa käynnistymistä.
+- Rajojen tarkistaminen vasta sen jälkeen, kun muistia on jo luettu tai kirjoitettu.
+- Liian suuri muutos, jonka jälkeen ei tiedetä, mikä rikkoi toiminnan.
+- Diagnostiikan lisääminen keskeytyskäsittelijään niin, että alkuperäinen virhe muuttuu uudeksi jumiutumiseksi.
+
+### Muutosraportti
+
+Kirjoita muistiin: (1) tiedostot, joita muutit, (2) uuden toiminnon sopimus, (3) tarkka build-tulos, (4) QEMU-havainto, (5) testatut virhepolut ja (6) rajoitukset, joita et ratkaissut. Tämä raportti on osa toteutusta, ei ylimääräistä paperityötä.

@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: APIC IPI -viestit](28-apic-ipi-service.md) · [Kurssi valmis — takaisin sisällysluetteloon](./README.md)
 
 ## Koodiesimerkki: nykyinen AP-tila ei ole vielä yleinen lukitus
 
@@ -124,3 +123,7 @@ Tässä osiossa rakennat tai validoit konkreettisen osan nykyisestä VNTOS-kerne
 ### Muutosraportti
 
 Kirjaa muutetut tiedostot, rajapinta, hyväksymiskriteeri, build-tulos, QEMU-havainto, negatiiviset testit ja jäljelle jääneet rajoitukset.
+
+---
+
+[← Edellinen oppitunti](./28-apic-ipi-service.md) · [Sisällysluettelo](./README.md) · **Kurssi suoritettu.**

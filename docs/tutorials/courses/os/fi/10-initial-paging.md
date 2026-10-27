@@ -44,3 +44,68 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: x86-64 long mode](09-long-mode.md) · [Seuraava oppitunti: ELF ja linkkeriskripti →](11-elf-and-linker.md)
+
+## Toteutuslaboratorio: Alkuvaiheen sivutaulut
+
+Tässä harjoituksessa toteutat tai jäljität toimivan osan, et vain kuvaile käsitettä.
+
+**Tutkittavat tiedostot:** `os/arch/x86_64/boot.S`, `os/mm/virt.vnt`
+
+**Tavoite:** Jäljitä virtuaaliosoitteen käännös nelitasoisessa sivutaulussa. Tarkista present-bitit ja suuret sivut ennen dereferointia. Pidä nykyisen identiteettikartoituksen raja näkyvissä.
+
+### Toteutus vaiheittain
+
+1. **Rajaa vastuu:** Etsi PML4-, PDPT- ja page directory -taulujen määrittelyt.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+2. **Etsi nykyinen toteutus:** Laske yhdelle osoitteelle indeksit ja sivun offset.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+3. **Kirjaa sopimus:** Selitä, miksi nykyinen bootstrap käyttää 2 MiB:n sivuja ensimmäisen 1 GiB:n kartoitukseen.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+4. **Tee pienin muutos:** Etsi virtuaalimuistin lukufunktio ja sen rajat.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+5. **Tarkista riippuvuudet:** Älä lisää uutta taulutasoa ennen kuin kehysallokointi ja TLB-vaikutus ovat selvät.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+6. **Käännä:** Testaa tunnettu identiteettiosoite ja puuttuvan kartoituksen tapaus.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+### Sopimus ja rajat
+
+- Määritä syötteet, paluuarvot ja virhetilanteet ennen toteutusta.
+- Tarkista osoitteet, pituudet, indeksit ja tilan alustaminen ennen käyttöä.
+- Erota CPU:n vaatima mekanismi VNT:n päätöksenteosta.
+- Älä väitä nykyisen rajoitetun toteutuksen tukevan ominaisuuksia, joita koodi ei sisällä.
+- Tarkista, ettei uusi toiminto vaadi alustamatonta moduulia tai linkittämätöntä symbolia.
+- Pidä diagnostiikka rajattuna ja vältä odottamista keskeytyskontekstissa.
+
+### Testaa jokainen polku
+
+1. Kirjoita ennuste ennen käännöstä.
+2. Suorita `bash os/build.sh` projektin juuressa.
+3. Tarkista ensimmäinen epäonnistunut komento.
+4. Käynnistä kernel QEMU:ssa ja tallenna sarjaportin tuloste.
+5. Testaa normaali tapaus, rajatapaus ja virheellinen syöte.
+6. Tarkista ettei virheellinen pyyntö muuta muistia tai laitteiston tilaa.
+7. Jos testaus ei ole käytettävissä, merkitse tulos vahvistamattomaksi.
+
+### Tavalliset virheet
+
+- Osoitteen tai pituuden tarkistus tehdään vasta luku-/kirjoitusoperaation jälkeen.
+- Uusi funktio ei ole mukana import-ketjussa.
+- Paluuarvon merkitys ei ole sama kutsujalle ja toteuttajalle.
+- Diagnostiikka peittää alkuperäisen vian.
+- Käännöksen onnistumista pidetään toimintatestinä.
+
+### Kirjaa toteutus
+
+Dokumentoi muutetut tiedostot, funktiosopimus, build-tulos, QEMU-havainto, negatiiviset testit ja rajoitukset. Näin toinen kehittäjä pystyy toistamaan tarkistuksen.

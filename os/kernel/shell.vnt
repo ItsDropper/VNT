@@ -240,8 +240,12 @@ fun shell_run() {
                     console_putc(8)
                     cursor = cursor - 1
                 }
-                while length > 0 {
+                let clear_count: int = length
+                while clear_count > 0 {
                     console_putc(32)
+                    clear_count = clear_count - 1
+                }
+                while length > 0 {
                     console_putc(8)
                     length = length - 1
                 }

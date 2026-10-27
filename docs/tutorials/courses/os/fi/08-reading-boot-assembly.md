@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: GRUB ja Multiboot2](07-grub-and-multiboot2.md) · [Seuraava oppitunti: x86-64 long mode →](09-long-mode.md)
 
 ## Koodiesimerkki: säilytä bootloaderin rekisterit
 
@@ -129,3 +128,7 @@ Tämä on toteutusohje, ei vain aiheesta kertova yhteenveto. Avaa lähdetiedosto
 ### Muutosraportti
 
 Kirjaa muutetut tiedostot, toteutettu sopimus, build-tulos, QEMU-havainto, virhepolut ja tunnetut rajoitukset. Jos testaus jäi tekemättä, merkitse se avoimeksi työksi.
+
+---
+
+[← Edellinen oppitunti](./07-grub-and-multiboot2.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./09-long-mode.md)

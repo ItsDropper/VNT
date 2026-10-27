@@ -22,11 +22,7 @@ checksums, table bounds, and MADT record lengths before using entries.
 
 ## Current limitations
 
-This is APIC and SMP groundwork, not a finished SMP kernel. Only the bootstrap
-processor executes kernel code. MADT CPU entries are discovered, but secondary
-processors are not started yet; there is no AP trampoline, per-CPU stack/TSS,
-per-CPU interrupt state, IPI API, scheduler, or SMP-safe allocator. The current
-physical allocator is single-core and limited to the first GiB.
+This is early SMP bring-up, not a finished SMP kernel. MADT CPUs are started serially through a copied real-mode trampoline; each AP receives a private stack, enters VNT, publishes online state, and halts with interrupts disabled. There is no per-CPU IDT/TSS, APIC-vector IPI handler, scheduler/context switch, or SMP-safe allocator. The current physical allocator is still single-core and limited to the first GiB.
 
 Only conventional xAPIC MMIO addresses are mapped. x2APIC mode, nonstandard
 Local APIC/I/O APIC address overrides, multiple I/O APIC controllers, and

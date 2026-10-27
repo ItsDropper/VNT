@@ -196,7 +196,8 @@ static StructDef *find_struct(TypeChecker *tc, const char *name) {
 static int builtin_arity(const char *name, int argc) {
     if (!strcmp(name, "symbol_address")) return argc == 1;
     if (!strcmp(name, "cpu_read_cr2")) return argc == 0;
-    if (!strcmp(name, "cpu_read_msr")) return argc == 1;\n    if (!strcmp(name, "cpu_write_msr")) return argc == 2;
+    if (!strcmp(name, "cpu_read_msr")) return argc == 1;
+    if (!strcmp(name, "cpu_write_msr")) return argc == 2;
     if (!strcmp(name, "cpu_invlpg")) return argc == 1;
     if (!strcmp(name, "mem_alloc") || !strcmp(name, "mem_free") || !strcmp(name, "mem_is_null")) return argc == 1;
     if (!strcmp(name, "mem_read_u8") || !strcmp(name, "mem_read_u32") || !strcmp(name, "mem_read_u64")) return argc == 2;

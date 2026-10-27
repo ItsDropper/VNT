@@ -1,0 +1,6 @@
+fun log_message() -> void {
+    return
+}
+
+let result = 1
+result = log_message()

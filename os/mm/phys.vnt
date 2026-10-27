@@ -28,7 +28,10 @@ fun phys_info_addr() -> i64 {
 fun phys_info_size() -> int {
     let info: i64 = phys_info_addr()
     if info == 0 { return 0 }
-    unsafe { return mem_read_u32(info, 0) }
+    let size: int = 0
+    unsafe { size = mem_read_u32(info, 0) }
+    if size < 16 || info + size > 1073741824 { return 0 }
+    return size
 }
 
 fun phys_mmap_count() -> int {

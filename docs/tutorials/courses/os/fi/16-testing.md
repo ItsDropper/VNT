@@ -45,6 +45,20 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Selvitä ongelmat järjestelmällisesti](15-debugging.md) · [Seuraava oppitunti: Tee ensimmäinen pieni muutos →](17-first-kernel-change.md)
 
+## Koodiesimerkki: testaa build, ELF ja käynnistys erikseen
+
+```bash
+bash os/build.sh
+readelf -h -l build/kernel.elf
+grub-file --is-x86-multiboot2 build/kernel.elf
+qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -serial stdio
+```
+
+Komennot todistavat eri asioita: build-skripti yrittää luoda artefaktit, readelf näyttää ELF:n rakenteen, grub-file tarkistaa Multiboot2-yhteensopivuuden ja QEMU testaa käynnistystä. `grub-file` on saatavilla vain, jos vastaava työkalu on asennettu; ISO puolestaan syntyy vain, kun tarvittavat GRUB- ja xorriso-työkalut ovat käytössä.
+
+**Tee itse:** Kirjaa jokaisen komennon poistumiskoodi ja ensimmäinen virhe. Älä kirjoita “kernel testattu”, jos tarkistit vain että ELF-tiedosto syntyi.
+
+
 ## Toteutuslaboratorio: Testaa muutakin kuin käännös
 
 Tässä osiossa teet konkreettisen muutoksen nykyiseen VNTOS-koodiin. Avaa lähdetiedostot ja varmista, että kuvaus vastaa nykyistä toteutusta.

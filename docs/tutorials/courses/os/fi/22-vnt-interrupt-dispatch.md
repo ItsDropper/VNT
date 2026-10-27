@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Pidä assembly-rajapinta pienenä](21-minimal-assembly-entry-stubs.md) · [Seuraava oppitunti: PIT, PIC ja ajastimen tikit →](23-pit-pic-and-timer-ticks.md)
 
 ## Koodiesimerkki: reititä vektori VNT:ssä
 
@@ -136,3 +135,7 @@ Tämä harjoitus edellyttää lähdekoodin lukemista ja toteutuksen todentamista
 ### Muutosraportti
 
 Kirjaa muutos, rajapintasopimus, build-tulos, QEMU-havainto, testatut vektorit ja avoimet rajoitukset.
+
+---
+
+[← Edellinen oppitunti](./21-minimal-assembly-entry-stubs.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./23-pit-pic-and-timer-ticks.md)

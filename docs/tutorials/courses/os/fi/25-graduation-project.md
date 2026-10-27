@@ -45,6 +45,21 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Fyysinen muisti ja sivukehykset](26-physical-memory-and-page-frames.md) · [Seuraava oppitunti: ACPI, APIC ja usea CPU-ydin →](27-acpi-apic-and-smp.md)
 
+## Koodiesimerkki: hyväksymiskriteeri sidotaan itsekoettaan
+
+```vnt
+if phys_self_test() == 1 {
+    console_puts("Physical allocator self-test: PASS\r\n")
+} else {
+    console_puts("Physical allocator self-test: FAIL\r\n")
+}
+```
+
+Tämä on nykyisen komentotulkin käyttämä malli. Ominaisuus ei ole valmis vain siksi, että sen funktio on olemassa: testin pitää tarkistaa myös rajat, virhetilat ja se, ettei testi vahingoita kernelin varaamaa muistia.
+
+**Tee itse:** Määritä lopputyöllesi yksi hyväksymiskriteeri, lisää normaali-, raja- ja virhetilan testi ja näytä tulos QEMU:ssa. Dokumentoi myös, mitä testi ei todista.
+
+
 ## Toteutuslaboratorio: Loppuprojekti
 
 Tässä osiossa rakennat tai validoit konkreettisen osan nykyisestä VNTOS-kernelistä.

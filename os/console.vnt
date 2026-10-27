@@ -61,6 +61,15 @@ fun console_puts_offset(text: string, offset: int) {
     return 0
 }
 
+# Pure decimal digit extraction: returns -1 for invalid inputs.
+# The divisor must be a positive power of ten; callers own that invariant.
+fun decimal_digit_at(value: i64, divisor: i64) -> int {
+    if value < 0 || divisor <= 0 {
+        return -1
+    }
+    return (value / divisor) % 10
+}
+
 # Print a non-negative integer in base 10 without allocating memory.
 # The divisor grows only while it remains <= value / 10, avoiding overflow.
 fun console_decimal(value: i64) {
@@ -78,7 +87,7 @@ fun console_decimal(value: i64) {
         divisor = divisor * 10
     }
     while divisor > 0 {
-        let digit: int = value / divisor
+        let digit: int = decimal_digit_at(value, divisor)
         console_putc(48 + digit)
         value = value % divisor
         divisor = divisor / 10

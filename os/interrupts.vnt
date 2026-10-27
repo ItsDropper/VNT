@@ -4,6 +4,8 @@
 # VNT owns interrupt policy and diagnostics. interrupts.S is limited to the
 # architectural entry/exit frame, IDT construction, PIC/PIT setup, and iretq.
 
+import "kernel/core.vnt"
+
 export fun interrupts_init() {
     unsafe {
         asm volatile("call vntos_interrupts_init")

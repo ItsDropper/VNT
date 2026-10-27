@@ -10,7 +10,7 @@ VNTOS configures PIT channel 0 with divisor 11931, which is approximately 100 ti
 
 ## The PIC setup sequence
 
-In `vntos_interrupts_init` in `os/interrupts.S`, the code sends initialization commands to the master PIC at ports `0x20/0x21` and the slave PIC at `0xa0/0xa1`. It sets their vector offsets to `0x20` and `0x28`, describes their cascade wiring, and returns both controllers to normal operation.
+In `vntos_interrupts_init` in `os/arch/x86_64/interrupts.S`, the code sends initialization commands to the master PIC at ports `0x20/0x21` and the slave PIC at `0xa0/0xa1`. It sets their vector offsets to `0x20` and `0x28`, describes their cascade wiring, and returns both controllers to normal operation.
 
 After programming the PIT, it writes mask `0xfe` to the master PIC and `0xff` to the slave PIC. Bit 0 is cleared in `0xfe`, so IRQ0 is unmasked; all other IRQ lines remain masked. This is why the keyboard remains polled even though the timer uses interrupts.
 
@@ -92,7 +92,7 @@ Do not copy the PIC port writes into a driver for a different controller. First 
 
 ## Why the counter is shared across modules
 
-The storage is declared in `os/boot.S` because that file already owns the initial scalar state layout. The VNT dispatcher does not allocate memory for each tick; it updates the existing slot through `state_set`. The shell later reads that same slot through `state_get`. This is a minimal shared-state contract, and a future cleanup should replace numeric indexes with a documented state interface.
+The storage is declared in `os/arch/x86_64/boot.S` because that file already owns the initial scalar state layout. The VNT dispatcher does not allocate memory for each tick; it updates the existing slot through `state_set`. The shell later reads that same slot through `state_get`. This is a minimal shared-state contract, and a future cleanup should replace numeric indexes with a documented state interface.
 
 When documenting your measurements, include the QEMU command, the two hexadecimal counter readings, the approximate delay, and whether the kernel was otherwise idle. That makes the observation repeatable and prevents a counter value from being mistaken for a precise clock.
 If the counter is unchanged, attach the transcript to your issue or review rather than reporting only a conclusion.

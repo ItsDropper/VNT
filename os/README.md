@@ -8,8 +8,9 @@ interrupt entry are deliberately split from the VNT policy code.
 - `os/arch/x86_64/boot.S`: Multiboot2 header, 32-bit bootstrap, initial page
   tables, transition to long mode, and bootstrap stack.
 - `os/arch/x86_64/interrupts.S`: IDT construction, minimal entry/exit stubs,
-  legacy PIC remapping, and PIT setup. Assembly is limited to the CPU/ABI
-  boundary and current early hardware initialization.
+  legacy PIC remapping, and PIT setup.
+- `os/arch/x86_64/memory.S`: validated Multiboot2 memory-map accessors and
+  bounded physical-frame bitmap primitives.
 - `os/kernel.vnt`: kernel entry and ordered subsystem initialization.
 - `os/kernel/core.vnt`: early shared-state access, kernel bounds, and CPU halt/reboot primitives.
 - `os/kernel/shell.vnt`: command parsing, line editing, and shell policy.
@@ -18,6 +19,7 @@ interrupt entry are deliberately split from the VNT policy code.
 - `os/ps2.vnt`: polled PS/2 keyboard and mouse routines.
 - `os/pic.vnt`: VNT-side legacy PIC IRQ mask controls; IRQ entry and EOI remain in assembly.
 - `os/kernel/device_irq.vnt`: bounded accounting for legacy IRQ vectors 32–47; this is not yet a handler registry.
+- `os/mm/phys.vnt`: Multiboot2-backed 4-KiB physical-frame allocator for the first 1-GiB mapped window.
 - `os/interrupts.vnt`: VNT-side interrupt dispatch and fatal exception policy.
 - `os/linker.ld`: ELF layout and linker symbols.
 - `os/grub.cfg`: GRUB's Multiboot2 kernel configuration.
@@ -35,7 +37,7 @@ bash os/build.sh
 ```
 
 The script follows imports from `os/kernel.vnt`, emits freestanding assembly,
-assembles the two architecture-boundary files separately, and links a
+assembles the three architecture-boundary files separately, and links a
 freestanding ELF. If GRUB and ISO tools are available, it creates
 `build/vntos.iso`. The CI QEMU test validates the Multiboot2 ELF, checks for
 unresolved symbols, exercises the serial shell and keyboard path, and checks
@@ -56,9 +58,11 @@ PS/2 keyboard. For serial-only debugging, use:
 qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -serial stdio
 ```
 
-Commands: `help`, `about`, `clear`, `echo TEXT`, `mem`, `irq`,
-`mouse`, `reboot`, and `halt`. The `irq` command reports the PIT tick count
-and the legacy IRQ0/IRQ1 accounting counters. Only IRQ0 is expected to advance
+Commands: `help`, `about`, `clear`, `echo TEXT`, `mem`, `memtest`, `irq`,
+`mouse`, `reboot`, and `halt`. The `mem` command reports the kernel bounds
+and usable/free 4-KiB frame counts. `memtest` checks allocation, alignment,
+freeing, double-free rejection, and refusal to free the kernel start frame.
+The `irq` command reports the PIT tick count and the legacy IRQ0/IRQ1 counters. Only IRQ0 is expected to advance
 with the current mask configuration; IRQ1 remains masked because keyboard
 input is polled.
 
@@ -97,7 +101,9 @@ not evidence of independent modules or memory-safe ownership.
 - **PS/2 mouse:** polls and assembles three-byte packets, tracking clamped
   text-cell coordinates and button bits. There is no graphical pointer.
 - **Memory map:** the bootstrap identity-maps the first 1 GiB using 2 MiB
-  pages, including the legacy VGA text buffer.
+  pages, including the legacy VGA text buffer. The physical allocator parses
+  Multiboot2 type-1 regions inside that window and tracks usable, allocated,
+  and reserved frames with bitmaps.
 - **Timer:** PIT-based, approximately 100 Hz. It is not a calibrated wall
   clock and does not schedule tasks.
 
@@ -107,7 +113,9 @@ graphics environments. PS/2 input depends on the emulator or machine exposing
 a compatible controller.
 
 VNTOS still has no scheduler, userspace, filesystem, general heap allocator,
-physical-page allocator, or general device-driver framework. The VNT
+virtual-memory manager, or general device-driver framework. The physical
+allocator is limited to the current 1-GiB identity-mapped window and is not
+safe for concurrent allocation from multiple CPUs. The VNT
 freestanding backend is experimental and some existing low-level routines
 still rely on compiler-specific stack offsets. Treat this as a learning kernel,
 not production-ready OS code.

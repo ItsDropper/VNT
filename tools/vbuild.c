@@ -430,7 +430,7 @@ static int load_tasks(void) {
         if (!strncmp(p, "target ", 7)) {
             char *target = p + 7;
             if (target_seen) {
-                fprintf(stderr, "vbuild: build.vbuild:%d: target may only be declared once.\\n", lineno);
+                fprintf(stderr, "vbuild: build.vbuild:%d: target may only be declared once.\n", lineno);
                 fclose(f); return 0;
             }
             trim(target);

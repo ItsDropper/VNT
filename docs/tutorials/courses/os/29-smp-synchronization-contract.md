@@ -49,11 +49,11 @@ Before adding a lock, inspect the actual freestanding backend and its inline-ass
 
 ## 3A. Backend audit: what is and is not available
 
-The current freestanding backend recognizes a closed set of unsafe architecture calls in `src/compiler/freestanding_x86.c`. The existing raw-memory operations are emitted as ordinary `mov` instructions; `cpu_invlpg`, CR2 reads, and MSR access each have explicit lowering. There is no atomic exchange or compare-and-exchange intrinsic in that dispatch today.
+The current freestanding backend recognizes a closed set of unsafe architecture calls in `src/compiler/freestanding_x86.c`. The existing raw-memory operations are emitted as ordinary `mov` instructions; `cpu_invlpg`, CR2 reads, and MSR access each have explicit lowering. The target-specific `cpu_atomic_exchange_u64(address, value)` primitive is now implemented and covered by positive and negative compiler fixtures. Compare-and-exchange is still not implemented.
 
 The backend also emits inline assembly text directly from the IR node. That interface does not declare input/output operands, register clobbers, or a compiler memory clobber. Therefore, a line such as `asm volatile("lock; ...")` is not a safe substitute for a first-class atomic operation: the compiler cannot infer the memory effects or register constraints from an arbitrary text string.
 
-The smallest useful compiler extension is an explicitly named operation with a fixed signature, rather than a general inline-assembly escape hatch. For example, a future `cpu_atomic_exchange_u64(address, value)` operation could:
+The first extension is an explicitly named operation with a fixed signature, not a general inline-assembly escape hatch. The implemented `cpu_atomic_exchange_u64(address, value)` operation:
 
 - Require an aligned, valid pointer to a 64-bit storage location in the kernel's mapped address space.
 - Emit x86-64 `xchgq` against memory, which is implicitly locked when the operand is memory.
@@ -66,16 +66,16 @@ This operation alone would not make the allocator safe. A spinlock still needs a
 
 ## 4. Requirements for the next implementation
 
-A small first implementation should keep its scope narrow:
+The next implementation must keep its scope narrow and prove the lock under contention before integrating it into shared kernel subsystems:
 
-- Add a VNT-visible atomic compare-and-exchange or exchange primitive only after the compiler/backend can represent it correctly.
-- Specify success/failure behavior and the memory-ordering guarantees; x86 instruction ordering does not excuse an undocumented compiler contract.
-- Implement a VNT spinlock on top of that primitive. The lock state must have a stable, aligned storage location and a known initialization value.
+- Keep the atomic-exchange contract explicit: aligned mapped `u64` pointer, old value returned, unsafe-only use, and x86 `xchgq` semantics.
+- Specify failure behavior and the memory-ordering guarantees; x86 instruction ordering does not excuse an undocumented compiler contract.
+- Validate the initial VNT spinlock on top of that primitive. The lock state must have a stable, aligned storage location and a known initialization value.
 - Keep the critical section short. Never wait for an IPI, print to the console, or sleep while holding a spinlock.
 - Define interrupt interaction before using the lock from interrupt context. A CPU must not deadlock by taking a lock in ordinary code and then being interrupted by a handler that tries to take that same lock.
 - Only then protect allocator bitmap changes and cached counts as one transaction.
 
-Do not enable general concurrent allocation merely because the lock compiles. The implementation needs a host-side/compiler regression test for the atomic instruction shape and a QEMU test that exercises the lock from more than one CPU. The test must detect duplicate allocations and verify that the free-page count returns to its starting value.
+Do not enable general concurrent allocation merely because the lock compiles. CI now checks the emitted `xchgq` instruction and rejects use outside `unsafe { ... }`. The shell's `synctest` covers only uncontended acquire/try-acquire/release/double-release behavior. A QEMU test must still exercise contention from more than one CPU, detect duplicate allocations, and verify that the free-page count returns to its starting value.
 
 ## 5. Verification available today
 

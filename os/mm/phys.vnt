@@ -5,11 +5,6 @@
 # One bit marks a frame usable; a second bit tracks reservation/allocation.
 # All ranges are clipped to the mapped physical window.
 
-const PHYS_PAGE_SIZE: int = 4096
-const PHYS_FRAME_COUNT: int = 262144
-const PHYS_LIMIT: i64 = 1073741824
-const PHYS_FIRST_ALLOCATABLE: int = 256
-
 fun phys_mmap_count() -> int {
     let result: int = -1
     unsafe {
@@ -34,7 +29,7 @@ fun phys_mmap_length(index: int) -> i64 {
     return phys_mmap_field(index, 1)
 }
 
-fun phys_mmap_type(index: int) -> int {
+fun phys_mmap_type(index: int) -> i64 {
     return phys_mmap_field(index, 2)
 }
 
@@ -98,7 +93,7 @@ fun phys_init() -> int {
     let start_frame: int = 0
     let end_frame: int = 0
     let frame: int = 0
-    let limit: i64 = PHYS_LIMIT
+    let limit: i64 = 1073741824
 
     while region < region_count {
         if phys_mmap_type(region) == 1 {
@@ -108,13 +103,13 @@ fun phys_init() -> int {
                 if length > limit - base {
                     length = limit - base
                 }
-                start_frame = (base + PHYS_PAGE_SIZE - 1) / PHYS_PAGE_SIZE
-                end_frame = (base + length) / PHYS_PAGE_SIZE
-                if start_frame < PHYS_FIRST_ALLOCATABLE {
-                    start_frame = PHYS_FIRST_ALLOCATABLE
+                start_frame = (base + 4096 - 1) / 4096
+                end_frame = (base + length) / 4096
+                if start_frame < 256 {
+                    start_frame = 256
                 }
-                if end_frame > PHYS_FRAME_COUNT {
-                    end_frame = PHYS_FRAME_COUNT
+                if end_frame > 262144 {
+                    end_frame = 262144
                 }
                 frame = start_frame
                 while frame < end_frame {
@@ -129,9 +124,9 @@ fun phys_init() -> int {
     # Reserve the complete low-memory range and the linked kernel image,
     # including its page tables, bootstrap stack, and both allocator bitmaps.
     let kernel_end: i64 = kernel_end_addr()
-    let reserve_end: i64 = (kernel_end + PHYS_PAGE_SIZE - 1) / PHYS_PAGE_SIZE
+    let reserve_end: i64 = (kernel_end + 4096 - 1) / 4096
     frame = 0
-    while frame < reserve_end && frame < PHYS_FRAME_COUNT {
+    while frame < reserve_end && frame < 262144 {
         phys_allocated_set(frame, 1)
         frame = frame + 1
     }
@@ -141,10 +136,10 @@ fun phys_init() -> int {
     let info_size: int = phys_info_size()
     if info_start > 0 && info_size > 0 && info_start < limit {
         let info_end: i64 = info_start + info_size
-        let info_first: int = info_start / PHYS_PAGE_SIZE
-        let info_last: int = (info_end + PHYS_PAGE_SIZE - 1) / PHYS_PAGE_SIZE
-        if info_last > PHYS_FRAME_COUNT {
-            info_last = PHYS_FRAME_COUNT
+        let info_first: int = info_start / 4096
+        let info_last: int = (info_end + 4096 - 1) / 4096
+        if info_last > 262144 {
+            info_last = 262144
         }
         frame = info_first
         while frame < info_last {
@@ -157,11 +152,11 @@ fun phys_init() -> int {
 
 # Returns a 4-KiB-aligned physical address, or zero when exhausted.
 fun phys_alloc_page() -> i64 {
-    let frame: int = PHYS_FIRST_ALLOCATABLE
-    while frame < PHYS_FRAME_COUNT {
+    let frame: int = 256
+    while frame < 262144 {
         if phys_usable_get(frame) == 1 && phys_allocated_get(frame) == 0 {
             phys_allocated_set(frame, 1)
-            return frame * PHYS_PAGE_SIZE
+            return frame * 4096
         }
         frame = frame + 1
     }
@@ -171,11 +166,11 @@ fun phys_alloc_page() -> i64 {
 # Only frees an allocated, usable frame in the current identity-mapped window.
 # Returns 1 if freed; returns 0 for unaligned, reserved, invalid, or double frees.
 fun phys_free_page(address: i64) -> int {
-    if address < PHYS_FIRST_ALLOCATABLE * PHYS_PAGE_SIZE || address >= PHYS_LIMIT {
+    if address < 256 * 4096 || address >= 1073741824 {
         return 0
     }
-    let frame: int = address / PHYS_PAGE_SIZE
-    if frame * PHYS_PAGE_SIZE != address {
+    let frame: int = address / 4096
+    if frame * 4096 != address {
         return 0
     }
     if phys_usable_get(frame) != 1 || phys_allocated_get(frame) != 1 {
@@ -188,7 +183,7 @@ fun phys_free_page(address: i64) -> int {
 fun phys_count_usable_pages() -> int {
     let frame: int = 0
     let count: int = 0
-    while frame < PHYS_FRAME_COUNT {
+    while frame < 262144 {
         if phys_usable_get(frame) == 1 {
             count = count + 1
         }
@@ -198,9 +193,9 @@ fun phys_count_usable_pages() -> int {
 }
 
 fun phys_count_free_pages() -> int {
-    let frame: int = PHYS_FIRST_ALLOCATABLE
+    let frame: int = 256
     let count: int = 0
-    while frame < PHYS_FRAME_COUNT {
+    while frame < 262144 {
         if phys_usable_get(frame) == 1 && phys_allocated_get(frame) == 0 {
             count = count + 1
         }

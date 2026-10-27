@@ -320,8 +320,10 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
         case AST_STRING_LITERAL: return TY_STRING;
 
         case AST_ARRAY_LITERAL:
-            for (AstNode *e = n->array_literal.elements; e; e = e->next)
-                (void)expr_type(tc, e);
+            for (AstNode *e = n->array_literal.elements; e; e = e->next) {
+                if (expr_type(tc, e) == TY_VOID)
+                    error(tc, "void function call cannot be stored in an array.");
+            }
             return TY_ARRAY;
 
         case AST_VARIABLE: {
@@ -349,7 +351,8 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
         }
 
         case AST_MEMBER_EXPRESSION:
-            (void)expr_type(tc, n->member_expression.object);
+            if (expr_type(tc, n->member_expression.object) == TY_VOID)
+                error(tc, "void function call cannot be used for member access.");
             return TY_UNKNOWN;
 
         case AST_FUNCTION_CALL: {
@@ -477,6 +480,10 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
 
         case AST_UNARY_EXPRESSION: {
             TypeKind t = expr_type(tc, n->unary_expression.operand);
+            if (t == TY_VOID) {
+                error(tc, "void function call cannot be used in a unary expression.");
+                return TY_UNKNOWN;
+            }
             if (n->unary_expression.operator == UNARY_NOT) {
                 if (t != TY_BOOL && t != TY_UNKNOWN) error(tc, "'!' requires a boolean.");
                 return TY_BOOL;
@@ -498,6 +505,11 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
             TypeKind left = expr_type(tc, n->binary_expression.left);
             TypeKind right = expr_type(tc, n->binary_expression.right);
             BinaryOperator op = n->binary_expression.operator;
+
+            if (left == TY_VOID || right == TY_VOID) {
+                error(tc, "void function call cannot be used in a binary expression.");
+                return TY_UNKNOWN;
+            }
 
             if (op == BINARY_AND || op == BINARY_OR) {
                 if ((left != TY_BOOL && left != TY_UNKNOWN) ||

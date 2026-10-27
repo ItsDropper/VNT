@@ -174,3 +174,5 @@ The `irq` command is a compact example that crosses the course's main boundaries
 Trace both directions: command-to-output and hardware-event-to-state. This demonstrates why the VNT dispatcher does not print on every tick and why the shell does not need to know the PIC's port addresses.
 
 The shared state array is a compact teaching mechanism, not a finished type-safe kernel API. A future improvement would give the timer count a named interface and define how concurrent reads and writes are synchronized. Do not claim the current design already provides a general concurrency abstraction.
+
+- [28. Fixed-vector APIC IPIs](28-apic-ipi-service.md) — shared IDT loading on APs, local APIC setup, fixed-vector delivery, and response-counter verification.

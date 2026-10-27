@@ -17,7 +17,7 @@ interrupt entry are deliberately split from the VNT policy code.
 - `os/ps2.vnt`: polled PS/2 keyboard and mouse routines.
 - `os/pic.vnt`: VNT-side legacy PIC IRQ mask controls; IRQ entry and EOI remain in assembly.
 - `os/kernel/device_irq.vnt`: bounded accounting for legacy IRQ vectors 32–47; this is not yet a handler registry.
-- `os/mm/phys.vnt`: Multiboot2-backed 4-KiB physical-frame allocator with a bounded next-fit search for the first 1-GiB mapped window.
+- `os/mm/phys.vnt`: Multiboot2-backed 4-KiB physical-frame allocator with bounded next-fit and contiguous-run APIs for the first 1-GiB mapped window.
 - `os/mm/virt.vnt`: early virtual translation/mapping policy and a reversible mapping self-test.
 - `os/interrupts.vnt`: VNT-side interrupt dispatch and fatal exception policy.
 - `os/linker.ld`: ELF layout and linker symbols.

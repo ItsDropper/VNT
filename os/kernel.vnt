@@ -9,7 +9,10 @@ import "kernel/core.vnt"
 import "kernel/shell.vnt"
 import "pic.vnt"
 import "mm/phys.vnt"
-import "mm/virt.vnt"\nimport "firmware/acpi.vnt"\nimport "arch/x86_64/apic.vnt"\nimport "kernel/smp.vnt"
+import "mm/virt.vnt"
+import "firmware/acpi.vnt"
+import "arch/x86_64/apic.vnt"
+import "kernel/smp.vnt"
 
 # Kernel entry owns initialization order. Core primitives and shell policy live
 # in imported modules; the device implementations remain independently located.
@@ -50,13 +53,13 @@ fun kernel_main() {
                 console_puts("IOAPIC routes masked: ")
                 console_hex(apic_ioapic_route_count())
             } else {
-                console_puts("IOAPIC routing unavailable; routes remain untouched.\\r\\n")
+                console_puts("IOAPIC routing unavailable; routes remain untouched.\r\n")
             }
         } else {
-            console_puts("ACPI found; Local APIC unavailable or unsupported.\\r\\n")
+            console_puts("ACPI found; Local APIC unavailable or unsupported.\r\n")
         }
     } else {
-        console_puts("ACPI MADT unavailable; continuing with legacy PIC.\\r\\n")
+        console_puts("ACPI MADT unavailable; continuing with legacy PIC.\r\n")
     }
     # Input is polled for now; do not enable keyboard IRQ1 without a handler.
     pic_disable_irq(1)

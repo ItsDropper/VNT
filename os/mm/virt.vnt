@@ -7,9 +7,7 @@
 import "phys.vnt"
 
 fun virt_page_directory_base() -> i64 {
-    let result: i64 = 0
-    unsafe { asm volatile("leaq page_directory(%rip), %rax; movq %rax, -8(%rbp)") }
-    return result
+    unsafe { return symbol_address("page_directory") }
 }
 
 fun virt_translate(address: i64) -> i64 {
@@ -69,7 +67,7 @@ fun virt_map_page(virtual_address: i64, physical_address: i64, flags: int, new_t
 
 fun virt_probe(address: i64) -> int {
     if address < 0 || address >= 1073741824 || address % 8 != 0 { return 0 }
-    let sentinel: i64 = 6215890983771153747
+    let sentinel: i64 = 6219000865086522707
     unsafe {
         mem_write_u64(address, 0, sentinel)
         if mem_read_u64(address, 0) != sentinel { return 0 }

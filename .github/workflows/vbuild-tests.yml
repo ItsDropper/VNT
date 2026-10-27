@@ -65,6 +65,11 @@ jobs:
             Add-Content build.vbuild 'task verify = none depends check, build'
             & $binary tasks
             if ($LASTEXITCODE -ne 0) { throw 'task graph parsing failed' }
+            $validBuild = Get-Content -Raw build.vbuild
+            Add-Content build.vbuild 'target elf'
+            & $binary tasks
+            if ($LASTEXITCODE -eq 0) { throw 'duplicate target declarations were not rejected' }
+            Set-Content -NoNewline -Path build.vbuild -Value $validBuild
             & $binary clean
             if ($LASTEXITCODE -ne 0) { throw 'clean task failed' }
             Add-Content build.vbuild 'task cycle = none depends cycle'

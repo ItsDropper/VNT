@@ -44,3 +44,68 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Alkuvaiheen sivutaulut](10-initial-paging.md) · [Seuraava oppitunti: Freestanding-ohjelma →](12-freestanding-vnt.md)
+
+## Toteutuslaboratorio: ELF ja linkkeriskripti
+
+Tässä harjoituksessa toteutat tai jäljität toimivan osan, et vain kuvaile käsitettä.
+
+**Tutkittavat tiedostot:** `os/linker.ld`, `os/build.sh`
+
+**Tavoite:** Tee ELF:n rakenteesta tarkistettava. Entry-symbolin, osioiden ja lataussegmenttien pitää vastata bootstrapin odotuksia. Tarkista symbolit työkalulla, älä arvaa niitä.
+
+### Toteutus vaiheittain
+
+1. **Rajaa vastuu:** Selvitä ENTRY ja PHDRS sekä jokaisen PT_LOAD-segmentin oikeudet.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+2. **Etsi nykyinen toteutus:** Jäljitä .multiboot, .boot32, .text, .rodata, .data ja .bss -osioiden järjestys.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+3. **Kirjaa sopimus:** Tarkista linker-symbolien käyttö VNT:n symbol_address-kutsuissa.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+4. **Tee pienin muutos:** Käännä ja tarkista readelf -h -l -s, jos työkalu on asennettu.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+5. **Tarkista riippuvuudet:** Poista tai muuta linkkerisääntöä vain erillisessä kokeessa ja vertaa ELF:iä.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+6. **Käännä:** Varmista grub-file-tarkistus sekä QEMU-käynnistys.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+### Sopimus ja rajat
+
+- Määritä syötteet, paluuarvot ja virhetilanteet ennen toteutusta.
+- Tarkista osoitteet, pituudet, indeksit ja tilan alustaminen ennen käyttöä.
+- Erota CPU:n vaatima mekanismi VNT:n päätöksenteosta.
+- Älä väitä nykyisen rajoitetun toteutuksen tukevan ominaisuuksia, joita koodi ei sisällä.
+- Tarkista, ettei uusi toiminto vaadi alustamatonta moduulia tai linkittämätöntä symbolia.
+- Pidä diagnostiikka rajattuna ja vältä odottamista keskeytyskontekstissa.
+
+### Testaa jokainen polku
+
+1. Kirjoita ennuste ennen käännöstä.
+2. Suorita `bash os/build.sh` projektin juuressa.
+3. Tarkista ensimmäinen epäonnistunut komento.
+4. Käynnistä kernel QEMU:ssa ja tallenna sarjaportin tuloste.
+5. Testaa normaali tapaus, rajatapaus ja virheellinen syöte.
+6. Tarkista ettei virheellinen pyyntö muuta muistia tai laitteiston tilaa.
+7. Jos testaus ei ole käytettävissä, merkitse tulos vahvistamattomaksi.
+
+### Tavalliset virheet
+
+- Osoitteen tai pituuden tarkistus tehdään vasta luku-/kirjoitusoperaation jälkeen.
+- Uusi funktio ei ole mukana import-ketjussa.
+- Paluuarvon merkitys ei ole sama kutsujalle ja toteuttajalle.
+- Diagnostiikka peittää alkuperäisen vian.
+- Käännöksen onnistumista pidetään toimintatestinä.
+
+### Kirjaa toteutus
+
+Dokumentoi muutetut tiedostot, funktiosopimus, build-tulos, QEMU-havainto, negatiiviset testit ja rajoitukset. Näin toinen kehittäjä pystyy toistamaan tarkistuksen.

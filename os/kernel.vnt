@@ -28,7 +28,7 @@ fun kernel_main() {
         console_puts("Physical page allocator initialized.\r\n")
     }
     if virt_translate(0x10000000) == 0x10000000 {
-        console_puts("Virtual page-table inspection initialized.\\r\\n")
+        console_puts("Virtual page-table inspection initialized.\r\n")
     }
     if phys_count_usable_pages() == 0 {
         console_puts("WARNING: Multiboot2 memory map unavailable; physical allocation disabled.\r\n")

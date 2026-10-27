@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Alkuvaiheen sivutaulut](10-initial-paging.md) · [Seuraava oppitunti: Freestanding-ohjelma →](12-freestanding-vnt.md)
 
 ## Koodiesimerkki: ELF:n muistiasettelu
 
@@ -137,3 +136,7 @@ Tässä harjoituksessa toteutat tai jäljität toimivan osan, et vain kuvaile k�
 ### Kirjaa toteutus
 
 Dokumentoi muutetut tiedostot, funktiosopimus, build-tulos, QEMU-havainto, negatiiviset testit ja rajoitukset. Näin toinen kehittäjä pystyy toistamaan tarkistuksen.
+
+---
+
+[← Edellinen oppitunti](./10-initial-paging.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./12-freestanding-vnt.md)

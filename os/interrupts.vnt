@@ -6,6 +6,7 @@
 
 import "kernel/core.vnt"
 import "kernel/device_irq.vnt"
+import "kernel/smp.vnt"
 
 export fun interrupts_init() {
     unsafe {
@@ -19,6 +20,10 @@ export fun interrupts_init() {
 export fun interrupt_dispatch(vector: int, error: int) {
     # APIC spurious interrupts do not receive an EOI.
     if vector == 255 {
+        return 0
+    }
+    if vector == 240 {
+        smp_handle_ipi()
         return 0
     }
     if vector >= 32 && vector < 48 {

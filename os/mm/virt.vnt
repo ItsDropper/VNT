@@ -30,7 +30,7 @@ fun virt_translate(address: i64) -> i64 {
 }
 
 # Return 0 on rejection, 1 if a 2-MiB page was split, or 2 if its 4-KiB
-# table already existed. The caller owns new_table unless result is 1.
+# table already existed. A newly allocated table frame is reserved permanently.
 fun virt_map_page(virtual_address: i64, physical_address: i64, flags: int) -> int {
     if virtual_address < 0 || virtual_address >= 1073741824 ||
        physical_address < 0 || physical_address >= 1073741824 { return 0 }

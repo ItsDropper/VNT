@@ -36,7 +36,9 @@ The `smp` command reports discovered and online CPU counts separately.
 The bootstrap maps the conventional PC MMIO windows at `0xFEC00000` and
 `0xFEE00000` through a dedicated page directory. The Local APIC is enabled
 through IA32_APIC_BASE, its task-priority register is cleared, and its
-spurious vector is set to 255. The dispatcher treats vector 255 as spurious;
+spurious vector is set to 255. Timer/thermal/performance/error LVT sources are
+masked where supported, while firmware LINT0/LINT1 configuration is preserved
+so the existing legacy PIC virtual-wire path can continue delivering PIT IRQs. The dispatcher treats vector 255 as spurious;
 it does not send an EOI for that vector.
 
 When exactly one I/O APIC is present at the supported address, VNTOS reads its

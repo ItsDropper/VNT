@@ -8,13 +8,13 @@ A formatting routine is easier to trust when its arithmetic can be tested separa
 
 ## The helper's contract
 
-The helper accepts a non-negative integer and a positive divisor. The intended caller supplies a power of ten: 1, 10, 100, 1000, and so on. It returns:
+The helper's caller contract is a non-negative integer and a positive divisor. The intended caller supplies a power of ten: 1, 10, 100, 1000, and so on. It returns:
 
 ```text
 (value / divisor) % 10
 ```
 
-Integer division shifts the requested decimal position to the units place; remainder by ten selects the digit there. For example, `decimal_digit_at(907, 100)` returns 9, while `decimal_digit_at(907, 10)` returns 0. The helper returns -1 when the value is negative or the divisor is not positive.
+Integer division shifts the requested decimal position to the units place; remainder by ten selects the digit there. For example, `decimal_digit_at(907, 100)` returns 9, while `decimal_digit_at(907, 10)` returns 0. The helper rejects a zero divisor with -1. Negative values and negative divisors are outside the current helper contract; do not rely on signed-input validation in this freestanding compiler subset.
 
 The helper does not check whether a positive divisor is actually a power of ten. That is a caller invariant, documented here to keep the kernel helper small. Passing 3, for example, is outside its intended contract even though the arithmetic expression is defined.
 
@@ -38,7 +38,7 @@ Expected output:
 Decimal digit self-test: PASS
 ```
 
-The test covers zero, a power-of-ten position, an embedded zero digit, the units digit, the leading digit of a four-digit value, a zero divisor, and a negative value. The QEMU workflow sends `dectest` through the emulated keyboard and requires the PASS line in the serial transcript.
+The test covers zero, a power-of-ten position, an embedded zero digit, the units digit, the leading digit of a four-digit value, and a zero divisor. The QEMU workflow sends `dectest` through the emulated keyboard and requires the PASS line in the serial transcript.
 
 A failing assertion prints `Decimal digit self-test: FAIL`. CI checks for PASS, so FAIL or a crash before the expected output causes the workflow to fail. The transcript assertion proves that this test reported success during that run; it does not prove physical hardware compatibility or test every possible 64-bit input.
 
@@ -60,7 +60,7 @@ A failing assertion prints `Decimal digit self-test: FAIL`. CI checks for PASS, 
 ## Acceptance checklist
 
 - [ ] Digit extraction is a separate helper with no console calls.
-- [ ] Negative values and non-positive divisors return the documented error sentinel.
+- [ ] A zero divisor returns the documented error sentinel; callers provide non-negative values and positive divisors.
 - [ ] The decimal formatter uses the helper for digit selection.
 - [ ] `dectest` covers representative digits and invalid inputs.
 - [ ] QEMU CI requires the self-test PASS output.

@@ -22,7 +22,7 @@ A future kernel should use a lock-free event buffer or another carefully designe
 
 ## Shared state is not a general concurrency solution
 
-The tick count is stored in slot 11 of `vntos_state`, whose storage is reserved in `os/boot.S`. The shell reads it with the existing `state_get(11)` helper. This keeps the teaching implementation small, but it is not a general atomic counter API and the helpers still use compiler-specific inline assembly with hard-coded stack offsets.
+The tick count is stored in slot 11 of `vntos_state`, whose storage is reserved in `os/arch/x86_64/boot.S`. The shell reads it with the existing `state_get(11)` helper. This keeps the teaching implementation small, but it is not a general atomic counter API and the helpers still use compiler-specific inline assembly with hard-coded stack offsets.
 
 That limitation matters: the module boundary is cleaner now, but it does not magically make the old low-level primitives safe. A real next step is to add explicit compiler-supported port-I/O, interrupt-control, and memory-access intrinsics and test their ABI.
 
@@ -32,7 +32,7 @@ Trace these exact symbols:
 
 ```text
 PIT fires
-  -> isr32 in os/interrupts.S
+  -> isr32 in os/arch/x86_64/interrupts.S
   -> interrupt_common
   -> interrupt_dispatch in os/interrupts.vnt
   -> state_get/state_set in os/kernel.vnt

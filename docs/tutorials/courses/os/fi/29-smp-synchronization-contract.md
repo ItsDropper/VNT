@@ -124,6 +124,19 @@ Tässä osiossa rakennat tai validoit konkreettisen osan nykyisestä VNTOS-kerne
 
 Kirjaa muutetut tiedostot, rajapinta, hyväksymiskriteeri, build-tulos, QEMU-havainto, negatiiviset testit ja jäljelle jääneet rajoitukset.
 
+## Toteutuksen tila (2026-10-27)
+
+Kernelin synkronointityössä on nyt ensimmäinen konkreettinen askel, mutta yleinen SMP-turvallisuus ei ole valmis:
+
+- Kääntäjän freestanding-x86-taustajärjestelmä tuntee `cpu_atomic_exchange_u64(address, value)`-intrinsicin.
+- Se palauttaa muistipaikassa olleen 64-bittisen arvon ja tuottaa x86-64-käskyn `xchgq %rax, (%rdi)`. Muistioperandin kanssa `xchg` on prosessorin puolella atominen ja toimii tässä kohdekohtaisena acquire-release-esteenä.
+- Intrinsic vaatii `unsafe { ... }` -lohkon. CI:ssä on positiivinen käännöskoe, joka tarkistaa käskyn, sekä negatiivinen koe, jonka pitää hylätä käyttö unsafe-lohkon ulkopuolella.
+- `os/kernel/sync.vnt` sisältää `spinlock_init`, `spinlock_try_acquire`, `spinlock_acquire` ja `spinlock_release`.
+- Komento `synctest` testaa vain yhden CPU:n tilanteessa lukon hankinnan, epäonnistuvan try-acquire-operaation, vapautuksen ja toisen vapautuksen hylkäämisen.
+
+Tämä ei vielä todista lukon toimivan kilpailutilanteessa. Fyysisten sivukehysten varaaja ei käytä lukkoa, eikä AP:ita saa vielä päästää yleiseen rinnakkaiseen allokointiin. Seuraava hyväksymiskriteeri on moniydintesti, jossa useat CPU:t yrittävät samaa lukkoa ja tarkistavat, ettei jaettu laskuri tai allokaattorin bittikartta rikkoudu.
+
+---
 ---
 
 [← Edellinen oppitunti](./28-apic-ipi-service.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./30-physical-allocator-next-fit.md)

@@ -72,6 +72,7 @@ Tämä on aloittelijan kurssi, joka etenee käsitteistä todelliseen toteutuksee
 32. [Varaa peräkkäisiä fyysisiä sivuja](31-contiguous-physical-pages.md)
 33. [Anna varatuille muistialueille etusija](32-reserved-memory-map-precedence.md)
 34. [Komentohistoria ja käyttöajan diagnostiikka](33-terminal-history-and-uptime.md)
+35. [Rakenna kohdistinta tukeva komentorivieditori](34-terminal-editable-line-editor.md)
 
 ## Lähdekoodin kartta
 

@@ -7,6 +7,7 @@ import "ps2.vnt"
 import "interrupts.vnt"
 import "kernel/core.vnt"
 import "kernel/shell.vnt"
+import "pic.vnt"
 
 # Kernel entry owns initialization order. Core primitives and shell policy live
 # in imported modules; the device implementations remain independently located.
@@ -20,7 +21,9 @@ fun kernel_main() {
     vga_puts("Type help. Serial COM1 remains available for diagnostics.\r\n\r\n")
     serial_puts("VNTOS_BOOT_OK\r\nVNTOS - freestanding x86-64 console\r\nType help for commands.\r\n")
     interrupts_init()
-    console_puts("PIT timer interrupts enabled.\r\n")
+    # Input is polled for now; do not enable keyboard IRQ1 without a handler.
+    pic_disable_irq(1)
+    console_puts("PIT timer interrupts enabled; keyboard IRQ remains masked.\r\n")
     ps2_init()
     shell_run()
     return 0

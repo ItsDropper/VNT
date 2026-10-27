@@ -70,6 +70,7 @@ Tämä on aloittelijan kurssi, joka etenee käsitteistä todelliseen toteutuksee
 30. [SMP-turvallisuus: synkronoi ennen jaettua muistia](29-smp-synchronization-contract.md)
 31. [Paranna sivukehysten varaajaa next-fit-haulla](30-physical-allocator-next-fit.md)
 32. [Varaa peräkkäisiä fyysisiä sivuja](31-contiguous-physical-pages.md)
+33. [Anna varatuille muistialueille etusija](32-reserved-memory-map-precedence.md)
 
 ## Lähdekoodin kartta
 

@@ -38,7 +38,7 @@ buffer[0 .. length-1] = visible command
 buffer[length] = 0
 ```
 
-The hardware text cursor must match the logical `cursor`. Left and Right update both; Home moves to zero; End moves to `length`. The editor does not support multiline commands, arbitrary screen scrolling while editing, or Unicode grapheme movement.
+The hardware text cursor must match the logical `cursor`. The dedicated `console_cursor_left()` operation moves it without erasing a character; it also sends ANSI CSI-left to serial output. Left and Right update both; Home moves to zero; End moves to `length`. The editor does not support multiline commands, arbitrary screen scrolling while editing, or Unicode grapheme movement.
 
 ## Insert without overwriting
 
@@ -61,7 +61,7 @@ Shifting backwards prevents overwriting characters that still need to move. The 
 
 **Delete** removes the character at `cursor`. **Backspace** removes the character immediately before it and moves the cursor one place left. Both shift the remaining suffix left and terminate the buffer again.
 
-The helper `shell_redraw_tail(buffer, cursor, length)` redraws only the changed suffix. It prints the suffix, writes one space to erase the old final character, and emits enough backspaces to return the hardware cursor to the logical insertion point. The same control characters are sent to VGA and serial, so a conventional serial terminal can follow the edit too.
+The helper `shell_redraw_tail(buffer, cursor, length)` redraws only the changed suffix. It prints the suffix, writes one space to erase the old final character, and calls `console_cursor_left()` enough times to return to the logical insertion point. This is not the same as Backspace: VGA Backspace erases the previous cell. The cursor helper updates the VGA hardware cursor without touching text and sends the ANSI CSI-left sequence to the serial terminal.
 
 This strategy is intentionally simple. It assumes the terminal handles backspace as cursor movement and that the edited command fits the bounded input buffer. It is not a general ANSI terminal implementation.
 
@@ -69,7 +69,7 @@ This strategy is intentionally simple. It assumes the terminal handles backspace
 
 Up-arrow still recalls one previous non-empty command. Before loading it, the shell moves to the beginning of the line, overwrites the old visible characters with spaces, returns the cursor to the beginning, and then prints the recalled command. The logical buffer, `length`, and `cursor` must be updated together.
 
-Do not repeatedly write a space and immediately backspace when clearing a whole line: that revisits the same cell. Advance while writing spaces, then backspace by the number of cells cleared. The QEMU test exercises recall after the editor has moved through its navigation path.
+Do not repeatedly write a space and immediately backspace when clearing a whole line: that revisits the same cell. Advance while writing spaces, then move the cursor left by the number of cells cleared without erasing those spaces. The QEMU test exercises recall after the editor has moved through its navigation path.
 
 ## Automated keyboard regression
 

@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Fyysinen muisti ja sivukehykset](26-physical-memory-and-page-frames.md) · [Seuraava oppitunti: ACPI, APIC ja usea CPU-ydin →](27-acpi-apic-and-smp.md)
 
 ## Koodiesimerkki: hyväksymiskriteeri sidotaan itsekoettaan
 
@@ -124,3 +123,7 @@ Tässä osiossa rakennat tai validoit konkreettisen osan nykyisestä VNTOS-kerne
 ### Muutosraportti
 
 Kirjaa muutetut tiedostot, rajapinta, hyväksymiskriteeri, build-tulos, QEMU-havainto, negatiiviset testit ja jäljelle jääneet rajoitukset.
+
+---
+
+[← Edellinen oppitunti](./24-build-and-test-the-interrupt-kernel.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./26-physical-memory-and-page-frames.md)

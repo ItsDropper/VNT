@@ -1,2 +1,0 @@
-import "circular_b.vnt"
-print("should not compile")

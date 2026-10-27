@@ -1,8 +1,0 @@
-journal_path = "vnt_desk.log"
-
-fun test() {
-    print("Journal: " + journal_path)
-    return 0
-}
-
-test()

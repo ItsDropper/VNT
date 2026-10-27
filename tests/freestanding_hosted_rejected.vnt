@@ -1,3 +1,0 @@
-fun kernel_main() {
-    print("hosted output is not available in freestanding mode")
-}

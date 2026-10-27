@@ -1,9 +1,0 @@
-# Fixed-workload benchmark: 40000 integer iterations and reassignment.
-# Keep total in the same lexical scope as its final read.
-i = 0
-total = 0
-while i < 40000 {
-    total = total + i
-    i = i + 1
-}
-print(total)

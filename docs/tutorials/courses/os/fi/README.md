@@ -1,28 +1,40 @@
 # VNTOS-kurssi suomeksi: opi rakentamaan käyttöjärjestelmän ydintä
 
-Tämä aloittelijan kurssi opettaa käsitteitä käytännössä. Jokainen oppitunti sisältää selityksen, sanaston, lähdekoodiin perustuvan harjoituksen, varoituksen yleisestä virheestä ja kysymyksiä ymmärtämisen tarkistamiseen.
+Tämä on aloittelijan kurssi, joka etenee käsitteistä todelliseen toteutukseen. Jokaisen oppitunnin lopussa on klikattava linkki seuraavaan oppituntiin.
+
+**Tärkeä lisäys:** [Avaa kattava toteutusopas](IMPLEMENTATION-HANDBOOK.md). Se käy läpi nykyisen `os/`-lähdekoodin, build-ketjun, käynnistyksen, muistinhallinnan, keskeytykset, ACPI:n, APICin ja SMP:n konkreettisina toteutusvaiheina. Lue se yhdessä oppituntien kanssa; älä tyydy vain käsitteiden lukemiseen.
 
 ## Näin opiskelet
-1. Lue selitys ja sanasto.
-2. Avaa nimetyt lähdetiedostot ja seuraa koodia rivi kerrallaan.
-3. Tee harjoitus ennen seuraavaan oppituntiin siirtymistä.
-4. Vastaa kysymyksiin omin sanoin.
-5. Käytä sivun lopun linkkiä seuraavaan oppituntiin.
+
+1. Lue oppitunnin selitys ja sanasto.
+2. Avaa nimetyt oikeat lähdekooditiedostot ja seuraa kutsuketjua.
+3. Tee toteutusharjoitus: määritä rajapinta, muuta koodia, käännä ja testaa.
+4. Testaa sekä normaali tapaus että virheellinen syöte tai rajatapaus.
+5. Kirjaa tarkka havainto, joka todistaa toiminnon. Älä väitä testausta tehdyksi ilman tulosta.
+6. Siirry seuraavaan oppituntiin sivun lopun linkistä.
 
 ## Turvallisuus ja testaus
+
 - Käytä kokeisiin QEMU-virtuaalikonetta. Älä asenna keskeneräistä ydintä omalle tietokoneelle tai kirjoita levykuvaa oikealle USB-tikulle.
 - Suorita build-komennot projektin juuresta, ellei ohje sano muuta.
 - Selvitä ensimmäinen todellinen virhe. Myöhemmät virheet voivat olla sen seurauksia.
 - Käännös ei todista käynnistymistä, eikä käynnistyminen todista kaikkien ominaisuuksien toimivan.
 - Jos teksti ja lähdekoodi eroavat, tarkista nykyinen lähdekoodi ja testien todelliset tulokset.
+- Pidä assembly mahdollisimman pienenä: CPU:n vaatima sisääntulo/paluu ja käynnistysmekanismi ovat arkkitehtuurikoodia; päätöksenteko kuuluu VNT-moduuleihin.
 
 ## Sanasto
+
 - **Kernel / ydin:** käyttöjärjestelmän etuoikeutettu osa.
 - **Lähdekoodi:** ohjelmoijan kirjoittama teksti.
 - **Kääntäjä:** muuttaa lähdekoodin konekoodiksi tai välivaiheeksi.
-- **Linkkeri:** yhdistää käännetyt osat.
+- **Linkkeri:** yhdistää käännetyt osat ELF-kuvaksi.
 - **QEMU:** jäljittelee tietokonetta ohjelmallisesti.
 - **CI:** automaattiset tarkistukset palvelimella.
+- **ABI:** konekoodin kutsusopimus, joka määrittää esimerkiksi rekisterit ja pinon.
+- **IDT:** taulukko, jonka avulla x86-64 ohjaa keskeytykset käsittelijöihin.
+- **Sivukehys:** fyysisen muistin 4096 tavun lohko.
+- **MMIO:** laitteistorekisterien käyttäminen muistiosoitteiden kautta.
+- **SMP:** usean prosessoriytimen käyttö.
 
 ## Oppitunnit
 
@@ -51,19 +63,22 @@ Tämä aloittelijan kurssi opettaa käsitteitä käytännössä. Jokainen oppitu
 23. [Käsittele keskeytyksiä VNT-kielellä](22-vnt-interrupt-dispatch.md)
 24. [PIT, PIC ja ajastimen tikit](23-pit-pic-and-timer-ticks.md)
 25. [Rakenna ja testaa keskeytyskernel](24-build-and-test-the-interrupt-kernel.md)
-26. [Fyysinen muisti ja sivukehykset](26-physical-memory-and-page-frames.md)
-27. [Loppuprojekti: tee todennettava parannus](25-graduation-project.md)
+26. [Loppuprojekti: tee todennettava parannus](25-graduation-project.md)
+27. [Fyysinen muisti ja sivukehykset](26-physical-memory-and-page-frames.md)
 28. [ACPI, APIC ja usea CPU-ydin](27-acpi-apic-and-smp.md)
 29. [APIC IPI -viestit](28-apic-ipi-service.md)
 30. [SMP-turvallisuus: synkronoi ennen jaettua muistia](29-smp-synchronization-contract.md)
 
 ## Lähdekoodin kartta
-- os/kernel.vnt — kernelin käynnistys ja alustus.
-- os/kernel/shell.vnt — sarjaportin komentotulkki.
-- os/interrupts.vnt ja os/arch/x86_64/interrupts.S — keskeytyskäsittely.
-- os/arch/x86_64/boot.S — käynnistyksen matalan tason koodi.
-- os/mm/phys.vnt — fyysisten sivukehysten varaaja.
-- os/firmware/acpi.vnt — ACPI-tiedot.
-- os/arch/x86_64/apic.vnt ja os/kernel/smp.vnt — APIC ja moniydintestit.
-- os/build.sh — build-ketju.
-- src/compiler/freestanding_x86.c — freestanding x86 -kääntäjän toteutusta.
+
+- `os/kernel.vnt` — kernelin käynnistys ja alustusjärjestys.
+- `os/kernel/shell.vnt` — sarjaportin komentotulkki.
+- `os/interrupts.vnt` ja `os/arch/x86_64/interrupts.S` — keskeytyskäsittely.
+- `os/arch/x86_64/boot.S` — käynnistyksen matalan tason koodi.
+- `os/mm/phys.vnt` — fyysisten sivukehysten varaaja.
+- `os/mm/virt.vnt` — varhaisen virtuaalimuistin kartoituksen tarkastelu.
+- `os/firmware/acpi.vnt` — ACPI-tiedot.
+- `os/arch/x86_64/apic.vnt` ja `os/kernel/smp.vnt` — APIC ja moniydinkokeet.
+- `os/build.sh` — build-ketju.
+- `src/compiler/freestanding_x86.c` — freestanding x86 -kääntäjän toteutus.
+- [Kattava toteutusopas](IMPLEMENTATION-HANDBOOK.md) — miten nämä osat rakennetaan ja todennetaan.

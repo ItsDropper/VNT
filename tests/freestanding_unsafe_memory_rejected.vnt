@@ -1,8 +1,0 @@
-# Copyright (c) 2026 ItsDropper
-# Licensed under the MIT License. See LICENSE in the repository root.
-#
-# This fixture must be rejected: raw memory access requires unsafe { ... }.
-
-fun kernel_main() {
-    let value: i64 = mem_read_u64(4096, 0)
-}

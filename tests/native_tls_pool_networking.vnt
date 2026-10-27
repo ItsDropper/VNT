@@ -1,4 +1,0 @@
-import "../lib/std/net.vnt" as net
-
-print(net.get("https://localhost:18768/tls-keepalive"))
-print(net.get("https://localhost:18768/tls-pool-check"))

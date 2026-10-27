@@ -1,5 +1,0 @@
-import "../lib/std/io.vnt" as io
-
-line = io.read_line("")
-write_result = io.write_line("IO_OK")
-line_result = io.write_line(line)

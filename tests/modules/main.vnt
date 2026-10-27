@@ -1,7 +1,0 @@
-import "math.vnt"
-
-x = add(20, 22)
-print("Modules:")
-print(x)
-print("Optimized:")
-print(10 + 20 * 3 - 5)

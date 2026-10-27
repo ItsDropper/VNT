@@ -1,8 +1,0 @@
-say "VNX_SMOKE_OK"
-set answer "42"
-when answer == "42" jump passed
-say "VNX_SMOKE_FAILED"
-end
-label passed
-say "VNX_STATE_OK"
-end

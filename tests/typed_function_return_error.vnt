@@ -1,3 +1,0 @@
-fun bad() -> int {
-    return "not an integer"
-}

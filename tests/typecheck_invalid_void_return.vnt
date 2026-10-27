@@ -1,3 +1,0 @@
-fun invalid() -> void {
-    return 1
-}

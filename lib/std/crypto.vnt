@@ -1,8 +1,0 @@
-# Cryptographic hashing and digest comparison.
-# SHA-256 is suitable for integrity checks, not encryption or password storage.
-export fun sha256(value: string) -> string {
-    return crypto_sha256(value)
-}
-export fun constant_time_equal(left: string, right: string) -> bool {
-    return crypto_constant_time_equal(left, right)
-}

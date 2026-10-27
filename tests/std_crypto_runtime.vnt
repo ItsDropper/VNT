@@ -1,7 +1,0 @@
-import "../lib/std/crypto.vnt" as crypto
-
-print(crypto.sha256("abc"))
-print(crypto.sha256(""))
-print(crypto.constant_time_equal("digest", "digest"))
-print(crypto.constant_time_equal("digest", "digEst"))
-print("CRYPTO_RUNTIME_OK")

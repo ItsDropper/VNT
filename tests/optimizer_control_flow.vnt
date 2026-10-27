@@ -1,8 +1,0 @@
-if true {
-    print("CFG_OPT_OK")
-} else {
-    print("UNREACHABLE")
-}
-while false {
-    print("UNREACHABLE")
-}

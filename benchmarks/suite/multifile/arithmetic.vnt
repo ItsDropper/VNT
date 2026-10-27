@@ -1,3 +1,0 @@
-fun add_scaled(value, factor) {
-    return value + factor * 3
-}

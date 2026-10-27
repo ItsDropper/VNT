@@ -75,6 +75,7 @@ Tämä on aloittelijan kurssi, joka etenee käsitteistä todelliseen toteutuksee
 35. [Rakenna kohdistinta tukeva komentorivieditori](34-terminal-editable-line-editor.md)
 36. [Tulosta käyttöaika ja laskurit luettavina desimaalilukuina](35-terminal-decimal-uptime.md)
 37. [Ylläpidä komentotulkin ohjetta ja testaa se QEMUssa](36-shell-help-output.md)
+38. [Testaa desimaalimerkin poiminta ilman konsolitulostusta](37-decimal-digit-self-test.md)
 
 ## Lähdekoodin kartta
 

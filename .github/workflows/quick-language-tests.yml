@@ -106,6 +106,16 @@ jobs:
             exit 1
           fi
           test ! -e void-value-invalid.exe
+          if ./vnt --compile tests/typecheck_void_print_rejected.vnt -o void-print-invalid.exe; then
+            echo "Compiler incorrectly accepted a void-returning call as a printed value."
+            exit 1
+          fi
+          test ! -e void-print-invalid.exe
+          if ./vnt --compile tests/typecheck_void_assignment_rejected.vnt -o void-assignment-invalid.exe; then
+            echo "Compiler incorrectly accepted a void-returning call as an assignment value."
+            exit 1
+          fi
+          test ! -e void-assignment-invalid.exe
 
       - name: Emit assembly without invoking the hosted linker
         shell: bash

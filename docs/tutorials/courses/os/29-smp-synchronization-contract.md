@@ -1,0 +1,103 @@
+# Lesson 29 — SMP safety: synchronization before shared memory
+
+Copyright (c) 2026 ItsDropper. Licensed under the MIT License; see the repository root `LICENSE`.
+
+## Goal
+
+Explain why the APIC IPI test is not permission to run ordinary kernel work concurrently, and establish the exact prerequisites for the next kernel milestone: a VNT-native atomic primitive and a tested spinlock. This lesson audits the real code and defines checks that must pass before allocator calls can be made from multiple CPUs.
+
+This is deliberately a source-audit lesson, not a claim that VNTOS already has atomic operations or a working spinlock. Do not copy a C atomic API or assume that an arbitrary inline-assembly string has compiler memory-ordering semantics.
+
+## 1. The current execution model
+
+Start with these files:
+
+- `os/kernel/smp.vnt`: AP startup, online bookkeeping, IPI delivery test, and the vector-240 handler.
+- `os/kernel.vnt`: initialization order and the IPI self-test.
+- `os/arch/x86_64/interrupts.S`: the minimal IDT entry/exit boundary.
+- `os/mm/phys.vnt`: page-frame bitmaps and cached allocation counters.
+- `src/compiler/freestanding_x86.c`: code generation for the freestanding VNT subset.
+- `.github/workflows/vntos-boot.yml`: the authoritative QEMU boot regression test.
+
+The BSP starts APs serially. Each AP gets a separately allocated stack page, enters VNT, publishes its online state, enables interrupts, and idles with `hlt`. The BSP then sends one IPI at a time and waits for the corresponding response counter. The handler increments a counter and acknowledges the Local APIC.
+
+The IPI test proves that a remote CPU can take an interrupt and return. It does **not** prove that two CPUs can safely allocate memory, update a shared bitmap, schedule tasks, or execute the same service concurrently.
+
+## 2. The race in the physical allocator
+
+Read `phys_alloc_page()` in `os/mm/phys.vnt`. It scans for a frame whose usable bit is set and allocated bit is clear, then sets the allocated bit and decrements the shared free-page count.
+
+Those operations are a compound invariant, not one indivisible operation:
+
+1. CPU A reads a frame's allocated bit as clear.
+2. CPU B reads the same bit as clear.
+3. Both select the same frame.
+4. Both set the bit and both may decrement the free count.
+5. Both callers receive the same physical address.
+
+A similar lost-update race exists in bitmap byte writes: `phys_bitmap_set()` reads a byte, changes one bit in a local value, then writes the byte back. Two CPUs changing different bits in that byte can overwrite each other's updates. Protecting only the cached counter would not fix either problem.
+
+`phys_free_page()` has the same synchronization requirement. Validation, clearing the allocation bit, and incrementing the count must be serialized as one transaction. Double-free rejection on one CPU is not sufficient when another CPU can allocate or free concurrently.
+
+## 3. Why the current state accessors are not a lock
+
+The kernel's shared scalar state is backed by storage defined in architecture assembly and accessed through compiler-generated inline assembly in VNT. A read followed by an increment and a write is still a read-modify-write sequence. The fact that each operation is a single machine instruction does not make the sequence atomic.
+
+Likewise, `volatile`-like access, disabling interrupts on one CPU, or placing a memory barrier around ordinary loads and stores would not by itself provide mutual exclusion between CPUs. Local interrupt masking can prevent local interrupt re-entry; it cannot stop a different processor from entering the same critical section.
+
+Before adding a lock, inspect the actual freestanding backend and its inline-assembly lowering. The compiler must expose an operation with a documented contract, and generated assembly must demonstrate that the operation is emitted as intended. Do not invent a VNT atomic syntax or silently move the lock algorithm into a new `.S` file.
+
+## 3A. Backend audit: what is and is not available
+
+The current freestanding backend recognizes a closed set of unsafe architecture calls in `src/compiler/freestanding_x86.c`. The existing raw-memory operations are emitted as ordinary `mov` instructions; `cpu_invlpg`, CR2 reads, and MSR access each have explicit lowering. There is no atomic exchange or compare-and-exchange intrinsic in that dispatch today.
+
+The backend also emits inline assembly text directly from the IR node. That interface does not declare input/output operands, register clobbers, or a compiler memory clobber. Therefore, a line such as `asm volatile("lock; ...")` is not a safe substitute for a first-class atomic operation: the compiler cannot infer the memory effects or register constraints from an arbitrary text string.
+
+The smallest useful compiler extension is an explicitly named operation with a fixed signature, rather than a general inline-assembly escape hatch. For example, a future `cpu_atomic_exchange_u64(address, value)` operation could:
+
+- Require an aligned, valid pointer to a 64-bit storage location in the kernel's mapped address space.
+- Emit x86-64 `xchgq` against memory, which is implicitly locked when the operand is memory.
+- Return the value observed before the exchange.
+- Provide acquire-release ordering for this x86 target, and be documented as a target-specific primitive rather than pretending to implement a portable C memory model.
+- Be callable only from an unsafe context, consistently with other raw-memory operations.
+- Have a compiler fixture whose generated assembly is checked by CI, plus a negative fixture that proves the unsafe-context restriction.
+
+This operation alone would not make the allocator safe. A spinlock still needs a carefully specified lock state, acquire/release behavior, interrupt-context policy, and a real multi-CPU contention test. Do not ship a lock based only on a grep assertion for `xchgq`.
+
+## 4. Requirements for the next implementation
+
+A small first implementation should keep its scope narrow:
+
+- Add a VNT-visible atomic compare-and-exchange or exchange primitive only after the compiler/backend can represent it correctly.
+- Specify success/failure behavior and the memory-ordering guarantees; x86 instruction ordering does not excuse an undocumented compiler contract.
+- Implement a VNT spinlock on top of that primitive. The lock state must have a stable, aligned storage location and a known initialization value.
+- Keep the critical section short. Never wait for an IPI, print to the console, or sleep while holding a spinlock.
+- Define interrupt interaction before using the lock from interrupt context. A CPU must not deadlock by taking a lock in ordinary code and then being interrupted by a handler that tries to take that same lock.
+- Only then protect allocator bitmap changes and cached counts as one transaction.
+
+Do not enable general concurrent allocation merely because the lock compiles. The implementation needs a host-side/compiler regression test for the atomic instruction shape and a QEMU test that exercises the lock from more than one CPU. The test must detect duplicate allocations and verify that the free-page count returns to its starting value.
+
+## 5. Verification available today
+
+From the repository root, the normal project commands are:
+
+```sh
+bash os/build.sh
+qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -smp 4 -serial stdio
+```
+
+In the existing shell, run `mem`, `memtest`, `vmtest`, and `smp`. These validate the current single-core allocator paths, virtual-memory probe, topology, and IPI counters. They are not a concurrency test.
+
+The GitHub Actions workflow `VNTOS Boot and Serial Shell` builds the freestanding kernel and boots four virtual CPUs. Treat its exact result as the evidence; source inspection alone is not a build or boot result. Do not run a supposed two-CPU allocator stress test until the atomic primitive and lock implementation actually exist.
+
+## 6. Completion criteria
+
+The synchronization milestone is complete only when all of these are true:
+
+- The atomic primitive is implemented in the compiler/backend with a documented contract and a regression fixture.
+- Generated assembly is checked in CI for the expected atomic instruction and operand behavior.
+- The VNT spinlock has tests for uncontended acquisition, contention, release, and lock-state invariants.
+- A four-CPU QEMU test repeatedly allocates distinct pages from concurrent CPUs, frees them, and verifies accounting.
+- Existing boot, shell, IPI, `memtest`, and `vmtest` checks still pass.
+
+Until then, keep APs restricted to their current idle/IPI role. That is a deliberate safety boundary, not a missing feature to bypass with assembly.

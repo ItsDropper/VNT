@@ -152,6 +152,15 @@ vntos_mmap_field:
     xorl %eax, %eax
     ret
 
+
+/* Read CR2 immediately when diagnosing #PF (vector 14). */
+.global vntos_read_cr2
+.type vntos_read_cr2,@function
+vntos_read_cr2:
+    movq %cr2, %rax
+    ret
+.size vntos_read_cr2, .-vntos_read_cr2
+
 /* Bitmap primitives use one bit per 4-KiB frame in the first 1 GiB.
  * frame >= 262144 is rejected. VNT owns policy and calls these primitives.
  */

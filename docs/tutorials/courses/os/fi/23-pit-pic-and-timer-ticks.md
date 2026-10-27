@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Käsittele keskeytyksiä VNT-kielellä](22-vnt-interrupt-dispatch.md) · [Seuraava oppitunti: Rakenna ja testaa keskeytyskernel →](24-build-and-test-the-interrupt-kernel.md)
 
 ## Koodiesimerkki: PIT-tikki ei ole vielä scheduler
 
@@ -127,3 +126,7 @@ Tämä harjoitus edellyttää lähdekoodin lukemista ja toteutuksen todentamista
 ### Muutosraportti
 
 Kirjaa muutos, rajapintasopimus, build-tulos, QEMU-havainto, testatut vektorit ja avoimet rajoitukset.
+
+---
+
+[← Edellinen oppitunti](./22-vnt-interrupt-dispatch.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./24-build-and-test-the-interrupt-kernel.md)

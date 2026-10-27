@@ -12,7 +12,7 @@ The script runs these stages in order:
 
 1. Create the `build/` directory.
 2. Compile the VNT compiler itself from C source files into `build/vnt`.
-3. Ask the compiler to emit freestanding assembly from `os/kernel.vnt`; its imports load `serial.vnt`, `console.vnt`, `ps2.vnt`, and `interrupts.vnt` into the same compilation unit.
+3. Ask the compiler to emit freestanding assembly from `os/kernel.vnt`; its imports load the device modules, `kernel/core.vnt`, and `kernel/shell.vnt` into the same compilation unit.
 4. Assemble the generated VNT assembly into `build/kernel.o`.
 5. Assemble `os/arch/x86_64/boot.S` into `build/boot.o` and `os/arch/x86_64/interrupts.S` into `build/interrupts.o`.
 6. Link all three object files with `os/linker.ld` into `build/kernel.elf`.

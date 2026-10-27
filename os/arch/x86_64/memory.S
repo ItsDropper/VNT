@@ -232,6 +232,8 @@ BITMAP_SET vntos_phys_usable_set, vntos_phys_usable_bitmap
 BITMAP_GET vntos_phys_usable_get, vntos_phys_usable_bitmap
 BITMAP_SET vntos_phys_allocated_set, vntos_phys_allocated_bitmap
 BITMAP_GET vntos_phys_allocated_get, vntos_phys_allocated_bitmap
+BITMAP_SET vntos_phys_reserved_set, vntos_phys_reserved_bitmap
+BITMAP_GET vntos_phys_reserved_get, vntos_phys_reserved_bitmap
 
 .section .bss
 .balign 4096
@@ -241,6 +243,10 @@ vntos_phys_usable_bitmap:
 .balign 4096
 .global vntos_phys_allocated_bitmap
 vntos_phys_allocated_bitmap:
+    .skip 32768
+.balign 4096
+.global vntos_phys_reserved_bitmap
+vntos_phys_reserved_bitmap:
     .skip 32768
 
 .section .note.GNU-stack,"",@progbits

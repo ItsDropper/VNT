@@ -44,3 +44,71 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Miten jatkaa kurssin jälkeen](18-next-steps.md) · [Seuraava oppitunti: Keskeytykset, poikkeukset ja IDT →](20-interrupts-and-the-idt.md)
+
+## Toteutuslaboratorio: Modulaarinen kernel
+
+Tässä osiossa teet konkreettisen muutoksen nykyiseen VNTOS-koodiin. Avaa lähdetiedostot ja varmista, että kuvaus vastaa nykyistä toteutusta.
+
+**Tutkittavat tiedostot:** `os/kernel.vnt`, `os/kernel/core.vnt`, `os/kernel/shell.vnt`, `os/serial.vnt`
+
+**Tavoite:** Siirrä yksi vastuu omaan VNT-moduuliin rikkomatta käynnistystä. Moduuliraja on sopimus, ei vain tiedoston siirto. Vältä import-syklejä ja piilotettua jaettua tilaa.
+
+### Toteutus vaiheittain
+
+1. **Rajaa vastuu:** Valitse funktiot, jotka kuuluvat yhteen vastuualueeseen.
+   - Kirjoita ylös havainto tai lähdekoodikohta, jolla varmistat tämän.
+   - Älä tee seuraavaa muutosta ennen kuin tiedät nykyisen vaiheen tuloksen.
+
+2. **Etsi nykyinen toteutus:** Luo moduuli ja tuo vain sen todelliset riippuvuudet.
+   - Kirjoita ylös havainto tai lähdekoodikohta, jolla varmistat tämän.
+   - Älä tee seuraavaa muutosta ennen kuin tiedät nykyisen vaiheen tuloksen.
+
+3. **Kirjaa sopimus:** Tarkista julkiset funktiot ja nimet, joita muu kernel käyttää.
+   - Kirjoita ylös havainto tai lähdekoodikohta, jolla varmistat tämän.
+   - Älä tee seuraavaa muutosta ennen kuin tiedät nykyisen vaiheen tuloksen.
+
+4. **Tee pienin muutos:** Siirrä ensin toteutus muuttamatta käyttäytymistä.
+   - Kirjoita ylös havainto tai lähdekoodikohta, jolla varmistat tämän.
+   - Älä tee seuraavaa muutosta ennen kuin tiedät nykyisen vaiheen tuloksen.
+
+5. **Tarkista riippuvuudet:** Käännä ja varmista, että symbolit edelleen löytyvät.
+   - Kirjoita ylös havainto tai lähdekoodikohta, jolla varmistat tämän.
+   - Älä tee seuraavaa muutosta ennen kuin tiedät nykyisen vaiheen tuloksen.
+
+6. **Käännä:** Testaa sama käynnistyspolku ennen ja jälkeen muutoksen.
+   - Kirjoita ylös havainto tai lähdekoodikohta, jolla varmistat tämän.
+   - Älä tee seuraavaa muutosta ennen kuin tiedät nykyisen vaiheen tuloksen.
+
+7. **Tarkista konekoodi:** Poista duplikaatit vasta kun uusi moduuli toimii.
+   - Kirjoita ylös havainto tai lähdekoodikohta, jolla varmistat tämän.
+   - Älä tee seuraavaa muutosta ennen kuin tiedät nykyisen vaiheen tuloksen.
+
+### Toteutuksen sopimus
+
+- Nimeä toiminnon omistava moduuli ja julkinen funktio.
+- Kirjaa parametrien ja paluuarvon merkitys sekä epäonnistumisen tapa.
+- Tarkista kaikki rajat ennen muistilukua, muistikirjoitusta tai portti-I/O:ta.
+- Tarkista, että jokainen import, funktiokutsu ja linkitetty symboli todella on olemassa.
+- Pidä CPU:n vaatima assembly erillään VNT:n päätöksenteosta.
+- Dokumentoi ominaisuudet, joita tämä muutos ei vielä toteuta.
+
+### Todennus
+
+1. Kirjoita ennuste ennen muutosta.
+2. Suorita `bash os/build.sh` projektin juuressa.
+3. Tarkista ensimmäinen epäonnistunut vaihe ja sen tarkka syy.
+4. Käynnistä kernel QEMU:ssa ja kerää sarjaportin tuloste.
+5. Testaa normaali polku, rajatapaus ja virhepolku.
+6. Vertaa tulosta ennusteeseen; älä laske pelkkää käännöstä toiminnalliseksi testiksi.
+
+### Tavalliset virheet
+
+- Usean alijärjestelmän muuttaminen samassa erässä.
+- Testin tekeminen eri buildista kuin jota juuri muokkasit.
+- Importin tai linkkerin riippuvuuden unohtaminen.
+- Väitteen tekeminen keskeneräisestä ominaisuudesta.
+- Virhepolun ohittaminen, koska normaali tapaus toimii.
+
+### Muutosraportti
+
+Kirjaa muutetut tiedostot, sopimus, build-komento ja tulos, QEMU-havainto, negatiiviset testit sekä avoimet rajoitukset. Jos jokin tarkistus jäi tekemättä, ilmoita se selvästi.

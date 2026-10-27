@@ -352,5 +352,9 @@ vntos_state:
     .rept 128
     .quad 0       /* Last shell command bytes: states 180..307 */
     .endr
+.balign 8
+.global vntos_sync_test_lock
+vntos_sync_test_lock:
+    .quad 0
 
 .section .note.GNU-stack,"",@progbits

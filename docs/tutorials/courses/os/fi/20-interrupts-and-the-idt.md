@@ -44,3 +44,72 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Jaa kernel VNT-moduuleihin](19-split-the-kernel-into-vnt-modules.md) · [Seuraava oppitunti: Pidä assembly-rajapinta pienenä →](21-minimal-assembly-entry-stubs.md)
+
+## Toteutuslaboratorio: Keskeytykset ja IDT
+
+Tämä harjoitus edellyttää lähdekoodin lukemista ja toteutuksen todentamista.
+
+**Tutkittavat tiedostot:** `os/arch/x86_64/interrupts.S`, `os/interrupts.vnt`
+
+**Tavoite:** Toteuta vektorin kulku CPU:n sisääntulosta VNT-dispatcheriin ja takaisin. Virhekoodilliset ja ilman virhekoodia tulevat vektorit vaativat eri stubin. Pino, ABI ja EOI ovat toiminnan osa, eivät sivuseikkoja.
+
+### Toteutus vaiheittain
+
+1. **Rajaa vastuu:** Vertaa ISR_ERROR- ja ISR_NOERR-makroja ja listaa niiden vektorierot.
+   - Kirjaa lähdekoodin kohta, joka todistaa havainnon.
+   - Tarkista, että kutsuja ja kutsuttava käyttävät samaa sopimusta.
+
+2. **Etsi nykyinen toteutus:** Tarkista yhteisen sisääntulon rekisterien tallennusjärjestys.
+   - Kirjaa lähdekoodin kohta, joka todistaa havainnon.
+   - Tarkista, että kutsuja ja kutsuttava käyttävät samaa sopimusta.
+
+3. **Kirjaa sopimus:** Varmista, että VNT-dispatcherin parametrit vastaavat assembly-kutsua.
+   - Kirjaa lähdekoodin kohta, joka todistaa havainnon.
+   - Tarkista, että kutsuja ja kutsuttava käyttävät samaa sopimusta.
+
+4. **Tee pienin muutos:** Tarkista IDT-porttien osoitteet ja vektorit.
+   - Kirjaa lähdekoodin kohta, joka todistaa havainnon.
+   - Tarkista, että kutsuja ja kutsuttava käyttävät samaa sopimusta.
+
+5. **Tarkista riippuvuudet:** Tarkista paluupolku: rekisterit palautetaan ja lopuksi suoritetaan iretq.
+   - Kirjaa lähdekoodin kohta, joka todistaa havainnon.
+   - Tarkista, että kutsuja ja kutsuttava käyttävät samaa sopimusta.
+
+6. **Käännä:** Testaa yksi tunnettu vektori QEMU:ssa ja tarkista diagnostiikka.
+   - Kirjaa lähdekoodin kohta, joka todistaa havainnon.
+   - Tarkista, että kutsuja ja kutsuttava käyttävät samaa sopimusta.
+
+7. **Tarkista konekoodi:** Älä laita tulostusta tai muistiallokointia tavalliseen IRQ-käsittelijään.
+   - Kirjaa lähdekoodin kohta, joka todistaa havainnon.
+   - Tarkista, että kutsuja ja kutsuttava käyttävät samaa sopimusta.
+
+### Rajapinta- ja turvallisuustarkistus
+
+- Varmista, että vektori, pino, rekisterit ja paluuarvo ovat täsmälleen sovitussa muodossa.
+- Tarkista kaikki rajat ennen kuin luet muistia tai kirjoitat laitteistorekisteriin.
+- Erota CPU:n vaatima assembly VNT:n politiikasta.
+- Määritä virhetilanne: diagnoosi, hallittu pysäytys tai turvallinen ohitus.
+- Tarkista, ettei uusi haara tee työtä, joka voi odottaa keskeytyksen jälkeen.
+- Dokumentoi ominaisuudet, joita tämä muutos ei vielä toteuta.
+
+### Todennus
+
+1. Kirjoita odotettu vektori ja tulos ennen muutosta.
+2. Suorita `bash os/build.sh` projektin juuressa.
+3. Tarkista ensimmäinen epäonnistunut build-vaihe.
+4. Tarkista symbolit ja linkitetyt objektit, jos muutat ABI:a.
+5. Käynnistä QEMU:ssa ja tallenna sarjaportin tuloste.
+6. Testaa normaali vektori, rajavektori ja virhepolku.
+7. Älä ilmoita testausta läpäistyksi ilman havaintoa.
+
+### Tavalliset virheet
+
+- Väärä stub-tyyppi siirtää pinon kentät.
+- Rekisteri jää tallentamatta tai palautetaan väärässä järjestyksessä.
+- EOI puuttuu tai tehdään kahdesti.
+- IDT-portti osoittaa väärään symboliin.
+- Keskeytyskäsittelijä jää odottamaan laitetta tai tekee pitkän tulostuksen.
+
+### Muutosraportti
+
+Kirjaa muutos, rajapintasopimus, build-tulos, QEMU-havainto, testatut vektorit ja avoimet rajoitukset.

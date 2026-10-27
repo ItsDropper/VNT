@@ -149,6 +149,32 @@ fun apic_init() -> int {
     return 1
 }
 
+fun apic_wait_icr_clear() -> int {
+    let spins: int = 0
+    while (apic_read32(0x300) / 4096) % 2 == 1 {
+        spins = spins + 1
+        if spins >= 1000000 {
+            return 0
+        }
+    }
+    return 1
+}
+
+# xAPIC physical-destination IPI. Command values are supplied by SMP policy.
+fun apic_send_icr(destination: int, command: int) -> int {
+    if apic_is_enabled() != 1 {
+        return 0
+    }
+    if apic_wait_icr_clear() != 1 {
+        return 0
+    }
+    let high: i64 = destination
+    high = high * 16777216
+    apic_write32(0x310, high)
+    apic_write32(0x300, command)
+    return apic_wait_icr_clear()
+}
+
 fun apic_is_enabled() -> int {
     return state_get(58)
 }

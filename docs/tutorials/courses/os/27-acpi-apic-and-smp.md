@@ -61,3 +61,12 @@ After booting a QEMU image, run:
 - `memtest` and `vmtest` — ensure the existing memory paths still pass.
 
 The CI boot test launches QEMU with four virtual CPUs and requires all four to become online. The `smp` command should show equal discovered and online counts. APs remain halted after their online handshake; this test does not validate scheduling or concurrent allocation.
+
+
+## Lesson 28 — Fixed-vector APIC IPIs
+
+This milestone adds a dedicated fixed-vector interrupt (vector 240) for an APIC IPI self-test. The BSP sends an IPI to each online secondary processor and waits for that processor's VNT handler to increment its own response counter. The handler acknowledges the Local APIC and returns; it does not schedule, allocate, or print.
+
+Secondary CPUs load the shared, already-initialized IDT before enabling their Local APIC spurious vector. Their LINT0/LINT1 and unused LVT sources are masked so legacy PIC virtual-wire interrupts cannot accidentally execute on an AP. Each AP then enables interrupts and remains in an idle `hlt` loop, allowing the fixed IPI to wake it.
+
+This demonstrates cross-core interrupt delivery, not a complete SMP runtime. There is still no per-CPU TSS/IST, scheduler, synchronized allocator, cross-core TLB shootdown, or device-IRQ routing. APs remain restricted to idle/handler duties.

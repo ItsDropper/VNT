@@ -16,7 +16,7 @@ interrupt entry are deliberately split from the VNT policy code.
 - `os/serial.vnt`: COM1 UART setup and polling I/O.
 - `os/console.vnt`: VGA text output and the combined VGA/serial console.
 - `os/ps2.vnt`: polled PS/2 keyboard and mouse routines.
-- `os/pic.vnt`: VNT-side legacy PIC IRQ mask controls; IRQ entry and EOI remain in assembly.
+- `os/pic.vnt`: VNT-side legacy PIC IRQ mask controls and read-only live mask diagnostics; IRQ entry and EOI remain in assembly.
 - `os/kernel/device_irq.vnt`: bounded accounting for legacy IRQ vectors 32–47; this is not yet a handler registry.
 - `os/mm/phys.vnt`: Multiboot2-backed 4-KiB physical-frame allocator with bounded next-fit and contiguous-run APIs for the first 1-GiB mapped window.
 - `os/mm/virt.vnt`: early virtual translation/mapping policy and a reversible mapping self-test.
@@ -59,7 +59,7 @@ qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -serial stdio
 
 Commands: `help`, `about`, `clear`, `echo TEXT`, `history`, `uptime`, `dectest`, `synctest`, `mem`, `memtest`, `vmtest`,
 `irq`, `mouse`, `smp`, `reboot`, and `halt`. The `help` output groups these commands into general, diagnostic, and power categories; the QEMU workflow checks those lines in the serial transcript. The PS/2 terminal supports Up-arrow history recall plus Left/Right, Home/End, Delete, insertion in the middle of a line, and Backspace. PS/2 navigation uses polled Set 1 scan codes. Serial input remains byte-oriented and does not decode incoming ANSI navigation sequences; cursor movement is sent to serial output using ANSI CSI-left. The `uptime` command reports decimal timer ticks and approximate seconds; it is not a wall clock. `uptime`, page-count output from `mem`, and IRQ counters from `irq` use decimal for readable quantities; addresses and register-like diagnostics remain hexadecimal. The uptime estimate is based on the configured 100 Hz timer. The `mem` command reports the kernel bounds and usable/free 4-KiB frame counts. `memtest` checks allocation alignment, next-fit cursor advancement, freeing, double-free rejection, and refusal to free the kernel start frame. `vmtest` temporarily remaps virtual address 256 MiB to an allocated frame, verifies translation and a write/read sentinel, then restores the identity mapping.
-The `irq` command reports the PIT tick count and the legacy IRQ0/IRQ1 counters. The `synctest` command checks uncontended spinlock acquisition, failed try-acquire, release, and double-release handling. It does not prove multi-CPU contention safety, and the physical allocator is not yet protected by this lock.
+The `irq` command reports the PIT tick count and legacy IRQ0/IRQ1 delivery counters, then reads the live PIC mask bits for IRQ0 and IRQ1. It also reports Local APIC enablement, whether the supported I/O APIC masking setup completed, and the number of redirection entries masked by that setup. A zero route count alone does not mean there are no I/O APIC entries: check the separate readiness field. The counts show interrupt vectors dispatched, not whether a physical device is healthy. Keyboard IRQ1 remains masked because input is polled. The `synctest` command checks uncontended spinlock acquisition, failed try-acquire, release, and double-release handling. It does not prove multi-CPU contention safety, and the physical allocator is not yet protected by this lock.
 Only IRQ0 is expected to advance with the current mask configuration; IRQ1
 remains masked because keyboard input is polled.
 

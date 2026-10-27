@@ -124,8 +124,8 @@ If `build/vntos.iso` was not created, do not run the QEMU command as written; in
 
 ## Current limitations
 
-This allocator covers only the low 1-GiB identity-mapped physical window, uses bitmaps stored in the bootstrap image, and has no general heap or SMP lock. The next-fit cursor reduces repeated scanning; it does not solve fragmentation, provide contiguous multi-page allocations, reclaim reserved pages, or permit concurrent access.
+This allocator covers only the low 1-GiB identity-mapped physical window, uses bitmaps stored in the bootstrap image, and has no general heap or SMP lock. The next-fit cursor reduces repeated scanning. The allocator now also has a separate contiguous-page API, covered in [Lesson 31](./31-contiguous-physical-pages.md). Fragmentation, reclaimable reservations, and concurrent access remain unsolved.
 
 ---
 
-[← Previous lesson](./29-smp-synchronization-contract.md) · [Course index](./README.md) · **Course completed.**
+[← Previous lesson](./29-smp-synchronization-contract.md) · [Course index](./README.md) · [Next lesson →](./31-contiguous-physical-pages.md)

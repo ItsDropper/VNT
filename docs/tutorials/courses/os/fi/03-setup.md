@@ -45,6 +45,20 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Tietokoneen osat kernelin näkökulmasta](02-computer-basics.md) · [Seuraava oppitunti: VNT-kielen perusteet kernel-koodissa →](04-vnt-for-kernels.md)
 
+## Koodiesimerkki: työkalujen tarkistus ja build
+
+```bash
+command -v gcc
+command -v ld
+command -v qemu-system-x86_64
+bash os/build.sh
+```
+
+command -v kertoo, löytyykö työkalu PATH-ympäristömuuttujasta. Build-skripti itse kääntää VNT-kääntäjän, emittoi freestanding-assemblyn, assembloi bootstrapin ja linkittää ELF:n. ISO-työkalut ovat erillinen, valinnainen vaihe.
+
+**Tee itse:** Suorita tarkistukset ennen buildia. Jos build epäonnistuu, kirjaa ensimmäinen epäonnistunut komento; älä päättele gcc:n tai GRUBin puuttumisesta, että VNT-lähdekoodi on väärin.
+
+
 ## Toteutuslaboratorio: Kehitysympäristön valmistelu
 
 Tämä osio täydentää käsitteitä käytännön toteutusmenettelyllä. Lähdekoodiviitteet ovat projektin nykyisiä polkuja; avaa ne ennen muutosta.

@@ -245,6 +245,7 @@ fun shell_run() {
                 console_decimal(apic_ioapic_ready())
                 console_puts("IOAPIC redirection entries masked: ")
                 console_decimal(apic_ioapic_route_count())
+                console_puts("Counters use atomic increments; values are snapshots.\r\n")
                 console_puts("Counts are delivered legacy PIC vectors, not device health.\r\n")
                 handled = 1
             }

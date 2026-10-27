@@ -44,3 +44,68 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: PIT, PIC ja ajastimen tikit](23-pit-pic-and-timer-ticks.md) · [Seuraava oppitunti: Fyysinen muisti ja sivukehykset →](26-physical-memory-and-page-frames.md)
+
+## Toteutuslaboratorio: Keskeytyskernelin build ja testaus
+
+Tämä harjoitus edellyttää lähdekoodin lukemista ja toteutuksen todentamista.
+
+**Tutkittavat tiedostot:** `os/build.sh`, `os/arch/x86_64/interrupts.S`, `os/interrupts.vnt`
+
+**Tavoite:** Todista käännös, linkitys, boot ja keskeytyksen käsittely erikseen. Yhden kerroksen onnistuminen ei todista seuraavaa. Pidä virhetilanteiden testit virtuaalikoneessa.
+
+### Toteutus vaiheittain
+
+1. **Rajaa vastuu:** Tarkista, että interrupts.o sisältyy linkitykseen.
+   - Kirjaa lähdekoodin kohta, joka todistaa havainnon.
+   - Tarkista, että kutsuja ja kutsuttava käyttävät samaa sopimusta.
+
+2. **Etsi nykyinen toteutus:** Tarkista, että VNT:n dispatcher-symboli löytyy linkitetystä ELF:stä.
+   - Kirjaa lähdekoodin kohta, joka todistaa havainnon.
+   - Tarkista, että kutsuja ja kutsuttava käyttävät samaa sopimusta.
+
+3. **Kirjaa sopimus:** Varmista, että IDT on alustettu ennen keskeytysten avaamista.
+   - Kirjaa lähdekoodin kohta, joka todistaa havainnon.
+   - Tarkista, että kutsuja ja kutsuttava käyttävät samaa sopimusta.
+
+4. **Tee pienin muutos:** Käynnistä QEMU ja tarkista boot-tunniste ennen keskeytystestiä.
+   - Kirjaa lähdekoodin kohta, joka todistaa havainnon.
+   - Tarkista, että kutsuja ja kutsuttava käyttävät samaa sopimusta.
+
+5. **Tarkista riippuvuudet:** Tallenna testin vektori, odotettu tulos ja toteutunut sarjaporttiloki.
+   - Kirjaa lähdekoodin kohta, joka todistaa havainnon.
+   - Tarkista, että kutsuja ja kutsuttava käyttävät samaa sopimusta.
+
+6. **Käännä:** Jos testi kaatuu, rajaa ensin onko vika käännöksessä, sisääntulossa, dispatchissa vai paluussa.
+   - Kirjaa lähdekoodin kohta, joka todistaa havainnon.
+   - Tarkista, että kutsuja ja kutsuttava käyttävät samaa sopimusta.
+
+### Rajapinta- ja turvallisuustarkistus
+
+- Varmista, että vektori, pino, rekisterit ja paluuarvo ovat täsmälleen sovitussa muodossa.
+- Tarkista kaikki rajat ennen kuin luet muistia tai kirjoitat laitteistorekisteriin.
+- Erota CPU:n vaatima assembly VNT:n politiikasta.
+- Määritä virhetilanne: diagnoosi, hallittu pysäytys tai turvallinen ohitus.
+- Tarkista, ettei uusi haara tee työtä, joka voi odottaa keskeytyksen jälkeen.
+- Dokumentoi ominaisuudet, joita tämä muutos ei vielä toteuta.
+
+### Todennus
+
+1. Kirjoita odotettu vektori ja tulos ennen muutosta.
+2. Suorita `bash os/build.sh` projektin juuressa.
+3. Tarkista ensimmäinen epäonnistunut build-vaihe.
+4. Tarkista symbolit ja linkitetyt objektit, jos muutat ABI:a.
+5. Käynnistä QEMU:ssa ja tallenna sarjaportin tuloste.
+6. Testaa normaali vektori, rajavektori ja virhepolku.
+7. Älä ilmoita testausta läpäistyksi ilman havaintoa.
+
+### Tavalliset virheet
+
+- Väärä stub-tyyppi siirtää pinon kentät.
+- Rekisteri jää tallentamatta tai palautetaan väärässä järjestyksessä.
+- EOI puuttuu tai tehdään kahdesti.
+- IDT-portti osoittaa väärään symboliin.
+- Keskeytyskäsittelijä jää odottamaan laitetta tai tekee pitkän tulostuksen.
+
+### Muutosraportti
+
+Kirjaa muutos, rajapintasopimus, build-tulos, QEMU-havainto, testatut vektorit ja avoimet rajoitukset.

@@ -45,6 +45,23 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Sarjaportti debuggausvälineenä](13-serial-io.md) · [Seuraava oppitunti: Selvitä ongelmat järjestelmällisesti →](15-debugging.md)
 
+## Koodiesimerkki: lisää komentotulkkiin komento
+
+```vnt
+if str_eq(buffer, "about") {
+    console_puts("VNTOS: VNT-compiled freestanding x86-64 kernel.\r\n")
+    handled = 1
+}
+if handled == 0 {
+    console_puts("Unknown command. Type help.\r\n")
+}
+```
+
+Tämä on nykyisen os/kernel/shell.vnt-tiedoston rakennetta vastaava katkelma: syöte kerätään puskuriin, rivinvaihto päättää komennon ja str_eq vertailee sitä. `handled` kertoo komentotulkille, tunnistiko jokin haara komennon. Oikeassa tiedostossa tuntemattoman komennon haara sijaitsee käsittelyketjun lopussa.
+
+**Tee itse:** Lisää komento samalla mallilla, päivitä `help`-tuloste ja testaa tyhjä rivi, tuntematon komento ja pitkä syöte. Älä lisää komentoa, joka lukee tai kirjoittaa mielivaltaista muistia.
+
+
 ## Toteutuslaboratorio: Sarjaportin komentotulkki
 
 Tässä harjoituksessa toteutat tai jäljität toimivan osan, et vain kuvaile käsitettä.

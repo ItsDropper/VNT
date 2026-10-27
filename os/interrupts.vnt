@@ -34,6 +34,20 @@ export fun interrupt_dispatch(vector: int, error: int) {
         console_hex(vector)
         console_puts("Error code: ")
         console_hex(error)
+        if vector == 14 {
+            console_puts("Page-fault linear address (CR2): ")
+            console_hex(kernel_page_fault_address())
+            console_puts("Page-fault flags: present=")
+            console_hex(error % 2)
+            console_puts("write=")
+            console_hex((error / 2) % 2)
+            console_puts("user=")
+            console_hex((error / 4) % 2)
+            console_puts("reserved-bit=")
+            console_hex((error / 8) % 2)
+            console_puts("instruction-fetch=")
+            console_hex((error / 16) % 2)
+        }
         cpu_halt()
         return 0
     }

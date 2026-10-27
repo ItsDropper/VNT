@@ -200,7 +200,10 @@ jobs:
           required = [
               "VNTOS_BOOT_OK",
               "VNTOS_COMMAND_LINE_READY",
-              "Commands: help, about, clear, echo, history, uptime, synctest, mem, memtest, vmtest, irq, mouse, smp, reboot, halt",
+              "Commands: help, about, clear, echo, history, uptime",
+              "Diagnostics: synctest, mem, memtest, vmtest, irq, mouse, smp",
+              "Power: reboot, halt",
+              "Usage: echo TEXT prints TEXT; history shows the previous command.",
               "Spinlock self-test: PASS",
               "Last command: echo test",
               "Approximate uptime seconds (decimal):",

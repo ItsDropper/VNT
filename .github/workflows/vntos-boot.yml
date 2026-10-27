@@ -149,7 +149,7 @@ jobs:
               drain(0.35)
 
           # Exercise the real PS/2 keyboard path, not only the serial RX path.
-          for command in ("help", "about"):
+          for command in ("help", "about", "dectest"):
               type_command(command)
 
           # Edit in the middle: turn "ech test" into "echo test" with Home,
@@ -188,7 +188,7 @@ jobs:
           press("up")
           press("ret")
           drain(0.35)
-          for command in ("history", "uptime", "synctest", "mem", "memtest", "vmtest", "irq", "mouse", "smp", "badcommand", "clear", "halt"):
+          for command in ("history", "uptime", "dectest", "synctest", "mem", "memtest", "vmtest", "irq", "mouse", "smp", "badcommand", "clear", "halt"):
               type_command(command)
           monitor.close()
           drain(0.5)
@@ -201,7 +201,8 @@ jobs:
               "VNTOS_BOOT_OK",
               "VNTOS_COMMAND_LINE_READY",
               "Commands: help, about, clear, echo, history, uptime",
-              "Diagnostics: synctest, mem, memtest, vmtest, irq, mouse, smp",
+              "Diagnostics: dectest, synctest, mem, memtest, vmtest, irq, mouse, smp",
+              "Decimal digit self-test: PASS",
               "Power: reboot, halt",
               "Usage: echo TEXT prints TEXT; history shows the previous command.",
               "Spinlock self-test: PASS",

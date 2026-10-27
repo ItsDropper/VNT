@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Keskeytykset, poikkeukset ja IDT](20-interrupts-and-the-idt.md) · [Seuraava oppitunti: Käsittele keskeytyksiä VNT-kielellä →](22-vnt-interrupt-dispatch.md)
 
 ## Koodiesimerkki: tallenna rekisterit ennen VNT-kutsua
 
@@ -136,3 +135,7 @@ Tämä harjoitus edellyttää lähdekoodin lukemista ja toteutuksen todentamista
 ### Muutosraportti
 
 Kirjaa muutos, rajapintasopimus, build-tulos, QEMU-havainto, testatut vektorit ja avoimet rajoitukset.
+
+---
+
+[← Edellinen oppitunti](./20-interrupts-and-the-idt.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./22-vnt-interrupt-dispatch.md)

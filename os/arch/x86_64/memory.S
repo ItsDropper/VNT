@@ -177,55 +177,55 @@ vntos_multiboot_info_size:
 .size vntos_multiboot_info_size, .-vntos_multiboot_info_size
 
 .macro BITMAP_SET name, symbol
-.global \\name
-.type \\name,@function
-\\name:
+.global \name
+.type \name,@function
+\name:
     cmpl $262144, %edi
-    jae .Lbitmap_bad_\\@
+    jae .Lbitmap_bad_\@
     movl %edi, %r8d
     shrl $3, %r8d
     movl %edi, %ecx
     andl $7, %ecx
     movl $1, %edx
     shll %cl, %edx
-    leaq \\symbol(%rip), %r11
+    leaq \symbol(%rip), %r11
     testl %esi, %esi
-    jz .Lbitmap_clear_\\@
+    jz .Lbitmap_clear_\@
     orb %dl, (%r11,%r8)
     movl $1, %eax
     ret
-.Lbitmap_clear_\\@:
+.Lbitmap_clear_\@:
     notb %dl
     andb %dl, (%r11,%r8)
     movl $1, %eax
     ret
-.Lbitmap_bad_\\@:
+.Lbitmap_bad_\@:
     xorl %eax, %eax
     ret
-.size \\name, .-\\name
+.size \name, .-\name
 .endm
 
 .macro BITMAP_GET name, symbol
-.global \\name
-.type \\name,@function
-\\name:
+.global \name
+.type \name,@function
+\name:
     cmpl $262144, %edi
-    jae .Lbitmap_get_bad_\\@
+    jae .Lbitmap_get_bad_\@
     movl %edi, %r8d
     shrl $3, %r8d
     movl %edi, %ecx
     andl $7, %ecx
     movl $1, %eax
     shll %cl, %eax
-    leaq \\symbol(%rip), %r11
+    leaq \symbol(%rip), %r11
     andb (%r11,%r8), %al
     setne %al
     movzbl %al, %eax
     ret
-.Lbitmap_get_bad_\\@:
+.Lbitmap_get_bad_\@:
     xorl %eax, %eax
     ret
-.size \\name, .-\\name
+.size \name, .-\name
 .endm
 
 BITMAP_SET vntos_phys_usable_set, vntos_phys_usable_bitmap

@@ -24,6 +24,9 @@ multiboot2_header_end:
 .global boot32_entry
 .type boot32_entry,@function
 boot32_entry:
+    /* Preserve the Multiboot2 register contract before using EAX/EBX. */
+    movl %eax, multiboot2_boot_magic
+    movl %ebx, multiboot2_info_ptr
     movw $0xe9, %dx
     movb $66, %al
     outb %al, %dx
@@ -123,8 +126,15 @@ boot_stack_bottom: .skip 16384
 boot_stack_top:
 
 
-/* Shared scalar state for the VNT-compiled VGA/PS2 drivers. */
+/* Multiboot2 values captured at the 32-bit entry point. */
 .section .data
+.balign 4
+.global multiboot2_boot_magic
+multiboot2_boot_magic: .long 0
+.global multiboot2_info_ptr
+multiboot2_info_ptr: .long 0
+
+/* Shared scalar state for the VNT-compiled VGA/PS2 drivers. */
 .balign 8
 .global vntos_state
 vntos_state:

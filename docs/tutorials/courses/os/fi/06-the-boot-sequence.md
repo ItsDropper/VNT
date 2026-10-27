@@ -45,6 +45,28 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Miten lähdekoodista syntyy kernel](05-build-pipeline.md) · [Seuraava oppitunti: GRUB ja Multiboot2 →](07-grub-and-multiboot2.md)
 
+## Koodiesimerkki: kernelin alustuksen järjestys
+
+```vnt
+fun kernel_main() {
+    serial_init()
+    state_set(1, 15)
+    vga_clear()
+    vga_puts("VNTOS\r\nVNT-compiled x86-64 kernel\r\n")
+    serial_puts("VNTOS_BOOT_OK\r\nVNTOS - freestanding x86-64 console\r\n")
+    pic_disable_all()
+    let acpi_found: int = acpi_discover()
+    interrupts_init()
+    shell_run()
+    return 0
+}
+```
+
+Tämä on nykyisestä kernel.vnt-tiedostosta lyhennetty, syntaktisesti oikea katkelma. Se näyttää, miten käynnistys siirtyy varhaisesta sarjaporttitulosteesta laitteiston alustukseen ja lopulta komentotulkkiin. Todellisessa tiedostossa välissä alustetaan myös muisti ja käsitellään ACPI/APIC/SMP:n tuloksia.
+
+**Tee itse:** Lisää yksi käynnistysviesti ja ennusta, missä sen pitäisi näkyä. Jos viestiä ei näy, selvitä, saavuttaako suoritus sitä edeltävän vaiheen; älä muuta koko käynnistysjärjestystä kerralla.
+
+
 ## Toteutuslaboratorio: Käynnistyksen vaiheet
 
 Tämä on toteutusohje, ei vain aiheesta kertova yhteenveto. Avaa lähdetiedostot ennen kuin muutat niitä.

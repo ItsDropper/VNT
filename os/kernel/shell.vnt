@@ -94,9 +94,9 @@ fun shell_run() {
             }
             if str_eq(buffer, "vmtest") {
                 if virt_self_test() == 1 {
-                    console_puts("Virtual-memory self-test: PASS\\r\\n")
+                    console_puts("Virtual-memory self-test: PASS\r\n")
                 } else {
-                    console_puts("Virtual-memory self-test: FAIL\\r\\n")
+                    console_puts("Virtual-memory self-test: FAIL\r\n")
                 }
                 handled = 1
             }

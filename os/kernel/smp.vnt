@@ -4,7 +4,7 @@
 # CPU topology inventory. A CPU is online only after it has entered the kernel
 # and published that state; MADT presence alone never increments online count.
 
-import "../kernel/core.vnt"
+import "core.vnt"
 import "../firmware/acpi.vnt"
 import "../arch/x86_64/apic.vnt"
 

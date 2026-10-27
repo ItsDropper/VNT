@@ -90,6 +90,7 @@ No prior OS-development experience is required. Basic terminal use helps. Read l
 | `os/kernel.vnt` | Ordered initialization and top-level kernel flow |
 | `os/kernel/core.vnt` | Shared-state access, timer ticks, CPU halt/reboot primitives |
 | `os/kernel/shell.vnt` | Shell command parsing and input loop |
+| `os/kernel/sync.vnt` | Atomic-exchange spinlock primitives; contention safety is not yet proven |
 | `os/interrupts.vnt` | VNT-side exception and IRQ dispatch policy |
 | `os/mm/phys.vnt` | Bounded physical page-frame allocator |
 | `os/mm/virt.vnt` | Early virtual translation/mapping policy and self-test |

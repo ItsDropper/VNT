@@ -117,4 +117,4 @@ Seuraava järkevä askel on erottaa pieni rivieditorin tilakone komentojen käsi
 
 ---
 
-[← Edellinen oppitunti](./33-terminal-history-and-uptime.md) · [Sisällysluettelo](./README.md) · **Seuraavaksi: erota terminaalin muokkaus komentojen käsittelystä.**
+[← Edellinen oppitunti](./33-terminal-history-and-uptime.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./35-terminal-decimal-uptime.md)

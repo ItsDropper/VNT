@@ -42,6 +42,17 @@ boot32_entry:
     orl $3, %eax
     movl %eax, pdpt_table
 
+    /* Reserve PDPT[3] for a narrow identity map of APIC MMIO windows. */
+    movl $mmio_page_directory, %eax
+    orl $3, %eax
+    movl %eax, pdpt_table+24
+    movl $0, pdpt_table+28
+    /* IOAPIC at 0xFEC00000 and Local APIC at 0xFEE00000. */
+    movl $0xfec00083, mmio_page_directory+4016
+    movl $0, mmio_page_directory+4020
+    movl $0xfee00083, mmio_page_directory+4024
+    movl $0, mmio_page_directory+4028
+
     /* Identity-map the first GiB using 512 2-MiB pages. */
     movl $page_directory, %edi
     xorl %ecx, %ecx
@@ -185,3 +196,37 @@ vntos_state:
     .quad 0       /* IRQ15 count */
     .quad 0       /* Usable physical page count */
     .quad 0       /* Free physical page count */
+    .quad 0       /* ACPI/APIC/SMP state 30 */
+    .quad 0       /* ACPI/APIC/SMP state 31 */
+    .quad 0       /* ACPI/APIC/SMP state 32 */
+    .quad 0       /* ACPI/APIC/SMP state 33 */
+    .quad 0       /* ACPI/APIC/SMP state 34 */
+    .quad 0       /* ACPI/APIC/SMP state 35 */
+    .quad 0       /* ACPI/APIC/SMP state 36 */
+    .quad 0       /* ACPI/APIC/SMP state 37 */
+    .quad 0       /* ACPI/APIC/SMP state 38 */
+    .quad 0       /* ACPI/APIC/SMP state 39 */
+    .quad 0       /* ACPI/APIC/SMP state 40 */
+    .quad 0       /* ACPI/APIC/SMP state 41 */
+    .quad 0       /* ACPI/APIC/SMP state 42 */
+    .quad 0       /* ACPI/APIC/SMP state 43 */
+    .quad 0       /* ACPI/APIC/SMP state 44 */
+    .quad 0       /* ACPI/APIC/SMP state 45 */
+    .quad 0       /* ACPI/APIC/SMP state 46 */
+    .quad 0       /* ACPI/APIC/SMP state 47 */
+    .quad 0       /* ACPI/APIC/SMP state 48 */
+    .quad 0       /* ACPI/APIC/SMP state 49 */
+    .quad 0       /* ACPI/APIC/SMP state 50 */
+    .quad 0       /* ACPI/APIC/SMP state 51 */
+    .quad 0       /* ACPI/APIC/SMP state 52 */
+    .quad 0       /* ACPI/APIC/SMP state 53 */
+    .quad 0       /* ACPI/APIC/SMP state 54 */
+    .quad 0       /* ACPI/APIC/SMP state 55 */
+    .quad 0       /* ACPI/APIC/SMP state 56 */
+    .quad 0       /* ACPI/APIC/SMP state 57 */
+    .quad 0       /* ACPI/APIC/SMP state 58 */
+    .quad 0       /* ACPI/APIC/SMP state 59 */
+    .quad 0       /* ACPI/APIC/SMP state 60 */
+    .quad 0       /* ACPI/APIC/SMP state 61 */
+    .quad 0       /* ACPI/APIC/SMP state 62 */
+    .quad 0       /* ACPI/APIC/SMP state 63 */

@@ -14,11 +14,11 @@ An interrupt is not the same as a normal function call. The CPU saves return sta
 
 The Interrupt Descriptor Table (IDT) is an array of 256 gates on x86-64. Each gate is 16 bytes and contains the handler address split into pieces, a code-segment selector, an IST field, and gate attributes. The IDT register stores the table's byte limit and base address.
 
-The current `os/interrupts.S` builds a 4096-byte table (256 × 16 bytes). It initially points every vector at a default stub, then installs specific stubs for vectors 0–47. The IDT is loaded with `lidt` only after the table has been filled.
+The current `os/arch/x86_64/interrupts.S` builds a 4096-byte table (256 × 16 bytes). It initially points every vector at a default stub, then installs specific stubs for vectors 0–47. The IDT is loaded with `lidt` only after the table has been filled.
 
 Important values in this implementation:
 
-- `0x08`: the 64-bit kernel code-segment selector from the GDT established by `os/boot.S`.
+- `0x08`: the 64-bit kernel code-segment selector from the GDT established by `os/arch/x86_64/boot.S`.
 - `0x8e`: a present, ring-0 interrupt gate.
 - `0..31`: CPU exception vectors.
 - `32..47`: legacy PIC IRQ vectors after remapping.
@@ -34,7 +34,7 @@ Only IRQ0 is unmasked in this iteration. The keyboard and other device IRQs rema
 
 ## Follow the source
 
-Open `os/interrupts.S` and locate:
+Open `os/arch/x86_64/interrupts.S` and locate:
 
 1. `idt_table` and `idt_pointer`;
 2. `vntos_interrupts_init`;
@@ -84,7 +84,7 @@ The initializer therefore fills the table, installs the known stubs, executes `l
 
 ## Manual review exercise
 
-In `os/interrupts.S`, inspect each write to offsets 0, 2, 4, 5, 6, 8, and 12 from the gate pointer. For every write, name the field from the table above. Then inspect the code that constructs the IDTR pointer: it stores a 16-bit limit followed by a 64-bit base.
+In `os/arch/x86_64/interrupts.S`, inspect each write to offsets 0, 2, 4, 5, 6, 8, and 12 from the gate pointer. For every write, name the field from the table above. Then inspect the code that constructs the IDTR pointer: it stores a 16-bit limit followed by a 64-bit base.
 
 The initial page tables map the low 1 GiB, so the IDT and handlers at the kernel's current low physical/virtual addresses are reachable under the current identity-map design. If the kernel moves to a higher-half layout later, the address assumptions and mapping strategy must be revisited.
 
@@ -114,7 +114,7 @@ These are invariants, not style preferences.
 
 Do not start by editing the IDT. First pick vector 32, the PIT timer IRQ, and follow it through every representation:
 
-1. Find the `ISR_NOERR 32` expansion in `os/interrupts.S`.
+1. Find the `ISR_NOERR 32` expansion in `os/arch/x86_64/interrupts.S`.
 2. Find the address installed for vector 32 in the IDT initialization.
 3. Confirm the gate selector is the kernel code selector established by the bootstrap GDT.
 4. Confirm the IDTR base points to the static table and its limit is 4095.

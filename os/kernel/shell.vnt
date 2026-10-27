@@ -122,6 +122,8 @@ fun shell_run() {
                 console_hex(acpi_iso_count())
                 console_puts("IOAPIC redirection entries masked: ")
                 console_hex(apic_ioapic_route_count())
+                console_puts("SMP startup error code: ")
+                console_hex(state_get(143))
                 if smp_online_cpu_count() == smp_discovered_cpu_count() {
                     console_puts("All discovered CPUs are online.\r\n")
                 } else {

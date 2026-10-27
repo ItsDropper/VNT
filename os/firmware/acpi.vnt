@@ -42,7 +42,10 @@ fun acpi_checksum(address: i64, length: int) -> int {
         sum = (sum + acpi_read8(address, i)) % 256
         i = i + 1
     }
-    if sum == 0 {\n        return 1\n    }\n    return 0
+    if sum == 0 {
+        return 1
+    }
+    return 0
 }
 
 fun acpi_is_rsdp(address: i64) -> int {

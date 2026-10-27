@@ -48,3 +48,14 @@ fun cpu_reboot() {
     }
     return 0
 }
+
+# Named timer interface keeps the shared-state slot out of interrupt policy
+# and shell command code. The counter remains a tick count, not wall-clock time.
+fun kernel_timer_tick() {
+    state_set(11, state_get(11) + 1)
+    return 0
+}
+
+fun kernel_timer_ticks() -> int {
+    return state_get(11)
+}

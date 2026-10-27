@@ -16,15 +16,17 @@ fun apic_read32(offset: int) -> int {
 
 fun apic_write32(offset: int, value: int) -> int {
     unsafe {
-        return mem_write_u32(0xfee00000, offset, value)
+        mem_write_u32(0xfee00000, offset, value)
     }
+    return 1
 }
 
 fun ioapic_write_register(index: int, value: int) -> int {
     unsafe {
         mem_write_u32(0xfec00000, 0, index)
-        return mem_write_u32(0xfec00000, 16, value)
+        mem_write_u32(0xfec00000, 16, value)
     }
+    return 1
 }
 
 fun ioapic_read_register(index: int) -> int {
@@ -35,7 +37,7 @@ fun ioapic_read_register(index: int) -> int {
 }
 
 fun apic_mask_ioapic_routes() -> int {
-    if acpi_ioapic_count() == 0 {
+    if acpi_ioapic_count() != 1 {
         state_set(63, 0)
         return 0
     }

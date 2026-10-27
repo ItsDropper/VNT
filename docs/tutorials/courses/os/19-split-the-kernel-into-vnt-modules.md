@@ -7,7 +7,9 @@ architecture-specific assembly boundary in the working VNTOS build.
 
 | File | Owns |
 | --- | --- |
-| `os/kernel.vnt` | shared state access, string helpers, CPU controls, `kernel_main`, shell policy |
+| `os/kernel.vnt` | kernel entry and ordered subsystem initialization |
+| `os/kernel/core.vnt` | shared state access, kernel bounds, CPU halt/reboot |
+| `os/kernel/shell.vnt` | shell input loop, string helpers, command policy |
 | `os/serial.vnt` | COM1 initialization and byte/string I/O |
 | `os/console.vnt` | VGA text output, cursor, scrolling, combined console, hexadecimal output |
 | `os/ps2.vnt` | polled 8042 keyboard/mouse input and scan-code translation |
@@ -23,13 +25,15 @@ stable to avoid changing the working boot and interrupt ABI.
 
 ## Understand VNT imports
 
-At the top of `os/kernel.vnt`, the imports remain:
+At the top of `os/kernel.vnt`, the imports now include the core and shell modules:
 
 ```vnt
 import "serial.vnt"
 import "console.vnt"
 import "ps2.vnt"
 import "interrupts.vnt"
+import "kernel/core.vnt"
+import "kernel/shell.vnt"
 ```
 
 Each path is relative to the importing file. Since the root file lives in
@@ -44,11 +48,13 @@ ABI boundary.
 
 ## Trace a shell call
 
-1. In `os/kernel.vnt`, find `kernel_main()`.
-2. Find a call to `console_puts("VNTOS> ")`.
+1. In `os/kernel.vnt`, find `kernel_main()` and the final call to `shell_run()`.
+2. In `os/kernel/shell.vnt`, find a call to `console_puts("VNTOS> ")`.
 3. Open `os/console.vnt` and find `console_puts`.
 4. Follow it to `vga_puts` and `serial_puts`.
 5. Open `os/serial.vnt` and find `serial_puts`, then `serial_putc`.
+
+Shared state and CPU halt/reboot primitives are isolated in `os/kernel/core.vnt`. This is a source boundary only: the current assembly-backed state access still depends on compiler-specific stack offsets.
 
 Now trace the timer path: `os/arch/x86_64/interrupts.S` enters the CPU-defined
 frame, `os/interrupts.vnt` handles vector 32, and the shell reads the counter

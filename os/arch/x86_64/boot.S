@@ -133,6 +133,8 @@ pml4_table: .skip 4096
 pdpt_table: .skip 4096
 .global page_directory
 page_directory: .skip 4096
+.balign 4096
+mmio_page_directory: .skip 4096
 .balign 16
 boot_stack_bottom: .skip 16384
 boot_stack_top:
@@ -278,3 +280,5 @@ vntos_state:
     .quad 0       /* ACPI interrupt-source override storage 109 */
     .quad 0       /* ACPI interrupt-source override storage 110 */
     .quad 0       /* ACPI interrupt-source override storage 111 */
+
+.section .note.GNU-stack,"",@progbits

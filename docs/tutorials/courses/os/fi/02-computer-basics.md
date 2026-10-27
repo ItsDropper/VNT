@@ -1,13 +1,31 @@
-# Tietokone kernelin näkökulmasta
+# Tietokoneen osat kernelin näkökulmasta
 
-Copyright (c) 2026 ItsDropper. MIT-lisenssi; katso projektin juuren `LICENSE`.
+Copyright (c) 2026 ItsDropper. MIT-lisenssi; katso projektin juuren LICENSE.
 
-CPU suorittaa konekäskyjä. RAM säilyttää käytössä olevat tiedot, kun taas tallennuslaite säilyttää ne virran katketessa. Muistiosoite kertoo, mistä tietoa luetaan tai minne sitä kirjoitetaan. Keskeytys ohjaa CPU:n käsittelijään, kun jokin tapahtuma vaatii huomiota.
+## Tavoite ja selitys
 
-Kernel toimii lähellä laitteistoa. Sen täytyy joskus käsitellä rekistereitä, sivutauluja ja keskeytysohjaimia suoraan. Kääntäjä muuttaa VNT-koodin koneen ymmärtämäksi koodiksi, ja käynnistysketju valmistelee CPU:n ennen kernelin tavallista toimintaa.
+CPU suorittaa käskyjä. RAM säilyttää aktiiviset tiedot nopeasti saatavilla, kun taas SSD tai HDD säilyttää tiedot virran katketessa. Kernel käyttää osoitteita muistiin ja ohjausrajapintoja laitteisiin. Keskeytys ilmoittaa tapahtumasta, joka vaatii CPU:n huomiota.
 
-**Pohdi:** Mikä ero on RAM-muistilla ja tallennuslaitteella? Milloin keskeytys on hyödyllinen?
+## Sanasto
+
+Rekisteri on CPU:n pieni tallennuspaikka. Osoite kertoo, mistä muistista luetaan tai minne kirjoitetaan. Keskeytys siirtää suorituksen käsittelijään. Polling tarkoittaa, että CPU tarkistaa laitteen tilan itse.
+
+## Käytännön harjoitus
+
+Piirrä näppäimistön tapahtumaketju: näppäin, laiteohjain, kernel, komentotulkki. Merkitse, missä kohtaa laite voi ilmoittaa keskeytyksellä ja missä kohtaa kernel voi tarkistaa tilaa kyselyllä.
+
+## Yleinen virhe ja turvallisuus
+
+Fyysinen ja virtuaalinen osoite eivät aina ole sama asia. Ne voivat vastata toisiaan alkuvaiheen identiteettikartoituksessa, mutta sivutus voi muuntaa osoitteen.
+
+## Tarkista ymmärtäminen
+
+Mikä ero on RAM-muistilla ja tallennustilalla? Mikä ero on keskeytyksellä ja pollingilla?
+
+## Ennen kuin jatkat
+
+Varmista, että osaat selittää tämän oppitunnin pääkäsitteen omin sanoin, nimetä lähdekoodin kohdan, jossa se näkyy, ja kertoa, millä havainnolla testaisit toimintaa. Jos et osaa, palaa tiedostoon ja seuraa koodia vielä kerran.
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Mitä käyttöjärjestelmä tekee?](./01-what-is-an-os.md) · [Seuraava oppitunti: Turvallisen kehitysympäristön valmistelu →](./03-setup.md)
+[← Sisällysluettelo](./README.md) · [← Edellinen: Mitä käyttöjärjestelmä tekee?](01-what-is-an-os.md) · [Seuraava oppitunti: Valmistele kehitysympäristö →](03-setup.md)

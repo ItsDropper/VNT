@@ -1,13 +1,31 @@
-# Aloita tästä: ensimmäinen kernel-harjoitus
+# Aloita tästä
 
-Copyright (c) 2026 ItsDropper. MIT-lisenssi; katso projektin juuren `LICENSE`.
+Copyright (c) 2026 ItsDropper. MIT-lisenssi; katso projektin juuren LICENSE.
 
-Tällä kurssilla tutkit oikeaa VNTOS-ydintä, rakennat sen ja käynnistät QEMUssa. Kernel eli käyttöjärjestelmän ydin hallitsee laitteistoa ja tarjoaa muille osille peruspalvelut. VNTOS on kokeellinen x86-64-oppimisydin, ei valmis työpöytäkäyttöjärjestelmä.
+## Tavoite ja selitys
 
-**Aloita turvallisesti:** käytä QEMU-virtuaalikonetta. Älä asenna keskeneräistä ydintä omalle tietokoneelle tai kirjoita levykuvaa tärkeää dataa sisältävälle USB-tikulle. Tutki ensin `os/`-hakemistoa muuttamatta koodia.
+Kurssi opettaa lukemaan, rakentamaan, käynnistämään ja muuttamaan VNTOS-käyttöjärjestelmän ydintä. Aloitamme tietokoneen peruskäsitteistä ja etenemme käynnistykseen, konsoliin, keskeytyksiin, muistiin ja useaan CPU-ytimeen.
 
-**Pohdi:** Mikä ero on kernelillä ja sovelluksella? Miksi virtuaalikone on hyödyllinen? Miksi onnistunut käännös ei vielä todista, että kernel toimii?
+## Sanasto
+
+Kernel tarkoittaa käyttöjärjestelmän ydintä. Lähdekoodi on ihmisen kirjoittamaa ohjelmatekstiä. Kääntäjä muuttaa lähdekoodin koneen suoritettavaksi koodiksi. QEMU jäljittelee tietokonetta ohjelmallisesti.
+
+## Käytännön harjoitus
+
+Avaa os/-hakemisto GitHubissa. Etsi os/kernel.vnt ja os/build.sh. Lue tiedostojen alut ja etsi, mistä kernelin toiminta näyttää alkavan. Älä vielä muuta koodia; harjoittele ensin koodin seuraamista.
+
+## Yleinen virhe ja turvallisuus
+
+Älä asenna keskeneräistä ydintä oikealle tietokoneelle tai kirjoita levykuvaa USB-tikulle. Käytä QEMUta. VNTOS on oppimisprojekti, ei valmis työpöytäkäyttöjärjestelmä.
+
+## Tarkista ymmärtäminen
+
+Mikä on kernel? Mitä kääntäjä tekee? Miksi käytämme QEMUta?
+
+## Ennen kuin jatkat
+
+Varmista, että osaat selittää tämän oppitunnin pääkäsitteen omin sanoin, nimetä lähdekoodin kohdan, jossa se näkyy, ja kertoa, millä havainnolla testaisit toimintaa. Jos et osaa, palaa tiedostoon ja seuraa koodia vielä kerran.
 
 ---
 
-[← Sisällysluettelo](./README.md) · [Seuraava oppitunti: Mitä käyttöjärjestelmä tekee? →](./01-what-is-an-os.md)
+[← Sisällysluettelo](./README.md) · [Seuraava oppitunti: Mitä käyttöjärjestelmä tekee? →](01-what-is-an-os.md)

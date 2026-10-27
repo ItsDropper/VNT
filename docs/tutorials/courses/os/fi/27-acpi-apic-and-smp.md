@@ -1,13 +1,31 @@
-# ACPI, APIC ja usean CPU:n käynnistys
+# ACPI, APIC ja usea CPU-ydin
 
-Copyright (c) 2026 ItsDropper. MIT-lisenssi; katso projektin juuren `LICENSE`.
+Copyright (c) 2026 ItsDropper. MIT-lisenssi; katso projektin juuren LICENSE.
 
-ACPI-taulut kertovat käyttöjärjestelmälle laitteiston rakenteesta, kuten CPU-ytimistä ja keskeytysohjaimista. VNTOS lukee ACPI-tietoja ja käyttää niitä Local APIC -alustuksessa. SMP tarkoittaa usean CPU:n tai ytimen käyttöä samassa järjestelmässä.
+## Tavoite ja selitys
 
-Tutki `os/firmware/acpi.vnt`, `os/arch/x86_64/apic.vnt` ja `os/kernel/smp.vnt`. Erota toisistaan CPU:n löytyminen, sen käynnistäminen ja yhteisen muistin turvallinen rinnakkainen käyttö. Nämä ovat eri asioita.
+ACPI-taulut kuvaavat laitteistoa ja voivat kertoa käytettävissä olevista CPU-ytimistä. APIC on keskeytysjärjestelmä, jonka Local APIC toimii kunkin CPU:n yhteydessä. SMP tarkoittaa usean CPU:n tai ytimen käyttöä samassa järjestelmässä.
 
-**Pohdi:** Mitä ACPI kertoo kernelille? Miksi toisen CPU:n käynnistys ei vielä takaa SMP-turvallisuutta?
+## Sanasto
+
+MADT on ACPI-taulu, joka kuvaa muun muassa keskeytysarkkitehtuurin tietoja. BSP on käynnistyksen aloittava CPU. AP on muu käynnistettävä CPU. IPI on CPU:lta toiselle lähetettävä keskeytys.
+
+## Käytännön harjoitus
+
+Tutki os/firmware/acpi.vnt, os/arch/x86_64/apic.vnt ja os/kernel/smp.vnt. Seuraa ACPI-taulun löytämistä, CPU-tunnisteiden käsittelyä ja AP:n käynnistystä. Kirjaa, missä arkkitehtuurin matalan tason koodi sijaitsee.
+
+## Yleinen virhe ja turvallisuus
+
+CPU:n käynnistäminen ei tee kernelin kaikista palveluista SMP-turvallisia. Muistivaraaja ja muu jaettu tila voivat edelleen kärsiä kilpailutilanteista.
+
+## Tarkista ymmärtäminen
+
+Mikä ero on BSP:llä ja AP:llä? Miksi käynnistys ei vielä takaa muistiturvallisuutta?
+
+## Ennen kuin jatkat
+
+Varmista, että osaat selittää tämän oppitunnin pääkäsitteen omin sanoin, nimetä lähdekoodin kohdan, jossa se näkyy, ja kertoa, millä havainnolla testaisit toimintaa. Jos et osaa, palaa tiedostoon ja seuraa koodia vielä kerran.
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Loppuprojekti: paranna yhtä alijärjestelmää](./25-graduation-project.md) · [Seuraava oppitunti: APIC IPI -viestit →](./28-apic-ipi-service.md)
+[← Sisällysluettelo](./README.md) · [← Edellinen: Loppuprojekti: tee todennettava parannus](25-graduation-project.md) · [Seuraava oppitunti: APIC IPI -viestit →](28-apic-ipi-service.md)

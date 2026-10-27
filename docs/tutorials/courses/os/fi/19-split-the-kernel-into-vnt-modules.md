@@ -1,13 +1,31 @@
 # Jaa kernel VNT-moduuleihin
 
-Copyright (c) 2026 ItsDropper. MIT-lisenssi; katso projektin juuren `LICENSE`.
+Copyright (c) 2026 ItsDropper. MIT-lisenssi; katso projektin juuren LICENSE.
 
-Kun kernel kasvaa, moduulit helpottavat vastuiden erottamista. VNTOSissa esimerkiksi muistinhallinta, keskeytykset ja komentotulkki ovat erillisissä tiedostoissa. Tavoite ei ole luoda mahdollisimman montaa tiedostoa, vaan antaa jokaiselle osalle selkeä tehtävä.
+## Tavoite ja selitys
 
-Tutki `os/kernel.vnt`, `os/interrupts.vnt`, `os/mm/phys.vnt` ja `os/kernel/shell.vnt`. Selvitä, miten build löytää moduulit ja miten niiden funktioita kutsutaan. Kirjaa myös, kuka alustaa yhteisen tilan ja kuka saa muuttaa sitä.
+Moduulit jakavat vastuut: käynnistys, keskeytykset, shell ja muistinhallinta ovat eri tehtäviä. Hyvä moduuli tarjoaa pienen rajapinnan ja pitää sisäiset yksityiskohdat erillään. Tavoite ei ole maksimoida tiedostojen määrää vaan tehdä vastuut ymmärrettäviksi.
 
-**Pohdi:** Miksi moduulien vastuut ja yhteisen tilan omistajuus pitää määritellä?
+## Sanasto
+
+Moduuli on yhteen tehtävään keskittyvä koodiosa. Riippuvuus tarkoittaa, että osa tarvitsee toisen palvelua. Omistajuus kertoo, mikä osa saa muuttaa tiettyä dataa.
+
+## Käytännön harjoitus
+
+Tutki os/kernel.vnt, os/interrupts.vnt, os/mm/phys.vnt ja os/kernel/shell.vnt. Piirrä nuolet funktiokutsujen mukaan. Selvitä build-skriptistä, miten VNT-tiedostot otetaan mukaan käännökseen.
+
+## Yleinen virhe ja turvallisuus
+
+Tiedoston jakaminen ei yksin luo hyvää moduulirajaa. Jos kaikki osat muuttavat samaa globaalia tilaa ilman sääntöjä, kokonaisuus pysyy vaikeana ja virhealttiina.
+
+## Tarkista ymmärtäminen
+
+Piirrä kolmen moduulin riippuvuuskaavio. Mitä moduulijako ratkaisee ja mitä se ei ratkaise?
+
+## Ennen kuin jatkat
+
+Varmista, että osaat selittää tämän oppitunnin pääkäsitteen omin sanoin, nimetä lähdekoodin kohdan, jossa se näkyy, ja kertoa, millä havainnolla testaisit toimintaa. Jos et osaa, palaa tiedostoon ja seuraa koodia vielä kerran.
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Mihin jatkaa kurssin jälkeen?](./18-next-steps.md) · [Seuraava oppitunti: Keskeytykset, poikkeukset ja IDT →](./20-interrupts-and-the-idt.md)
+[← Sisällysluettelo](./README.md) · [← Edellinen: Miten jatkaa kurssin jälkeen](18-next-steps.md) · [Seuraava oppitunti: Keskeytykset, poikkeukset ja IDT →](20-interrupts-and-the-idt.md)

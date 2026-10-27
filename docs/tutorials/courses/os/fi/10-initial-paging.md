@@ -1,13 +1,31 @@
 # Alkuvaiheen sivutaulut
 
-Copyright (c) 2026 ItsDropper. MIT-lisenssi; katso projektin juuren `LICENSE`.
+Copyright (c) 2026 ItsDropper. MIT-lisenssi; katso projektin juuren LICENSE.
 
-Sivutus muuntaa virtuaaliosoitteita fyysisiksi muistiosoitteiksi ja voi rajoittaa muistialueiden käyttöä. VNTOS rakentaa käynnistyksessä alustavan identiteettikartoituksen, jossa virtuaaliosoite vastaa samaa fyysistä osoitetta. Se auttaa käynnistystä, mutta ei ole täydellinen virtuaalimuistijärjestelmä.
+## Tavoite ja selitys
 
-Tutki `os/arch/x86_64/boot.S`-tiedoston sivutauluja ja CR3-rekisterin asetusta. Virheellinen kartoitus voi aiheuttaa page fault -poikkeuksen ennen kuin konsoli ehtii tulostaa mitään.
+Sivutus muuntaa virtuaaliosoitteita fyysisiksi osoitteiksi ja voi määrittää muistialueiden käyttöoikeuksia. VNTOSin alkuvaiheen identiteettikartoituksessa tietyllä alueella virtuaaliosoite ja fyysinen osoite ovat samat.
 
-**Pohdi:** Mitä osoitteen muuntaminen tarkoittaa? Miksi identiteettikartoitus on alkuvaiheessa hyödyllinen?
+## Sanasto
+
+Virtuaaliosoite on koodin käyttämä osoite. Fyysinen osoite viittaa RAM-muistiin. Sivutaulu kuvaa osoitteiden muunnoksia. Identiteettikartoitus tarkoittaa, että osoite A kartoitetaan fyysiseen osoitteeseen A.
+
+## Käytännön harjoitus
+
+Tutki boot.S-tiedoston sivutauluja. Selvitä niiden sijainti, kattama muistialue ja kohta, jossa ylimmän taulun osoite asetetaan CR3-rekisteriin. Piirrä osoitteen muunnos nuolilla.
+
+## Yleinen virhe ja turvallisuus
+
+Identiteettikartoitus ei ole täydellinen virtuaalimuistijärjestelmä eikä takaa prosessieristystä. Myös sivujen rajat ja käyttöoikeudet ovat tärkeitä.
+
+## Tarkista ymmärtäminen
+
+Mitä hyötyä virtuaaliosoitteista on? Miksi identiteettikartoitus auttaa käynnistyksessä?
+
+## Ennen kuin jatkat
+
+Varmista, että osaat selittää tämän oppitunnin pääkäsitteen omin sanoin, nimetä lähdekoodin kohdan, jossa se näkyy, ja kertoa, millä havainnolla testaisit toimintaa. Jos et osaa, palaa tiedostoon ja seuraa koodia vielä kerran.
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: x86-64 long mode](./09-long-mode.md) · [Seuraava oppitunti: ELF ja linkkeriskripti →](./11-elf-and-linker.md)
+[← Sisällysluettelo](./README.md) · [← Edellinen: x86-64 long mode](09-long-mode.md) · [Seuraava oppitunti: ELF ja linkkeriskripti →](11-elf-and-linker.md)

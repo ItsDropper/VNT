@@ -117,4 +117,4 @@ A sensible next step is to extract a small line-editor state machine from shell 
 
 ---
 
-[← Previous lesson](./33-terminal-history-and-uptime.md) · [Course index](./README.md) · **Next: separate terminal editing from shell dispatch.**
+[← Previous lesson](./33-terminal-history-and-uptime.md) · [Course index](./README.md) · [Next lesson →](./35-terminal-decimal-uptime.md)

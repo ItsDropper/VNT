@@ -8,7 +8,7 @@ Open `os/interrupts.vnt`. Its `interrupt_dispatch(vector, error)` function is ca
 
 The dispatcher currently has three outcomes:
 
-1. **Vector 32:** this is IRQ0 from the PIT timer. Increment the shared timer counter and return.
+1. **Vectors 32–47:** record the corresponding legacy IRQ in `kernel/device_irq.vnt`; IRQ0 also increments the PIT tick counter, then returns.
 2. **Vectors below 32:** treat the event as a CPU exception, print the vector and error code, then halt.
 3. **Other vectors:** treat them as unexpected in this kernel version, print the fallback vector marker, then halt.
 
@@ -22,7 +22,7 @@ A future kernel should use a lock-free event buffer or another carefully designe
 
 ## Shared state is not a general concurrency solution
 
-The tick count is stored in slot 11 of `vntos_state`, whose storage is reserved in `os/arch/x86_64/boot.S`. The shell reads it with the existing `state_get(11)` helper. This keeps the teaching implementation small, but it is not a general atomic counter API and the helpers still use compiler-specific inline assembly with hard-coded stack offsets.
+The tick count is stored in slot 11 of `vntos_state`, whose storage is reserved in `os/arch/x86_64/boot.S`. The shell reads it through `kernel_timer_ticks()`. Legacy IRQ counters occupy slots 12–27 and are accessed through the bounds-checked `device_irq_count()` interface. This keeps the teaching implementation small, but it is not a general atomic counter API and the helpers still use compiler-specific inline assembly with hard-coded stack offsets.
 
 That limitation matters: the module boundary is cleaner now, but it does not magically make the old low-level primitives safe. A real next step is to add explicit compiler-supported port-I/O, interrupt-control, and memory-access intrinsics and test their ABI.
 
@@ -35,7 +35,7 @@ PIT fires
   -> isr32 in os/arch/x86_64/interrupts.S
   -> interrupt_common
   -> interrupt_dispatch in os/interrupts.vnt
-  -> state_get/state_set in os/kernel.vnt
+  -> device_irq_record(0) and kernel_timer_tick()
   -> interrupt_common sends PIC EOI
   -> iretq restores the interrupted execution
 ```
@@ -87,7 +87,7 @@ Keep the current implementation simple while learning the interrupt path; do not
 
 ## Separate event classification from response
 
-The dispatcher is intentionally simple, but its branches model a useful design rule: first classify the event, then apply the policy for that class. A timer IRQ is expected and returns quickly. A CPU exception indicates that an instruction could not proceed normally and is fatal in this kernel. An unexpected non-timer vector is also fatal because this version has no handler contract for it.
+The dispatcher is intentionally simple, but its branches model a useful design rule: first classify the event, then apply the policy for that class. Legacy PIC vectors 32–47 are counted and return quickly; only IRQ0 is unmasked, so other lines should not normally arrive. A CPU exception indicates that an instruction could not proceed normally and is fatal in this kernel. An unexpected non-PIC vector is also fatal because this version has no handler contract for it.
 
 Do not merge all three cases into a single generic "print and return" branch. Returning from a page fault without fixing the faulting mapping would normally repeat the same fault. Returning from a general-protection fault can hide a broken kernel invariant. The conservative halt makes the failure visible instead of pretending to recover.
 

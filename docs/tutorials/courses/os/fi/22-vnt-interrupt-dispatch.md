@@ -45,6 +45,33 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Pidä assembly-rajapinta pienenä](21-minimal-assembly-entry-stubs.md) · [Seuraava oppitunti: PIT, PIC ja ajastimen tikit →](23-pit-pic-and-timer-ticks.md)
 
+## Koodiesimerkki: reititä vektori VNT:ssä
+
+```vnt
+export fun interrupt_dispatch(vector: int, error: int) {
+    if vector == 255 {
+        return 0
+    }
+    if vector == 240 {
+        smp_handle_ipi()
+        return 0
+    }
+    if vector >= 32 && vector < 48 {
+        let irq: int = vector - 32
+        device_irq_record(irq)
+        if irq == 0 {
+            kernel_timer_tick()
+        }
+        return 0
+    }
+}
+```
+
+Tämä on nykyisen os/interrupts.vnt-tiedoston dispatch-logiikan ote. Vektori 255 on APIC spurious -vektori, 240 käsittelee IPI:n ja 32–47 ovat legacy PIC -IRQ-vektoreita. CPU-poikkeusten käsittely ja odottamattoman vektorin virhepolku jatkuvat varsinaisessa tiedostossa.
+
+**Tee itse:** Lisää uusi haara vasta, kun IDT-portti ja assembly-stub ovat olemassa ja vektorin semantiikka on määritelty. Keskeytyskontekstissa pidä työ rajattuna; älä tulosta tai varaa muistia tavallisessa IRQ-polussa.
+
+
 ## Toteutuslaboratorio: Keskeytysten VNT-dispatcher
 
 Tämä harjoitus edellyttää lähdekoodin lukemista ja toteutuksen todentamista.

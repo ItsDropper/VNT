@@ -4,7 +4,7 @@ Copyright (c) 2026 ItsDropper. Licensed under the MIT License; see the repositor
 
 ## Goal
 
-Explain why the APIC IPI test is not permission to run ordinary kernel work concurrently, and establish the exact prerequisites for the next kernel milestone: a VNT-native atomic primitive and a tested spinlock. This lesson audits the real code and defines checks that must pass before allocator calls can be made from multiple CPUs.
+Explain why the APIC IPI test is not permission to run ordinary kernel work concurrently. The first atomic-exchange primitive and initial VNT spinlock now exist; the next milestone is to prove lock contention across CPUs before integrating it into the allocator. This lesson audits the real code and defines checks that must pass before allocator calls can be made from multiple CPUs.
 
 This is deliberately a source-audit lesson, not a claim that VNTOS already has atomic operations or a working spinlock. Do not copy a C atomic API or assume that an arbitrary inline-assembly string has compiler memory-ordering semantics.
 
@@ -89,7 +89,7 @@ qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -smp 4 -serial stdio
 
 In the existing shell, run `mem`, `memtest`, `vmtest`, and `smp`. These validate the current single-core allocator paths, virtual-memory probe, topology, and IPI counters. They are not a concurrency test.
 
-The GitHub Actions workflow `VNTOS Boot and Serial Shell` builds the freestanding kernel and boots four virtual CPUs. Treat its exact result as the evidence; source inspection alone is not a build or boot result. Do not run a supposed two-CPU allocator stress test until the atomic primitive and lock implementation actually exist.
+The GitHub Actions workflow `VNTOS Boot and Serial Shell` builds the freestanding kernel and boots four virtual CPUs. Treat its exact result as the evidence; source inspection alone is not a build or boot result. Do not treat the current single-CPU `synctest` as a concurrency test. A multi-CPU lock-contention test and allocator integration are still required.
 
 ## 6. Completion criteria
 

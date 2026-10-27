@@ -84,9 +84,19 @@ fun phys_mmap_field(index: int, field: int) -> i64 {
             if entry_size < 24 { return 0 }
             if index >= (tag_size - 16) / entry_size { return 0 }
             let offset: int = cursor + 16 + index * entry_size
-            if field == 0 { unsafe { return mem_read_u64(info, offset) } }
-            if field == 1 { unsafe { return mem_read_u64(info, offset + 8) } }
-            unsafe { return mem_read_u32(info, offset + 16) }
+            if field == 0 {
+                unsafe {
+                    return mem_read_u64(info, offset)
+                }
+            }
+            if field == 1 {
+                unsafe {
+                    return mem_read_u64(info, offset + 8)
+                }
+            }
+            unsafe {
+                return mem_read_u32(info, offset + 16)
+            }
         }
         cursor = cursor + ((tag_size + 7) / 8) * 8
     }
@@ -98,13 +108,19 @@ fun phys_mmap_length(index: int) -> i64 { return phys_mmap_field(index, 1) }
 fun phys_mmap_type(index: int) -> i64 { return phys_mmap_field(index, 2) }
 
 fun phys_usable_bitmap_base() -> i64 {
-    unsafe { return symbol_address("vntos_phys_usable_bitmap") }
+    unsafe {
+        return symbol_address("vntos_phys_usable_bitmap")
+    }
 }
 fun phys_allocated_bitmap_base() -> i64 {
-    unsafe { return symbol_address("vntos_phys_allocated_bitmap") }
+    unsafe {
+        return symbol_address("vntos_phys_allocated_bitmap")
+    }
 }
 fun phys_reserved_bitmap_base() -> i64 {
-    unsafe { return symbol_address("vntos_phys_reserved_bitmap") }
+    unsafe {
+        return symbol_address("vntos_phys_reserved_bitmap")
+    }
 }
 
 fun phys_bitmap_set(base: i64, frame: int, value: int) -> int {
@@ -118,9 +134,17 @@ fun phys_bitmap_set(base: i64, frame: int, value: int) -> int {
     unsafe { byte = mem_read_u8(base, byte_offset) }
     let present: int = (byte / mask) % 2
     if value != 0 {
-        if present == 0 { unsafe { mem_write_u8(base, byte_offset, byte + mask) } }
+        if present == 0 {
+            unsafe {
+                mem_write_u8(base, byte_offset, byte + mask)
+            }
+        }
     } else {
-        if present == 1 { unsafe { mem_write_u8(base, byte_offset, byte - mask) } }
+        if present == 1 {
+            unsafe {
+                mem_write_u8(base, byte_offset, byte - mask)
+            }
+        }
     }
     return 1
 }

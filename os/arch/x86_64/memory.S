@@ -102,7 +102,7 @@ vntos_mmap_field:
     divl %ecx
     movl %eax, %r11d               /* entry count */
     cmpl %r11d, %r8d
-    jae .Lmmap_field_next
+    jae .Lmmap_field_zero
     imulq %r8, %rcx
     addq %rcx, %rdi
     cmpl $0, %r9d
@@ -176,7 +176,7 @@ vntos_mmap_field:
     ret
 .Lbitmap_clear_\@:
     notb %dl
-    andb %dl, (%rax,%rcx)
+    andb %dl, (%r11,%r8)
     movl $1, %eax
     ret
 .Lbitmap_bad_\@:

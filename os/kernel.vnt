@@ -33,7 +33,31 @@ fun kernel_main() {
     if phys_count_usable_pages() == 0 {
         console_puts("WARNING: Multiboot2 memory map unavailable; physical allocation disabled.\r\n")
     }
+    let acpi_found: int = acpi_discover()
     interrupts_init()
+    if acpi_found == 1 {
+        console_puts("ACPI MADT discovered. Firmware CPUs: ")
+        console_hex(smp_discovered_cpu_count())
+        console_puts("IOAPIC controllers: ")
+        console_hex(acpi_ioapic_count())
+        if apic_init() == 1 {
+            smp_init()
+            console_puts("Local APIC enabled. BSP APIC ID: ")
+            console_hex(smp_bsp_apic_id())
+            console_puts("CPU online count: ")
+            console_hex(smp_online_cpu_count())
+            if apic_ioapic_ready() == 1 {
+                console_puts("IOAPIC routes masked: ")
+                console_hex(apic_ioapic_route_count())
+            } else {
+                console_puts("IOAPIC routing unavailable; routes remain untouched.\\r\\n")
+            }
+        } else {
+            console_puts("ACPI found; Local APIC unavailable or unsupported.\\r\\n")
+        }
+    } else {
+        console_puts("ACPI MADT unavailable; continuing with legacy PIC.\\r\\n")
+    }
     # Input is polled for now; do not enable keyboard IRQ1 without a handler.
     pic_disable_irq(1)
     console_puts("PIT timer interrupts enabled; keyboard IRQ remains masked.\r\n")

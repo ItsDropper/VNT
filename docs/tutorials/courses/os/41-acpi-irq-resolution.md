@@ -24,7 +24,7 @@ The new `acpi_irq_gsi(irq)` function validates the legacy IRQ range (0–15), se
 
 `acpi_irq_override_flags(irq)` follows the same lookup policy. It returns zero when no override exists, the raw flags when one matching override exists, `-1` for invalid input, and `-2` for duplicate entries. Returning raw flags keeps this change narrowly scoped: callers must not treat a nonzero value as a decoded polarity or trigger mode.
 
-The shell's `irq` command now prints the effective GSI and raw override flags for IRQ0 and IRQ1. The `acpitest` shell command cross-checks all sixteen legacy IRQ values against the parsed override table and tests invalid IRQ inputs. It reports SKIP when no MADT was discovered and FAIL if the table contains duplicate source IRQs or a resolved value disagrees with the stored entry. The boot workflow runs this command and asserts its PASS result in the QEMU transcript. It also checks that the diagnostic fields are present and followed by decimal output.
+The shell's `irq` command now prints the effective GSI and raw override flags for IRQ0 and IRQ1. It also decodes polarity and trigger mode: `acpi_irq_polarity(irq)` returns 1 for active-high and 0 for active-low; `acpi_irq_trigger(irq)` returns 1 for edge-triggered and 0 for level-triggered. ACPI's conforming encoding uses the ISA defaults (high polarity and edge trigger). Both helpers return -1 for invalid IRQs, -2 for duplicate source entries, and -3 for reserved or invalid encodings. The self-test rejects malformed entries instead of letting future route code accidentally interpret them as valid. The `acpitest` shell command cross-checks all sixteen legacy IRQ values against the parsed override table and tests invalid IRQ inputs. It reports SKIP when no MADT was discovered and FAIL if the table contains duplicate source IRQs or a resolved value disagrees with the stored entry. The boot workflow runs this command and asserts its PASS result in the QEMU transcript. It also checks that the diagnostic fields are present and followed by decimal output.
 
 ## Safety boundary
 
@@ -45,7 +45,7 @@ The current kernel still masks I/O APIC routes. Do not remove that safety policy
 - [ ] A single matching ISO entry takes precedence over the identity mapping.
 - [ ] Missing overrides use the conventional identity mapping and zero flags.
 - [ ] Duplicate source overrides are reported as ambiguous.
-- [ ] Shell diagnostics expose IRQ0/IRQ1 effective GSIs and raw flags.
+- [ ] Shell diagnostics expose IRQ0/IRQ1 effective GSIs, raw flags, decoded polarity, and trigger mode.
 - [ ] The `acpitest` command checks all sixteen IRQ mappings against the actual parsed table.
 - [ ] CI checks the output labels without assuming a particular firmware's override table.
 - [ ] No I/O APIC route is enabled by this change.

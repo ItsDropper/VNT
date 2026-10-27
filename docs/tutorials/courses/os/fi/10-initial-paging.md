@@ -45,6 +45,34 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: x86-64 long mode](09-long-mode.md) · [Seuraava oppitunti: ELF ja linkkeriskripti →](11-elf-and-linker.md)
 
+## Koodiesimerkki: tarkista sivutaulun present-bitti
+
+```vnt
+fun virt_translate(address: i64) -> i64 {
+    if address < 0 || address >= 1073741824 {
+        return -1
+    }
+    let directory: i64 = virt_page_directory_base()
+    let directory_index: int = (address / 2097152) % 512
+    let pde: i64 = 0
+    unsafe {
+        pde = mem_read_u64(directory, directory_index * 8)
+    }
+    if pde % 2 == 0 {
+        return -1
+    }
+    if (pde / 128) % 2 == 1 {
+        let base: i64 = pde - (pde % 2097152)
+        return base + (address % 2097152)
+    }
+    // Tavallisen 4 KiB PTE:n käsittely jatkuu tässä funktiossa.
+```
+
+Tämä on os/mm/virt.vnt:n todellinen funktio-ote. Osoite rajataan ensin bootstrapin ensimmäiseen 1 GiB:iin. Hakemiston indeksi valitaan 2 MiB:n sivun perusteella, PDE luetaan vasta tarkistusten jälkeen ja present-bitti tarkistetaan ennen käyttöä. Jos PDE kuvaa suurta sivua, fyysinen perusosoite yhdistetään 2 MiB:n sisäiseen offsetiin.
+
+**Tee itse:** Seuraa koko virt_translate-funktiota tiedostossa. Selvitä, miten se käsittelee 4 KiB:n PTE:n, puuttuvan kartoituksen ja osoitteen sivun sisällä. Älä laajenna aluetta yli 1 GiB:n, ennen kuin bootstrapin sivutaulut tukevat sitä.
+
+
 ## Toteutuslaboratorio: Alkuvaiheen sivutaulut
 
 Tässä harjoituksessa toteutat tai jäljität toimivan osan, et vain kuvaile käsitettä.

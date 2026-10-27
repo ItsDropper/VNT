@@ -379,6 +379,116 @@ fun phys_alloc_page() -> i64 {
     return 0
 }
 
+# Return 1 only when every frame in the candidate range is usable and free.
+# This preflight makes contiguous allocation all-or-nothing before bitmap writes.
+fun phys_range_is_free(first: int, count: int) -> int {
+    if count <= 0 || first < 256 || first >= 262144 {
+        return 0
+    }
+    if count > 262144 - first {
+        return 0
+    }
+    let frame: int = first
+    while frame < first + count {
+        if phys_usable_get(frame) != 1 ||
+           phys_allocated_get(frame) != 0 ||
+           phys_reserved_get(frame) != 0 {
+            return 0
+        }
+        frame = frame + 1
+    }
+    return 1
+}
+
+# Allocate count adjacent 4-KiB frames. Returns the first physical address,
+# or zero without changing allocation state when no contiguous run exists.
+fun phys_alloc_contiguous_pages(count: int) -> i64 {
+    if count <= 0 || count > 262144 - 256 {
+        return 0
+    }
+    let start: int = state_get(176)
+    if start < 256 || start >= 262144 {
+        start = 256
+        state_set(176, start)
+    }
+
+    let first: int = start
+    while first + count <= 262144 {
+        if phys_range_is_free(first, count) == 1 {
+            let frame: int = first
+            while frame < first + count {
+                phys_allocated_set(frame, 1)
+                frame = frame + 1
+            }
+            state_set(29, state_get(29) - count)
+            let next_frame: int = first + count
+            if next_frame >= 262144 {
+                next_frame = 256
+            }
+            state_set(176, next_frame)
+            return first * 4096
+        }
+        first = first + 1
+    }
+
+    first = 256
+    while first < start && first + count <= 262144 {
+        if phys_range_is_free(first, count) == 1 {
+            let frame: int = first
+            while frame < first + count {
+                phys_allocated_set(frame, 1)
+                frame = frame + 1
+            }
+            state_set(29, state_get(29) - count)
+            let next_frame: int = first + count
+            if next_frame >= 262144 {
+                next_frame = 256
+            }
+            state_set(176, next_frame)
+            return first * 4096
+        }
+        first = first + 1
+    }
+    return 0
+}
+
+# Free a contiguous run only after validating every frame. A bad frame anywhere
+# rejects the whole operation without partially freeing the range.
+fun phys_free_contiguous_pages(address: i64, count: int) -> int {
+    if count <= 0 || address < 256 * 4096 || address >= 1073741824 {
+        return 0
+    }
+    if address % 4096 != 0 {
+        return 0
+    }
+    let first: int = address / 4096
+    if count > 262144 - first {
+        return 0
+    }
+
+    let frame: int = first
+    while frame < first + count {
+        if phys_usable_get(frame) != 1 ||
+           phys_allocated_get(frame) != 1 ||
+           phys_reserved_get(frame) == 1 {
+            return 0
+        }
+        frame = frame + 1
+    }
+
+    frame = first
+    while frame < first + count {
+        phys_allocated_set(frame, 0)
+        frame = frame + 1
+    }
+    state_set(29, state_get(29) + count)
+    let hint: int = state_get(176)
+    if hint < 256 || hint >= 262144 || first < hint {
+        state_set(176, first)
+    }
+    return 1
+}
+
 # Only frees an allocated, usable frame in the current identity-mapped window.
 # Returns 1 if freed; returns 0 for unaligned, reserved, invalid, or double frees.
 fun phys_free_page(address: i64) -> int {
@@ -413,8 +523,8 @@ fun phys_count_free_pages() -> int {
     return state_get(29)
 }
 
-# Exercise allocation, alignment, free, and double-free rejection. The test
-# restores the free-page count and performs no I/O in allocator internals.
+# Exercise single-page and contiguous allocation while restoring allocator state.
+# The test performs no I/O inside allocator internals.
 fun phys_self_test() -> int {
     let before: int = phys_count_free_pages()
     let page: i64 = phys_alloc_page()
@@ -453,6 +563,35 @@ fun phys_self_test() -> int {
     }
     if phys_free_page(kernel_start_addr()) != 0 {
         valid = 0
+    }
+
+    let run: i64 = phys_alloc_contiguous_pages(2)
+    if run == 0 {
+        valid = 0
+    } else {
+        if run % 4096 != 0 {
+            valid = 0
+        }
+        if phys_count_free_pages() != before - 2 {
+            valid = 0
+        }
+        if phys_allocated_get(run / 4096) != 1 ||
+           phys_allocated_get(run / 4096 + 1) != 1 {
+            valid = 0
+        }
+        # An invalid range must not partially free the valid allocation.
+        if phys_free_contiguous_pages(run + 1, 2) != 0 {
+            valid = 0
+        }
+        if phys_count_free_pages() != before - 2 {
+            valid = 0
+        }
+        if phys_free_contiguous_pages(run, 2) != 1 {
+            valid = 0
+        }
+        if phys_free_contiguous_pages(run, 2) != 0 {
+            valid = 0
+        }
     }
     if phys_count_free_pages() != before {
         valid = 0

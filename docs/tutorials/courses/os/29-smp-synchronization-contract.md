@@ -101,3 +101,7 @@ The synchronization milestone is complete only when all of these are true:
 - Existing boot, shell, IPI, `memtest`, and `vmtest` checks still pass.
 
 Until then, keep APs restricted to their current idle/IPI role. That is a deliberate safety boundary, not a missing feature to bypass with assembly.
+
+---
+
+[← Previous lesson](./28-apic-ipi-service.md) · [Course index](./README.md) · [Next lesson →](./30-physical-allocator-next-fit.md)

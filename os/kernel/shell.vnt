@@ -122,6 +122,12 @@ fun shell_run() {
                 console_hex(acpi_iso_count())
                 console_puts("IOAPIC redirection entries masked: ")
                 console_hex(apic_ioapic_route_count())
+                console_puts("APIC IPI responses per CPU: ")
+                let cpu_index: int = 0
+                while cpu_index < smp_discovered_cpu_count() && cpu_index < 16 {
+                    console_hex(smp_ipi_count(cpu_index))
+                    cpu_index = cpu_index + 1
+                }
                 console_puts("SMP startup error code: ")
                 console_hex(state_get(143))
                 if smp_online_cpu_count() == smp_discovered_cpu_count() {

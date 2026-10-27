@@ -1,0 +1,95 @@
+# Copyright (c) 2026 ItsDropper
+# Licensed under the MIT License. See LICENSE in the repository root.
+#
+# Initial x86-64 spinlock primitives. The caller supplies an aligned u64 word
+# initialized to zero before publishing it to other CPUs.
+
+import "core.vnt"
+
+# Initialization is valid only while the lock storage is private/unpublished.
+fun spinlock_init(address: i64) -> int {
+    if address == 0 {
+        return 0
+    }
+    let previous: i64 = 0
+    unsafe {
+        previous = cpu_atomic_exchange_u64(address, 0)
+    }
+    return 1
+}
+
+# Return 1 if acquired, 0 if another owner already holds the lock.
+fun spinlock_try_acquire(address: i64) -> int {
+    if address == 0 {
+        return 0
+    }
+    let previous: i64 = 0
+    unsafe {
+        previous = cpu_atomic_exchange_u64(address, 1)
+    }
+    if previous == 0 {
+        return 1
+    }
+    return 0
+}
+
+# Spin until acquired. This is a simple unfair lock with no scheduler/yield yet.
+fun spinlock_acquire(address: i64) -> int {
+    if address == 0 {
+        return 0
+    }
+    while 1 == 1 {
+        if spinlock_try_acquire(address) == 1 {
+            return 1
+        }
+        let observed: i64 = 1
+        while observed != 0 {
+            unsafe {
+                observed = mem_read_u64(address, 0)
+            }
+        }
+    }
+    return 0
+}
+
+# Exchange-to-zero provides the same full x86 memory barrier as acquisition.
+# A return value of 1 means the lock was held; 0 signals double/invalid release.
+fun spinlock_release(address: i64) -> int {
+    if address == 0 {
+        return 0
+    }
+    let previous: i64 = 0
+    unsafe {
+        previous = cpu_atomic_exchange_u64(address, 0)
+    }
+    if previous == 1 {
+        return 1
+    }
+    return 0
+}
+
+# Uncontended contract test for the dedicated bootstrap-owned test word.
+# This does not claim to test concurrent ownership or make the allocator safe.
+fun sync_self_test() -> int {
+    let address: i64 = 0
+    unsafe {
+        address = symbol_address("vntos_sync_test_lock")
+    }
+    if spinlock_init(address) != 1 {
+        return 0
+    }
+    if spinlock_try_acquire(address) != 1 {
+        return 0
+    }
+    if spinlock_try_acquire(address) != 0 {
+        spinlock_release(address)
+        return 0
+    }
+    if spinlock_release(address) != 1 {
+        return 0
+    }
+    if spinlock_release(address) != 0 {
+        return 0
+    }
+    return 1
+}

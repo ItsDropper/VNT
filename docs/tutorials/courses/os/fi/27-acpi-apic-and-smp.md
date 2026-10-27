@@ -44,3 +44,64 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Loppuprojekti: tee todennettava parannus](25-graduation-project.md) · [Seuraava oppitunti: APIC IPI -viestit →](28-apic-ipi-service.md)
+
+## Toteutuslaboratorio: ACPI, APIC ja SMP
+
+Tässä osiossa rakennat tai validoit konkreettisen osan nykyisestä VNTOS-kernelistä.
+
+**Tutkittavat tiedostot:** `os/firmware/acpi.vnt`, `os/arch/x86_64/apic.vnt`, `os/kernel/smp.vnt`
+
+**Tavoite:** Etene firmware-löydöstä AP:n hallittuun käynnistykseen. ACPI-tiedot, MMIO ja APIC ID:t pitää validoida ennen käyttöä. CPU:n löytyminen ei todista sen käynnistyneen.
+
+### Toteutus vaiheittain
+
+1. **Rajaa vastuu:** Tarkista RSDP-allekirjoitus, checksum ja taulun pituus.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+2. **Etsi nykyinen toteutus:** Kulje MADT:n muuttuvamittaiset merkinnät vain taulun rajojen sisällä.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+3. **Kirjaa sopimus:** Varmista IOAPIC-osoite ennen MMIO-lukua ja pidä reitit maskattuina.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+4. **Tee pienin muutos:** Tarkista APIC ID:t, trampoliinin koko ja entry/stack-slotit ennen AP:n käynnistystä.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+5. **Tarkista riippuvuudet:** Testaa ensin firmware-tietojen löytyminen, sitten APICin alustus, sitten yksi AP.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+### Turvallisuus- ja rajapintasopimus
+
+- Validoi osoite, pituus, indeksi, tunniste ja laitetila ennen käyttöä.
+- Älä lue muuttuvamittaista tietorakennetta ilman rajojen tarkistusta.
+- Määritä selkeä virhepolku puuttuvalle laitteelle, virheelliselle datalle ja aikakatkaisulle.
+- Erota “havaittu”, “alustettu”, “online” ja “käytössä” eri tiloiksi, jos ne tarkoittavat eri asioita.
+- Älä oleta, että atominen muistikirjoitus yksin ratkaisee muistijärjestyksen tai omistajuuden.
+- Dokumentoi rajoitukset, joita nykyinen kernel ei vielä ratkaise.
+
+### Todennus
+
+1. Kirjoita odotettu tila ja havainto ennen muutosta.
+2. Suorita `bash os/build.sh` projektin juuressa.
+3. Tarkista ensimmäinen epäonnistunut komento ja erottele build-ongelma laiteongelmasta.
+4. Käynnistä vain QEMU:ssa ja kerää sarjaportin tuloste.
+5. Testaa normaali tapaus, rajatapaus ja virheellinen tai puuttuva tieto.
+6. Toista testi, jos toiminta riippuu ajoituksesta.
+7. Älä väitä CI:n tai laitetestin läpäisseen, ellei siitä ole todellista tulosta.
+
+### Tavalliset virheet
+
+- Firmwaresta saatuun tietoon luotetaan ennen checksum- ja pituustarkistuksia.
+- AP merkitään online-tilaan ennen kuin se saavuttaa sovitun valmiuspisteen.
+- IPI lähetetään ennen kuin IDT ja vastaanottaja ovat valmiita.
+- Jaettua muistia käytetään ilman omistajuus- tai lukitussopimusta.
+- Laskurin kasvaminen tulkitaan liian laajasti todisteeksi ominaisuuden valmiudesta.
+
+### Muutosraportti
+
+Kirjaa muutetut tiedostot, rajapinta, hyväksymiskriteeri, build-tulos, QEMU-havainto, negatiiviset testit ja jäljelle jääneet rajoitukset.

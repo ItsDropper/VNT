@@ -42,7 +42,7 @@ fun acpi_checksum(address: i64, length: int) -> int {
         sum = (sum + acpi_read8(address, i)) % 256
         i = i + 1
     }
-    return sum == 0
+    if sum == 0 {\n        return 1\n    }\n    return 0
 }
 
 fun acpi_is_rsdp(address: i64) -> int {
@@ -137,6 +137,9 @@ fun acpi_find_madt_in_root(root: i64, xsdt: int) -> i64 {
     let entry_size: int = 4
     if xsdt == 1 {
         entry_size = 8
+    }
+    if (root_length - 36) % entry_size != 0 {
+        return 0
     }
     let entries: int = (root_length - 36) / entry_size
     if entries > 4096 {
@@ -269,7 +272,12 @@ fun acpi_discover() -> int {
             if entry_length < 12 {
                 return 0
             }
-            state_set(33, acpi_read64(madt, cursor + 4))
+            let override_address: i64 = acpi_read64(madt, cursor + 4)
+            if override_address == 0xfee00000 {
+                state_set(33, 0xfee00000)
+            } else {
+                state_set(33, 0)
+            }
         }
         if entry_type == 9 {
             if entry_length < 16 {

@@ -12,8 +12,9 @@ operations that cannot yet be expressed through a stable VNT ABI.
   (`0xFEC00000`) and Local APIC (`0xFEE00000`) 2-MiB MMIO windows.
 - `interrupts.S` contains IDT gate encoding, exception/IRQ/IPI entry stubs,
   register save/restore, legacy PIC/PIT setup, and `iretq`.
-- `memory.S` provides bounded boot-memory/physical-bitmap primitives, while
-  `virtual_memory.S` provides early page-table operations.
+- `os/mm/phys.vnt` parses the Multiboot2 memory map and manages frame bitmaps;
+  `os/mm/virt.vnt` inspects and updates the early page tables through low-level
+  VNT builtins. These are not separate `.S` files in the current build.
 - `ap_trampoline.S` performs the unavoidable real-mode/early-mode transition
   needed to start an application processor. The AP then enters VNT code.
 

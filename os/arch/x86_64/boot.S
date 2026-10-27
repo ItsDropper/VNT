@@ -129,6 +129,7 @@ gdt64_pointer:
 
 .section .bss
 .balign 4096
+.global pml4_table
 pml4_table: .skip 4096
 pdpt_table: .skip 4096
 .global page_directory
@@ -280,5 +281,37 @@ vntos_state:
     .quad 0       /* ACPI interrupt-source override storage 109 */
     .quad 0       /* ACPI interrupt-source override storage 110 */
     .quad 0       /* ACPI interrupt-source override storage 111 */
+    .quad 0       /* SMP CPU state 112 */
+    .quad 0       /* SMP CPU state 113 */
+    .quad 0       /* SMP CPU state 114 */
+    .quad 0       /* SMP CPU state 115 */
+    .quad 0       /* SMP CPU state 116 */
+    .quad 0       /* SMP CPU state 117 */
+    .quad 0       /* SMP CPU state 118 */
+    .quad 0       /* SMP CPU state 119 */
+    .quad 0       /* SMP CPU state 120 */
+    .quad 0       /* SMP CPU state 121 */
+    .quad 0       /* SMP CPU state 122 */
+    .quad 0       /* SMP CPU state 123 */
+    .quad 0       /* SMP CPU state 124 */
+    .quad 0       /* SMP CPU state 125 */
+    .quad 0       /* SMP CPU state 126 */
+    .quad 0       /* SMP CPU state 127 */
+    .quad 0       /* SMP CPU state 128 */
+    .quad 0       /* SMP CPU state 129 */
+    .quad 0       /* SMP CPU state 130 */
+    .quad 0       /* SMP CPU state 131 */
+    .quad 0       /* SMP CPU state 132 */
+    .quad 0       /* SMP CPU state 133 */
+    .quad 0       /* SMP CPU state 134 */
+    .quad 0       /* SMP CPU state 135 */
+    .quad 0       /* SMP CPU state 136 */
+    .quad 0       /* SMP CPU state 137 */
+    .quad 0       /* SMP CPU state 138 */
+    .quad 0       /* SMP CPU state 139 */
+    .quad 0       /* SMP CPU state 140 */
+    .quad 0       /* SMP CPU state 141 */
+    .quad 0       /* SMP CPU state 142 */
+    .quad 0       /* SMP CPU state 143 */
 
 .section .note.GNU-stack,"",@progbits

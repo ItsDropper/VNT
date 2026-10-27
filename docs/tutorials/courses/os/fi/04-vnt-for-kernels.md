@@ -44,3 +44,68 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Valmistele kehitysympäristö](03-setup.md) · [Seuraava oppitunti: Miten lähdekoodista syntyy kernel →](05-build-pipeline.md)
+
+## Toteutuslaboratorio: VNT kernelissä
+
+Tämä osio täydentää käsitteitä käytännön toteutusmenettelyllä. Lähdekoodiviitteet ovat projektin nykyisiä polkuja; avaa ne ennen muutosta.
+
+**Tutkittavat tiedostot:** `os/kernel.vnt`, `os/serial.vnt`, `os/interrupts.vnt`
+
+**Tavoite:** Toteuta VNT-funktio, jonka sopimus on tarkka. Pidä unsafe-alue pieninä ja tarkistusten ympäröiminä. Varmista että kääntäjän tuottama symboli vastaa kutsujan odotusta.
+
+### Tee työ järjestyksessä
+
+1. **Rajaa vastuu:** Valitse yksi olemassa oleva VNT-funktio ja selvitä parametrit ja paluuarvo.
+   - Kirjaa havainto ennen kuin muokkaat lähdekoodia.
+   - Vertaa toteutusta sen kutsujan odotuksiin.
+
+2. **Etsi nykyinen toteutus:** Tee ensin vain aritmetiikkaa tai tilan lukua, ei laitteistokirjoitusta.
+   - Kirjaa havainto ennen kuin muokkaat lähdekoodia.
+   - Vertaa toteutusta sen kutsujan odotuksiin.
+
+3. **Kirjaa sopimus:** Käännä freestanding-assemblyksi ja tarkista generoitu symboli.
+   - Kirjaa havainto ennen kuin muokkaat lähdekoodia.
+   - Vertaa toteutusta sen kutsujan odotuksiin.
+
+4. **Tee pienin muutos:** Etsi, miten VNT-kääntäjä muuttaa funktiokutsun ABI-kutsuksi.
+   - Kirjaa havainto ennen kuin muokkaat lähdekoodia.
+   - Vertaa toteutusta sen kutsujan odotuksiin.
+
+5. **Tarkista riippuvuudet:** Jos käytät inline assemblyä, tarkista rekisterit, operandit ja pinon offsetit.
+   - Kirjaa havainto ennen kuin muokkaat lähdekoodia.
+   - Vertaa toteutusta sen kutsujan odotuksiin.
+
+6. **Käännä:** Testaa nolla, rajatapaus ja tavallinen arvo.
+   - Kirjaa havainto ennen kuin muokkaat lähdekoodia.
+   - Vertaa toteutusta sen kutsujan odotuksiin.
+
+### Selvitä jokainen rajapinta
+
+- Mikä funktio aloittaa toiminnon, ja kuka sitä kutsuu?
+- Mitä arvoja funktio lukee, mitä se muuttaa ja mitä se palauttaa?
+- Mitkä muistiosoitteet, indeksit tai laitearvot tulevat ulkopuolelta?
+- Mikä tarkistus tapahtuu ennen kuin arvoa käytetään?
+- Mikä on selkeä virhetilan paluuarvo tai diagnostiikka?
+- Mikä osa on VNT:tä ja mikä osa on CPU:n vaatimaa assemblyä?
+- Mitä nykyinen toteutus nimenomaisesti ei tue?
+
+### Hyväksymistesti
+
+1. Kirjoita ennen käännöstä odotettu tuloste tai tilamuutos.
+2. Suorita `bash os/build.sh` projektin juuressa.
+3. Käynnistä syntynyt kernel vain QEMU:ssa.
+4. Tarkista sarjaportin tai konsolin tuloste ja vertaa sitä odotukseen.
+5. Toista testi rajatapauksella ja virheellisellä syötteellä.
+6. Jos et voi suorittaa testiä, ilmoita se avoimesti äläkä merkitse sitä läpäistyksi.
+
+### Yleiset toteutusvirheet
+
+- Uuden funktion lisääminen ilman kutsuja tai importtia: koodi ei ole osa käynnistyspolkua.
+- Oletus, että käännös tarkoittaa käynnistymistä.
+- Rajojen tarkistaminen vasta sen jälkeen, kun muistia on jo luettu tai kirjoitettu.
+- Liian suuri muutos, jonka jälkeen ei tiedetä, mikä rikkoi toiminnan.
+- Diagnostiikan lisääminen keskeytyskäsittelijään niin, että alkuperäinen virhe muuttuu uudeksi jumiutumiseksi.
+
+### Muutosraportti
+
+Kirjoita muistiin: (1) tiedostot, joita muutit, (2) uuden toiminnon sopimus, (3) tarkka build-tulos, (4) QEMU-havainto, (5) testatut virhepolut ja (6) rajoitukset, joita et ratkaissut. Tämä raportti on osa toteutusta, ei ylimääräistä paperityötä.

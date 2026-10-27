@@ -400,3 +400,40 @@ fun acpi_irq_override_flags(irq: int) -> int {
     }
     return acpi_iso_flags(found_index)
 }
+
+# Cross-check every legacy IRQ against the parsed MADT override table.
+# Return -1 if ACPI/MADT discovery is unavailable, 1 on consistency, else 0.
+fun acpi_irq_self_test() -> int {
+    if acpi_madt_address() == 0 {
+        return -1
+    }
+    if acpi_irq_gsi(-1) != -1 || acpi_irq_gsi(16) != -1 ||
+       acpi_irq_override_flags(-1) != -1 ||
+       acpi_irq_override_flags(16) != -1 {
+        return 0
+    }
+    let irq: int = 0
+    while irq < 16 {
+        let matches: int = 0
+        let expected_gsi: int = irq
+        let expected_flags: int = 0
+        let index: int = 0
+        while index < acpi_iso_count() && index < 16 {
+            if acpi_iso_source(index) == irq {
+                matches = matches + 1
+                expected_gsi = acpi_iso_gsi(index)
+                expected_flags = acpi_iso_flags(index)
+            }
+            index = index + 1
+        }
+        if matches > 1 {
+            return 0
+        }
+        if acpi_irq_gsi(irq) != expected_gsi ||
+           acpi_irq_override_flags(irq) != expected_flags {
+            return 0
+        }
+        irq = irq + 1
+    }
+    return 1
+}

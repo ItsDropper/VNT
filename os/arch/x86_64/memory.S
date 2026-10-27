@@ -155,6 +155,27 @@ vntos_mmap_field:
 /* Bitmap primitives use one bit per 4-KiB frame in the first 1 GiB.
  * frame >= 262144 is rejected. VNT owns policy and calls these primitives.
  */
+
+/* VNT-callable accessors for reserving the boot information block. */
+.global vntos_multiboot_info_addr
+.type vntos_multiboot_info_addr,@function
+vntos_multiboot_info_addr:
+    jmp .Lmmap_validate
+.size vntos_multiboot_info_addr, .-vntos_multiboot_info_addr
+
+.global vntos_multiboot_info_size
+.type vntos_multiboot_info_size,@function
+vntos_multiboot_info_size:
+    call .Lmmap_validate
+    testq %rax, %rax
+    jz .Lmmap_info_size_zero
+    movl (%rax), %eax
+    ret
+.Lmmap_info_size_zero:
+    xorl %eax, %eax
+    ret
+.size vntos_multiboot_info_size, .-vntos_multiboot_info_size
+
 .macro BITMAP_SET name, symbol
 .global \\name
 .type \\name,@function

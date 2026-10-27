@@ -87,13 +87,14 @@ evidence that the kernel still builds and boots.
 
 | File | Responsibility |
 | --- | --- |
-| `os/boot.S` | Multiboot2 header, early stack, paging, long-mode transition |
+| `os/arch/x86_64/boot.S` | Multiboot2 header, early stack, paging, long-mode transition |
+| `os/arch/x86_64/interrupts.S` | IDT, entry stubs, PIC/PIT setup, `iretq` boundary |
+| `os/arch/x86_64/README.md` | Architecture ownership and explicit limitations |
 | `os/kernel.vnt` | Shared state, CPU control, kernel entry, shell policy |
 | `os/serial.vnt` | COM1 UART driver |
 | `os/console.vnt` | VGA text output and combined console |
 | `os/ps2.vnt` | Polled keyboard and mouse input |
 | `os/interrupts.vnt` | VNT exception/IRQ dispatch policy |
-| `os/interrupts.S` | IDT, entry stubs, PIC/PIT setup, `iretq` boundary |
 | `os/linker.ld` | ELF section layout and symbols |
 | `os/grub.cfg` | GRUB Multiboot2 configuration |
 | `os/build.sh` | Compiler, assembler, linker, and ISO pipeline |
@@ -155,7 +156,7 @@ The `irq` command is a compact example that crosses the course's main boundaries
 
 1. The shell in `os/kernel.vnt` recognizes the text `irq`.
 2. It reads shared state slot 11 and passes the value to `console_hex`.
-3. The timer interrupt entry in `os/interrupts.S` saves registers and calls the emitted VNT dispatcher symbol.
+3. The timer interrupt entry in `os/arch/x86_64/interrupts.S` saves registers and calls the emitted VNT dispatcher symbol.
 4. `os/interrupts.vnt` handles vector 32 by incrementing slot 11 and returning quickly.
 5. The assembly entry acknowledges the PIC, restores registers, and executes `iretq`.
 6. The shell later displays the updated counter in ordinary kernel context.

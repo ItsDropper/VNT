@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Tietokoneen osat kernelin näkökulmasta](02-computer-basics.md) · [Seuraava oppitunti: VNT-kielen perusteet kernel-koodissa →](04-vnt-for-kernels.md)
 
 ## Koodiesimerkki: työkalujen tarkistus ja build
 
@@ -123,3 +122,7 @@ Tämä osio täydentää käsitteitä käytännön toteutusmenettelyllä. Lähde
 ### Muutosraportti
 
 Kirjoita muistiin: (1) tiedostot, joita muutit, (2) uuden toiminnon sopimus, (3) tarkka build-tulos, (4) QEMU-havainto, (5) testatut virhepolut ja (6) rajoitukset, joita et ratkaissut. Tämä raportti on osa toteutusta, ei ylimääräistä paperityötä.
+
+---
+
+[← Edellinen oppitunti](./02-computer-basics.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./04-vnt-for-kernels.md)

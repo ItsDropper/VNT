@@ -238,17 +238,20 @@ fun acpi_discover() -> int {
                 let count: int = state_get(36)
                 if count < 16 {
                     state_set(40 + count, acpi_read8(madt, cursor + 3))
-                    state_set(36, count + 1)
                 }
+                state_set(36, count + 1)
             }
         }
         if entry_type == 1 {
             if entry_length < 12 {
                 return 0
             }
-            state_set(34, acpi_read32(madt, cursor + 4))
-            state_set(35, acpi_read32(madt, cursor + 8))
-            state_set(37, state_get(37) + 1)
+            let ioapic_count: int = state_get(37)
+            if ioapic_count == 0 {
+                state_set(34, acpi_read32(madt, cursor + 4))
+                state_set(35, acpi_read32(madt, cursor + 8))
+            }
+            state_set(37, ioapic_count + 1)
         }
         if entry_type == 2 {
             if entry_length < 10 {
@@ -277,8 +280,8 @@ fun acpi_discover() -> int {
                 let count: int = state_get(36)
                 if count < 16 {
                     state_set(40 + count, acpi_read32(madt, cursor + 4))
-                    state_set(36, count + 1)
                 }
+                state_set(36, count + 1)
             }
         }
         cursor = cursor + entry_length

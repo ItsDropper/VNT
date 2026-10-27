@@ -44,3 +44,68 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: GRUB ja Multiboot2](07-grub-and-multiboot2.md) · [Seuraava oppitunti: x86-64 long mode →](09-long-mode.md)
+
+## Toteutuslaboratorio: Käynnistysassemblyn lukeminen
+
+Tämä on toteutusohje, ei vain aiheesta kertova yhteenveto. Avaa lähdetiedostot ennen kuin muutat niitä.
+
+**Tutkittavat tiedostot:** `os/arch/x86_64/boot.S`
+
+**Tavoite:** Selitä jokaisen käskyn vaikutus rekistereihin ja muistiin. Assemblymuutos voi vaikuttaa kaikkiin myöhempiin vaiheisiin. Tee ensin käskyjen jäljitys, sitten muutos.
+
+### Toteutus vaiheittain
+
+1. **Rajaa vastuu:** Valitse 10 peräkkäistä käskyä ja kirjaa rekisteri ennen ja jälkeen.
+   - Kirjaa havainto ja perustele se lähdekoodilla.
+   - Älä jatka seuraavaan muutokseen, jos tämä vaihe on epäselvä.
+
+2. **Etsi nykyinen toteutus:** Etsi pinoon liittyvät käskyt ja laske muutetut tavut.
+   - Kirjaa havainto ja perustele se lähdekoodilla.
+   - Älä jatka seuraavaan muutokseen, jos tämä vaihe on epäselvä.
+
+3. **Kirjaa sopimus:** Etsi ohjaussiirtymät ja kirjaa niiden kohde.
+   - Kirjaa havainto ja perustele se lähdekoodilla.
+   - Älä jatka seuraavaan muutokseen, jos tämä vaihe on epäselvä.
+
+4. **Tee pienin muutos:** Tarkista, mitkä käskyt suoritetaan 32-bittisessä ja mitkä 64-bittisessä tilassa.
+   - Kirjaa havainto ja perustele se lähdekoodilla.
+   - Älä jatka seuraavaan muutokseen, jos tämä vaihe on epäselvä.
+
+5. **Tarkista riippuvuudet:** Lisää vain yksi debug-porttimerkki ja varmista sen sijainti tulosteessa.
+   - Kirjaa havainto ja perustele se lähdekoodilla.
+   - Älä jatka seuraavaan muutokseen, jos tämä vaihe on epäselvä.
+
+6. **Käännä:** Älä muuta rekisterin käyttöä ennen kuin olet löytänyt sen aiemman arvon omistajan.
+   - Kirjaa havainto ja perustele se lähdekoodilla.
+   - Älä jatka seuraavaan muutokseen, jos tämä vaihe on epäselvä.
+
+### Rajapinnan tarkistus
+
+- Mikä funktio tai symboli aloittaa toiminnon?
+- Kuka kutsuu sitä ja mitä arvoja kutsuja olettaa?
+- Mitkä rekisterit, osoitteet tai muistialueet ovat käytössä?
+- Mikä tarkistus tehdään ennen muistilukua tai laitekirjoitusta?
+- Mitä tapahtuu, jos tarvittava tieto puuttuu tai on virheellinen?
+- Mitkä osat ovat VNT-politiikkaa ja mitkä arkkitehtuurin pakottamaa assemblyä?
+- Mitkä ominaisuudet ovat vielä toteuttamatta?
+
+### Hyväksymistesti
+
+1. Kirjoita odotettu tulos ennen käännöstä.
+2. Suorita `bash os/build.sh` projektin juuressa.
+3. Tarkista ensimmäinen epäonnistunut komento, älä vain viimeistä virheilmoitusta.
+4. Käynnistä kernel QEMU:ssa ja kerää sarjaportin tuloste.
+5. Testaa normaali tapaus, raja ja virheellinen syöte.
+6. Älä ilmoita testiä läpäistyksi, jos et suorittanut sitä.
+
+### Virheiden välttäminen
+
+- Käännös ei todista, että GRUB tunnistaa ELF:n.
+- ELF:n syntyminen ei todista, että CPU saavuttaa VNT-koodin.
+- Älä tee useita toisistaan riippuvia muutoksia ennen ensimmäistä testiä.
+- Älä poista diagnostisia merkkejä ennen kuin tiedät, mikä vaihe oli vikana.
+- Älä kovakoodaa osoitetta, jos sen pitäisi tulla linker-symbolista tai bootloaderin tietorakenteesta.
+
+### Muutosraportti
+
+Kirjaa muutetut tiedostot, toteutettu sopimus, build-tulos, QEMU-havainto, virhepolut ja tunnetut rajoitukset. Jos testaus jäi tekemättä, merkitse se avoimeksi työksi.

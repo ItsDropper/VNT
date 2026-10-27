@@ -146,9 +146,9 @@ fun shell_run() {
                     passed = 0
                 }
                 if passed == 1 {
-                    console_puts("Decimal digit self-test: PASS\\r\\n")
+                    console_puts("Decimal digit self-test: PASS\r\n")
                 } else {
-                    console_puts("Decimal digit self-test: FAIL\\r\\n")
+                    console_puts("Decimal digit self-test: FAIL\r\n")
                 }
                 handled = 1
             }

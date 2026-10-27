@@ -44,3 +44,68 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: ELF ja linkkeriskripti](11-elf-and-linker.md) · [Seuraava oppitunti: Sarjaportti debuggausvälineenä →](13-serial-io.md)
+
+## Toteutuslaboratorio: Freestanding VNT
+
+Tässä harjoituksessa toteutat tai jäljität toimivan osan, et vain kuvaile käsitettä.
+
+**Tutkittavat tiedostot:** `os/kernel.vnt`, `os/build.sh`, `src/compiler/freestanding_x86.c`
+
+**Tavoite:** Kirjoita VNT-funktio ilman käyttöjärjestelmän palveluja. Älä oleta libc:tä, tiedostoja tai dynaamista allokointia. Tarkista generoitu assembly, kun ABI tai unsafe muuttuu.
+
+### Toteutus vaiheittain
+
+1. **Rajaa vastuu:** Lisää pieni funktio olemassa olevaan moduuliin ja tuo moduuli tarvittaessa.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+2. **Etsi nykyinen toteutus:** Tarkista, ettei funktio käytä linkittämätöntä ulkoista symbolia.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+3. **Kirjaa sopimus:** Käännä --emit-freestanding-asm-vaiheella ja etsi funktion symboli.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+4. **Tee pienin muutos:** Vertaa parametreja, paluuarvoa ja rekisterien käyttöä kutsujan odotukseen.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+5. **Tarkista riippuvuudet:** Testaa nolla, negatiivinen arvo ja yläraja.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+6. **Käännä:** Jos koodi ei käänny, tee pienin toistettava esimerkki ennen kääntäjän muuttamista.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+### Sopimus ja rajat
+
+- Määritä syötteet, paluuarvot ja virhetilanteet ennen toteutusta.
+- Tarkista osoitteet, pituudet, indeksit ja tilan alustaminen ennen käyttöä.
+- Erota CPU:n vaatima mekanismi VNT:n päätöksenteosta.
+- Älä väitä nykyisen rajoitetun toteutuksen tukevan ominaisuuksia, joita koodi ei sisällä.
+- Tarkista, ettei uusi toiminto vaadi alustamatonta moduulia tai linkittämätöntä symbolia.
+- Pidä diagnostiikka rajattuna ja vältä odottamista keskeytyskontekstissa.
+
+### Testaa jokainen polku
+
+1. Kirjoita ennuste ennen käännöstä.
+2. Suorita `bash os/build.sh` projektin juuressa.
+3. Tarkista ensimmäinen epäonnistunut komento.
+4. Käynnistä kernel QEMU:ssa ja tallenna sarjaportin tuloste.
+5. Testaa normaali tapaus, rajatapaus ja virheellinen syöte.
+6. Tarkista ettei virheellinen pyyntö muuta muistia tai laitteiston tilaa.
+7. Jos testaus ei ole käytettävissä, merkitse tulos vahvistamattomaksi.
+
+### Tavalliset virheet
+
+- Osoitteen tai pituuden tarkistus tehdään vasta luku-/kirjoitusoperaation jälkeen.
+- Uusi funktio ei ole mukana import-ketjussa.
+- Paluuarvon merkitys ei ole sama kutsujalle ja toteuttajalle.
+- Diagnostiikka peittää alkuperäisen vian.
+- Käännöksen onnistumista pidetään toimintatestinä.
+
+### Kirjaa toteutus
+
+Dokumentoi muutetut tiedostot, funktiosopimus, build-tulos, QEMU-havainto, negatiiviset testit ja rajoitukset. Näin toinen kehittäjä pystyy toistamaan tarkistuksen.

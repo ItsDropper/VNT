@@ -17,7 +17,7 @@ export fun interrupt_dispatch(vector: int, error: int) {
     if vector == 32 {
         # IRQ0 is the PIT timer. Do not print from interrupt context: the UART
         # is polled and output there could stall the entire machine.
-        state_set(11, state_get(11) + 1)
+        kernel_timer_tick()
         return 0
     }
 

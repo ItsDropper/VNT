@@ -10,8 +10,9 @@ interrupt entry are deliberately split from the VNT policy code.
 - `os/arch/x86_64/interrupts.S`: IDT construction, minimal entry/exit stubs,
   legacy PIC remapping, and PIT setup. Assembly is limited to the CPU/ABI
   boundary and current early hardware initialization.
-- `os/kernel.vnt`: kernel entry, shared state helpers, CPU control, and shell
-  command policy. It imports the VNT-side modules.
+- `os/kernel.vnt`: kernel entry and ordered subsystem initialization.
+- `os/kernel/core.vnt`: early shared-state access, kernel bounds, and CPU halt/reboot primitives.
+- `os/kernel/shell.vnt`: command parsing, line editing, and shell policy.
 - `os/serial.vnt`: COM1 UART setup and polling I/O.
 - `os/console.vnt`: VGA text output and the combined VGA/serial console.
 - `os/ps2.vnt`: polled PS/2 keyboard and mouse routines.
@@ -78,7 +79,7 @@ model are implemented.
 
 `arch/x86_64/` now owns the boot entry and the IDT/interrupt/PIC/PIT assembly
 implementation. Generic interrupt policy remains in `interrupts.vnt`, and
-the existing shell and device routines retain their names and behavior. This
+the existing shell and device routines retain their behavior. Kernel entry now owns initialization order, while core primitives and shell policy live in `os/kernel/core.vnt` and `os/kernel/shell.vnt`. This
 is a source/build boundary, not yet a fully abstract architecture interface:
 the VNT compiler currently flattens imported modules into one compilation
 unit, and some low-level VNT functions use compiler-specific stack offsets.

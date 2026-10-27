@@ -45,6 +45,30 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Rakenna ja testaa keskeytyskernel](24-build-and-test-the-interrupt-kernel.md) · [Seuraava oppitunti: Loppuprojekti: tee todennettava parannus →](25-graduation-project.md)
 
+## Koodiesimerkki: validoi Multiboot2-muistitiedon rajat
+
+```vnt
+fun phys_info_size() -> int {
+    let info: i64 = phys_info_addr()
+    if info == 0 {
+        return 0
+    }
+    let size: int = 0
+    unsafe {
+        size = mem_read_u32(info, 0)
+    }
+    if size < 16 || info + size > 1073741824 {
+        return 0
+    }
+    return size
+}
+```
+
+Tämä on nykyisestä os/mm/phys.vnt-tiedostosta. Funktio tarkistaa, että Multiboot2-tietorakenteen osoite on hyväksytty ja koko vähintään otsakkeen minimikokoinen, eikä tietorakenne ylitä nykyistä 1 GiB:n identiteettikartoitusta. Vasta sen jälkeen kokoa voi käyttää tagien läpikäyntiin.
+
+**Tee itse:** Jäljitä, miten phys_mmap_count kulkee tagista seuraavaan. Tarkista tag_size ennen kuin lasket seuraavan osoitteen. Älä lisää fyysistä muistia, joka ei ole kartoitettu tai joka kuuluu kernelille tai bootstrapille.
+
+
 ## Toteutuslaboratorio: Fyysinen muisti ja sivukehykset
 
 Tässä osiossa rakennat tai validoit konkreettisen osan nykyisestä VNTOS-kernelistä.

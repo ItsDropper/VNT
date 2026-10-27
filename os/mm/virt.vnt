@@ -31,12 +31,11 @@ fun virt_translate(address: i64) -> i64 {
 
 # Return 0 on rejection, 1 if a 2-MiB page was split, or 2 if its 4-KiB
 # table already existed. The caller owns new_table unless result is 1.
-fun virt_map_page(virtual_address: i64, physical_address: i64, flags: int, new_table: i64) -> int {
+fun virt_map_page(virtual_address: i64, physical_address: i64, flags: int) -> int {
     if virtual_address < 0 || virtual_address >= 1073741824 ||
-       physical_address < 0 || physical_address >= 1073741824 ||
-       new_table < 0 || new_table >= 1073741824 { return 0 }
+       physical_address < 0 || physical_address >= 1073741824 { return 0 }
     if virtual_address % 4096 != 0 || physical_address % 4096 != 0 ||
-       new_table % 4096 != 0 || flags % 2 == 0 { return 0 }
+       flags % 2 == 0 { return 0 }
     let directory: i64 = virt_page_directory_base()
     let directory_index: int = (virtual_address / 2097152) % 512
     let pde: i64 = 0
@@ -45,6 +44,8 @@ fun virt_map_page(virtual_address: i64, physical_address: i64, flags: int, new_t
     let result: int = 2
     let table: i64 = 0
     if (pde / 128) % 2 == 1 {
+        let new_table: i64 = phys_alloc_page()
+        if new_table == 0 { return 0 }
         let huge_base: i64 = pde - (pde % 2097152)
         let i: int = 0
         while i < 512 {
@@ -52,6 +53,9 @@ fun virt_map_page(virtual_address: i64, physical_address: i64, flags: int, new_t
             i = i + 1
         }
         unsafe { mem_write_u64(directory, directory_index * 8, new_table + 3) }
+        if phys_reserve_allocated_page(new_table) != 1 {
+            return 0
+        }
         table = new_table
         result = 1
     } else {
@@ -64,7 +68,6 @@ fun virt_map_page(virtual_address: i64, physical_address: i64, flags: int, new_t
     }
     return result
 }
-
 fun virt_probe(address: i64) -> int {
     if address < 0 || address >= 1073741824 || address % 8 != 0 { return 0 }
     let sentinel: i64 = 6219000865086522707
@@ -81,14 +84,14 @@ fun virt_self_test() -> int {
     if virt_translate(target) != target { return 0 }
     let page: i64 = phys_alloc_page()
     if page == 0 { return 0 }
-    if virt_map_page(target, page, 3, page) != 1 {
+    if virt_map_page(target, page, 3) != 1 {
         phys_free_page(page)
         return 0
     }
     let valid: int = 1
     if virt_translate(target) != page { valid = 0 }
     if virt_probe(target) != 1 { valid = 0 }
-    if virt_map_page(target, target, 3, page) != 2 { valid = 0 }
+    if virt_map_page(target, target, 3) != 2 { valid = 0 }
     if virt_translate(target) != target { valid = 0 }
     if phys_free_page(page) != 1 { valid = 0 }
     if phys_count_free_pages() != before - 1 { valid = 0 }

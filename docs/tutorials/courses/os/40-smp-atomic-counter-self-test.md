@@ -17,6 +17,8 @@ Do not run the test against the live timer or IRQ counters: those counters conti
 - Slot 308: the shared atomic counter.
 - Slot 309: the test-armed flag.
 - Slot 310: the number of AP handlers that completed their batch.
+- Slot 311: the number of AP handlers waiting at the start barrier.
+- Slot 312: the start-barrier release flag.
 
 The slots are appended after the shell-history state, preserving the earlier slot numbers.
 
@@ -27,8 +29,8 @@ The implementation lives in `os/kernel/smp.vnt`, with the user-facing command in
 1. Require at least two online CPUs and require all discovered CPUs to be online. If this precondition is not met, report `SKIP`, not `PASS`.
 2. Clear the dedicated counter and completion count, then arm the test.
 3. Send fixed-vector IPI 240 (hexadecimal `0xf0`) to each online AP.
-4. In the IPI handler, each AP that observes the armed flag performs 1,000 calls to `state_increment_atomic(308)`, then atomically increments the AP-completion count.
-5. The BSP performs the same 1,000 increments while APs handle their IPIs.
+4. Each AP atomically increments the ready count and waits at a bounded start barrier.
+5. The BSP waits until all APs are ready, releases the barrier, and performs the same 1,000 increments while APs run their batches. Each AP atomically increments the completion count after its batch.
 6. Wait for the expected AP completions with a bounded spin loop, disarm the test, and compare the result against `online_cpu_count * 1000`.
 
 The central operation is intentionally small:
@@ -66,7 +68,7 @@ The CI workflow runs this command under `-smp 4` and asserts the exact success t
 - The test uses the current project-specific inline-assembly calling convention. The first argument to `state_increment_atomic` is read from `-8(%rbp)`; changing the compiler's freestanding ABI requires revisiting this primitive.
 - The test assumes APs have completed startup and can receive the existing fixed-vector IPI. It deliberately skips if not all discovered CPUs are online.
 - The test is run from the shell while the BSP has normal interrupt handling enabled. AP handlers perform bounded work and acknowledge the IPI after the batch.
-- The armed flag is a simple test-control state, not a general synchronization primitive.
+- The armed flag and ready/release barrier are test-specific coordination state, not general synchronization primitives. APs use a bounded wait so a failed rendezvous does not spin forever.
 - Passing this test does not prove the physical allocator, shell history, CPU online count, spinlock implementation under contention, or arbitrary shared data are safe for concurrent access.
 - A timeout or failed IPI is a failure, not a successful test with a smaller count.
 

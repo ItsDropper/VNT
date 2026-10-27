@@ -44,3 +44,68 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Sarjaportti debuggausvälineenä](13-serial-io.md) · [Seuraava oppitunti: Selvitä ongelmat järjestelmällisesti →](15-debugging.md)
+
+## Toteutuslaboratorio: Sarjaportin komentotulkki
+
+Tässä harjoituksessa toteutat tai jäljität toimivan osan, et vain kuvaile käsitettä.
+
+**Tutkittavat tiedostot:** `os/kernel/shell.vnt`, `os/serial.vnt`, `os/kernel.vnt`
+
+**Tavoite:** Lisää komentotulkin toiminto ilman puskurin ylivuotoa. Shellin pitää hylätä virheellinen syöte hallitusti. Älä anna komentojen kirjoittaa mielivaltaisiin muistiosoitteisiin.
+
+### Toteutus vaiheittain
+
+1. **Rajaa vastuu:** Etsi syötteen keräys, rivinvaihdon käsittely ja komentojen tunnistus.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+2. **Etsi nykyinen toteutus:** Määritä puskurin maksimipituus ja mitä tapahtuu sen täyttyessä.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+3. **Kirjaa sopimus:** Lisää uusi komento tunnistuskohtaan ja erota toiminto tulosteesta.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+4. **Tee pienin muutos:** Tarkista argumenttien määrä ja arvot ennen alijärjestelmäkutsua.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+5. **Tarkista riippuvuudet:** Testaa tyhjä rivi, tuntematon komento, pitkä rivi ja puuttuva argumentti.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+6. **Käännä:** Varmista, että virheellinen komento palaa komentokehotteeseen.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+### Sopimus ja rajat
+
+- Määritä syötteet, paluuarvot ja virhetilanteet ennen toteutusta.
+- Tarkista osoitteet, pituudet, indeksit ja tilan alustaminen ennen käyttöä.
+- Erota CPU:n vaatima mekanismi VNT:n päätöksenteosta.
+- Älä väitä nykyisen rajoitetun toteutuksen tukevan ominaisuuksia, joita koodi ei sisällä.
+- Tarkista, ettei uusi toiminto vaadi alustamatonta moduulia tai linkittämätöntä symbolia.
+- Pidä diagnostiikka rajattuna ja vältä odottamista keskeytyskontekstissa.
+
+### Testaa jokainen polku
+
+1. Kirjoita ennuste ennen käännöstä.
+2. Suorita `bash os/build.sh` projektin juuressa.
+3. Tarkista ensimmäinen epäonnistunut komento.
+4. Käynnistä kernel QEMU:ssa ja tallenna sarjaportin tuloste.
+5. Testaa normaali tapaus, rajatapaus ja virheellinen syöte.
+6. Tarkista ettei virheellinen pyyntö muuta muistia tai laitteiston tilaa.
+7. Jos testaus ei ole käytettävissä, merkitse tulos vahvistamattomaksi.
+
+### Tavalliset virheet
+
+- Osoitteen tai pituuden tarkistus tehdään vasta luku-/kirjoitusoperaation jälkeen.
+- Uusi funktio ei ole mukana import-ketjussa.
+- Paluuarvon merkitys ei ole sama kutsujalle ja toteuttajalle.
+- Diagnostiikka peittää alkuperäisen vian.
+- Käännöksen onnistumista pidetään toimintatestinä.
+
+### Kirjaa toteutus
+
+Dokumentoi muutetut tiedostot, funktiosopimus, build-tulos, QEMU-havainto, negatiiviset testit ja rajoitukset. Näin toinen kehittäjä pystyy toistamaan tarkistuksen.

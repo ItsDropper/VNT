@@ -2,98 +2,237 @@
 # Licensed under the MIT License. See LICENSE in the repository root.
 
 import "../kernel/core.vnt"
-#
-# Physical frame allocator for the bootstrap's first 1-GiB identity map.
-# Separate bitmaps track usable, allocated, and permanently reserved frames.
-# All ranges are clipped to the mapped physical window.
+
+# Multiboot2 memory-map parsing and physical-frame bitmap operations are VNT
+# code. Bootstrap assembly only supplies the handoff fields and bitmap storage.
+
+fun phys_info_addr() -> i64 {
+    let magic_slot: i64 = 0
+    let info_slot: i64 = 0
+    unsafe {
+        magic_slot = symbol_address("multiboot2_boot_magic")
+        info_slot = symbol_address("multiboot2_info_ptr")
+    }
+    let magic: int = 0
+    let info: i64 = 0
+    unsafe {
+        magic = mem_read_u32(magic_slot, 0)
+        info = mem_read_u32(info_slot, 0)
+    }
+    if magic != 0x36d76289 || info == 0 || info >= 1073741824 {
+        return 0
+    }
+    return info
+}
+
+fun phys_info_size() -> int {
+    let info: i64 = phys_info_addr()
+    if info == 0 {
+        return 0
+    }
+    let size: int = 0
+    unsafe {
+        size = mem_read_u32(info, 0)
+    }
+    if size < 16 || info + size > 1073741824 {
+        return 0
+    }
+    return size
+}
 
 fun phys_mmap_count() -> int {
-    let result: int = -1
-    unsafe {
-        asm volatile("call vntos_mmap_count; movq %rax, -8(%rbp)")
+    let info: i64 = phys_info_addr()
+    if info == 0 {
+        return -1
     }
-    return result
+    let total: int = phys_info_size()
+    if total < 16 {
+        return -1
+    }
+    let cursor: int = 8
+    while cursor + 8 <= total {
+        let tag_type: int = 0
+        let tag_size: int = 0
+        unsafe {
+            tag_type = mem_read_u32(info, cursor)
+            tag_size = mem_read_u32(info, cursor + 4)
+        }
+        if tag_size < 8 || cursor + tag_size > total {
+            return -1
+        }
+        if tag_type == 0 {
+            return 0
+        }
+        if tag_type == 6 {
+            if tag_size < 16 {
+                return -1
+            }
+            let entry_size: int = 0
+            unsafe {
+                entry_size = mem_read_u32(info, cursor + 8)
+            }
+            if entry_size < 24 {
+                return -1
+            }
+            return (tag_size - 16) / entry_size
+        }
+        cursor = cursor + ((tag_size + 7) / 8) * 8
+    }
+    return -1
 }
 
 fun phys_mmap_field(index: int, field: int) -> i64 {
-    let result: i64 = 0
-    unsafe {
-        asm volatile("movl -8(%rbp), %edi; movl -16(%rbp), %esi; call vntos_mmap_field; movq %rax, -24(%rbp)")
+    if index < 0 || field < 0 || field > 2 {
+        return 0
     }
-    return result
+    let info: i64 = phys_info_addr()
+    if info == 0 {
+        return 0
+    }
+    let total: int = phys_info_size()
+    if total < 16 {
+        return 0
+    }
+    let cursor: int = 8
+    while cursor + 8 <= total {
+        let tag_type: int = 0
+        let tag_size: int = 0
+        unsafe {
+            tag_type = mem_read_u32(info, cursor)
+            tag_size = mem_read_u32(info, cursor + 4)
+        }
+        if tag_size < 8 || cursor + tag_size > total {
+            return 0
+        }
+        if tag_type == 0 {
+            return 0
+        }
+        if tag_type == 6 {
+            if tag_size < 16 {
+                return 0
+            }
+            let entry_size: int = 0
+            unsafe {
+                entry_size = mem_read_u32(info, cursor + 8)
+            }
+            if entry_size < 24 {
+                return 0
+            }
+            if index >= (tag_size - 16) / entry_size {
+                return 0
+            }
+            let offset: int = cursor + 16 + index * entry_size
+            if field == 0 {
+                unsafe {
+                    return mem_read_u64(info, offset)
+                }
+            }
+            if field == 1 {
+                unsafe {
+                    return mem_read_u64(info, offset + 8)
+                }
+            }
+            unsafe {
+                return mem_read_u32(info, offset + 16)
+            }
+        }
+        cursor = cursor + ((tag_size + 7) / 8) * 8
+    }
+    return 0
 }
 
 fun phys_mmap_base(index: int) -> i64 {
     return phys_mmap_field(index, 0)
 }
-
 fun phys_mmap_length(index: int) -> i64 {
     return phys_mmap_field(index, 1)
 }
-
 fun phys_mmap_type(index: int) -> i64 {
     return phys_mmap_field(index, 2)
 }
 
-fun phys_info_addr() -> i64 {
-    let result: i64 = 0
+fun phys_usable_bitmap_base() -> i64 {
     unsafe {
-        asm volatile("call vntos_multiboot_info_addr; movq %rax, -8(%rbp)")
+        return symbol_address("vntos_phys_usable_bitmap")
     }
-    return result
+}
+fun phys_allocated_bitmap_base() -> i64 {
+    unsafe {
+        return symbol_address("vntos_phys_allocated_bitmap")
+    }
+}
+fun phys_reserved_bitmap_base() -> i64 {
+    unsafe {
+        return symbol_address("vntos_phys_reserved_bitmap")
+    }
 }
 
-fun phys_info_size() -> int {
-    let result: int = 0
-    unsafe {
-        asm volatile("call vntos_multiboot_info_size; movq %rax, -8(%rbp)")
+fun phys_bitmap_set(base: i64, frame: int, value: int) -> int {
+    if frame < 0 || frame >= 262144 {
+        return 0
     }
-    return result
-}
-
-fun phys_usable_set(frame: int, value: int) {
-    unsafe {
-        asm volatile("movl -8(%rbp), %edi; movl -16(%rbp), %esi; call vntos_phys_usable_set")
+    let byte_offset: int = frame / 8
+    let bit: int = frame % 8
+    let mask: int = 1
+    let i: int = 0
+    while i < bit {
+        mask = mask * 2
+        i = i + 1
     }
-    return 0
+    let byte: int = 0
+    unsafe {
+        byte = mem_read_u8(base, byte_offset)
+    }
+    let present: int = (byte / mask) % 2
+    if value != 0 {
+        if present == 0 {
+            unsafe {
+                mem_write_u8(base, byte_offset, byte + mask)
+            }
+        }
+    } else {
+        if present == 1 {
+            unsafe {
+                mem_write_u8(base, byte_offset, byte - mask)
+            }
+        }
+    }
+    return 1
 }
-
+fun phys_bitmap_get(base: i64, frame: int) -> int {
+    if frame < 0 || frame >= 262144 {
+        return 0
+    }
+    let mask: int = 1
+    let bit: int = frame % 8
+    let i: int = 0
+    while i < bit {
+        mask = mask * 2
+        i = i + 1
+    }
+    let byte: int = 0
+    unsafe {
+        byte = mem_read_u8(base, frame / 8)
+    }
+    return (byte / mask) % 2
+}
+fun phys_usable_set(frame: int, value: int) -> int {
+    return phys_bitmap_set(phys_usable_bitmap_base(), frame, value)
+}
 fun phys_usable_get(frame: int) -> int {
-    let result: int = 0
-    unsafe {
-        asm volatile("movl -8(%rbp), %edi; call vntos_phys_usable_get; movq %rax, -16(%rbp)")
-    }
-    return result
+    return phys_bitmap_get(phys_usable_bitmap_base(), frame)
 }
-
-fun phys_allocated_set(frame: int, value: int) {
-    unsafe {
-        asm volatile("movl -8(%rbp), %edi; movl -16(%rbp), %esi; call vntos_phys_allocated_set")
-    }
-    return 0
+fun phys_allocated_set(frame: int, value: int) -> int {
+    return phys_bitmap_set(phys_allocated_bitmap_base(), frame, value)
 }
-
 fun phys_allocated_get(frame: int) -> int {
-    let result: int = 0
-    unsafe {
-        asm volatile("movl -8(%rbp), %edi; call vntos_phys_allocated_get; movq %rax, -16(%rbp)")
-    }
-    return result
+    return phys_bitmap_get(phys_allocated_bitmap_base(), frame)
 }
-
-fun phys_reserved_set(frame: int, value: int) {
-    unsafe {
-        asm volatile("movl -8(%rbp), %edi; movl -16(%rbp), %esi; call vntos_phys_reserved_set")
-    }
-    return 0
+fun phys_reserved_set(frame: int, value: int) -> int {
+    return phys_bitmap_set(phys_reserved_bitmap_base(), frame, value)
 }
-
 fun phys_reserved_get(frame: int) -> int {
-    let result: int = 0
-    unsafe {
-        asm volatile("movl -8(%rbp), %edi; call vntos_phys_reserved_get; movq %rax, -16(%rbp)")
-    }
-    return result
+    return phys_bitmap_get(phys_reserved_bitmap_base(), frame)
 }
 
 # Returns 1 on success. The kernel continues in diagnostic mode if the

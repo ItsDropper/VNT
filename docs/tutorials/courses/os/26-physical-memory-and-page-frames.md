@@ -30,14 +30,14 @@ to the information structure in EBX. The first instructions in
 `os/arch/x86_64/boot.S` preserve both values before using those registers for
 CPU setup.
 
-The memory bridge in `os/arch/x86_64/memory.S` checks the magic value and
-validates that the information block is non-null, has a plausible total size,
-and remains inside the currently identity-mapped 1-GiB window. It walks aligned
-Multiboot2 tags and reads the memory-map tag's entry size, base, length, and
-type. Malformed tags and invalid entry sizes are rejected.
-
-The bridge exists because the current freestanding VNT subset does not yet
-provide a general pointer/dereference ABI. Allocation policy remains in VNT.
+The parser in `os/mm/phys.vnt` validates the handoff and walks aligned
+Multiboot2 tags using the freestanding backend's explicit unsafe memory
+intrinsics. It checks tag boundaries, entry sizes, and the 1-GiB identity-map
+limit before exposing memory-map fields. Bitmap bit operations also execute as
+compiler-generated VNT; bootstrap assembly reserves only the bitmap storage.
+The compiler emits native loads/stores for `mem_read_u8/u32/u64` and
+`mem_write_u8/u32/u64`, and requires those calls to appear inside an
+`unsafe` block.
 
 ## 3. Read `os/mm/phys.vnt`
 
@@ -118,7 +118,7 @@ also runs this command in QEMU and asserts the self-test's PASS marker.
 Explain why the allocator needs separate usable, allocated, and reserved
 bitmaps. Then trace the following path in the source:
 
-`Multiboot2 registers → boot.S capture → memory.S tag parser → phys_init() →
+`Multiboot2 registers → boot.S capture → phys.vnt tag parser → phys_init() →
 phys_alloc_page() → phys_free_page()`.
 
 ## Exercise

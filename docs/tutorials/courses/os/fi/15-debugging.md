@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Sarjaportin komentotulkki](14-the-serial-shell.md) · [Seuraava oppitunti: Testaa toimintaa, älä vain käännöstä →](16-testing.md)
 
 ## Koodiesimerkki: debug-merkki boot-vaiheiden väliin
 
@@ -125,3 +124,7 @@ Tässä osiossa teet konkreettisen muutoksen nykyiseen VNTOS-koodiin. Avaa lähd
 ### Muutosraportti
 
 Kirjaa muutetut tiedostot, sopimus, build-komento ja tulos, QEMU-havainto, negatiiviset testit sekä avoimet rajoitukset. Jos jokin tarkistus jäi tekemättä, ilmoita se selvästi.
+
+---
+
+[← Edellinen oppitunti](./14-the-serial-shell.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./16-testing.md)

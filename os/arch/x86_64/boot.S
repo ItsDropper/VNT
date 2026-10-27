@@ -352,6 +352,9 @@ vntos_state:
     .rept 128
     .quad 0       /* Last shell command bytes: states 180..307 */
     .endr
+    .quad 0       /* Atomic SMP self-test counter: state 308 */
+    .quad 0       /* Atomic SMP self-test armed flag: state 309 */
+    .quad 0       /* Atomic SMP self-test AP completion count: state 310 */
 .balign 8
 .global vntos_sync_test_lock
 vntos_sync_test_lock:

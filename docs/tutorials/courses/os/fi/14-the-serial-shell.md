@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Sarjaportti debuggausvälineenä](13-serial-io.md) · [Seuraava oppitunti: Selvitä ongelmat järjestelmällisesti →](15-debugging.md)
 
 ## Koodiesimerkki: lisää komentotulkkiin komento
 
@@ -126,3 +125,7 @@ Tässä harjoituksessa toteutat tai jäljität toimivan osan, et vain kuvaile k�
 ### Kirjaa toteutus
 
 Dokumentoi muutetut tiedostot, funktiosopimus, build-tulos, QEMU-havainto, negatiiviset testit ja rajoitukset. Näin toinen kehittäjä pystyy toistamaan tarkistuksen.
+
+---
+
+[← Edellinen oppitunti](./13-serial-io.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./15-debugging.md)

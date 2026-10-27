@@ -194,6 +194,8 @@ static StructDef *find_struct(TypeChecker *tc, const char *name) {
 }
 
 static int builtin_arity(const char *name, int argc) {
+    if (!strcmp(name, "cpu_read_cr2")) return argc == 0;
+    if (!strcmp(name, "cpu_invlpg")) return argc == 1;
     if (!strcmp(name, "mem_alloc") || !strcmp(name, "mem_free") || !strcmp(name, "mem_is_null")) return argc == 1;
     if (!strcmp(name, "mem_read_u8") || !strcmp(name, "mem_read_u32") || !strcmp(name, "mem_read_u64")) return argc == 2;
     if (!strcmp(name, "mem_realloc") || !strcmp(name, "mem_ptr_add")) return argc == 2;
@@ -361,7 +363,9 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                  !strcmp(n->function_call.name, "mem_write_u32") ||
                  !strcmp(n->function_call.name, "mem_write_u64") ||
                  !strcmp(n->function_call.name, "mem_copy") ||
-                 !strcmp(n->function_call.name, "mem_set")) &&
+                 !strcmp(n->function_call.name, "mem_set") ||
+                 !strcmp(n->function_call.name, "cpu_read_cr2") ||
+                 !strcmp(n->function_call.name, "cpu_invlpg")) &&
                 tc->unsafe_depth == 0)
                 error(tc, "raw memory builtins may only be called inside an unsafe block.");
             check_call(tc, n);
@@ -383,7 +387,9 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                 return TY_FLOAT;
             if (!strcmp(n->function_call.name, "mem_alloc") || !strcmp(n->function_call.name, "mem_realloc") || !strcmp(n->function_call.name, "mem_ptr_add")) return TY_POINTER;
             if (!strcmp(n->function_call.name, "mem_read_u8") || !strcmp(n->function_call.name, "mem_read_u32")) return TY_INT;
-             if (!strcmp(n->function_call.name, "mem_read_u64")) return TY_I64;
+             if (!strcmp(n->function_call.name, "mem_read_u64") ||
+                !strcmp(n->function_call.name, "cpu_read_cr2")) return TY_I64;
+            if (!strcmp(n->function_call.name, "cpu_invlpg")) return TY_BOOL;
             if (!strcmp(n->function_call.name, "mem_free") || !strcmp(n->function_call.name, "mem_is_null") || !strcmp(n->function_call.name, "mem_write_u8") || !strcmp(n->function_call.name, "mem_write_u32") || !strcmp(n->function_call.name, "mem_write_u64") || !strcmp(n->function_call.name, "mem_copy") || !strcmp(n->function_call.name, "mem_set")) return TY_BOOL;
             if (!strcmp(n->function_call.name, "crypto_sha256")) return TY_STRING;
             if (!strcmp(n->function_call.name, "crypto_constant_time_equal")) return TY_BOOL;

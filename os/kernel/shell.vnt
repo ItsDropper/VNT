@@ -10,7 +10,10 @@ import "../console.vnt"
 import "../ps2.vnt"
 import "device_irq.vnt"
 import "../mm/phys.vnt"
-import "../mm/virt.vnt"\nimport "../firmware/acpi.vnt"\nimport "../arch/x86_64/apic.vnt"\nimport "smp.vnt"
+import "../mm/virt.vnt"
+import "../firmware/acpi.vnt"
+import "../arch/x86_64/apic.vnt"
+import "smp.vnt"
 
 fun str_eq(left: string, right: string) -> bool {
     let index: int = 0
@@ -119,7 +122,7 @@ fun shell_run() {
                 console_hex(acpi_iso_count())
                 console_puts("IOAPIC redirection entries masked: ")
                 console_hex(apic_ioapic_route_count())
-                console_puts("Secondary CPU startup is not enabled yet.\\r\\n")
+                console_puts("Secondary CPU startup is not enabled yet.\r\n")
                 handled = 1
             }
             if str_eq(buffer, "irq") {

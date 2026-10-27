@@ -125,7 +125,7 @@ fun apic_init() -> int {
     if maximum_lvt >= 2 {
         apic_mask_lvt(0x340)
     }
-    if maximum_lvt >= 5 {
+    if maximum_lvt >= 3 {
         apic_mask_lvt(0x370)
     }
     if maximum_lvt >= 6 {
@@ -167,6 +167,40 @@ fun apic_send_icr(destination: int, command: int) -> int {
     apic_write32(0x310, high)
     apic_write32(0x300, command)
     return apic_wait_icr_clear()
+}
+
+
+# AP-local initialization: unlike the BSP, mask LINT0/LINT1 so legacy PIC
+# virtual-wire traffic cannot be delivered to a secondary CPU.
+fun apic_init_secondary() -> int {
+    if apic_is_enabled() != 1 {
+        return 0
+    }
+    let version: int = apic_read32(0x30)
+    let maximum_lvt: int = (version / 65536) % 256
+    apic_mask_lvt(0x320)
+    if maximum_lvt >= 1 {
+        apic_mask_lvt(0x330)
+    }
+    if maximum_lvt >= 2 {
+        apic_mask_lvt(0x340)
+    }
+    apic_mask_lvt(0x350)
+    apic_mask_lvt(0x360)
+    if maximum_lvt >= 3 {
+        apic_mask_lvt(0x370)
+    }
+    if maximum_lvt >= 6 {
+        apic_mask_lvt(0x2f0)
+    }
+    apic_write32(0x80, 0)
+    apic_write32(0xf0, 0x1ff)
+    return 1
+}
+
+fun apic_current_id() -> int {
+    let id_register: int = apic_read32(0x20)
+    return (id_register / 16777216) % 256
 }
 
 fun apic_is_enabled() -> int {

@@ -242,6 +242,11 @@ jobs:
               "Free 4-KiB pages (decimal):",
               "IRQ0 count (decimal):",
               "IRQ1 count (decimal):",
+              "IOAPIC redirection entries masked:"
+              "IOAPIC routing setup ready (0=no, 1=yes):"
+              "Local APIC enabled (0=no, 1=yes):"
+              "PIC IRQ1 masked (0=no, 1=yes):"
+              "PIC IRQ0 masked (0=no, 1=yes):"
           ]
           for label in decimal_labels:
               if not re.search(re.escape(label) + r"\s*[0-9]+", transcript):

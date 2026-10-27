@@ -279,7 +279,10 @@ static int type_compatible(TypeKind expected, TypeKind actual) {
 
 static void check_call(TypeChecker *tc, AstNode *n) {
     int argc = n->function_call.argument_count;
-    for (AstNode *a = n->function_call.arguments; a; a = a->next) (void)expr_type(tc, a);
+    for (AstNode *a = n->function_call.arguments; a; a = a->next) {
+        if (expr_type(tc, a) == TY_VOID)
+            error(tc, "void function call cannot be used as an argument.");
+    }
     int builtin = builtin_arity(n->function_call.name, argc);
     if (builtin != -1) { if (!builtin) error(tc, "invalid argument count for builtin function."); return; }
     if (find_struct(tc, n->function_call.name)) return;
@@ -632,6 +635,10 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
 
                 TypeKind value_type =
                     expr_type(tc, n->variable_declaration.value);
+                if (value_type == TY_VOID) {
+                    error(tc, "void function call cannot initialize a variable.");
+                    break;
+                }
                 if (n->variable_declaration.declared_type) {
                     TypeKind declared_type =
                         type_from_name(n->variable_declaration.declared_type);
@@ -668,6 +675,10 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
             case AST_ASSIGNMENT: {
                 TypeKind target = expr_type(tc, n->assignment.target);
                 TypeKind value = expr_type(tc, n->assignment.value);
+                if (value == TY_VOID) {
+                    error(tc, "void function call cannot be assigned as a value.");
+                    break;
+                }
                 int string_byte_store =
                     is_string_index_expr(tc, n->assignment.target) &&
                     value == TY_INT;
@@ -678,7 +689,8 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
             }
 
             case AST_PRINT_STATEMENT:
-                (void)expr_type(tc, n->print_statement.expression);
+                if (expr_type(tc, n->print_statement.expression) == TY_VOID)
+                    error(tc, "void function call cannot be printed as a value.");
                 break;
 
             case AST_IF_STATEMENT: {
@@ -733,6 +745,8 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                         error(tc, "void function cannot return a value.");
                 } else if (!n->return_statement.expression) {
                     error(tc, "non-void function must return a value.");
+                } else if (actual == TY_VOID) {
+                    error(tc, "void function call cannot be returned as a value.");
                 } else if (tc->expected_return != TY_UNKNOWN &&
                            !type_compatible(tc->expected_return, actual)) {
                     error(tc, "return expression does not match the function return type.");

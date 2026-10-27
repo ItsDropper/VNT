@@ -45,6 +45,21 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Tee ensimmäinen pieni muutos](17-first-kernel-change.md) · [Seuraava oppitunti: Jaa kernel VNT-moduuleihin →](19-split-the-kernel-into-vnt-modules.md)
 
+## Koodiesimerkki: käytä olemassa olevaa itsekoetta ennen uutta ominaisuutta
+
+```vnt
+if phys_self_test() == 1 {
+    console_puts("Physical allocator self-test: PASS\r\n")
+} else {
+    console_puts("Physical allocator self-test: FAIL\r\n")
+}
+```
+
+Tämä tarkistus on käytössä os/kernel/shell.vnt-tiedoston memtest-komennossa. Se kutsuu allokaattorin omaa testiä ja käsittelee onnistumisen sekä epäonnistumisen erikseen. Ennen kuin rakennat riippuvaista ominaisuutta, varmista ensin, että sen alijärjestelmän nykyinen testi antaa odotetun tuloksen.
+
+**Tee itse:** Käynnistä VNTOS QEMU:ssa ja suorita `memtest` sekä `vmtest`. Kirjaa tulokset. Valitse seuraavaksi vain sellainen ominaisuus, jonka riippuvuudet ovat jo olemassa.
+
+
 ## Toteutuslaboratorio: Kurssin jälkeinen työ
 
 Tässä osiossa teet konkreettisen muutoksen nykyiseen VNTOS-koodiin. Avaa lähdetiedostot ja varmista, että kuvaus vastaa nykyistä toteutusta.

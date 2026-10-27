@@ -45,6 +45,28 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Aloita tästä](00-start-here.md) · [Seuraava oppitunti: Tietokoneen osat kernelin näkökulmasta →](02-computer-basics.md)
 
+## Koodiesimerkki: kernelin vastuut ja käynnistysjärjestys
+
+```vnt
+fun kernel_main() {
+    serial_init()
+    state_set(1, 15)
+    vga_clear()
+    vga_puts("VNTOS\r\n")
+    serial_puts("VNTOS_BOOT_OK\r\n")
+    pic_disable_all()
+    let acpi_found: int = acpi_discover()
+    interrupts_init()
+    shell_run()
+    return 0
+}
+```
+
+Tämä on lyhennetty esimerkki nykyisen os/kernel.vnt-tiedoston todellisesta rakenteesta. kernel_main koordinoi alustuksen järjestystä; serial_init ja vga_clear toteuttavat omat laitteistotehtävänsä, ja shell_run siirtää ohjauksen komentotulkkiin. Järjestys on tärkeä: alijärjestelmää ei pidä käyttää ennen alustusta.
+
+**Tee itse:** Toteuta ensin uusi käynnistysviesti oikeaan kohtaan. Älä siirrä keskeytysten tai laitteiden alustusta satunnaisesti; selvitä aina, mitä myöhempi vaihe olettaa jo valmiiksi.
+
+
 ## Toteutuslaboratorio: Käyttöjärjestelmän vastuut
 
 Tämä osio täydentää käsitteitä käytännön toteutusmenettelyllä. Lähdekoodiviitteet ovat projektin nykyisiä polkuja; avaa ne ennen muutosta.

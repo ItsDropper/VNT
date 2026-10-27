@@ -13,6 +13,7 @@ This is deliberately a source-audit lesson, not a claim that VNTOS already has a
 Start with these files:
 
 - `os/kernel/smp.vnt`: AP startup, online bookkeeping, IPI delivery test, and the vector-240 handler.
+- `os/kernel/sync.vnt`: the initial spinlock API and its single-CPU self-test.
 - `os/kernel.vnt`: initialization order and the IPI self-test.
 - `os/arch/x86_64/interrupts.S`: the minimal IDT entry/exit boundary.
 - `os/mm/phys.vnt`: page-frame bitmaps and cached allocation counters.

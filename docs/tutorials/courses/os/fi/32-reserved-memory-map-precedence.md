@@ -126,4 +126,4 @@ Muutos tekee bittikartan muodostamisesta varovaisemman. Se ei lisää hotplug-tu
 
 ---
 
-[← Edellinen oppitunti](./31-contiguous-physical-pages.md) · [Sisällysluettelo](./README.md) · **Kurssi suoritettu.**
+[← Edellinen oppitunti](./31-contiguous-physical-pages.md) · [Seuraava oppitunti →](./33-terminal-history-and-uptime.md) · [Sisällysluettelo](./README.md)

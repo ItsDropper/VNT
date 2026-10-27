@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Lue käynnistys-assemblya](08-reading-boot-assembly.md) · [Seuraava oppitunti: Alkuvaiheen sivutaulut →](10-initial-paging.md)
 
 ## Koodiesimerkki: long mode -siirtymän edellytykset
 
@@ -133,3 +132,7 @@ Tämä on toteutusohje, ei vain aiheesta kertova yhteenveto. Avaa lähdetiedosto
 ### Muutosraportti
 
 Kirjaa muutetut tiedostot, toteutettu sopimus, build-tulos, QEMU-havainto, virhepolut ja tunnetut rajoitukset. Jos testaus jäi tekemättä, merkitse se avoimeksi työksi.
+
+---
+
+[← Edellinen oppitunti](./08-reading-boot-assembly.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./10-initial-paging.md)

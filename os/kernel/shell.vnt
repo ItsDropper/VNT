@@ -86,7 +86,10 @@ fun shell_run() {
             console_puts("\r\n")
             handled = 0
             if str_eq(buffer, "help") {
-                console_puts("Commands: help, about, clear, echo, history, uptime, synctest, mem, memtest, vmtest, irq, mouse, smp, reboot, halt\r\n")
+                console_puts("Commands: help, about, clear, echo, history, uptime\r\n")
+                console_puts("Diagnostics: synctest, mem, memtest, vmtest, irq, mouse, smp\r\n")
+                console_puts("Power: reboot, halt\r\n")
+                console_puts("Usage: echo TEXT prints TEXT; history shows the previous command.\r\n")
                 handled = 1
             }
             if str_eq(buffer, "about") {

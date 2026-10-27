@@ -42,6 +42,26 @@ fun pic_enable_irq(irq: int) {
     return 0
 }
 
+# Return the live hardware mask bit for a legacy PIC IRQ.
+# 1 means masked, 0 means unmasked; -1 rejects invalid IRQ numbers.
+# This reads the PIC data port and does not change controller state.
+fun pic_irq_is_masked(irq: int) -> int {
+    if irq < 0 || irq > 15 {
+        return -1
+    }
+    let result: int = 0
+    if irq < 8 {
+        unsafe {
+            asm volatile("movw $0x21, %dx; inb %dx, %al; movzbl %al, %eax; movl -8(%rbp), %ecx; shrl %cl, %eax; andl $1, %eax; movl %eax, -16(%rbp)")
+        }
+    } else {
+        unsafe {
+            asm volatile("movw $0xa1, %dx; inb %dx, %al; movzbl %al, %eax; movl -8(%rbp), %ecx; subl $8, %ecx; shrl %cl, %eax; andl $1, %eax; movl %eax, -16(%rbp)")
+        }
+    }
+    return result
+}
+
 fun pic_disable_all() {
     unsafe {
         asm volatile("movw $0x21, %dx; movb $0xff, %al; outb %al, %dx; movw $0xa1, %dx; outb %al, %dx")

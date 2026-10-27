@@ -244,6 +244,21 @@ fun keyboard_poll() -> int {
         if scan == 0x48 {
             return 257
         }
+        if scan == 0x4b {
+            return 258
+        }
+        if scan == 0x4d {
+            return 259
+        }
+        if scan == 0x53 {
+            return 260
+        }
+        if scan == 0x47 {
+            return 261
+        }
+        if scan == 0x4f {
+            return 262
+        }
         return 256
     }
     if scan == 0xe0 {

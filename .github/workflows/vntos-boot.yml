@@ -57,6 +57,11 @@ jobs:
           grep -F 'invlpg (%rdi)' build/freestanding-unsafe-memory.s
           grep -F 'leaq test_memory_symbol(%rip), %rax' build/freestanding-unsafe-memory.s
 
+          if ./build/vnt --emit-freestanding-asm tests/freestanding_unsafe_memory_rejected.vnt -o build/unsafe-memory-rejected.s; then
+            echo "Unsafe memory intrinsic unexpectedly compiled outside unsafe { ... }" >&2
+            exit 1
+          fi
+
       - name: Boot guest and test interactive shell
         shell: bash
         run: |

@@ -149,7 +149,7 @@ jobs:
               drain(0.35)
 
           # Exercise the real PS/2 keyboard path, not only the serial RX path.
-          for command in ("help", "about", "dectest"):
+          for command in ("help", "about", "acpitest", "dectest"):
               type_command(command)
 
           # Edit in the middle: turn "ech test" into "echo test" with Home,
@@ -201,7 +201,8 @@ jobs:
               "VNTOS_BOOT_OK",
               "VNTOS_COMMAND_LINE_READY",
               "Commands: help, about, clear, echo, history, uptime",
-              "Diagnostics: dectest, synctest, atomictest, mem, memtest, vmtest, irq, mouse, smp",
+              "Diagnostics: acpitest, dectest, synctest, atomictest, mem, memtest, vmtest, irq, mouse, smp",
+              "ACPI IRQ resolver self-test: PASS",
               "Decimal digit self-test: PASS",
               "Power: reboot, halt",
               "Usage: echo TEXT prints TEXT; history shows the previous command.",

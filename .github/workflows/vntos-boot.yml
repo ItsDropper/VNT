@@ -240,9 +240,9 @@ jobs:
               "IRQ1 count (decimal):",
           ]
           for label in decimal_labels:
-              if not re.search(re.escape(label) + r"\\s*[0-9]+", transcript):
+              if not re.search(re.escape(label) + r"\s*[0-9]+", transcript):
                   raise SystemExit("Expected decimal digits after: " + label)
-          if re.search(r"Approximate uptime seconds \(decimal\):\\s*0x", transcript):
+          if re.search(r"Approximate uptime seconds \(decimal\):\s*0x", transcript):
               raise SystemExit("Uptime seconds unexpectedly formatted as hexadecimal")
           PY
           grep -F 'B1234L' build/debug.log

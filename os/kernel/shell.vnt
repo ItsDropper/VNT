@@ -135,10 +135,10 @@ fun shell_run() {
                 console_puts("Kernel end: ")
                 console_hex(kernel_end_addr())
                 console_puts("Identity map: first 1 GiB\r\n")
-                console_puts("Usable 4-KiB pages: ")
-                console_hex(phys_count_usable_pages())
-                console_puts("Free 4-KiB pages: ")
-                console_hex(phys_count_free_pages())
+                console_puts("Usable 4-KiB pages (decimal): ")
+                console_decimal(phys_count_usable_pages())
+                console_puts("Free 4-KiB pages (decimal): ")
+                console_decimal(phys_count_free_pages())
                 handled = 1
             }
             if str_eq(buffer, "memtest") {
@@ -192,12 +192,12 @@ fun shell_run() {
                 handled = 1
             }
             if str_eq(buffer, "irq") {
-                console_puts("Timer ticks: ")
-                console_hex(kernel_timer_ticks())
-                console_puts("IRQ0 count: ")
-                console_hex(device_irq_count(0))
-                console_puts("IRQ1 count: ")
-                console_hex(device_irq_count(1))
+                console_puts("Timer ticks (decimal): ")
+                console_decimal(kernel_timer_ticks())
+                console_puts("IRQ0 count (decimal): ")
+                console_decimal(device_irq_count(0))
+                console_puts("IRQ1 count (decimal): ")
+                console_decimal(device_irq_count(1))
                 handled = 1
             }
             if str_eq(buffer, "mouse") {

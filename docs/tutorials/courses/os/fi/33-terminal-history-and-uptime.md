@@ -128,4 +128,4 @@ Seuraavaksi kannattaa erottaa rajattu rivieditori komentojen käsittelystä ja l
 
 ---
 
-[← Edellinen oppitunti](./32-reserved-memory-map-precedence.md) · [Sisällysluettelo](./README.md) · **Seuraavaksi: paranna rajattua komentorivieditoria.**
+[← Edellinen oppitunti](./32-reserved-memory-map-precedence.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./34-terminal-editable-line-editor.md)

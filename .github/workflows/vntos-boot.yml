@@ -148,8 +148,30 @@ jobs:
               drain(0.35)
 
           # Exercise the real PS/2 keyboard path, not only the serial RX path.
-          for command in ("help", "about", "echo test"):
+          for command in ("help", "about"):
               type_command(command)
+
+          # Edit in the middle: turn "ech test" into "echo test" with Home,
+          # three Right presses, and insertion at the cursor.
+          for key in "ech test":
+              press(key)
+          press("home")
+          for _ in range(3):
+              press("right")
+          press("o")
+          press("ret")
+          drain(0.3)
+
+          # Delete from the middle: turn "echo ttest" into "echo test".
+          for key in "echo ttest":
+              press(key)
+          press("home")
+          for _ in range(5):
+              press("right")
+          press("delete")
+          press("ret")
+          drain(0.3)
+
           # Up-arrow must recall the prior command into the live input buffer.
           press("up")
           press("ret")

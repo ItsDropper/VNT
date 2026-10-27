@@ -87,7 +87,7 @@ Approximate uptime seconds (decimal):
 Clock source: PIT at nominal 100 Hz; seconds are approximate.
 ```
 
-The first two labels should be followed by decimal digits, not a `0x` prefix. The `mem` command should continue to use hexadecimal for addresses and its existing allocator counters until their formatting is deliberately changed. The `irq` command is not changed by this lesson.
+The first two labels should be followed by decimal digits, not a `0x` prefix. The `mem` command keeps kernel addresses in hexadecimal but now prints usable/free page counts in decimal. The `irq` command now prints timer ticks and IRQ0/IRQ1 counters in decimal as well. Labels explicitly identify the format; CPU IDs and register-like values remain hexadecimal.
 
 Useful formatter test cases are zero, a one-digit number, a power of ten, a number containing internal zeroes, and a large positive value. In a later change, factor formatting into a pure digit-buffer helper so it can be tested without hardware output.
 

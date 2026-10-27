@@ -45,6 +45,21 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: APIC IPI -viestit](28-apic-ipi-service.md) · [Kurssi valmis — takaisin sisällysluetteloon](./README.md)
 
+## Koodiesimerkki: nykyinen AP-tila ei ole vielä yleinen lukitus
+
+```vnt
+if acpi_cpu_apic_id(index) == apic_id {
+    state_set(112 + index, 1)
+    state_set(60, state_get(60) + 1)
+    matched = 1
+}
+```
+
+Tämä on nykyisen os/kernel/smp.vnt-tiedoston AP:n alustuspolusta. Se julkaisee AP:n online-tilan ja kasvattaa jaettua laskuria. Tämä on rajattu nykyiseen malliin, jossa AP ei aja scheduleria eikä käsittele tavallisia laite-IRQ:ita. `state_get` + `state_set` ei ole yleinen atominen read-modify-write-operaatio, joten sitä ei voi turvallisesti käyttää rinnakkaiseen allokointiin tai monen CPU:n lukitukseen.
+
+**Tee itse:** Ennen kuin sallit usean CPU:n muokata samaa tietoa, määritä omistaja, atomisuus, muistijärjestys ja lukituksen deadlock-säännöt. Nykyinen SMP-toteutus ei vielä tarjoa yleistä scheduler- tai allokaattoriturvallista synkronointia.
+
+
 ## Toteutuslaboratorio: SMP-synkronointi
 
 Tässä osiossa rakennat tai validoit konkreettisen osan nykyisestä VNTOS-kernelistä.

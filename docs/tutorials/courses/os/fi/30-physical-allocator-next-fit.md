@@ -124,8 +124,8 @@ Jos `build/vntos.iso` ei syntynyt, älä suorita QEMU-komentoa sellaisenaan. Ase
 
 ## Nykyiset rajoitukset
 
-Varaaja kattaa vain ensimmäisen 1 GiB:n identiteettikartoituksen, käyttää käynnistyskuvaan sijoitettuja bittikarttoja eikä sisällä yleistä heap-varaajaa tai SMP-lukkoa. Next-fit vähentää toistuvaa skannausta; se ei ratkaise pirstoutumista, usean peräkkäisen sivun varaamista, varattujen sivujen palauttamista tai rinnakkaista käyttöä.
+Varaaja kattaa vain ensimmäisen 1 GiB:n identiteettikartoituksen, käyttää käynnistyskuvaan sijoitettuja bittikarttoja eikä sisällä yleistä heap-varaajaa tai SMP-lukkoa. Next-fit vähentää toistuvaa skannausta. Varaajassa on nyt myös erillinen yhtenäisten sivujen rajapinta, jota käsittelee [oppitunti 31](./31-contiguous-physical-pages.md). Pirstoutuminen, varausten palauttaminen ja rinnakkainen käyttö ovat edelleen ratkaisematta.
 
 ---
 
-[← Edellinen oppitunti](./29-smp-synchronization-contract.md) · [Sisällysluettelo](./README.md) · **Kurssi suoritettu.**
+[← Edellinen oppitunti](./29-smp-synchronization-contract.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./31-contiguous-physical-pages.md)

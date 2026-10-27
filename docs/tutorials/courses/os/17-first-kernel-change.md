@@ -114,12 +114,12 @@ This is a teaching exercise that adds a second command for reading the same time
 ```vnt
 if str_eq(buffer, "ticks") {
     console_puts("Timer ticks: ")
-    console_hex(state_get(11))
+    console_hex(kernel_timer_ticks())
     handled = 1
 }
 ```
 
-The shell has already collected and terminated the input line before it reaches this code. `str_eq` checks the complete command name. `state_get(11)` reads the same shared counter updated by the timer dispatcher. `console_hex` formats the value, and `handled = 1` prevents the shell from printing the unknown-command response.
+The shell has already collected and terminated the input line before it reaches this code. `str_eq` checks the complete command name. `kernel_timer_ticks()` reads the named counter interface implemented by `os/kernel/core.vnt`. `console_hex` formats the value, and `handled = 1` prevents the shell from printing the unknown-command response.
 
 This is intentionally a read-only command. Do not reset the counter from the shell because that would introduce a shared-state mutation and change the meaning of observations taken elsewhere.
 

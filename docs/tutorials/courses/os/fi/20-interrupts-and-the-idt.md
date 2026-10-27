@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Jaa kernel VNT-moduuleihin](19-split-the-kernel-into-vnt-modules.md) · [Seuraava oppitunti: Pidä assembly-rajapinta pienenä →](21-minimal-assembly-entry-stubs.md)
 
 ## Koodiesimerkki: IDT-stub normalisoi pinon
 
@@ -137,3 +136,7 @@ Tämä harjoitus edellyttää lähdekoodin lukemista ja toteutuksen todentamista
 ### Muutosraportti
 
 Kirjaa muutos, rajapintasopimus, build-tulos, QEMU-havainto, testatut vektorit ja avoimet rajoitukset.
+
+---
+
+[← Edellinen oppitunti](./19-split-the-kernel-into-vnt-modules.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./21-minimal-assembly-entry-stubs.md)

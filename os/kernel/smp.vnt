@@ -201,10 +201,18 @@ fun smp_start_aps() -> int {
 # The BSP arms the test before sending IPIs and disarms it after all APs finish.
 fun smp_handle_ipi() -> int {
     if state_get(309) == 1 {
-        let work: int = 0
-        while work < 1000 {
-            state_increment_atomic(308)
-            work = work + 1
+        # Every AP reports readiness, then waits for the BSP's release.
+        state_increment_atomic(311)
+        let barrier_spins: int = 0
+        while state_get(312) == 0 && barrier_spins < 50000000 {
+            barrier_spins = barrier_spins + 1
+        }
+        if state_get(312) == 1 {
+            let work: int = 0
+            while work < 1000 {
+                state_increment_atomic(308)
+                work = work + 1
+            }
         }
         state_increment_atomic(310)
     }
@@ -223,7 +231,7 @@ fun smp_handle_ipi() -> int {
 
 # Run a deterministic counter test on the BSP and every online AP.
 # Returns 1 on exact count, 0 on failure, and -1 if fewer than two CPUs are online.
-# Slots 308..310 are reserved exclusively for this test; live IRQ counters are untouched.
+# Slots 308..312 are reserved exclusively for this test; live IRQ counters are untouched.
 fun smp_atomic_counter_self_test() -> int {
     let online: int = smp_online_cpu_count()
     if online < 2 || online != smp_discovered_cpu_count() {
@@ -233,6 +241,8 @@ fun smp_atomic_counter_self_test() -> int {
     state_set(308, 0)
     state_set(309, 1)
     state_set(310, 0)
+    state_set(311, 0)
+    state_set(312, 0)
 
     let index: int = 0
     while index < acpi_cpu_count() && index < 16 {
@@ -246,14 +256,26 @@ fun smp_atomic_counter_self_test() -> int {
         index = index + 1
     }
 
-    # BSP participates in the same workload while AP handlers run concurrently.
+    # Wait until every AP is parked at the barrier, then release all participants.
+    let expected_completions: int = online - 1
+    let ready_spins: int = 0
+    while state_get(311) < expected_completions && ready_spins < 50000000 {
+        ready_spins = ready_spins + 1
+    }
+    if state_get(311) != expected_completions {
+        state_set(309, 0)
+        state_set(312, 1)
+        return 0
+    }
+    state_set(312, 1)
+
+    # BSP and APs now run their fixed-size increment batches together.
     let work: int = 0
     while work < 1000 {
         state_increment_atomic(308)
         work = work + 1
     }
 
-    let expected_completions: int = online - 1
     let spins: int = 0
     while state_get(310) < expected_completions && spins < 50000000 {
         spins = spins + 1

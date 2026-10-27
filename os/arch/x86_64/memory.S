@@ -156,57 +156,55 @@ vntos_mmap_field:
  * frame >= 262144 is rejected. VNT owns policy and calls these primitives.
  */
 .macro BITMAP_SET name, symbol
-.global \name
-.type \name,@function
-\name:
+.global \\name
+.type \\name,@function
+\\name:
     cmpl $262144, %edi
-    jae .Lbitmap_bad_\@
+    jae .Lbitmap_bad_\\@
+    movl %edi, %r8d
+    shrl $3, %r8d
     movl %edi, %ecx
-    movl %edi, %eax
-    shrl $3, %ecx
-    andl $7, %eax
+    andl $7, %ecx
     movl $1, %edx
-    movb %al, %cl
     shll %cl, %edx
-    leaq \symbol(%rip), %rax
+    leaq \\symbol(%rip), %r11
     testl %esi, %esi
-    jz .Lbitmap_clear_\@
-    orb %dl, (%rax,%rcx)
+    jz .Lbitmap_clear_\\@
+    orb %dl, (%r11,%r8)
     movl $1, %eax
     ret
-.Lbitmap_clear_\@:
+.Lbitmap_clear_\\@:
     notb %dl
     andb %dl, (%r11,%r8)
     movl $1, %eax
     ret
-.Lbitmap_bad_\@:
+.Lbitmap_bad_\\@:
     xorl %eax, %eax
     ret
-.size \name, .-\name
+.size \\name, .-\\name
 .endm
 
 .macro BITMAP_GET name, symbol
-.global \name
-.type \name,@function
-\name:
+.global \\name
+.type \\name,@function
+\\name:
     cmpl $262144, %edi
-    jae .Lbitmap_get_bad_\@
+    jae .Lbitmap_get_bad_\\@
+    movl %edi, %r8d
+    shrl $3, %r8d
     movl %edi, %ecx
-    movl %edi, %edx
-    shrl $3, %ecx
-    andl $7, %edx
+    andl $7, %ecx
     movl $1, %eax
-    movb %dl, %cl
     shll %cl, %eax
-    leaq \symbol(%rip), %rdx
-    andb (%rdx,%rcx), %al
+    leaq \\symbol(%rip), %r11
+    andb (%r11,%r8), %al
     setne %al
     movzbl %al, %eax
     ret
-.Lbitmap_get_bad_\@:
+.Lbitmap_get_bad_\\@:
     xorl %eax, %eax
     ret
-.size \name, .-\name
+.size \\name, .-\\name
 .endm
 
 BITMAP_SET vntos_phys_usable_set, vntos_phys_usable_bitmap

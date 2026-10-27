@@ -79,7 +79,7 @@ fun shell_run() {
             }
             if str_eq(buffer, "irq") {
                 console_puts("Timer ticks: ")
-                console_hex(state_get(11))
+                console_hex(kernel_timer_ticks())
                 handled = 1
             }
             if str_eq(buffer, "mouse") {

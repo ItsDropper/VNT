@@ -45,6 +45,24 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: ELF ja linkkeriskripti](11-elf-and-linker.md) · [Seuraava oppitunti: Sarjaportti debuggausvälineenä →](13-serial-io.md)
 
+## Koodiesimerkki: VNT ilman käyttöjärjestelmäpalveluja
+
+```vnt
+fun serial_puts(text: string) {
+    let index: int = 0
+    while text[index] != 0 {
+        serial_putc(text[index])
+        index = index + 1
+    }
+    return 0
+}
+```
+
+Tämä on nykyisen os/serial.vnt-tiedoston funktio. Se käy merkkijonon läpi nollapäätteeseen saakka ja kutsuu serial_putc-funktiota jokaiselle merkille. Freestanding-koodi ei saa olettaa, että käyttöjärjestelmä tarjoaa tiedostot, stdoutin tai dynaamisen muistin.
+
+**Tee itse:** Tee vastaava funktio, joka käsittelee vain yhden merkin tai laskee merkkijonon pituuden. Tarkista, mitä tyyppejä kääntäjä tukee ja ettei uusi funktio viittaa linkittämättömään libc-symboliin.
+
+
 ## Toteutuslaboratorio: Freestanding VNT
 
 Tässä harjoituksessa toteutat tai jäljität toimivan osan, et vain kuvaile käsitettä.

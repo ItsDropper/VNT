@@ -258,3 +258,19 @@ fun phys_self_test() -> int {
     }
     return valid
 }
+
+# Permanently reserve a page already owned by the allocator, for page tables.
+fun phys_reserve_allocated_page(address: i64) -> int {
+    if address < 256 * 4096 || address >= 1073741824 {
+        return 0
+    }
+    let frame: int = address / 4096
+    if frame * 4096 != address {
+        return 0
+    }
+    if phys_usable_get(frame) != 1 || phys_allocated_get(frame) != 1 {
+        return 0
+    }
+    phys_reserved_set(frame, 1)
+    return 1
+}

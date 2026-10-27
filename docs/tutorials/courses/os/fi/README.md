@@ -77,6 +77,7 @@ Tämä on aloittelijan kurssi, joka etenee käsitteistä todelliseen toteutuksee
 37. [Ylläpidä komentotulkin ohjetta ja testaa se QEMUssa](36-shell-help-output.md)
 38. [Testaa desimaalimerkin poiminta ilman konsolitulostusta](37-decimal-digit-self-test.md)
 39. [Erota IRQ-laskurit keskeytysohjaimen asetuksista](38-irq-controller-diagnostics.md)
+40. [Käytä atomisia lisäyksiä jaetuissa keskeytyslaskureissa](39-atomic-interrupt-counters.md)
 
 ## Lähdekoodin kartta
 

@@ -44,3 +44,68 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Freestanding-ohjelma](12-freestanding-vnt.md) · [Seuraava oppitunti: Sarjaportin komentotulkki →](14-the-serial-shell.md)
+
+## Toteutuslaboratorio: Sarjaportti
+
+Tässä harjoituksessa toteutat tai jäljität toimivan osan, et vain kuvaile käsitettä.
+
+**Tutkittavat tiedostot:** `os/serial.vnt`, `os/kernel.vnt`
+
+**Tavoite:** Toteuta diagnostiikkatuloste, joka toimii ennen VGA-konsolia. Polling pitää rajata, jotta rikkinäinen UART ei jumiuta bootia ikuisesti. Älä tulosta pitkää tekstiä keskeytyskäsittelijästä.
+
+### Toteutus vaiheittain
+
+1. **Rajaa vastuu:** Etsi COM1:n data-, interrupt-enable- ja line-status-portit.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+2. **Etsi nykyinen toteutus:** Selvitä, miksi serial_putc odottaa lähetysvalmiutta ennen datan kirjoitusta.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+3. **Kirjaa sopimus:** Tarkista serial_try_getc:n ei-data-paluuarvo ja miten kutsuja käsittelee sen.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+4. **Tee pienin muutos:** Lisää lyhyt yksilöivä tunniste oikeaan alustuskohtaan.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+5. **Tarkista riippuvuudet:** Testaa merkki, merkkijono, rivinvaihto ja vastaanoton tyhjä tapaus.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+6. **Käännä:** Käytä sarjaporttia viimeisenä onnistuneena boot-vaiheen merkkinä.
+   - Kirjaa lähdekoodin kohta, joka todistaa tämän.
+   - Tarkista myös kutsujan odotukset ennen muutosta.
+
+### Sopimus ja rajat
+
+- Määritä syötteet, paluuarvot ja virhetilanteet ennen toteutusta.
+- Tarkista osoitteet, pituudet, indeksit ja tilan alustaminen ennen käyttöä.
+- Erota CPU:n vaatima mekanismi VNT:n päätöksenteosta.
+- Älä väitä nykyisen rajoitetun toteutuksen tukevan ominaisuuksia, joita koodi ei sisällä.
+- Tarkista, ettei uusi toiminto vaadi alustamatonta moduulia tai linkittämätöntä symbolia.
+- Pidä diagnostiikka rajattuna ja vältä odottamista keskeytyskontekstissa.
+
+### Testaa jokainen polku
+
+1. Kirjoita ennuste ennen käännöstä.
+2. Suorita `bash os/build.sh` projektin juuressa.
+3. Tarkista ensimmäinen epäonnistunut komento.
+4. Käynnistä kernel QEMU:ssa ja tallenna sarjaportin tuloste.
+5. Testaa normaali tapaus, rajatapaus ja virheellinen syöte.
+6. Tarkista ettei virheellinen pyyntö muuta muistia tai laitteiston tilaa.
+7. Jos testaus ei ole käytettävissä, merkitse tulos vahvistamattomaksi.
+
+### Tavalliset virheet
+
+- Osoitteen tai pituuden tarkistus tehdään vasta luku-/kirjoitusoperaation jälkeen.
+- Uusi funktio ei ole mukana import-ketjussa.
+- Paluuarvon merkitys ei ole sama kutsujalle ja toteuttajalle.
+- Diagnostiikka peittää alkuperäisen vian.
+- Käännöksen onnistumista pidetään toimintatestinä.
+
+### Kirjaa toteutus
+
+Dokumentoi muutetut tiedostot, funktiosopimus, build-tulos, QEMU-havainto, negatiiviset testit ja rajoitukset. Näin toinen kehittäjä pystyy toistamaan tarkistuksen.

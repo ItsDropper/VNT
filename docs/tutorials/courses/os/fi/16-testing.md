@@ -44,3 +44,71 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Selvitä ongelmat järjestelmällisesti](15-debugging.md) · [Seuraava oppitunti: Tee ensimmäinen pieni muutos →](17-first-kernel-change.md)
+
+## Toteutuslaboratorio: Testaa muutakin kuin käännös
+
+Tässä osiossa teet konkreettisen muutoksen nykyiseen VNTOS-koodiin. Avaa lähdetiedostot ja varmista, että kuvaus vastaa nykyistä toteutusta.
+
+**Tutkittavat tiedostot:** `os/build.sh`, `.github/workflows/vntos-boot.yml`
+
+**Tavoite:** Rakenna testimatriisi, joka erottaa käännöksen, bootin ja ominaisuuden. Jokaisella väitteellä pitää olla vastaava havainto. Testaa virheelliset syötteet ja rajat yhtä huolellisesti kuin normaali tapaus.
+
+### Toteutus vaiheittain
+
+1. **Rajaa vastuu:** Kirjaa mitä build, grub-file, QEMU ja sarjaporttiloki kukin todistavat.
+   - Kirjoita ylös havainto tai lähdekoodikohta, jolla varmistat tämän.
+   - Älä tee seuraavaa muutosta ennen kuin tiedät nykyisen vaiheen tuloksen.
+
+2. **Etsi nykyinen toteutus:** Tee pieni testi, joka tarkistaa yhden toiminnon yhden ominaisuuden.
+   - Kirjoita ylös havainto tai lähdekoodikohta, jolla varmistat tämän.
+   - Älä tee seuraavaa muutosta ennen kuin tiedät nykyisen vaiheen tuloksen.
+
+3. **Kirjaa sopimus:** Lisää rajatapaus ja odotettu virhekäyttäytyminen.
+   - Kirjoita ylös havainto tai lähdekoodikohta, jolla varmistat tämän.
+   - Älä tee seuraavaa muutosta ennen kuin tiedät nykyisen vaiheen tuloksen.
+
+4. **Tee pienin muutos:** Tarkista, ettei testin onnistuminen perustu vain prosessin käynnistymiseen.
+   - Kirjoita ylös havainto tai lähdekoodikohta, jolla varmistat tämän.
+   - Älä tee seuraavaa muutosta ennen kuin tiedät nykyisen vaiheen tuloksen.
+
+5. **Tarkista riippuvuudet:** Erota ympäristöstä puuttuva työkalu ohjelmavirheestä.
+   - Kirjoita ylös havainto tai lähdekoodikohta, jolla varmistat tämän.
+   - Älä tee seuraavaa muutosta ennen kuin tiedät nykyisen vaiheen tuloksen.
+
+6. **Käännä:** Älä väitä CI:n läpäisseen, ellei GitHub Actionsin tulos todista sitä.
+   - Kirjoita ylös havainto tai lähdekoodikohta, jolla varmistat tämän.
+   - Älä tee seuraavaa muutosta ennen kuin tiedät nykyisen vaiheen tuloksen.
+
+7. **Tarkista konekoodi:** Tallenna komento, tulos ja epäonnistumisen ensimmäinen rivi.
+   - Kirjoita ylös havainto tai lähdekoodikohta, jolla varmistat tämän.
+   - Älä tee seuraavaa muutosta ennen kuin tiedät nykyisen vaiheen tuloksen.
+
+### Toteutuksen sopimus
+
+- Nimeä toiminnon omistava moduuli ja julkinen funktio.
+- Kirjaa parametrien ja paluuarvon merkitys sekä epäonnistumisen tapa.
+- Tarkista kaikki rajat ennen muistilukua, muistikirjoitusta tai portti-I/O:ta.
+- Tarkista, että jokainen import, funktiokutsu ja linkitetty symboli todella on olemassa.
+- Pidä CPU:n vaatima assembly erillään VNT:n päätöksenteosta.
+- Dokumentoi ominaisuudet, joita tämä muutos ei vielä toteuta.
+
+### Todennus
+
+1. Kirjoita ennuste ennen muutosta.
+2. Suorita `bash os/build.sh` projektin juuressa.
+3. Tarkista ensimmäinen epäonnistunut vaihe ja sen tarkka syy.
+4. Käynnistä kernel QEMU:ssa ja kerää sarjaportin tuloste.
+5. Testaa normaali polku, rajatapaus ja virhepolku.
+6. Vertaa tulosta ennusteeseen; älä laske pelkkää käännöstä toiminnalliseksi testiksi.
+
+### Tavalliset virheet
+
+- Usean alijärjestelmän muuttaminen samassa erässä.
+- Testin tekeminen eri buildista kuin jota juuri muokkasit.
+- Importin tai linkkerin riippuvuuden unohtaminen.
+- Väitteen tekeminen keskeneräisestä ominaisuudesta.
+- Virhepolun ohittaminen, koska normaali tapaus toimii.
+
+### Muutosraportti
+
+Kirjaa muutetut tiedostot, sopimus, build-komento ja tulos, QEMU-havainto, negatiiviset testit sekä avoimet rajoitukset. Jos jokin tarkistus jäi tekemättä, ilmoita se selvästi.

@@ -7,8 +7,10 @@ VNT kernel that handles CPU exceptions and a periodic timer interrupt.
 This is a practical course, not a claim that VNTOS is a finished desktop OS.
 The current kernel has a Multiboot2 bootstrap, a 1 GiB initial identity map,
 a VNT serial/VGA console, polled PS/2 input, an IDT, fatal exception reporting,
-and a PIT timer IRQ. It does **not** have a scheduler, userspace, filesystem,
-general heap allocator, or general device-driver framework.
+and a PIT timer IRQ. It also parses the Multiboot2 memory map and has a bounded
+physical page-frame allocator. It does **not** have a scheduler, userspace,
+filesystem, general heap allocator, virtual-memory manager, or general
+device-driver framework.
 
 ## Who this is for
 
@@ -89,6 +91,7 @@ evidence that the kernel still builds and boots.
 | --- | --- |
 | `os/arch/x86_64/boot.S` | Multiboot2 header, early stack, paging, long-mode transition |
 | `os/arch/x86_64/interrupts.S` | IDT, entry stubs, PIC/PIT setup, `iretq` boundary |
+| `os/arch/x86_64/memory.S` | Bounded Multiboot2 memory-map and physical bitmap primitives |
 | `os/arch/x86_64/README.md` | Architecture ownership and explicit limitations |
 | `os/kernel.vnt` | Kernel entry and ordered subsystem initialization |
 | `os/kernel/core.vnt` | Early shared-state access, kernel bounds, CPU halt/reboot |
@@ -97,6 +100,7 @@ evidence that the kernel still builds and boots.
 | `os/console.vnt` | VGA text output and combined console |
 | `os/ps2.vnt` | Polled keyboard and mouse input |
 | `os/interrupts.vnt` | VNT exception/IRQ dispatch policy |
+| `os/mm/phys.vnt` | Physical page-frame allocation, reservation, and statistics |
 | `os/linker.ld` | ELF section layout and symbols |
 | `os/grub.cfg` | GRUB Multiboot2 configuration |
 | `os/build.sh` | Compiler, assembler, linker, and ISO pipeline |

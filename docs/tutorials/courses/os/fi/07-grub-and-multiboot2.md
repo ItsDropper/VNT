@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: Mitä käynnistyksessä tapahtuu?](06-the-boot-sequence.md) · [Seuraava oppitunti: Lue käynnistys-assemblya →](08-reading-boot-assembly.md)
 
 ## Koodiesimerkki: Multiboot2-otsake
 
@@ -131,3 +130,7 @@ Tämä on toteutusohje, ei vain aiheesta kertova yhteenveto. Avaa lähdetiedosto
 ### Muutosraportti
 
 Kirjaa muutetut tiedostot, toteutettu sopimus, build-tulos, QEMU-havainto, virhepolut ja tunnetut rajoitukset. Jos testaus jäi tekemättä, merkitse se avoimeksi työksi.
+
+---
+
+[← Edellinen oppitunti](./06-the-boot-sequence.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./08-reading-boot-assembly.md)

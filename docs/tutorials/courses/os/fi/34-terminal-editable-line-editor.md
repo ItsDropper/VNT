@@ -77,8 +77,9 @@ Työnkulku `.github/workflows/vntos-boot.yml` syöttää näppäimet QEMUn näpp
 
 1. Kirjoita `ech test`, paina Homea, siirry kolme askelta oikealle, lisää `o` ja suorita `echo test`.
 2. Kirjoita `echo ttest`, siirry välilyönnin jälkeiseen merkkiin, paina Deletea ja suorita `echo test`.
-3. Paina nuolta ylös ja Enteriä hakeaksesi ja suorittaaksesi edellisen komennon.
-4. Suorita `history`, `uptime`, `synctest` sekä nykyiset muistin, IRQ:n, hiiren ja SMP:n diagnostiikkakomennot.
+3. Kirjoita `echo ttest`, paina Endiä, siirry neljä askelta vasemmalle, paina Backspacea ja suorita `echo test`.
+4. Paina nuolta ylös ja Enteriä hakeaksesi ja suorittaaksesi edellisen komennon.
+5. Suorita `history`, `uptime`, `synctest` sekä nykyiset muistin, IRQ:n, hiiren ja SMP:n diagnostiikkakomennot.
 
 Työnkulun tarkistukset ovat todiste. Lähdekoodimuutos tai uskottava odotettu tuloste ei todista, että kernel kääntyi tai käynnistyi.
 

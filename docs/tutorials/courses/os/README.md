@@ -77,6 +77,7 @@ No prior OS-development experience is required. Basic terminal use helps. Read l
 35. [Build a cursor-aware terminal line editor](34-terminal-editable-line-editor.md)
 36. [Print uptime and counters as readable decimal numbers](35-terminal-decimal-uptime.md)
 37. [Maintain readable shell help and test it in QEMU](36-shell-help-output.md)
+38. [Test decimal digit extraction without console output](37-decimal-digit-self-test.md)
 
 ## Source map
 

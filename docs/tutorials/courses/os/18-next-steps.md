@@ -29,7 +29,7 @@ The default IDT stub currently reports a fallback marker rather than preserving 
 
 The kernel now captures and validates the Multiboot2 information block, parses usable memory-map entries, reserves low memory, the linked image, and the boot-information block, and manages 4-KiB physical frames with usable/allocated/reserved bitmaps. The allocator is limited to the first 1-GiB identity-mapped window.
 
-The next memory milestones are to test the allocator more deeply, define page-table ownership, implement deliberate virtual mappings and page-fault diagnostics, and only then add a heap. Physical allocation and virtual-memory management are distinct pieces.
+The next memory milestones are to test the allocator more deeply, define page-table ownership, implement deliberate virtual mappings, and only then add a heap. Physical allocation and virtual-memory management are distinct pieces. The current fatal exception path now reports CR2 and decodes the common page-fault error bits (present/protection, write, user, reserved-bit, and instruction-fetch). This is observability, not demand paging: all page faults still halt the kernel.
 
 ## 4. Add a timer and scheduling model
 

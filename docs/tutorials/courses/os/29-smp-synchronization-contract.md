@@ -47,6 +47,23 @@ Likewise, `volatile`-like access, disabling interrupts on one CPU, or placing a 
 
 Before adding a lock, inspect the actual freestanding backend and its inline-assembly lowering. The compiler must expose an operation with a documented contract, and generated assembly must demonstrate that the operation is emitted as intended. Do not invent a VNT atomic syntax or silently move the lock algorithm into a new `.S` file.
 
+## 3A. Backend audit: what is and is not available
+
+The current freestanding backend recognizes a closed set of unsafe architecture calls in `src/compiler/freestanding_x86.c`. The existing raw-memory operations are emitted as ordinary `mov` instructions; `cpu_invlpg`, CR2 reads, and MSR access each have explicit lowering. There is no atomic exchange or compare-and-exchange intrinsic in that dispatch today.
+
+The backend also emits inline assembly text directly from the IR node. That interface does not declare input/output operands, register clobbers, or a compiler memory clobber. Therefore, a line such as `asm volatile("lock; ...")` is not a safe substitute for a first-class atomic operation: the compiler cannot infer the memory effects or register constraints from an arbitrary text string.
+
+The smallest useful compiler extension is an explicitly named operation with a fixed signature, rather than a general inline-assembly escape hatch. For example, a future `cpu_atomic_exchange_u64(address, value)` operation could:
+
+- Require an aligned, valid pointer to a 64-bit storage location in the kernel's mapped address space.
+- Emit x86-64 `xchgq` against memory, which is implicitly locked when the operand is memory.
+- Return the value observed before the exchange.
+- Provide acquire-release ordering for this x86 target, and be documented as a target-specific primitive rather than pretending to implement a portable C memory model.
+- Be callable only from an unsafe context, consistently with other raw-memory operations.
+- Have a compiler fixture whose generated assembly is checked by CI, plus a negative fixture that proves the unsafe-context restriction.
+
+This operation alone would not make the allocator safe. A spinlock still needs a carefully specified lock state, acquire/release behavior, interrupt-context policy, and a real multi-CPU contention test. Do not ship a lock based only on a grep assertion for `xchgq`.
+
 ## 4. Requirements for the next implementation
 
 A small first implementation should keep its scope narrow:

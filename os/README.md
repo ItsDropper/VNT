@@ -99,7 +99,7 @@ not evidence of independent modules or memory-safe ownership.
 - **Memory map:** the bootstrap identity-maps the first 1 GiB using 2 MiB
   pages, including the legacy VGA text buffer. The physical allocator parses
   Multiboot2 type-1 regions inside that window and tracks usable, allocated,
-  and reserved frames with bitmaps. Allocation searches from a cursor and wraps once; this reduces repeated scans of already-used low frames but does not make the allocator SMP-safe.
+  and reserved frames with bitmaps. Available regions are processed first, then all non-available regions clear any overlapping frames from the usable bitmap. This makes reserved entries take precedence even if firmware entries overlap. Allocation searches from a cursor and wraps once; this reduces repeated scans of already-used low frames but does not make the allocator SMP-safe.
 - **Timer:** PIT-based, approximately 100 Hz. It is not a calibrated wall
   clock and does not schedule tasks.
 

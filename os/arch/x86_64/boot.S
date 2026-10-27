@@ -346,5 +346,11 @@ vntos_state:
     .quad 0       /* SMP IPI/CPU state 174 */
     .quad 0       /* SMP IPI/CPU state 175 */
     .quad 256     /* Physical allocator next-fit hint: frame index 176 */
+    .quad 0       /* PS/2 extended-key prefix pending: state 177 */
+    .quad 0       /* Last shell command length: state 178 */
+    .quad 0       /* Reserved shell state: state 179 */
+    .rept 128
+    .quad 0       /* Last shell command bytes: states 180..307 */
+    .endr
 
 .section .note.GNU-stack,"",@progbits

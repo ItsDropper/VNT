@@ -9,6 +9,7 @@ import "../serial.vnt"
 import "../console.vnt"
 import "../ps2.vnt"
 import "device_irq.vnt"
+import "../mm/phys.vnt"
 
 fun str_eq(left: string, right: string) -> bool {
     let index: int = 0
@@ -76,6 +77,10 @@ fun shell_run() {
                 console_puts("Kernel end: ")
                 console_hex(kernel_end_addr())
                 console_puts("Identity map: first 1 GiB\r\n")
+                console_puts("Usable 4-KiB pages: ")
+                console_hex(phys_count_usable_pages())
+                console_puts("Free 4-KiB pages: ")
+                console_hex(phys_count_free_pages())
                 handled = 1
             }
             if str_eq(buffer, "irq") {

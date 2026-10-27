@@ -76,6 +76,7 @@ No prior OS-development experience is required. Basic terminal use helps. Read l
 34. [Terminal history and uptime diagnostics](33-terminal-history-and-uptime.md)
 35. [Build a cursor-aware terminal line editor](34-terminal-editable-line-editor.md)
 36. [Print uptime and counters as readable decimal numbers](35-terminal-decimal-uptime.md)
+37. [Maintain readable shell help and test it in QEMU](36-shell-help-output.md)
 
 ## Source map
 

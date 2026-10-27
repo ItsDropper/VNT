@@ -77,8 +77,9 @@ The `.github/workflows/vntos-boot.yml` workflow injects keys through QEMU's keyb
 
 1. Type `ech test`, press Home, move right three places, insert `o`, and execute `echo test`.
 2. Type `echo ttest`, move to the character after the space, press Delete, and execute `echo test`.
-3. Press Up and Enter to recall and execute the previous command.
-4. Run `history`, `uptime`, `synctest`, and the existing memory, IRQ, mouse, and SMP diagnostics.
+3. Type `echo ttest`, press End, move left four places, use Backspace, and execute `echo test`.
+4. Press Up and Enter to recall and execute the previous command.
+5. Run `history`, `uptime`, `synctest`, and the existing memory, IRQ, mouse, and SMP diagnostics.
 
 The workflow assertions are the evidence. A source change or a plausible expected transcript does not prove that the kernel compiled or booted.
 

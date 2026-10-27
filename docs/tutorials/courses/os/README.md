@@ -79,6 +79,7 @@ No prior OS-development experience is required. Basic terminal use helps. Read l
 37. [Maintain readable shell help and test it in QEMU](36-shell-help-output.md)
 38. [Test decimal digit extraction without console output](37-decimal-digit-self-test.md)
 39. [Distinguish IRQ delivery counts from controller configuration](38-irq-controller-diagnostics.md)
+40. [Use atomic increments for shared interrupt counters](39-atomic-interrupt-counters.md)
 
 ## Source map
 

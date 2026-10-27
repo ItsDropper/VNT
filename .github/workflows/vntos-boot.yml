@@ -62,10 +62,16 @@ jobs:
             exit 1
           fi
 
+      - name: Verify freestanding MSR code generation
+        run: |
+          ./build/vnt --emit-freestanding-asm tests/freestanding_msr.vnt -o build/freestanding-msr.s
+          grep -F 'rdmsr' build/freestanding-msr.s
+          grep -F 'wrmsr' build/freestanding-msr.s
+
       - name: Boot guest and test interactive shell
         shell: bash
         run: |
-          qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -display none -monitor unix:build/qemu-keyboard-monitor.sock,server,nowait -serial unix:build/qemu-serial.sock,server,nowait -debugcon file:build/debug.log -global isa-debugcon.iobase=0xe9 -no-reboot -no-shutdown &
+          qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -smp 4 -display none -monitor unix:build/qemu-keyboard-monitor.sock,server,nowait -serial unix:build/qemu-serial.sock,server,nowait -debugcon file:build/debug.log -global isa-debugcon.iobase=0xe9 -no-reboot -no-shutdown &
           qemu_pid=$!
           cleanup_qemu() {
             kill "$qemu_pid" 2>/dev/null || true
@@ -132,7 +138,7 @@ jobs:
               drain(0.35)
 
           # Exercise the real PS/2 keyboard path, not only the serial RX path.
-          for command in ("help", "about", "echo test", "mem", "memtest", "vmtest", "irq", "mouse", "badcommand", "clear", "halt"):
+          for command in ("help", "about", "echo test", "mem", "memtest", "vmtest", "irq", "mouse", "smp", "badcommand", "clear", "halt"):
               type_command(command)
           monitor.close()
           drain(0.5)
@@ -144,13 +150,20 @@ jobs:
           required = [
               "VNTOS_BOOT_OK",
               "VNTOS_COMMAND_LINE_READY",
-              "Commands: help, about, clear, echo, mem, memtest, vmtest, irq, mouse, reboot, halt",
+              "Commands: help, about, clear, echo, mem, memtest, vmtest, irq, mouse, smp, reboot, halt",
               "VNTOS: VNT-compiled freestanding x86-64 kernel.",
               "test",
               "Kernel start: 0x",
               "Kernel end: 0x",
               "Identity map: first 1 GiB",
               "Physical page allocator initialized.",
+              "ACPI MADT discovered. Firmware CPUs: 0x",
+              "Local APIC enabled. BSP APIC ID: 0x",
+              "CPU online count: 0x",
+              "Discovered CPUs: 0x",
+              "Online CPUs: 0x",
+              "Secondary CPU startup: PASS",
+              "Online CPUs: 0x0000000000000004",
               "Usable 4-KiB pages: 0x",
               "Free 4-KiB pages: 0x",
               "Physical allocator self-test: PASS",

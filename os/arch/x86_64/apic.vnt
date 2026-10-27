@@ -1,0 +1,198 @@
+# Copyright (c) 2026 ItsDropper
+# Licensed under the MIT License. See LICENSE in the repository root.
+#
+# Local APIC enablement and safe, masked I/O APIC initialization.
+# APIC MMIO windows are mapped by the x86-64 bootstrap at their conventional
+# PC addresses. Nonstandard MADT overrides are rejected rather than dereferenced.
+
+import "../../kernel/core.vnt"
+import "../../firmware/acpi.vnt"
+
+fun apic_read32(offset: int) -> int {
+    unsafe {
+        return mem_read_u32(0xfee00000, offset)
+    }
+}
+
+fun apic_write32(offset: int, value: int) -> int {
+    unsafe {
+        mem_write_u32(0xfee00000, offset, value)
+    }
+    return 1
+}
+
+fun ioapic_write_register(index: int, value: int) -> int {
+    unsafe {
+        mem_write_u32(0xfec00000, 0, index)
+        mem_write_u32(0xfec00000, 16, value)
+    }
+    return 1
+}
+
+fun ioapic_read_register(index: int) -> int {
+    unsafe {
+        mem_write_u32(0xfec00000, 0, index)
+        return mem_read_u32(0xfec00000, 16)
+    }
+}
+
+fun apic_mask_lvt(offset: int) -> int {
+    let value: int = apic_read32(offset)
+    if (value / 65536) % 2 == 0 {
+        value = value + 65536
+    }
+    return apic_write32(offset, value)
+}
+
+fun apic_mask_ioapic_routes() -> int {
+    if acpi_ioapic_count() != 1 {
+        state_set(63, 0)
+        return 0
+    }
+    if acpi_ioapic_address() != 0xfec00000 {
+        state_set(63, 0)
+        return 0
+    }
+    let version: int = ioapic_read_register(1)
+    let maximum: int = (version / 65536) % 256
+    let count: int = maximum + 1
+    if count < 1 || count > 256 {
+        state_set(63, 0)
+        return 0
+    }
+    let index: int = 0
+    while index < count {
+        let low_register: int = 16 + index * 2
+        let high_register: int = low_register + 1
+        let low: int = ioapic_read_register(low_register)
+        if (low / 65536) % 2 == 0 {
+            low = low + 65536
+        }
+        ioapic_write_register(low_register, low)
+        ioapic_write_register(high_register, 0)
+        index = index + 1
+    }
+    state_set(62, count)
+    state_set(63, 1)
+    return 1
+}
+
+fun apic_init() -> int {
+    if acpi_madt_address() == 0 {
+        if acpi_discover() != 1 {
+            state_set(58, 0)
+            return 0
+        }
+    }
+    if acpi_lapic_address() != 0xfee00000 {
+        state_set(58, 0)
+        return 0
+    }
+
+    let msr: i64 = 0
+    unsafe {
+        msr = cpu_read_msr(0x1b)
+    }
+    # x2APIC uses MSR-based register access and is not yet implemented.
+    if (msr / 1024) % 2 == 1 {
+        state_set(58, 0)
+        return 0
+    }
+    let low_flags: i64 = msr % 4096
+    let new_msr: i64 = 0xfee00000 + low_flags
+    let enabled_msr: i64 = 0
+    if (low_flags / 2048) % 2 == 1 {
+        enabled_msr = new_msr
+    } else {
+        enabled_msr = new_msr + 2048
+    }
+    let written: int = 0
+    unsafe {
+        written = cpu_write_msr(0x1b, enabled_msr)
+    }
+    if written != 1 {
+        state_set(58, 0)
+        return 0
+    }
+
+    apic_write32(0x80, 0)
+    let version: int = apic_read32(0x30)
+    let maximum_lvt: int = (version / 65536) % 256
+    apic_mask_lvt(0x320)
+    if maximum_lvt >= 1 {
+        apic_mask_lvt(0x330)
+    }
+    if maximum_lvt >= 2 {
+        apic_mask_lvt(0x340)
+    }
+    if maximum_lvt >= 5 {
+        apic_mask_lvt(0x370)
+    }
+    if maximum_lvt >= 6 {
+        apic_mask_lvt(0x2f0)
+    }
+    # Vector 255 is reserved for the APIC spurious-interrupt vector.
+    apic_write32(0xf0, 0x1ff)
+    let id_register: int = apic_read32(0x20)
+    let apic_id: int = (id_register / 16777216) % 256
+    state_set(58, 1)
+    state_set(59, apic_id)
+    state_set(61, version % 256)
+    state_set(60, 1)
+    apic_mask_ioapic_routes()
+    return 1
+}
+
+fun apic_wait_icr_clear() -> int {
+    let spins: int = 0
+    while (apic_read32(0x300) / 4096) % 2 == 1 {
+        spins = spins + 1
+        if spins >= 1000000 {
+            return 0
+        }
+    }
+    return 1
+}
+
+# xAPIC physical-destination IPI. Command values are supplied by SMP policy.
+fun apic_send_icr(destination: int, command: int) -> int {
+    if apic_is_enabled() != 1 {
+        return 0
+    }
+    if apic_wait_icr_clear() != 1 {
+        return 0
+    }
+    let high: i64 = destination
+    high = high * 16777216
+    apic_write32(0x310, high)
+    apic_write32(0x300, command)
+    return apic_wait_icr_clear()
+}
+
+fun apic_is_enabled() -> int {
+    return state_get(58)
+}
+
+fun apic_bsp_id() -> int {
+    return state_get(59)
+}
+
+fun apic_version() -> int {
+    return state_get(61)
+}
+
+fun apic_ioapic_route_count() -> int {
+    return state_get(62)
+}
+
+fun apic_ioapic_ready() -> int {
+    return state_get(63)
+}
+
+# Called only after a future APIC-vector handler has completed its work.
+fun apic_eoi() -> int {
+    if apic_is_enabled() != 1 {
+        return 0
+    }
+    return apic_write32(0xb0, 0)
+}

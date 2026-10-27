@@ -17,7 +17,8 @@ gcc -O2 -std=gnu11 -Iinclude -Isrc/compiler "${sources[@]}" -o build/vnt
 gcc -c -m64 -ffreestanding -fno-pic -fno-stack-protector -mno-red-zone build/kernel.s -o build/kernel.o
 gcc -c -m64 -ffreestanding -fno-pic -fno-stack-protector -mno-red-zone os/arch/x86_64/boot.S -o build/boot.o
 gcc -c -m64 -ffreestanding -fno-pic -fno-stack-protector -mno-red-zone os/arch/x86_64/interrupts.S -o build/interrupts.o
-ld -nostdlib -static -z max-page-size=0x1000 -T os/linker.ld -o build/kernel.elf build/boot.o build/kernel.o build/interrupts.o
+gcc -c -m64 -ffreestanding -fno-pic -fno-stack-protector -mno-red-zone os/arch/x86_64/ap_trampoline.S -o build/ap_trampoline.o
+ld -nostdlib -static -z max-page-size=0x1000 -T os/linker.ld -o build/kernel.elf build/boot.o build/kernel.o build/interrupts.o build/ap_trampoline.o
 
 if command -v grub-file >/dev/null 2>&1; then
   grub-file --is-x86-multiboot2 build/kernel.elf

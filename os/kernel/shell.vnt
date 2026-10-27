@@ -11,6 +11,9 @@ import "../ps2.vnt"
 import "device_irq.vnt"
 import "../mm/phys.vnt"
 import "../mm/virt.vnt"
+import "../firmware/acpi.vnt"
+import "../arch/x86_64/apic.vnt"
+import "smp.vnt"
 
 fun str_eq(left: string, right: string) -> bool {
     let index: int = 0
@@ -60,7 +63,7 @@ fun shell_run() {
             console_puts("\r\n")
             handled = 0
             if str_eq(buffer, "help") {
-                console_puts("Commands: help, about, clear, echo, mem, memtest, vmtest, irq, mouse, reboot, halt\r\n")
+                console_puts("Commands: help, about, clear, echo, mem, memtest, vmtest, irq, mouse, smp, reboot, halt\r\n")
                 handled = 1
             }
             if str_eq(buffer, "about") {
@@ -97,6 +100,34 @@ fun shell_run() {
                     console_puts("Virtual-memory self-test: PASS\r\n")
                 } else {
                     console_puts("Virtual-memory self-test: FAIL\r\n")
+                }
+                handled = 1
+            }
+            if str_eq(buffer, "smp") {
+                console_puts("ACPI RSDP: ")
+                console_hex(acpi_rsdp_address())
+                console_puts("MADT: ")
+                console_hex(acpi_madt_address())
+                console_puts("Discovered CPUs: ")
+                console_hex(smp_discovered_cpu_count())
+                console_puts("Online CPUs: ")
+                console_hex(smp_online_cpu_count())
+                console_puts("BSP APIC ID: ")
+                console_hex(smp_bsp_apic_id())
+                console_puts("Local APIC enabled: ")
+                console_hex(apic_is_enabled())
+                console_puts("IOAPIC GSI base: ")
+                console_hex(acpi_ioapic_gsi_base())
+                console_puts("Interrupt-source overrides: ")
+                console_hex(acpi_iso_count())
+                console_puts("IOAPIC redirection entries masked: ")
+                console_hex(apic_ioapic_route_count())
+                console_puts("SMP startup error code: ")
+                console_hex(state_get(143))
+                if smp_online_cpu_count() == smp_discovered_cpu_count() {
+                    console_puts("All discovered CPUs are online.\r\n")
+                } else {
+                    console_puts("Some discovered CPUs remain offline.\r\n")
                 }
                 handled = 1
             }

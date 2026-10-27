@@ -26,6 +26,21 @@ Mikä ero on objektitiedostolla ja ELF-kernelillä? Mitä linkkeriskripti määr
 
 Varmista, että osaat selittää tämän oppitunnin pääkäsitteen omin sanoin, nimetä lähdekoodin kohdan, jossa se näkyy, ja kertoa, millä havainnolla testaisit toimintaa. Jos et osaa, palaa tiedostoon ja seuraa koodia vielä kerran.
 
+
+## Syvempi harjoitus: seuraa koodia vaiheittain
+
+Linkkeri ratkaisee symbolien sijainnit ja sijoittaa osiot. Jos symboli puuttuu, selvitä missä sen pitäisi olla määritelty ja onko tiedosto mukana buildissa. Älä vain poista virheilmoitusta.
+
+Tee harjoitus näin:
+1. **Ennusta:** kirjoita yhdellä lauseella, mitä uskot tämän osan tekevän.
+2. **Etsi lähtökohta:** etsi keskeinen funktio tai käsky ja selvitä, kuka sitä kutsuu.
+3. **Seuraa tietoa:** kirjaa syötteet, muutettu tila ja seuraava vaihe.
+4. **Etsi virhepolku:** mitä tapahtuu, jos tieto puuttuu, laite ei vastaa tai oletettu tila ei ole voimassa?
+5. **Todenna:** määritä havainto, joka osoittaisi toiminnon tapahtuneen. Se, ettei kernel kaadu heti, ei ole riittävä testi.
+6. **Vertaa:** tarkista, vastasiko lähdekoodi alkuperäistä ennustustasi.
+
+Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä tiedostosta. Kernelin ymmärtäminen tarkoittaa osan vastuun, rajapinnan, riippuvuuksien ja rajoitusten tuntemista — ei pelkkää koodin silmäilyä.
+
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Alkuvaiheen sivutaulut](10-initial-paging.md) · [Seuraava oppitunti: Freestanding-ohjelma →](12-freestanding-vnt.md)

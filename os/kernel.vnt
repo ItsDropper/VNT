@@ -20,6 +20,8 @@ fun kernel_main() {
     vga_puts("VGA console active. PS/2 keyboard and mouse polling enabled.\r\n")
     vga_puts("Type help. Serial COM1 remains available for diagnostics.\r\n\r\n")
     serial_puts("VNTOS_BOOT_OK\r\nVNTOS - freestanding x86-64 console\r\nType help for commands.\r\n")
+    # Keep legacy lines masked while the architecture code remaps the PIC.
+    pic_disable_all()
     interrupts_init()
     # Input is polled for now; do not enable keyboard IRQ1 without a handler.
     pic_disable_irq(1)

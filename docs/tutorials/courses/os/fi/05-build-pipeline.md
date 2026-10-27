@@ -43,7 +43,6 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 
 ---
 
-[← Sisällysluettelo](./README.md) · [← Edellinen: VNT-kielen perusteet kernel-koodissa](04-vnt-for-kernels.md) · [Seuraava oppitunti: Mitä käynnistyksessä tapahtuu? →](06-the-boot-sequence.md)
 
 ## Koodiesimerkki: build-putken todelliset vaiheet
 
@@ -123,3 +122,7 @@ Tämä on toteutusohje, ei vain aiheesta kertova yhteenveto. Avaa lähdetiedosto
 ### Muutosraportti
 
 Kirjaa muutetut tiedostot, toteutettu sopimus, build-tulos, QEMU-havainto, virhepolut ja tunnetut rajoitukset. Jos testaus jäi tekemättä, merkitse se avoimeksi työksi.
+
+---
+
+[← Edellinen oppitunti](./04-vnt-for-kernels.md) · [Sisällysluettelo](./README.md) · [Seuraava oppitunti →](./06-the-boot-sequence.md)

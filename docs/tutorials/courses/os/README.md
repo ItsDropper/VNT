@@ -71,6 +71,7 @@ No prior OS-development experience is required. Basic terminal use helps. Read l
 29. [Fixed-vector APIC IPIs](28-apic-ipi-service.md)
 30. [SMP safety: synchronization before shared memory](29-smp-synchronization-contract.md)
 31. [Improve physical-frame allocation with next-fit](30-physical-allocator-next-fit.md)
+32. [Allocate contiguous physical pages](31-contiguous-physical-pages.md)
 
 ## Source map
 
@@ -79,7 +80,7 @@ No prior OS-development experience is required. Basic terminal use helps. Read l
 | `os/arch/x86_64/boot.S` | Multiboot2 header, early stack, initial paging, long-mode transition, AP startup support |
 | `os/arch/x86_64/interrupts.S` | IDT gate construction, minimal interrupt entry/exit, PIC/PIT setup |
 | `os/arch/x86_64/ap_trampoline.S` | Low-memory secondary-CPU startup trampoline |
-| `os/mm/phys.vnt` | Multiboot2 memory-map parsing, frame bitmaps, and next-fit allocation policy |
+| `os/mm/phys.vnt` | Multiboot2 memory-map parsing, frame bitmaps, next-fit search, and contiguous page allocation |
 | `os/mm/virt.vnt` | Early page-table inspection and mapping policy in VNT |
 | `os/firmware/acpi.vnt` | ACPI tables and MADT CPU/controller discovery |
 | `os/arch/x86_64/apic.vnt` | Local APIC and I/O APIC policy in VNT |

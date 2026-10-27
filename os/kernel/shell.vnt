@@ -88,7 +88,7 @@ fun shell_run() {
             handled = 0
             if str_eq(buffer, "help") {
                 console_puts("Commands: help, about, clear, echo, history, uptime\r\n")
-                console_puts("Diagnostics: dectest, synctest, atomictest, mem, memtest, vmtest, irq, mouse, smp\r\n")
+                console_puts("Diagnostics: acpitest, dectest, synctest, atomictest, mem, memtest, vmtest, irq, mouse, smp\r\n")
                 console_puts("Power: reboot, halt\r\n")
                 console_puts("Usage: echo TEXT prints TEXT; history shows the previous command.\r\n")
                 handled = 1
@@ -118,6 +118,17 @@ fun shell_run() {
                 console_puts("Approximate uptime seconds (decimal): ")
                 console_decimal(ticks / 100)
                 console_puts("Clock source: PIT at nominal 100 Hz; seconds are approximate.\r\n")
+                handled = 1
+            }
+            if str_eq(buffer, "acpitest") {
+                let acpi_test_result: int = acpi_irq_self_test()
+                if acpi_test_result == 1 {
+                    console_puts("ACPI IRQ resolver self-test: PASS\r\n")
+                } else if acpi_test_result == -1 {
+                    console_puts("ACPI IRQ resolver self-test: SKIP; MADT unavailable.\r\n")
+                } else {
+                    console_puts("ACPI IRQ resolver self-test: FAIL\r\n")
+                }
                 handled = 1
             }
             if str_eq(buffer, "dectest") {

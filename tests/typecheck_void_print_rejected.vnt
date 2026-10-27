@@ -1,0 +1,5 @@
+fun log_message() -> void {
+    return
+}
+
+print(log_message())

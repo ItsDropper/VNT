@@ -26,6 +26,21 @@ Mitä tikki kertoo? Mitä scheduler tarvitsee ajastimen lisäksi?
 
 Varmista, että osaat selittää tämän oppitunnin pääkäsitteen omin sanoin, nimetä lähdekoodin kohdan, jossa se näkyy, ja kertoa, millä havainnolla testaisit toimintaa. Jos et osaa, palaa tiedostoon ja seuraa koodia vielä kerran.
 
+
+## Syvempi harjoitus: seuraa koodia vaiheittain
+
+Ajastintikki on tapahtuma, ei automaattisesti valmis ajanmittaus tai tehtävänvaihto. Selvitä, kuka päivittää laskurin, kuka kuittaa keskeytyksen ja mitä tapahtuu toistuvissa tapahtumissa.
+
+Tee harjoitus näin:
+1. **Ennusta:** kirjoita, mitä uskot tämän osan tekevän.
+2. **Etsi lähtökohta:** löydä keskeinen funktio tai käsky ja selvitä, kuka sitä kutsuu.
+3. **Seuraa tietoa:** kirjaa syötteet, muutettu tila ja seuraava vaihe.
+4. **Etsi virhepolku:** mitä tapahtuu, jos tieto puuttuu tai oletettu tila ei ole voimassa?
+5. **Todenna:** määritä havainto, joka osoittaa toiminnon tapahtuneen. Se, ettei kernel kaadu heti, ei ole riittävä testi.
+6. **Vertaa:** tarkista, vastasiko lähdekoodi alkuperäistä ennustustasi.
+
+Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä tiedostosta. Kernelin ymmärtäminen tarkoittaa vastuun, rajapinnan, riippuvuuksien ja rajoitusten tuntemista — ei pelkkää koodin silmäilyä.
+
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Käsittele keskeytyksiä VNT-kielellä](22-vnt-interrupt-dispatch.md) · [Seuraava oppitunti: Rakenna ja testaa keskeytyskernel →](24-build-and-test-the-interrupt-kernel.md)

@@ -26,6 +26,21 @@ Mitä IPI-testi todistaa? Nimeä kaksi asiaa, joita se ei todista.
 
 Varmista, että osaat selittää tämän oppitunnin pääkäsitteen omin sanoin, nimetä lähdekoodin kohdan, jossa se näkyy, ja kertoa, millä havainnolla testaisit toimintaa. Jos et osaa, palaa tiedostoon ja seuraa koodia vielä kerran.
 
+
+## Syvempi harjoitus: seuraa koodia vaiheittain
+
+IPI:n testaamisessa lähetys ei riitä: kohteen käsittely pitää todentaa. Silti testin tulos koskee vain polkua, jonka testi suorittaa, eikä sitä pidä yleistää muihin alijärjestelmiin.
+
+Tee harjoitus näin:
+1. **Ennusta:** kirjoita, mitä uskot tämän osan tekevän.
+2. **Etsi lähtökohta:** löydä keskeinen funktio tai käsky ja selvitä, kuka sitä kutsuu.
+3. **Seuraa tietoa:** kirjaa syötteet, muutettu tila ja seuraava vaihe.
+4. **Etsi virhepolku:** mitä tapahtuu, jos tieto puuttuu tai oletettu tila ei ole voimassa?
+5. **Todenna:** määritä havainto, joka osoittaa toiminnon tapahtuneen. Se, ettei kernel kaadu heti, ei ole riittävä testi.
+6. **Vertaa:** tarkista, vastasiko lähdekoodi alkuperäistä ennustustasi.
+
+Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä tiedostosta. Kernelin ymmärtäminen tarkoittaa vastuun, rajapinnan, riippuvuuksien ja rajoitusten tuntemista — ei pelkkää koodin silmäilyä.
+
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: ACPI, APIC ja usea CPU-ydin](27-acpi-apic-and-smp.md) · [Seuraava oppitunti: SMP-turvallisuus: synkronoi ennen jaettua muistia →](29-smp-synchronization-contract.md)

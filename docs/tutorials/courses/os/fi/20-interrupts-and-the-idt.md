@@ -26,6 +26,21 @@ Mikä ero on keskeytyksellä ja poikkeuksella? Mitä IDT tekee?
 
 Varmista, että osaat selittää tämän oppitunnin pääkäsitteen omin sanoin, nimetä lähdekoodin kohdan, jossa se näkyy, ja kertoa, millä havainnolla testaisit toimintaa. Jos et osaa, palaa tiedostoon ja seuraa koodia vielä kerran.
 
+
+## Syvempi harjoitus: seuraa koodia vaiheittain
+
+Keskeytyksen käsittelyssä CPU:n tila ja pinon sisältö ovat osa rajapintaa. Jos assembly ja VNT-käsittelijä odottavat eri rakennetta, kentät tulkitaan väärin. Seuraa sekä sisääntuloa että paluuta.
+
+Tee harjoitus näin:
+1. **Ennusta:** kirjoita, mitä uskot tämän osan tekevän.
+2. **Etsi lähtökohta:** löydä keskeinen funktio tai käsky ja selvitä, kuka sitä kutsuu.
+3. **Seuraa tietoa:** kirjaa syötteet, muutettu tila ja seuraava vaihe.
+4. **Etsi virhepolku:** mitä tapahtuu, jos tieto puuttuu tai oletettu tila ei ole voimassa?
+5. **Todenna:** määritä havainto, joka osoittaa toiminnon tapahtuneen. Se, ettei kernel kaadu heti, ei ole riittävä testi.
+6. **Vertaa:** tarkista, vastasiko lähdekoodi alkuperäistä ennustustasi.
+
+Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä tiedostosta. Kernelin ymmärtäminen tarkoittaa vastuun, rajapinnan, riippuvuuksien ja rajoitusten tuntemista — ei pelkkää koodin silmäilyä.
+
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Jaa kernel VNT-moduuleihin](19-split-the-kernel-into-vnt-modules.md) · [Seuraava oppitunti: Pidä assembly-rajapinta pienenä →](21-minimal-assembly-entry-stubs.md)

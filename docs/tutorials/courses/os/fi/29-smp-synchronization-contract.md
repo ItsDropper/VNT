@@ -26,6 +26,21 @@ Piirrä kahden CPU:n kilpailutilanne. Missä kohdassa lukko tai atominen operaat
 
 Varmista, että osaat selittää tämän oppitunnin pääkäsitteen omin sanoin, nimetä lähdekoodin kohdan, jossa se näkyy, ja kertoa, millä havainnolla testaisit toimintaa. Jos et osaa, palaa tiedostoon ja seuraa koodia vielä kerran.
 
+
+## Syvempi harjoitus: seuraa koodia vaiheittain
+
+Synkronointi on sekä laitteiston että kääntäjän sopimus. Lukon pitää estää samanaikainen kriittinen osio ja kääntäjän säilyttää muistitoimintojen järjestys. volatile ei korvaa kumpaakaan.
+
+Tee harjoitus näin:
+1. **Ennusta:** kirjoita, mitä uskot tämän osan tekevän.
+2. **Etsi lähtökohta:** löydä keskeinen funktio tai käsky ja selvitä, kuka sitä kutsuu.
+3. **Seuraa tietoa:** kirjaa syötteet, muutettu tila ja seuraava vaihe.
+4. **Etsi virhepolku:** mitä tapahtuu, jos tieto puuttuu tai oletettu tila ei ole voimassa?
+5. **Todenna:** määritä havainto, joka osoittaa toiminnon tapahtuneen. Se, ettei kernel kaadu heti, ei ole riittävä testi.
+6. **Vertaa:** tarkista, vastasiko lähdekoodi alkuperäistä ennustustasi.
+
+Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä tiedostosta. Kernelin ymmärtäminen tarkoittaa vastuun, rajapinnan, riippuvuuksien ja rajoitusten tuntemista — ei pelkkää koodin silmäilyä.
+
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: APIC IPI -viestit](28-apic-ipi-service.md) · [Kurssi valmis — takaisin sisällysluetteloon](./README.md)

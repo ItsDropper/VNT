@@ -61,6 +61,32 @@ fun console_puts_offset(text: string, offset: int) {
     return 0
 }
 
+# Print a non-negative integer in base 10 without allocating memory.
+# The divisor grows only while it remains <= value / 10, avoiding overflow.
+fun console_decimal(value: i64) {
+    if value == 0 {
+        console_putc(48)
+        console_puts("\r\n")
+        return 0
+    }
+    if value < 0 {
+        console_putc(45)
+        value = 0 - value
+    }
+    let divisor: i64 = 1
+    while divisor <= value / 10 {
+        divisor = divisor * 10
+    }
+    while divisor > 0 {
+        let digit: int = value / divisor
+        console_putc(48 + digit)
+        value = value % divisor
+        divisor = divisor / 10
+    }
+    console_puts("\r\n")
+    return 0
+}
+
 fun console_hex(value: i64) {
     console_puts("0x")
     let divisor: i64 = 1152921504606846976

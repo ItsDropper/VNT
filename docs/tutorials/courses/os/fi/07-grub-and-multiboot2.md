@@ -45,6 +45,28 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja yksi konkreettine
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: Mitä käynnistyksessä tapahtuu?](06-the-boot-sequence.md) · [Seuraava oppitunti: Lue käynnistys-assemblya →](08-reading-boot-assembly.md)
 
+## Koodiesimerkki: Multiboot2-otsake
+
+```asm
+ .section .multiboot,"a"
+.balign 8
+.global multiboot2_header
+multiboot2_header:
+    .long 0xe85250d6
+    .long 0
+    .long multiboot2_header_end - multiboot2_header
+    .long -(0xe85250d6 + (multiboot2_header_end - multiboot2_header))
+    .short 0
+    .short 0
+    .long 8
+multiboot2_header_end:
+```
+
+Tämä on os/arch/x86_64/boot.S:n otsake. Magic, arkkitehtuurikenttä, kokonaispituus ja checksum muodostavat lataajan kanssa sovitun tiedostomuodon. `KEEP(*(.multiboot))` linker-skriptissä estää otsakkeen pudottamisen pois linkityksessä.
+
+**Tee itse:** Älä muuta magic- tai pituuskenttiä arvaamalla. Tarkista käännöksen jälkeen `grub-file --is-x86-multiboot2 build/kernel.elf`, jos työkalu on asennettu, ja testaa ISO QEMU:ssa.
+
+
 ## Toteutuslaboratorio: GRUB ja Multiboot2
 
 Tämä on toteutusohje, ei vain aiheesta kertova yhteenveto. Avaa lähdetiedostot ennen kuin muutat niitä.

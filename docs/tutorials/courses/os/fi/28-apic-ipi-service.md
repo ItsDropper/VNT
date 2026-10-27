@@ -44,3 +44,68 @@ Kirjoita lopuksi omaan sanastoosi uusi käsite, sen selitys ja esimerkki tästä
 ---
 
 [← Sisällysluettelo](./README.md) · [← Edellinen: ACPI, APIC ja usea CPU-ydin](27-acpi-apic-and-smp.md) · [Seuraava oppitunti: SMP-turvallisuus: synkronoi ennen jaettua muistia →](29-smp-synchronization-contract.md)
+
+## Toteutuslaboratorio: APIC IPI -viestit
+
+Tässä osiossa rakennat tai validoit konkreettisen osan nykyisestä VNTOS-kernelistä.
+
+**Tutkittavat tiedostot:** `os/arch/x86_64/apic.vnt`, `os/kernel/smp.vnt`, `os/interrupts.vnt`
+
+**Tavoite:** Toteuta IPI-polku, jonka vastaanotto voidaan laskea ja todentaa. Vektori, kohde-CPU, toimitustila ja EOI on tarkistettava. IPI ei itsessään ole tehtäväajastin tai yleinen viestijono.
+
+### Toteutus vaiheittain
+
+1. **Rajaa vastuu:** Varmista että vektori 240 on asennettu IDT:hen ja ohjautuu VNT-dispatcheriin.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+2. **Etsi nykyinen toteutus:** Varmista, että vastaanottaja on online ja kohde-ID on oikea.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+3. **Kirjaa sopimus:** Määritä viestin semantiikka ennen lähettämistä.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+4. **Tee pienin muutos:** Lisää vastaanotosta rajattu laskuri tai tila, älä tulosta keskeytyksessä.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+5. **Tarkista riippuvuudet:** Testaa lähetettyjen ja vastaanotettujen viestien määrä yhdellä AP:lla.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+6. **Käännä:** Jos viesti ei saavu, tarkista APIC enable, IF, vektori ja toimitustila.
+   - Perustele vaihe lähdekoodilla tai dokumentoidulla arkkitehtuurisopimuksella.
+   - Kirjaa oletus, jonka tämä vaihe varmistaa.
+
+### Turvallisuus- ja rajapintasopimus
+
+- Validoi osoite, pituus, indeksi, tunniste ja laitetila ennen käyttöä.
+- Älä lue muuttuvamittaista tietorakennetta ilman rajojen tarkistusta.
+- Määritä selkeä virhepolku puuttuvalle laitteelle, virheelliselle datalle ja aikakatkaisulle.
+- Erota “havaittu”, “alustettu”, “online” ja “käytössä” eri tiloiksi, jos ne tarkoittavat eri asioita.
+- Älä oleta, että atominen muistikirjoitus yksin ratkaisee muistijärjestyksen tai omistajuuden.
+- Dokumentoi rajoitukset, joita nykyinen kernel ei vielä ratkaise.
+
+### Todennus
+
+1. Kirjoita odotettu tila ja havainto ennen muutosta.
+2. Suorita `bash os/build.sh` projektin juuressa.
+3. Tarkista ensimmäinen epäonnistunut komento ja erottele build-ongelma laiteongelmasta.
+4. Käynnistä vain QEMU:ssa ja kerää sarjaportin tuloste.
+5. Testaa normaali tapaus, rajatapaus ja virheellinen tai puuttuva tieto.
+6. Toista testi, jos toiminta riippuu ajoituksesta.
+7. Älä väitä CI:n tai laitetestin läpäisseen, ellei siitä ole todellista tulosta.
+
+### Tavalliset virheet
+
+- Firmwaresta saatuun tietoon luotetaan ennen checksum- ja pituustarkistuksia.
+- AP merkitään online-tilaan ennen kuin se saavuttaa sovitun valmiuspisteen.
+- IPI lähetetään ennen kuin IDT ja vastaanottaja ovat valmiita.
+- Jaettua muistia käytetään ilman omistajuus- tai lukitussopimusta.
+- Laskurin kasvaminen tulkitaan liian laajasti todisteeksi ominaisuuden valmiudesta.
+
+### Muutosraportti
+
+Kirjaa muutetut tiedostot, rajapinta, hyväksymiskriteeri, build-tulos, QEMU-havainto, negatiiviset testit ja jäljelle jääneet rajoitukset.

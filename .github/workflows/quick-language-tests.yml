@@ -306,7 +306,7 @@ jobs:
             echo "Compiler incorrectly accepted an incompatible explicit assignment."
             exit 1
           fi
-          grep -F "assignment target has type int but assigned value has type string." assignment-type-diagnostic.log
+          grep -F "initializer for 'count' expects int but received string." assignment-type-diagnostic.log
           test ! -e assignment-type-invalid.exe
 
       - name: Emit assembly without invoking the hosted linker

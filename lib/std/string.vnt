@@ -153,6 +153,7 @@ export fun replace(value, needle, replacement) {
             while i < needle_size {
                 if value[position + i] != needle[i] {
                     matched = false
+                    break
                 }
                 i += 1
             }
@@ -256,6 +257,7 @@ export fun split(value, delimiter) {
         while i < delimiter_size {
             if value[position + i] != delimiter[i] {
                 matched = false
+                break
             }
             i += 1
         }

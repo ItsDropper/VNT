@@ -1,0 +1,11 @@
+# Copyright (c) 2026 ItsDropper
+# MIT License
+# Void-returning calls cannot be used as branch conditions.
+
+fun log_message() -> void {
+    return
+}
+
+if log_message() {
+    print("unreachable")
+}

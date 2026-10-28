@@ -73,6 +73,8 @@ Each invalid case should fail compilation, and tests should check that a failed 
 
 A bare `return` is valid in a `void` function and exits that function without a value. Return-value expressions must begin on the same source line as `return`, because the lexer does not currently preserve newline tokens; a bare return can end at a closing brace or before the next statement line.
 
+`tests/void_bare_return.vnt` checks the runtime behavior. `tests/typecheck_bare_return_nonvoid_rejected.vnt` ensures the parser's new bare-return syntax does not weaken non-void return checking.
+
 For functions with an explicit non-void return type, the current checker requires a return on every statically recognized path. It recognizes direct returns, returns inside an unsafe block, and an `if` whose then and else branches both return. It intentionally does not treat a loop as guaranteed to execute or return. A conditional branch that does not return is still valid when a later statement returns on every path that falls through the conditional; `tests/typed_function_fallthrough_return.vnt` protects this distinction.
 
 This is a deliberately conservative analysis, not a full control-flow proof. Future work should use the control-flow graph to compute whether every reachable exit from a typed function returns a value, and should test early returns, unreachable statements, nested branches, and loops.

@@ -52,6 +52,15 @@ try {
     }
     Write-Host "Nested typed-function return checks: PASS"
 
+    $UnsafeBranchesExe = Join-Path $OutDir "typed_function_unsafe_branch_returns.exe"
+    & .\vnt.exe --compile tests\typed_function_unsafe_branch_returns.vnt -o $UnsafeBranchesExe
+    if ($LASTEXITCODE -ne 0) { throw "Unsafe-block branch-return program did not compile." }
+    $unsafeBranchesOutput = & $UnsafeBranchesExe
+    if ($LASTEXITCODE -ne 0 -or ($unsafeBranchesOutput -join "|") -ne "67|68|TYPED_UNSAFE_BRANCH_RETURNS_OK") {
+        throw "Unexpected unsafe-block branch-return output: $($unsafeBranchesOutput -join ' | ')"
+    }
+    Write-Host "Unsafe-block branch return checks: PASS"
+
     foreach ($case in @(
         "tests\typed_function_argument_error.vnt",
         "tests\typed_function_return_error.vnt",

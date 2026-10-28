@@ -483,6 +483,14 @@ jobs:
           ./std-number-smoke.exe > std-number-actual.txt
           tr -d '\r' < std-number-actual.txt > std-number-actual-lf.txt
           cat > std-number-expected.txt <<'VNT_EXPECTED'
+          4
+          -9
+          9
+          -4
+          5
+          0
+          10
+          5
           true
           true
           true

@@ -95,6 +95,8 @@ Unknown/dynamic types are permitted in selected contexts by design. Do not inter
 - `tests/typecheck_unknown_parameter_type.vnt`: rejects an undeclared parameter annotation.
 - `tests/typecheck_duplicate_parameter_names.vnt`: rejects ambiguous duplicate parameter names.
 - `tests/typecheck_argument_type_mismatch.vnt`: rejects a string passed to an `int`-annotated parameter.
+- `tests/typecheck_return_type_mismatch.vnt`: rejects a string returned from an `int`-annotated function.
+- `tests/typecheck_explicit_assignment_type_mismatch.vnt`: rejects assigning a string to an `int`-annotated parameter.
 - `tests/typecheck_nested_function_cannot_break_caller_loop.vnt`: verifies that a nested function cannot break the loop of its caller.
 - `tests/typecheck_duplicate_struct_fields.vnt`: rejects repeated field names in one struct declaration.
 - `tests/typecheck_duplicate_struct_definitions.vnt`: rejects a second declaration using an existing struct name.

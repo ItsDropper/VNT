@@ -182,7 +182,7 @@ jobs:
             exit 1
           fi
           test ! -e void-unary-invalid.exe
-          if ./vnt --compile tests/typecheck_void_condition_rejected.vnt -o void-condition-invalid.exe; then
+          if ./vnt --compile tests/typecheck_void_condition_rejected.vnt -o void-condition-invalid.exe 2> void-condition-invalid.exe.log; then
             echo "Compiler incorrectly accepted a void-returning call as an if condition."
             exit 1
           fi

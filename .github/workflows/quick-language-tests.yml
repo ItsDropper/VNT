@@ -545,6 +545,9 @@ jobs:
           b
           a-b-c
           0
+          2
+          y
+          0
           0
           ARRAY_STANDARD_LIBRARY_OK
           VNT_EXPECTED

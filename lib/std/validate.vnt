@@ -1,19 +1,10 @@
 # Conservative ASCII/text validation helpers. These are not Unicode-aware.
-# Email and URL checks are practical sanity checks, not complete standards parsers.
+# Email and URL checks are sanity checks, not complete standards parsers.
 
 import "string.vnt" as text
 
 export fun is_blank(value) {
-    size = len(value)
-    i = 0
-    while i < size {
-        ch = value[i]
-        if ch != " " && ch != "\t" && ch != "\r" && ch != "\n" {
-            return false
-        }
-        i += 1
-    }
-    return true
+    return text.trim(value) == ""
 }
 
 export fun is_digit(ch) {
@@ -36,43 +27,97 @@ export fun is_alphanumeric(ch) {
     return is_ascii_letter(ch) || is_digit(ch)
 }
 
+fun strip_digits(value) {
+    result = text.replace(value, "0", "")
+    result = text.replace(result, "1", "")
+    result = text.replace(result, "2", "")
+    result = text.replace(result, "3", "")
+    result = text.replace(result, "4", "")
+    result = text.replace(result, "5", "")
+    result = text.replace(result, "6", "")
+    result = text.replace(result, "7", "")
+    result = text.replace(result, "8", "")
+    result = text.replace(result, "9", "")
+    return result
+}
+
+fun strip_identifier_characters(value) {
+    result = strip_digits(value)
+    result = text.replace(result, "a", "")
+    result = text.replace(result, "b", "")
+    result = text.replace(result, "c", "")
+    result = text.replace(result, "d", "")
+    result = text.replace(result, "e", "")
+    result = text.replace(result, "f", "")
+    result = text.replace(result, "g", "")
+    result = text.replace(result, "h", "")
+    result = text.replace(result, "i", "")
+    result = text.replace(result, "j", "")
+    result = text.replace(result, "k", "")
+    result = text.replace(result, "l", "")
+    result = text.replace(result, "m", "")
+    result = text.replace(result, "n", "")
+    result = text.replace(result, "o", "")
+    result = text.replace(result, "p", "")
+    result = text.replace(result, "q", "")
+    result = text.replace(result, "r", "")
+    result = text.replace(result, "s", "")
+    result = text.replace(result, "t", "")
+    result = text.replace(result, "u", "")
+    result = text.replace(result, "v", "")
+    result = text.replace(result, "w", "")
+    result = text.replace(result, "x", "")
+    result = text.replace(result, "y", "")
+    result = text.replace(result, "z", "")
+    result = text.replace(result, "A", "")
+    result = text.replace(result, "B", "")
+    result = text.replace(result, "C", "")
+    result = text.replace(result, "D", "")
+    result = text.replace(result, "E", "")
+    result = text.replace(result, "F", "")
+    result = text.replace(result, "G", "")
+    result = text.replace(result, "H", "")
+    result = text.replace(result, "I", "")
+    result = text.replace(result, "J", "")
+    result = text.replace(result, "K", "")
+    result = text.replace(result, "L", "")
+    result = text.replace(result, "M", "")
+    result = text.replace(result, "N", "")
+    result = text.replace(result, "O", "")
+    result = text.replace(result, "P", "")
+    result = text.replace(result, "Q", "")
+    result = text.replace(result, "R", "")
+    result = text.replace(result, "S", "")
+    result = text.replace(result, "T", "")
+    result = text.replace(result, "U", "")
+    result = text.replace(result, "V", "")
+    result = text.replace(result, "W", "")
+    result = text.replace(result, "X", "")
+    result = text.replace(result, "Y", "")
+    result = text.replace(result, "Z", "")
+    return text.replace(result, "_", "")
+}
+
 export fun is_integer(value) {
-    size = len(value)
-    if size == 0 { return false }
-    start = 0
-    if value[0] == "-" || value[0] == "+" { start = 1 }
-    if start == size { return false }
-    while start < size {
-        if !is_digit(value[start]) { return false }
-        start += 1
+    if len(value) == 0 { return false }
+    unsigned = value
+    if text.starts_with(unsigned, "-") || text.starts_with(unsigned, "+") {
+        unsigned = text.right(unsigned, len(unsigned) - 1)
     }
-    return true
+    return len(unsigned) > 0 && strip_digits(unsigned) == ""
 }
 
 # Accepts forms such as 12, -12.5, .5, and 5.; rejects exponent notation.
 export fun is_decimal(value) {
-    size = len(value)
-    if size == 0 { return false }
-    i = 0
-    if value[0] == "-" || value[0] == "+" { i = 1 }
-    if i == size { return false }
-    dots = 0
-    digits = 0
-    while i < size {
-        ch = value[i]
-        if is_digit(ch) {
-            digits += 1
-        } else {
-            if ch == "." {
-                dots += 1
-                if dots > 1 { return false }
-            } else {
-                return false
-            }
-        }
-        i += 1
+    if len(value) == 0 { return false }
+    unsigned = value
+    if text.starts_with(unsigned, "-") || text.starts_with(unsigned, "+") {
+        unsigned = text.right(unsigned, len(unsigned) - 1)
     }
-    return digits > 0
+    if len(unsigned) == 0 || text.count(unsigned, ".") > 1 { return false }
+    without_dot = text.replace(unsigned, ".", "")
+    remaining = strip_digits(without_dot)
+    return remaining == "" && len(without_dot) > 0
 }
 
 export fun is_hex_digit(ch) {
@@ -80,19 +125,14 @@ export fun is_hex_digit(ch) {
 }
 
 export fun is_identifier(value) {
-    size = len(value)
-    if size == 0 { return false }
-    if !is_ascii_letter(value[0]) && value[0] != "_" { return false }
-    i = 1
-    while i < size {
-        if !is_alphanumeric(value[i]) && value[i] != "_" { return false }
-        i += 1
-    }
-    return true
+    if len(value) == 0 { return false }
+    first = text.left(value, 1)
+    if !is_ascii_letter(first) && first != "_" { return false }
+    remainder = text.right(value, len(value) - 1)
+    return strip_identifier_characters(remainder) == ""
 }
 
 # Requires one @, a non-empty local part, and a dotted domain with non-empty labels.
-# Deliberately does not claim to validate every legal email address.
 export fun looks_like_email(value) {
     size = len(value)
     if size < 5 || is_blank(value) { return false }

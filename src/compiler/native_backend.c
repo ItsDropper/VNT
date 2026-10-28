@@ -581,14 +581,13 @@ static void emit_stmt(CGen *g, AstNode *node) {
             break;
 
         case AST_RETURN_STATEMENT:
-            fputs("return ", g->out);
-
-            emit_expr(
-                g,
-                node->return_statement.expression
-            );
-
-            fputc(';', g->out);
+            if (node->return_statement.expression) {
+                fputs("return ", g->out);
+                emit_expr(g, node->return_statement.expression);
+                fputc(';', g->out);
+            } else {
+                fputs("return;", g->out);
+            }
             break;
 
         case AST_FUNCTION_CALL:

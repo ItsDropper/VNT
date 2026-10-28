@@ -39,7 +39,7 @@ export fun median(values) {
     size = len(values)
     if size == 0 { return 0 }
     ordered = sorted_copy(values)
-    middle = size / 2
+    middle = floor(size / 2)
     if size % 2 == 1 {
         return ordered[middle]
     }

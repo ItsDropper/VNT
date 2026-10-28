@@ -33,7 +33,51 @@ while count < 3 {
 
 The loop prints `0`, `1`, and `2`. The increment is essential: without changing `count`, the condition would remain true and the loop would not finish.
 
-## 3. Put reusable logic in a function
+## 3. Stop or skip iterations
+
+Use `break` to leave the nearest enclosing loop and `continue` to skip the remainder of the current iteration and check the loop again.
+
+```vnt
+for number in range(1, 8) {
+    if number == 3 {
+        continue
+    }
+    if number == 6 {
+        break
+    }
+    print(number)
+}
+```
+
+Expected output:
+
+```text
+1
+2
+4
+5
+```
+
+The `continue` prevents `3` from being printed. The `break` exits when `number` reaches `6`, so neither `6` nor `7` is printed.
+
+Nested loops are independent: loop control applies to the *innermost* loop containing the statement.
+
+```vnt
+for row in range(1, 3) {
+    for column in range(1, 4) {
+        if column == 2 {
+            continue
+        }
+        print(row * 10 + column)
+    }
+}
+```
+
+Expected output is `11`, `13`, `21`, `23`. Each `continue` skips only column `2`; the outer row loop still advances normally.
+
+A `break` or `continue` outside a loop is a compile-time error. Putting one inside an `if` does not make it valid unless that conditional is itself inside a loop. A function also cannot use loop control to affect a loop in its caller: a function body has its own control-flow boundary.
+
+## 4. Put reusable logic in a function
 
 Add a function before the statements that call it:
 

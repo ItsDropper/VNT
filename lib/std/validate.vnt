@@ -14,8 +14,6 @@ fun blank_value(value) {
     return true
 }
 
-export fun is_blank(value) { return blank_value(value) }
-
 fun digit_value(ch) {
     return len(ch) == 1 && (ch == "0" || ch == "1" || ch == "2" || ch == "3" || ch == "4" || ch == "5" || ch == "6" || ch == "7" || ch == "8" || ch == "9")
 }
@@ -40,19 +38,8 @@ fun hex_digit_value(ch) {
     return digit_value(ch) || ch == "a" || ch == "b" || ch == "c" || ch == "d" || ch == "e" || ch == "f" || ch == "A" || ch == "B" || ch == "C" || ch == "D" || ch == "E" || ch == "F"
 }
 
-fun letter_value(ch) {
-    return lower_ascii_value(ch) || upper_ascii_value(ch)
-}
-
-fun alphanumeric_value(ch) {
-    return letter_value(ch) || digit_value(ch)
-}
-
-fun hex_digit_value(ch) {
-    return digit_value(ch) || ch == "a" || ch == "b" || ch == "c" || ch == "d" || ch == "e" || ch == "f" || ch == "A" || ch == "B" || ch == "C" || ch == "D" || ch == "E" || ch == "F"
-}
-
-export fun digit_value(ch) { return digit_value(ch) }
+export fun is_blank(value) { return blank_value(value) }
+export fun is_digit(ch) { return digit_value(ch) }
 export fun is_lower_ascii(ch) { return lower_ascii_value(ch) }
 export fun is_upper_ascii(ch) { return upper_ascii_value(ch) }
 export fun is_ascii_letter(ch) { return letter_value(ch) }
@@ -119,6 +106,7 @@ export fun looks_like_email(value) {
     dot = -1
     first_domain_char = ""
     last_char = ""
+    previous_domain_char = ""
     i = 0
     while i < size {
         ch = value[i]
@@ -128,7 +116,11 @@ export fun looks_like_email(value) {
         } else {
             if at != -1 {
                 if first_domain_char == "" { first_domain_char = ch }
-                if ch == "." { dot = i }
+                if ch == "." {
+                    if previous_domain_char == "." { return false }
+                    dot = i
+                }
+                previous_domain_char = ch
             }
         }
         if ch == " " || ch == "\t" || ch == "\r" || ch == "\n" {

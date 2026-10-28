@@ -318,7 +318,7 @@ jobs:
           ./vnt --compile tests/typecheck_explicit_assignment_numeric_compatible.vnt -o typed-numeric-reassignment.exe
           ./typed-numeric-reassignment.exe > typed-numeric-reassignment-actual.txt
           tr -d '\\r' < typed-numeric-reassignment-actual.txt > typed-numeric-reassignment-actual-lf.txt
-          printf '11\\nTYPED_NUMERIC_REASSIGNMENT_OK\\n' > typed-numeric-reassignment-expected.txt
+          printf '11\nTYPED_NUMERIC_REASSIGNMENT_OK\n' > typed-numeric-reassignment-expected.txt
           diff -u typed-numeric-reassignment-expected.txt typed-numeric-reassignment-actual-lf.txt
 
       - name: Emit assembly without invoking the hosted linker

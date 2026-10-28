@@ -120,7 +120,7 @@ export fun standard_deviation(values) {
         total += values[i]
         i += 1
     }
-    center = total / size
+    center = total * 1.0 / size
     squared_total = 0
     i = 0
     while i < size {
@@ -136,7 +136,7 @@ export fun standard_deviation(values) {
 export fun percentile(values, p) {
     size = len(values)
     if size == 0 { return 0 }
-    percent = p
+    percent = p * 1.0
     if percent < 0 { percent = 0 }
     if percent > 100 { percent = 100 }
     ordered = sorted_copy(values)

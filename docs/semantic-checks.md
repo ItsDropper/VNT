@@ -115,6 +115,7 @@ Unknown/dynamic types are permitted in selected contexts by design. Do not inter
 - `tests/typecheck_void_argument_rejected.vnt`: rejects passing a void-returning call as a function argument.
 - `tests/typecheck_void_unary_expression_rejected.vnt`: rejects using a void-returning call as a unary operand.
 - `tests/typecheck_void_condition_rejected.vnt`: rejects using a void-returning call as an `if` condition.
+- `tests/typecheck_void_while_condition_rejected.vnt`: rejects using a void-returning call as a `while` condition; both conditional loop forms emit a specific control-flow diagnostic.
 - `tests/typecheck_void_array_element_rejected.vnt`: rejects storing a void-returning call in an array literal.
 - `tests/typecheck_struct_constructor_arguments_rejected.vnt`: rejects arguments to the current zero-argument struct constructor syntax.
 - `tests/typecheck_nested_function_cannot_break_caller_loop.vnt`: verifies that a nested function cannot break the loop of its caller.

@@ -1,5 +1,2 @@
-fun invalid_assignment(value: int) {
-    value = "wrong type"
-}
-
-invalid_assignment(10)
+let count: int = 10
+count = "wrong type"

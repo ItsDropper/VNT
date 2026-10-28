@@ -1,0 +1,9 @@
+fun duplicate(value: int) -> int {
+    return value
+}
+
+fun duplicate(value: int) -> int {
+    return value + 1
+}
+
+print(duplicate(2))

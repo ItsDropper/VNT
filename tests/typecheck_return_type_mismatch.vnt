@@ -1,0 +1,5 @@
+fun invalid_result() -> int {
+    return "wrong type"
+}
+
+print(invalid_result())

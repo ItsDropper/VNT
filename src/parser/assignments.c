@@ -245,7 +245,9 @@ if (parser_check(
         ast_free(target);
 
         printf(
-            "Parser error: expected assignment operator.\n"
+            "Parser error at %d:%d: expected assignment operator.\n",
+            parser->current.line,
+            parser->current.column
         );
 
         return NULL;

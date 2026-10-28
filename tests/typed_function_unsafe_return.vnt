@@ -1,0 +1,12 @@
+# Copyright (c) 2026 ItsDropper
+# MIT License
+# A return nested in an unsafe block must satisfy the typed return contract.
+
+fun unsafe_return() -> int {
+    unsafe {
+        return 53
+    }
+}
+
+print(unsafe_return())
+print("TYPED_UNSAFE_RETURN_OK")

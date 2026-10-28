@@ -86,6 +86,12 @@ export fun gcd(left, right) {
         right = -right
     }
     while right != 0 {
+        # Signed division overflows for INT64_MIN % -1; the GCD is 1.
+        if left == -9223372036854775808 {
+            if right == -1 {
+                return 1
+            }
+        }
         remainder = left % right
         left = right
         right = remainder

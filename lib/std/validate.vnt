@@ -1,7 +1,7 @@
 # Conservative ASCII/text validation helpers. These are not Unicode-aware.
 # Email and URL checks are sanity checks, not complete standards parsers.
 
-export fun is_blank(value) {
+fun blank_value(value) {
     size = len(value)
     i = 0
     while i < size {
@@ -13,6 +13,8 @@ export fun is_blank(value) {
     }
     return true
 }
+
+export fun is_blank(value) { return blank_value(value) }
 
 fun digit_value(ch) {
     return len(ch) == 1 && (ch == "0" || ch == "1" || ch == "2" || ch == "3" || ch == "4" || ch == "5" || ch == "6" || ch == "7" || ch == "8" || ch == "9")
@@ -112,7 +114,7 @@ export fun is_identifier(value) {
 # Requires one @, a non-empty local part, and a dotted domain with non-empty labels.
 export fun looks_like_email(value) {
     size = len(value)
-    if size < 5 || is_blank(value) { return false }
+    if size < 5 || blank_value(value) { return false }
     at = -1
     dot = -1
     first_domain_char = ""

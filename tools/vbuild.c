@@ -148,9 +148,14 @@ static int load_properties(Config *cfg) {
         }
         *eq = '\0'; key = line; value = eq + 1;
         trim(key); trim(value);
-        if (value[0] == '"' && strlen(value) >= 2 &&
-            value[strlen(value) - 1] == '"') {
-            value[strlen(value) - 1] = '\0'; value++;
+        if (value[0] == '"') {
+            size_t value_length = strlen(value);
+            if (value_length < 2 || value[value_length - 1] != '"') {
+                fprintf(stderr, "vbuild: unterminated quoted value for property '%s'.\\n", key);
+                fclose(f); return 0;
+            }
+            value[value_length - 1] = '\0';
+            value++;
         }
         if (!strcmp(key, "project.name")) {
             if (got_name) { fprintf(stderr, "vbuild: duplicate property 'project.name'.\n"); fclose(f); return 0; }

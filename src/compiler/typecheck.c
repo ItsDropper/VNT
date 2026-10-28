@@ -285,10 +285,24 @@ static void check_call(TypeChecker *tc, AstNode *n) {
             error(tc, "void function call cannot be used as an argument.");
     }
     int builtin = builtin_arity(n->function_call.name, argc);
-    if (builtin != -1) { if (!builtin) error(tc, "invalid argument count for builtin function."); return; }
+    if (builtin != -1) {
+        if (!builtin) {
+            char message[256];
+            snprintf(message, sizeof(message),
+                     "builtin '%s' does not accept %d argument%s.",
+                     n->function_call.name, argc, argc == 1 ? "" : "s");
+            error(tc, message);
+        }
+        return;
+    }
     if (find_struct(tc, n->function_call.name)) {
-        if (argc != 0)
-            error(tc, "struct constructors currently take no arguments.");
+        if (argc != 0) {
+            char message[256];
+            snprintf(message, sizeof(message),
+                     "struct constructor '%s' currently takes no arguments.",
+                     n->function_call.name);
+            error(tc, message);
+        }
         return;
     }
     FunctionDef *fn = find_function(tc, n->function_call.name);
@@ -297,7 +311,15 @@ static void check_call(TypeChecker *tc, AstNode *n) {
         snprintf(message, sizeof(message), "call to undeclared function '%s'.", n->function_call.name);
         error(tc, message); return;
     }
-    if (fn->arity != argc) { error(tc, "function called with the wrong number of arguments."); return; }
+    if (fn->arity != argc) {
+        char message[256];
+        snprintf(message, sizeof(message),
+                 "function '%s' expects %d argument%s but received %d.",
+                 n->function_call.name, fn->arity,
+                 fn->arity == 1 ? "" : "s", argc);
+        error(tc, message);
+        return;
+    }
     AstNode *arg = n->function_call.arguments;
     for (int i = 0; i < argc && arg; ++i, arg = arg->next) {
         AstNode *decl = fn->node;

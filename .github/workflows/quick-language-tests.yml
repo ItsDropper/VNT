@@ -321,6 +321,11 @@ jobs:
           printf '11\nTYPED_NUMERIC_REASSIGNMENT_OK\n' > typed-numeric-reassignment-expected.txt
           diff -u typed-numeric-reassignment-expected.txt typed-numeric-reassignment-actual-lf.txt
 
+          ./vnt --compile tests/typecheck_all_numeric_reassignment_compatible.vnt -o all-numeric-reassignment.exe
+          ./all-numeric-reassignment.exe > all-numeric-reassignment-actual.txt
+          printf 'ALL_NUMERIC_REASSIGNMENT_COMPATIBLE_OK\n' > all-numeric-reassignment-expected.txt
+          diff -u all-numeric-reassignment-expected.txt all-numeric-reassignment-actual.txt
+
       - name: Emit assembly without invoking the hosted linker
         shell: bash
         run: |

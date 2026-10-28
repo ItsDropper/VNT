@@ -56,17 +56,17 @@ line_path = directory + "/lines.txt"
 if !fs.write_text(line_path, "one\rtwo\r\nthree\n") {
     print("FS_FAIL_LINE_WRITE")
 } else {
-    lines = fs.read_lines(line_path)
-    if len(lines) != 3 {
+    line_items = fs.read_lines(line_path)
+    if len(line_items) != 3 {
         print("FS_FAIL_READ_LINES")
     } else {
-        if lines[0] != "one" {
+        if line_items[0] != "one" {
             print("FS_FAIL_READ_LINES")
         } else {
-            if lines[1] != "two" {
+            if line_items[1] != "two" {
                 print("FS_FAIL_READ_LINES")
             } else {
-                if lines[2] != "three" {
+                if line_items[2] != "three" {
                     print("FS_FAIL_READ_LINES")
                 } else {
                     print("FS_READ_LINES_OK")

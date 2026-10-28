@@ -58,6 +58,7 @@ export fun sign(value) {
     return 0
 }
 
+# Returns -1 for negative input or when the signed 64-bit result would overflow.
 export fun factorial(value) {
     if value < 0 {
         return -1
@@ -65,21 +66,34 @@ export fun factorial(value) {
     result = 1
     i = 2
     while i <= value {
+        # Check before multiplication so overflow never occurs in the first place.
+        if result > 9223372036854775807 / i {
+            return -1
+        }
         result *= i
         i += 1
     }
     return result
 }
 
+# Uses non-positive operands so abs(INT64_MIN) is never evaluated.
+# Returns -1 when the mathematical GCD is 2^63 and cannot fit in a signed i64.
 export fun gcd(left, right) {
-    left = abs(left)
-    right = abs(right)
+    if left > 0 {
+        left = -left
+    }
+    if right > 0 {
+        right = -right
+    }
     while right != 0 {
         remainder = left % right
         left = right
         right = remainder
     }
-    return left
+    if left == -9223372036854775808 {
+        return -1
+    }
+    return -left
 }
 
 export fun is_prime(value) {

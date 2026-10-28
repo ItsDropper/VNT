@@ -210,8 +210,8 @@ jobs:
 
           ./vnt --compile tests/typed_function_fallthrough_return.vnt -o typed-fallthrough-return.exe
           ./typed-fallthrough-return.exe > typed-fallthrough-return-actual.txt
-          tr -d '\\r' < typed-fallthrough-return-actual.txt > typed-fallthrough-return-actual-lf.txt
-          printf '17\\n23\\nTYPED_FALLTHROUGH_RETURN_OK\\n' > typed-fallthrough-return-expected.txt
+          tr -d '\r' < typed-fallthrough-return-actual.txt > typed-fallthrough-return-actual-lf.txt
+          printf '17\n23\nTYPED_FALLTHROUGH_RETURN_OK\n' > typed-fallthrough-return-expected.txt
           diff -u typed-fallthrough-return-expected.txt typed-fallthrough-return-actual-lf.txt
           if ./vnt --compile tests/typecheck_break_outside_loop.vnt -o break-outside-loop-invalid.exe; then
             echo "Compiler incorrectly accepted break outside a loop."

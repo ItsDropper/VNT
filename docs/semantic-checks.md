@@ -103,6 +103,7 @@ Unknown/dynamic types are permitted in selected contexts by design. Do not inter
 - `tests/typecheck_undeclared_function.vnt`: rejects calls to unknown function names.
 - `tests/typecheck_return_type_mismatch.vnt`: rejects a string returned from an `int`-annotated function.
 - `tests/typed_function_fallthrough_return.vnt`: accepts a partial conditional followed by a return covering the remaining path.
+- `tests/typed_function_nested_fallthrough_return.vnt`: accepts a nested partial conditional when a later return covers every fallthrough path, and verifies all three runtime paths.
 - `tests/typecheck_invalid_void_return.vnt`: rejects returning a value from a `void` function.
 - `tests/typecheck_explicit_assignment_type_mismatch.vnt`: rejects assigning a string to an explicitly typed local variable with an assignment-specific expected-versus-actual diagnostic.
 - `tests/typecheck_parameter_assignment_type_mismatch.vnt`: rejects assigning a string to an explicitly typed function parameter, protecting parameter bindings from incompatible reassignment.

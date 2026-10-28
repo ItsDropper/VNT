@@ -1,0 +1,14 @@
+# Copyright (c) 2026 ItsDropper
+# MIT License
+# Bare returns exit a void function without evaluating later statements.
+
+fun maybe_return(flag: bool) -> void {
+    if flag {
+        return
+    }
+    print("FALLTHROUGH")
+}
+
+maybe_return(true)
+maybe_return(false)
+print("VOID_BARE_RETURN_OK")

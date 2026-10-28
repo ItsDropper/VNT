@@ -1,0 +1,115 @@
+# Statistical helpers for numeric arrays, implemented entirely in VNT.
+# Functions do not mutate the caller's array. Empty aggregates return 0.
+# variance is population variance (divide by N); percentile linearly interpolates.
+fun sorted_copy(values) {
+    size = len(values)
+    result = range(size)
+    i = 0
+    while i < size {
+        result[i] = values[i]
+        i += 1
+    }
+    i = 1
+    while i < size {
+        current = result[i]
+        j = i - 1
+        while j >= 0 && result[j] > current {
+            result[j + 1] = result[j]
+            j -= 1
+        }
+        result[j + 1] = current
+        i += 1
+    }
+    return result
+}
+
+export fun mean(values) {
+    size = len(values)
+    if size == 0 { return 0 }
+    total = 0
+    i = 0
+    while i < size {
+        total += values[i]
+        i += 1
+    }
+    return total / size
+}
+
+export fun median(values) {
+    size = len(values)
+    if size == 0 { return 0 }
+    ordered = sorted_copy(values)
+    middle = size / 2
+    if size % 2 == 1 {
+        return ordered[middle]
+    }
+    return (ordered[middle - 1] + ordered[middle]) / 2
+}
+
+export fun minimum(values) {
+    size = len(values)
+    if size == 0 { return 0 }
+    result = values[0]
+    i = 1
+    while i < size {
+        if values[i] < result { result = values[i] }
+        i += 1
+    }
+    return result
+}
+
+export fun maximum(values) {
+    size = len(values)
+    if size == 0 { return 0 }
+    result = values[0]
+    i = 1
+    while i < size {
+        if values[i] > result { result = values[i] }
+        i += 1
+    }
+    return result
+}
+
+export fun range(values) {
+    if len(values) == 0 { return 0 }
+    return maximum(values) - minimum(values)
+}
+
+export fun variance(values) {
+    size = len(values)
+    if size == 0 { return 0 }
+    center = mean(values)
+    total = 0
+    i = 0
+    while i < size {
+        difference = values[i] - center
+        total += difference * difference
+        i += 1
+    }
+    return total / size
+}
+
+export fun standard_deviation(values) {
+    return sqrt(variance(values))
+}
+
+# Percentile p is clamped to [0, 100] and interpolated between adjacent sorted values.
+# An empty array returns 0.
+export fun percentile(values, p) {
+    size = len(values)
+    if size == 0 { return 0 }
+    percent = p
+    if percent < 0 { percent = 0 }
+    if percent > 100 { percent = 100 }
+    ordered = sorted_copy(values)
+    position = (size - 1) * percent / 100
+    lower = floor(position)
+    upper = lower + 1
+    if upper >= size { return ordered[lower] }
+    fraction = position - lower
+    return ordered[lower] + (ordered[upper] - ordered[lower]) * fraction
+}
+
+export fun sorted(values) {
+    return sorted_copy(values)
+}

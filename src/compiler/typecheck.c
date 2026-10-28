@@ -915,7 +915,14 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                 check_statements(tc, n->function_declaration.body);
                 if (tc->expected_return != TY_UNKNOWN && tc->expected_return != TY_VOID &&
                     !statement_list_returns(n->function_declaration.body))
-                    error(tc, "not all paths in a typed function return a value.");
+                    {
+                        char message[320];
+                        snprintf(message, sizeof(message),
+                                 "typed function '%s' returning %s does not return a value on every path.",
+                                 n->function_declaration.name,
+                                 type_name(tc->expected_return));
+                        error(tc, message);
+                    }
                 while (tc->count > old_count) { free(tc->symbols[tc->count - 1].name); tc->count--; }
                 tc->expected_return = old_return;
                 tc->in_function = old_in_function;

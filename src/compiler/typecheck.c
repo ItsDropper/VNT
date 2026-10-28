@@ -827,7 +827,11 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                     error(tc, "void function call cannot be returned as a value.");
                 } else if (tc->expected_return != TY_UNKNOWN &&
                            !type_compatible(tc->expected_return, actual)) {
-                    error(tc, "return expression does not match the function return type.");
+                    char message[192];
+                    snprintf(message, sizeof(message),
+                             "function return type mismatch: expected %s but returned %s.",
+                             type_name(tc->expected_return), type_name(actual));
+                    error(tc, message);
                 }
                 break;
             }

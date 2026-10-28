@@ -302,6 +302,12 @@ jobs:
           fi
           grep -F "initializer for 'count' expects int but received string." initializer-type-diagnostic.log
           test ! -e initializer-type-invalid.exe
+          if ./vnt --compile tests/typecheck_explicit_assignment_type_mismatch.vnt -o assignment-type-invalid.exe 2> assignment-type-diagnostic.log; then
+            echo "Compiler incorrectly accepted an incompatible explicit assignment."
+            exit 1
+          fi
+          grep -F "assignment target has type int but assigned value has type string." assignment-type-diagnostic.log
+          test ! -e assignment-type-invalid.exe
 
       - name: Emit assembly without invoking the hosted linker
         shell: bash

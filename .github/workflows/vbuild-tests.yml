@@ -62,6 +62,11 @@ jobs:
             foreach ($path in @('build.vbuild', 'vbuild.properties', 'src/main.vnt')) {
               if (-not (Test-Path $path)) { throw "init did not create $path" }
             }
+            $validProperties = Get-Content -Raw vbuild.properties
+            Add-Content vbuild.properties 'source = src/duplicate.vnt'
+            & $binary build
+            if ($LASTEXITCODE -eq 0) { throw 'duplicate project properties were not rejected' }
+            Set-Content -NoNewline -Path vbuild.properties -Value $validProperties
             Add-Content build.vbuild 'task verify = none depends check, build'
             & $binary tasks
             if ($LASTEXITCODE -ne 0) { throw 'task graph parsing failed' }

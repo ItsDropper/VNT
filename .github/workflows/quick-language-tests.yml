@@ -284,6 +284,12 @@ jobs:
           fi
           grep -F "struct constructor 'Point' currently takes no arguments." struct-arity-diagnostic.log
           test ! -e struct-arity-invalid.exe
+          if ./vnt --compile tests/typecheck_argument_type_mismatch.vnt -o argument-type-invalid.exe 2> argument-type-diagnostic.log; then
+            echo "Compiler incorrectly accepted a function argument with an incompatible type."
+            exit 1
+          fi
+          grep -F "argument 1 ('value') to function 'requires_integer' expects int but received string." argument-type-diagnostic.log
+          test ! -e argument-type-invalid.exe
 
       - name: Emit assembly without invoking the hosted linker
         shell: bash

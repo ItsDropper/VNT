@@ -177,6 +177,16 @@ jobs:
             exit 1
           fi
           test ! -e void-nested-invalid.exe
+          if ./vnt --compile tests/typecheck_void_argument_rejected.vnt -o void-argument-invalid.exe; then
+            echo "Compiler incorrectly accepted a void-returning call as a function argument."
+            exit 1
+          fi
+          test ! -e void-argument-invalid.exe
+          if ./vnt --compile tests/typecheck_struct_constructor_arguments_rejected.vnt -o struct-arguments-invalid.exe; then
+            echo "Compiler incorrectly accepted arguments for a zero-argument struct constructor."
+            exit 1
+          fi
+          test ! -e struct-arguments-invalid.exe
           if ./vnt --compile tests/typed_function_loop_only_return.vnt -o loop-return-invalid.exe; then
             echo "Compiler incorrectly assumed a while loop executes and satisfies a typed function return."
             exit 1

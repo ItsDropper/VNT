@@ -58,6 +58,7 @@ try {
         "tests\typed_function_missing_return.vnt",
         "tests\typed_function_loop_only_return.vnt",
         "tests\typed_function_nested_partial_return.vnt",
+        "tests\typed_function_unsafe_partial_return.vnt",
         "tests\typecheck_break_outside_loop.vnt",
         "tests\typecheck_continue_outside_loop.vnt",
         "tests\typecheck_break_in_function_rejected.vnt",

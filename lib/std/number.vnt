@@ -1,6 +1,6 @@
 # Pure VNT numeric helpers implemented with existing operators and control flow.
 # factorial(-n) returns -1 for negative input; gcd() returns a non-negative value.
-# clamp(value, lower, upper) swaps reversed bounds before clamping.
+# clamp(value, lower, upper) and is_between(value, lower, upper) normalize reversed bounds.
 
 export fun min(left, right) {
     if left < right {
@@ -29,6 +29,15 @@ export fun clamp(value, lower, upper) {
         return upper
     }
     return value
+}
+
+export fun is_between(value, lower, upper) {
+    if lower > upper {
+        temporary = lower
+        lower = upper
+        upper = temporary
+    }
+    return value >= lower and value <= upper
 }
 
 export fun is_even(value) {

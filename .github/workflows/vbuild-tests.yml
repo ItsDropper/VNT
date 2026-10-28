@@ -64,8 +64,11 @@ jobs:
             }
             $validProperties = Get-Content -Raw vbuild.properties
             Add-Content vbuild.properties 'source = src/duplicate.vnt'
-            & $binary build
-            if ($LASTEXITCODE -eq 0) { throw 'duplicate project properties were not rejected' }
+            $duplicatePropertyOutput = & $binary build 2>&1
+            $duplicatePropertyExitCode = $LASTEXITCODE
+            if ($duplicatePropertyExitCode -eq 0 -or ($duplicatePropertyOutput -join "`n") -notmatch "duplicate property 'source'") {
+              throw "duplicate project properties were not rejected with a targeted diagnostic: $($duplicatePropertyOutput -join ' | ')"
+            }
             Set-Content -NoNewline -Path vbuild.properties -Value $validProperties
             Add-Content build.vbuild 'task verify = none depends check, build'
             & $binary tasks

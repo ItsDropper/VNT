@@ -198,7 +198,8 @@ jobs:
             tests/typecheck_unknown_return_type.vnt \
             tests/typecheck_void_parameter_type.vnt \
             tests/typecheck_unknown_parameter_type.vnt \
-            tests/typecheck_duplicate_parameter_names.vnt; do
+            tests/typecheck_duplicate_parameter_names.vnt \
+            tests/typecheck_nested_function_cannot_break_caller_loop.vnt; do
             output="loop-context-invalid.exe"
             if ./vnt --compile "$case" -o "$output"; then
               echo "Compiler incorrectly accepted invalid loop control in $case."

@@ -133,7 +133,7 @@ export fun standard_deviation(values) {
 
 # Percentile p is clamped to [0, 100] and interpolated between adjacent sorted values.
 # An empty array returns 0.
-export fun percentile(values, p) {
+export fun percentile(values, p: float) {
     size = len(values)
     if size == 0 { return 0 }
     percent = p * 1.0

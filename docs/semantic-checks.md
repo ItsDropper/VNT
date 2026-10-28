@@ -103,7 +103,7 @@ Unknown/dynamic types are permitted in selected contexts by design. Do not inter
 - `tests/typecheck_undeclared_function.vnt`: rejects calls to unknown function names.
 - `tests/typecheck_return_type_mismatch.vnt`: rejects a string returned from an `int`-annotated function.
 - `tests/typecheck_invalid_void_return.vnt`: rejects returning a value from a `void` function.
-- `tests/typecheck_explicit_assignment_type_mismatch.vnt`: rejects assigning a string to an `int`-annotated parameter.
+- `tests/typecheck_explicit_assignment_type_mismatch.vnt`: rejects assigning a string to an explicitly typed local variable; the current diagnostic is reported through the variable-declaration path.
 - `tests/typecheck_void_argument_rejected.vnt`: rejects passing a void-returning call as a function argument.
 - `tests/typecheck_struct_constructor_arguments_rejected.vnt`: rejects arguments to the current zero-argument struct constructor syntax.
 - `tests/typecheck_nested_function_cannot_break_caller_loop.vnt`: verifies that a nested function cannot break the loop of its caller.
@@ -118,7 +118,7 @@ Unknown/dynamic types are permitted in selected contexts by design. Do not inter
 - `tests/typecheck_read_before_assignment.vnt`: rejects reading a variable before it has been declared.
 - `tests/typecheck_shadow_same_scope.vnt`: rejects redeclaring a variable in the same lexical scope.
 
-The quick language workflow checks compile failures, verifies that failed compilation leaves no output executable, and asserts precise initializer, assignment, function-argument, and return-type diagnostics plus the callee and argument counts in function, builtin, and struct-constructor arity diagnostics. It also verifies expected runtime output on Linux and Windows. The VNX workflow provides additional native-interpreter coverage. A workflow that is queued or in progress is not evidence of a passing test.
+The quick language workflow checks compile failures, verifies that failed compilation leaves no output executable, and asserts precise initializer, function-argument, and return-type diagnostics plus the callee and argument counts in function, builtin, and struct-constructor arity diagnostics. Plain identifier assignments are currently represented by the parser as variable-declaration AST nodes, so an incompatible reassignment can still surface as a declaration-oriented diagnostic; the AST representation and diagnostic distinction remain follow-up compiler work. It also verifies expected runtime output on Linux and Windows. The VNX workflow provides additional native-interpreter coverage. A workflow that is queued or in progress is not evidence of a passing test.
 
 ## Future compiler work
 

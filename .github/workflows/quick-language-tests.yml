@@ -131,6 +131,16 @@ jobs:
             exit 1
           fi
           test ! -e nested-partial-return-invalid.exe
+          if ./vnt --compile tests/typecheck_break_outside_loop.vnt -o break-outside-loop-invalid.exe; then
+            echo "Compiler incorrectly accepted break outside a loop."
+            exit 1
+          fi
+          test ! -e break-outside-loop-invalid.exe
+          if ./vnt --compile tests/typecheck_continue_outside_loop.vnt -o continue-outside-loop-invalid.exe; then
+            echo "Compiler incorrectly accepted continue outside a loop."
+            exit 1
+          fi
+          test ! -e continue-outside-loop-invalid.exe
 
       - name: Emit assembly without invoking the hosted linker
         shell: bash

@@ -1,0 +1,17 @@
+/*
+ * Copyright (c) 2026 ItsDropper
+ *
+ * MIT License
+ */
+
+/* A partial branch is valid when every fallthrough path reaches a later return. */
+fun choose_value(flag: bool) -> int {
+    if flag {
+        return 17
+    }
+    return 23
+}
+
+print(choose_value(true))
+print(choose_value(false))
+print("TYPED_FALLTHROUGH_RETURN_OK")

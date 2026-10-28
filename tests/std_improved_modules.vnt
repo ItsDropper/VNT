@@ -2,7 +2,14 @@ import "../lib/std/time.vnt" as time
 import "../lib/std/path.vnt" as path
 import "../lib/std/net.vnt" as net
 import "../lib/std/json.vnt" as json
+import "../lib/std/math.vnt" as math
 
+print(math.square(4))
+print(math.lerp(10, 20, 0.5))
+print(math.clamp(5, 0, 10))
+print(math.clamp(-5, 0, 10))
+print(math.clamp(15, 0, 10))
+print(math.clamp(5, 10, 0))
 print(time.minutes_to_ms(2))
 print(time.hours_to_ms(1))
 print(time.days_to_ms(1))

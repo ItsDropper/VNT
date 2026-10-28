@@ -794,7 +794,9 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
 
             case AST_IF_STATEMENT: {
                 TypeKind condition = expr_type(tc, n->if_statement.condition);
-                if (condition != TY_BOOL && condition != TY_UNKNOWN)
+                if (condition == TY_VOID)
+                    error(tc, "void function call cannot be used as a control-flow condition.");
+                else if (condition != TY_BOOL && condition != TY_UNKNOWN)
                     error(tc, "if condition must be boolean.");
                 {
                     int outer_count = tc->count;
@@ -824,7 +826,9 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
 
             case AST_WHILE_STATEMENT: {
                 TypeKind condition = expr_type(tc, n->while_statement.condition);
-                if (condition != TY_BOOL && condition != TY_UNKNOWN)
+                if (condition == TY_VOID)
+                    error(tc, "void function call cannot be used as a control-flow condition.");
+                else if (condition != TY_BOOL && condition != TY_UNKNOWN)
                     error(tc, "while condition must be boolean.");
                 {
                     int outer_count = tc->count;

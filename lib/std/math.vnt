@@ -6,16 +6,20 @@ export fun square(value) {
     return value * value
 }
 
+# Reversed bounds are normalized to match number.clamp.
 export fun clamp(value, minimum, maximum) {
+    if minimum > maximum {
+        temporary = minimum
+        minimum = maximum
+        maximum = temporary
+    }
     if value < minimum {
         return minimum
-    } else {
-        if value > maximum {
-            return maximum
-        } else {
-            return value
-        }
     }
+    if value > maximum {
+        return maximum
+    }
+    return value
 }
 
 export fun lerp(start, finish, amount) {

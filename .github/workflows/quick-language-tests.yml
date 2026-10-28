@@ -177,6 +177,21 @@ jobs:
             exit 1
           fi
           test ! -e void-nested-invalid.exe
+          if ./vnt --compile tests/typecheck_void_unary_expression_rejected.vnt -o void-unary-invalid.exe; then
+            echo "Compiler incorrectly accepted a void-returning call in a unary expression."
+            exit 1
+          fi
+          test ! -e void-unary-invalid.exe
+          if ./vnt --compile tests/typecheck_void_condition_rejected.vnt -o void-condition-invalid.exe; then
+            echo "Compiler incorrectly accepted a void-returning call as an if condition."
+            exit 1
+          fi
+          test ! -e void-condition-invalid.exe
+          if ./vnt --compile tests/typecheck_void_array_element_rejected.vnt -o void-array-invalid.exe; then
+            echo "Compiler incorrectly accepted a void-returning call as an array element."
+            exit 1
+          fi
+          test ! -e void-array-invalid.exe
           if ./vnt --compile tests/typecheck_void_argument_rejected.vnt -o void-argument-invalid.exe; then
             echo "Compiler incorrectly accepted a void-returning call as a function argument."
             exit 1

@@ -1,0 +1,11 @@
+# Copyright (c) 2026 ItsDropper
+# MIT License
+# A return nested in a conditional unsafe block does not cover every path.
+
+fun maybe_returns(flag: bool) -> int {
+    unsafe {
+        if flag {
+            return 61
+        }
+    }
+}

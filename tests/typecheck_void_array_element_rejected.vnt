@@ -1,0 +1,9 @@
+# Copyright (c) 2026 ItsDropper
+# MIT License
+# Void-returning calls cannot be stored as array elements.
+
+fun log_message() -> void {
+    return
+}
+
+let values = [log_message()]

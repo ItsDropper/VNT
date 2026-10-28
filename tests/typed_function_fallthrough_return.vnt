@@ -1,10 +1,6 @@
-/*
- * Copyright (c) 2026 ItsDropper
- *
- * MIT License
- */
-
-/* A partial branch is valid when every fallthrough path reaches a later return. */
+# Copyright (c) 2026 ItsDropper
+# MIT License
+# A partial branch is valid when every fallthrough path reaches a later return.
 fun choose_value(flag: bool) -> int {
     if flag {
         return 17

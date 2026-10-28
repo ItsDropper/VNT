@@ -30,6 +30,17 @@ try {
     }
     Write-Host "Valid loop-control checks: PASS"
 
+    $NestedLoopsExe = Join-Path $OutDir "nested_loop_control.exe"
+    & .\\vnt.exe --compile tests\\nested_loop_control.vnt -o $NestedLoopsExe
+    if ($LASTEXITCODE -ne 0) { throw "Nested loop-control program did not compile." }
+    $nestedLoopsOutput = & $NestedLoopsExe
+    if ($LASTEXITCODE -ne 0) { throw "Nested loop-control program exited unsuccessfully." }
+    $nestedLoopsExpected = @("nested", "1", "1", "3", "2", "1", "3", "3", "1", "3")
+    if (($nestedLoopsOutput -join "|") -ne ($nestedLoopsExpected -join "|")) {
+        throw "Unexpected nested loop-control output: $($nestedLoopsOutput -join ' | ')"
+    }
+    Write-Host "Nested loop-control checks: PASS"
+
     foreach ($case in @(
         "tests\typed_function_argument_error.vnt",
         "tests\typed_function_return_error.vnt",

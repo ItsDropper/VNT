@@ -128,6 +128,7 @@ static int load_properties(Config *cfg) {
     FILE *f = fopen("vbuild.properties", "r");
     char line[LINE_CAP];
     int got_name = 0, got_source = 0;
+    int seen_version = 0, seen_output = 0, seen_compiler = 0, seen_toolchain = 0;
     if (!f) {
         fprintf(stderr, "vbuild: missing vbuild.properties; run 'vbuild init'.\n");
         return 0;
@@ -152,18 +153,28 @@ static int load_properties(Config *cfg) {
             value[strlen(value) - 1] = '\0'; value++;
         }
         if (!strcmp(key, "project.name")) {
+            if (got_name) { fprintf(stderr, "vbuild: duplicate property 'project.name'.\\n"); fclose(f); return 0; }
             if (!copy_value(cfg->name, sizeof cfg->name, value, key)) { fclose(f); return 0; }
             got_name = 1;
         } else if (!strcmp(key, "project.version")) {
+            if (seen_version) { fprintf(stderr, "vbuild: duplicate property 'project.version'.\\n"); fclose(f); return 0; }
+            seen_version = 1;
             if (!copy_value(cfg->version, sizeof cfg->version, value, key)) { fclose(f); return 0; }
         } else if (!strcmp(key, "source")) {
+            if (got_source) { fprintf(stderr, "vbuild: duplicate property 'source'.\\n"); fclose(f); return 0; }
             if (!copy_value(cfg->source, sizeof cfg->source, value, key)) { fclose(f); return 0; }
             got_source = 1;
         } else if (!strcmp(key, "output")) {
+            if (seen_output) { fprintf(stderr, "vbuild: duplicate property 'output'.\\n"); fclose(f); return 0; }
+            seen_output = 1;
             if (!copy_value(cfg->output, sizeof cfg->output, value, key)) { fclose(f); return 0; }
         } else if (!strcmp(key, "compiler")) {
+            if (seen_compiler) { fprintf(stderr, "vbuild: duplicate property 'compiler'.\\n"); fclose(f); return 0; }
+            seen_compiler = 1;
             if (!copy_value(cfg->compiler, sizeof cfg->compiler, value, key)) { fclose(f); return 0; }
         } else if (!strcmp(key, "toolchain")) {
+            if (seen_toolchain) { fprintf(stderr, "vbuild: duplicate property 'toolchain'.\\n"); fclose(f); return 0; }
+            seen_toolchain = 1;
             if (!copy_value(cfg->toolchain, sizeof cfg->toolchain, value, key)) { fclose(f); return 0; }
         } else {
             fprintf(stderr, "vbuild: unknown property '%s'.\n", key);

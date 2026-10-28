@@ -392,10 +392,15 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
             TypeKind container = expr_type(tc, n->index_expression.array);
             TypeKind index = expr_type(tc, n->index_expression.index);
             if (index != TY_INT && index != TY_UNKNOWN) {
-                char message[192];
+                char message[256];
+                const char *expression = "nontrivial expression";
+                if (n->index_expression.index->type == AST_VARIABLE)
+                    expression = n->index_expression.index->variable.name;
+                else if (n->index_expression.index->type == AST_INTEGER_LITERAL)
+                    expression = "integer literal";
                 snprintf(message, sizeof(message),
-                         "array/string index must be an integer (received %s).",
-                         type_name(index));
+                         "array/string index must be an integer (received %s from %s).",
+                         type_name(index), expression);
                 error(tc, message);
             }
             if (container != TY_ARRAY && container != TY_STRING &&

@@ -48,7 +48,8 @@ export fun is_prime(value) {
         return false
     }
     divisor = 2
-    while divisor * divisor <= value {
+    # Division avoids overflow from divisor * divisor near the integer limit.
+    while divisor <= value / divisor {
         if value % divisor == 0 {
             return false
         }

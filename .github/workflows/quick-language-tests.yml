@@ -213,6 +213,12 @@ jobs:
           fi
           grep -F "typed function 'maybe_returns' returning int does not return a value on every path." nested-partial-return-diagnostic.log
           test ! -e nested-partial-return-invalid.exe
+          if ./vnt --compile tests/typed_function_unsafe_partial_return.vnt -o unsafe-partial-return-invalid.exe 2> unsafe-partial-return-diagnostic.log; then
+            echo "Compiler incorrectly accepted a typed function whose unsafe block can fall through."
+            exit 1
+          fi
+          grep -F "typed function 'maybe_returns' returning int does not return a value on every path." unsafe-partial-return-diagnostic.log
+          test ! -e unsafe-partial-return-invalid.exe
           ./vnt --compile tests/typed_function_nested_returns.vnt -o nested-typed-returns.exe
           ./nested-typed-returns.exe > nested-typed-returns-actual.txt
           tr -d '\r' < nested-typed-returns-actual.txt > nested-typed-returns-actual-lf.txt

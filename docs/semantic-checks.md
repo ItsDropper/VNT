@@ -105,6 +105,7 @@ Unknown/dynamic types are permitted in selected contexts by design. Do not inter
 - `tests/typecheck_invalid_void_return.vnt`: rejects returning a value from a `void` function.
 - `tests/typecheck_explicit_assignment_type_mismatch.vnt`: rejects assigning a string to an explicitly typed local variable with an assignment-specific expected-versus-actual diagnostic.
 - `tests/typecheck_parameter_assignment_type_mismatch.vnt`: rejects assigning a string to an explicitly typed function parameter, protecting parameter bindings from incompatible reassignment.
+- `tests/typecheck_explicit_assignment_numeric_compatible.vnt`: compiles and runs a valid integer reassignment to an explicitly typed local, guarding against over-rejecting compatible updates.
 - `tests/typecheck_void_argument_rejected.vnt`: rejects passing a void-returning call as a function argument.
 - `tests/typecheck_struct_constructor_arguments_rejected.vnt`: rejects arguments to the current zero-argument struct constructor syntax.
 - `tests/typecheck_nested_function_cannot_break_caller_loop.vnt`: verifies that a nested function cannot break the loop of its caller.

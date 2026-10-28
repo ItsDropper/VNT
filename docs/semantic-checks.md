@@ -118,7 +118,7 @@ Unknown/dynamic types are permitted in selected contexts by design. Do not inter
 - `tests/typecheck_read_before_assignment.vnt`: rejects reading a variable before it has been declared.
 - `tests/typecheck_shadow_same_scope.vnt`: rejects redeclaring a variable in the same lexical scope.
 
-The quick language workflow checks compile failures, verifies that failed compilation leaves no output executable, and asserts precise initializer, function-argument, and return-type diagnostics plus the callee and argument counts in function, builtin, and struct-constructor arity diagnostics. It also verifies expected runtime output on Linux and Windows. The VNX workflow provides additional native-interpreter coverage. A workflow that is queued or in progress is not evidence of a passing test.
+The quick language workflow checks compile failures, verifies that failed compilation leaves no output executable, and asserts precise initializer, assignment, function-argument, and return-type diagnostics plus the callee and argument counts in function, builtin, and struct-constructor arity diagnostics. It also verifies expected runtime output on Linux and Windows. The VNX workflow provides additional native-interpreter coverage. A workflow that is queued or in progress is not evidence of a passing test.
 
 ## Future compiler work
 

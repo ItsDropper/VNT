@@ -259,6 +259,12 @@ jobs:
           tr -d '\r' < typed-unsafe-branches-actual.txt > typed-unsafe-branches-actual-lf.txt
           printf '67\n68\nTYPED_UNSAFE_BRANCH_RETURNS_OK\n' > typed-unsafe-branches-expected.txt
           diff -u typed-unsafe-branches-expected.txt typed-unsafe-branches-actual-lf.txt
+
+          ./vnt --compile tests/void_bare_return.vnt -o void-bare-return.exe
+          ./void-bare-return.exe > void-bare-return-actual.txt
+          tr -d '\r' < void-bare-return-actual.txt > void-bare-return-actual-lf.txt
+          printf 'FALLTHROUGH\nVOID_BARE_RETURN_OK\n' > void-bare-return-expected.txt
+          diff -u void-bare-return-expected.txt void-bare-return-actual-lf.txt
           if ./vnt --compile tests/typecheck_break_outside_loop.vnt -o break-outside-loop-invalid.exe; then
             echo "Compiler incorrectly accepted break outside a loop."
             exit 1

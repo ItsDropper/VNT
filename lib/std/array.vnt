@@ -167,6 +167,7 @@ export fun unique(values) {
         while j < unique_count {
             if scratch[j] == values[i] {
                 found = true
+                break
             }
             j += 1
         }

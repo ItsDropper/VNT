@@ -121,6 +121,11 @@ jobs:
             exit 1
           fi
           test ! -e void-nested-invalid.exe
+          if ./vnt --compile tests/typed_function_loop_only_return.vnt -o loop-return-invalid.exe; then
+            echo "Compiler incorrectly assumed a while loop executes and satisfies a typed function return."
+            exit 1
+          fi
+          test ! -e loop-return-invalid.exe
 
       - name: Emit assembly without invoking the hosted linker
         shell: bash

@@ -3,7 +3,7 @@
 # Void-returning calls cannot be used as branch conditions.
 
 fun log_message() -> void {
-    return
+    print("called")
 }
 
 if log_message() {

@@ -675,6 +675,16 @@ jobs:
           VNT_EXPECTED
           diff -u std-csv-expected.txt std-csv-actual-lf.txt
 
+      - name: Run filesystem standard-library regressions
+        shell: bash
+        run: |
+          mkdir -p tests/out
+          ./vnt --compile tests/std_fs.vnt -o std-fs-smoke.exe
+          ./std-fs-smoke.exe > std-fs-actual.txt
+          grep -Fx "FS_OK" std-fs-actual.txt
+          grep -Fx "FS_READ_LINES_OK" std-fs-actual.txt
+          grep -Fx "STANDARD_FS_OK" std-fs-actual.txt
+
       - name: Run portable path helper regressions
         shell: bash
         run: |

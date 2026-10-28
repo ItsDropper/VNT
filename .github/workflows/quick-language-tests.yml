@@ -224,7 +224,14 @@ jobs:
             tests/typecheck_void_parameter_type.vnt \
             tests/typecheck_unknown_parameter_type.vnt \
             tests/typecheck_duplicate_parameter_names.vnt \
-            tests/typecheck_nested_function_cannot_break_caller_loop.vnt; do
+            tests/typecheck_nested_function_cannot_break_caller_loop.vnt \
+            tests/typecheck_invalid_equality.vnt \
+            tests/typecheck_invalid_ordered_comparison.vnt \
+            tests/typecheck_invalid_boolean_order.vnt \
+            tests/typecheck_scope_if_leak.vnt \
+            tests/typecheck_scope_while_leak.vnt \
+            tests/typecheck_read_before_assignment.vnt \
+            tests/typecheck_shadow_same_scope.vnt; do
             output="semantic-context-invalid.exe"
             if ./vnt --compile "$case" -o "$output"; then
               echo "Compiler incorrectly accepted invalid semantic context in $case."

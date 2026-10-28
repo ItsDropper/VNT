@@ -1,0 +1,7 @@
+struct InvalidPoint {
+    x,
+    y,
+    x
+}
+
+point = InvalidPoint()

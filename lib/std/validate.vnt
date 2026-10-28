@@ -14,25 +14,47 @@ export fun is_blank(value) {
     return true
 }
 
-export fun is_digit(ch) {
+fun digit_value(ch) {
     return len(ch) == 1 && (ch == "0" || ch == "1" || ch == "2" || ch == "3" || ch == "4" || ch == "5" || ch == "6" || ch == "7" || ch == "8" || ch == "9")
 }
 
-export fun is_lower_ascii(ch) {
+fun lower_ascii_value(ch) {
     return len(ch) == 1 && (ch == "a" || ch == "b" || ch == "c" || ch == "d" || ch == "e" || ch == "f" || ch == "g" || ch == "h" || ch == "i" || ch == "j" || ch == "k" || ch == "l" || ch == "m" || ch == "n" || ch == "o" || ch == "p" || ch == "q" || ch == "r" || ch == "s" || ch == "t" || ch == "u" || ch == "v" || ch == "w" || ch == "x" || ch == "y" || ch == "z")
 }
 
-export fun is_upper_ascii(ch) {
+fun upper_ascii_value(ch) {
     return len(ch) == 1 && (ch == "A" || ch == "B" || ch == "C" || ch == "D" || ch == "E" || ch == "F" || ch == "G" || ch == "H" || ch == "I" || ch == "J" || ch == "K" || ch == "L" || ch == "M" || ch == "N" || ch == "O" || ch == "P" || ch == "Q" || ch == "R" || ch == "S" || ch == "T" || ch == "U" || ch == "V" || ch == "W" || ch == "X" || ch == "Y" || ch == "Z")
 }
 
-export fun is_ascii_letter(ch) {
-    return is_lower_ascii(ch) || is_upper_ascii(ch)
+fun letter_value(ch) {
+    return lower_ascii_value(ch) || upper_ascii_value(ch)
 }
 
-export fun is_alphanumeric(ch) {
-    return is_ascii_letter(ch) || is_digit(ch)
+fun alphanumeric_value(ch) {
+    return letter_value(ch) || digit_value(ch)
 }
+
+fun hex_digit_value(ch) {
+    return digit_value(ch) || ch == "a" || ch == "b" || ch == "c" || ch == "d" || ch == "e" || ch == "f" || ch == "A" || ch == "B" || ch == "C" || ch == "D" || ch == "E" || ch == "F"
+}
+
+fun letter_value(ch) {
+    return lower_ascii_value(ch) || upper_ascii_value(ch)
+}
+
+fun alphanumeric_value(ch) {
+    return letter_value(ch) || digit_value(ch)
+}
+
+fun hex_digit_value(ch) {
+    return digit_value(ch) || ch == "a" || ch == "b" || ch == "c" || ch == "d" || ch == "e" || ch == "f" || ch == "A" || ch == "B" || ch == "C" || ch == "D" || ch == "E" || ch == "F"
+}
+
+export fun is_digit(ch) { return digit_value(ch) }
+export fun is_lower_ascii(ch) { return lower_ascii_value(ch) }
+export fun is_upper_ascii(ch) { return upper_ascii_value(ch) }
+export fun is_ascii_letter(ch) { return letter_value(ch) }
+export fun is_alphanumeric(ch) { return alphanumeric_value(ch) }
 
 export fun is_integer(value) {
     size = len(value)
@@ -73,17 +95,15 @@ export fun is_decimal(value) {
     return digits > 0
 }
 
-export fun is_hex_digit(ch) {
-    return is_digit(ch) || ch == "a" || ch == "b" || ch == "c" || ch == "d" || ch == "e" || ch == "f" || ch == "A" || ch == "B" || ch == "C" || ch == "D" || ch == "E" || ch == "F"
-}
+export fun is_hex_digit(ch) { return hex_digit_value(ch) }
 
 export fun is_identifier(value) {
     size = len(value)
     if size == 0 { return false }
-    if !is_ascii_letter(value[0]) && value[0] != "_" { return false }
+    if !letter_value(value[0]) && value[0] != "_" { return false }
     i = 1
     while i < size {
-        if !is_alphanumeric(value[i]) && value[i] != "_" { return false }
+        if !alphanumeric_value(value[i]) && value[i] != "_" { return false }
         i += 1
     }
     return true

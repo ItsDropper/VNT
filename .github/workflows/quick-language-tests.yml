@@ -126,6 +126,11 @@ jobs:
             exit 1
           fi
           test ! -e loop-return-invalid.exe
+          if ./vnt --compile tests/typed_function_nested_partial_return.vnt -o nested-partial-return-invalid.exe; then
+            echo "Compiler incorrectly accepted a typed function whose nested conditional can fall through."
+            exit 1
+          fi
+          test ! -e nested-partial-return-invalid.exe
 
       - name: Emit assembly without invoking the hosted linker
         shell: bash

@@ -1,0 +1,9 @@
+fun maybe_returns(flag: bool, nested: bool) -> int {
+    if flag {
+        if nested {
+            return 1
+        } else {
+            return 2
+        }
+    }
+}

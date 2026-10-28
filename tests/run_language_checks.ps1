@@ -41,6 +41,17 @@ try {
     }
     Write-Host "Nested loop-control checks: PASS"
 
+    $NestedReturnsExe = Join-Path $OutDir "typed_function_nested_returns.exe"
+    & .\vnt.exe --compile tests\typed_function_nested_returns.vnt -o $NestedReturnsExe
+    if ($LASTEXITCODE -ne 0) { throw "Complete nested typed-function returns did not compile." }
+    $nestedReturnsOutput = & $NestedReturnsExe
+    if ($LASTEXITCODE -ne 0) { throw "Nested typed-function return program exited unsuccessfully." }
+    $nestedReturnsExpected = @("7", "9", "NESTED_TYPED_RETURNS_OK")
+    if (($nestedReturnsOutput -join "|") -ne ($nestedReturnsExpected -join "|")) {
+        throw "Unexpected nested typed-function return output: $($nestedReturnsOutput -join ' | ')"
+    }
+    Write-Host "Nested typed-function return checks: PASS"
+
     foreach ($case in @(
         "tests\typed_function_argument_error.vnt",
         "tests\typed_function_return_error.vnt",

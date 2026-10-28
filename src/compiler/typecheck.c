@@ -596,6 +596,17 @@ static void collect_declarations(TypeChecker *tc, AstNode *n) {
         }
 
         if (n->type == AST_STRUCT_DECLARATION) {
+            for (int i = 0; i < n->struct_declaration.field_count; ++i) {
+                for (int j = 0; j < i; ++j) {
+                    if (!strcmp(n->struct_declaration.fields[i],
+                                n->struct_declaration.fields[j])) {
+                        error(tc, "duplicate struct field name.");
+                        break;
+                    }
+                }
+                if (tc->error) break;
+            }
+            if (tc->error) continue;
             if (find_struct(tc, n->struct_declaration.name)) {
                 error(tc, "duplicate struct definition.");
                 continue;

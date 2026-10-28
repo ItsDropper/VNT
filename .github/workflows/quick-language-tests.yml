@@ -607,6 +607,7 @@ jobs:
           false
           true
           false
+          true
           .
           archive.tar.zip
           report.pdf

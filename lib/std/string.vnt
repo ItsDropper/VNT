@@ -57,6 +57,7 @@ export fun index_of(value, needle) {
         while i < needle_size {
             if value[start + i] != needle[i] {
                 matched = false
+                break
             }
             i += 1
         }
@@ -84,6 +85,7 @@ export fun contains(value, needle) {
         while i < needle_size {
             if value[start + i] != needle[i] {
                 matched = false
+                break
             }
             i += 1
         }
@@ -110,6 +112,7 @@ export fun count(value, needle) {
         while i < needle_size {
             if value[start + i] != needle[i] {
                 matched = false
+                break
             }
             i += 1
         }
@@ -212,6 +215,7 @@ export fun last_index_of(value, needle) {
         while i < needle_size {
             if value[start + i] != needle[i] {
                 matched = false
+                break
             }
             i += 1
         }

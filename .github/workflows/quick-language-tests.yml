@@ -707,6 +707,10 @@ jobs:
           dir/report
           folder
           /
+          true
+          true
+          false
+          false
           PATH_STANDARD_LIBRARY_OK
           VNT_EXPECTED
           diff -u std-path-expected.txt std-path-actual-lf.txt

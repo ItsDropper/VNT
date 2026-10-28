@@ -153,10 +153,10 @@ export fun looks_like_http_url(value) {
     if !https && !http { return false }
     if https {
         if size <= 8 { return false }
-        if value[8] == "/" || value[8] == "." || value[8] == ":" { return false }
+        if value[8] == "/" || value[8] == "." || value[8] == ":" || value[8] == "?" || value[8] == "#" || value[8] == "@" { return false }
     } else {
         if size <= 7 { return false }
-        if value[7] == "/" || value[7] == "." || value[7] == ":" { return false }
+        if value[7] == "/" || value[7] == "." || value[7] == ":" || value[7] == "?" || value[7] == "#" || value[7] == "@" { return false }
     }
     i = 0
     while i < size {

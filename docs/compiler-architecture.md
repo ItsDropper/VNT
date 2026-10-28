@@ -60,6 +60,10 @@ The frontend still parses source into an AST, and semantic/type checking current
 
 This test is intended to catch accidental reintroduction of AST dependencies in HIR optimization or code generation. It proves the tested HIR path can operate after AST destruction; it does not, by itself, prove every language construct or generated executable is correct. The full language and runtime regression suites remain necessary.
 
+## Semantic analysis
+
+The frontend's current context-sensitive checks and their regression coverage are documented in [Semantic Checks and Regression Strategy](semantic-checks.md). In particular, loop-control legality is checked before HIR lowering, while all-path return checking is currently a conservative AST analysis rather than a CFG reachability proof.
+
 ## Remaining work
 
 The existence of an AST-free HIR backend does not mean the compiler is finished. Useful future work includes:

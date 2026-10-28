@@ -262,7 +262,15 @@ export fun split(value, delimiter) {
                 part = part + value[i]
                 i += 1
             }
-            parts = append_item(parts, part)
+            part_count = len(parts)
+            next_parts = range(part_count + 1)
+            copy_index = 0
+            while copy_index < part_count {
+                next_parts[copy_index] = parts[copy_index]
+                copy_index += 1
+            }
+            next_parts[part_count] = part
+            parts = next_parts
             position += delimiter_size
             part_start = position
         } else {
@@ -275,7 +283,15 @@ export fun split(value, delimiter) {
         tail = tail + value[i]
         i += 1
     }
-    return append_item(parts, tail)
+    part_count = len(parts)
+    next_parts = range(part_count + 1)
+    copy_index = 0
+    while copy_index < part_count {
+        next_parts[copy_index] = parts[copy_index]
+        copy_index += 1
+    }
+    next_parts[part_count] = tail
+    return next_parts
 }
 
 export fun left(value, count) {

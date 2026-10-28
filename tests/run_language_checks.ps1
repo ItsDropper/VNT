@@ -394,6 +394,22 @@ try {
     }
     Write-Host "Standard CSV parser/serializer: PASS"
 
+    $StringExe = Join-Path $OutDir "std_string.exe"
+    & .\vnt.exe --compile tests\std_string.vnt -o $StringExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard string helpers did not compile." }
+    $stringOutput = & $StringExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard string helper program exited unsuccessfully." }
+    $stringExpected = @(
+        "true", "true", "true", "false", "true", "2", "4", "true", "2",
+        "ababab", "1 two 1", "value", "4", "a", "0", "b", "0", "1", "0",
+        "1", "0", "1", "abc", "abc", "", "ef", "abc", "compiler", "main",
+        "vnt", "vnt", "007", "xaba", "x", "0", "2", "2", "STRING_STANDARD_LIBRARY_OK"
+    )
+    if (($stringOutput -join "|") -ne ($stringExpected -join "|")) {
+        throw "Unexpected standard string output: $($stringOutput -join ' | ')"
+    }
+    Write-Host "Standard string helper regressions: PASS"
+
     $PathExe = Join-Path $OutDir "std_path.exe"
     & .\vnt.exe --compile tests\std_path.vnt -o $PathExe
     if ($LASTEXITCODE -ne 0) { throw "Standard path library did not compile." }

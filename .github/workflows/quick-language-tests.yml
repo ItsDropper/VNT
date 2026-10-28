@@ -504,6 +504,54 @@ jobs:
           VNT_EXPECTED
           diff -u std-array-expected.txt std-array-actual-lf.txt
 
+      - name: Run string standard-library regressions
+        shell: bash
+        run: |
+          ./vnt --compile tests/std_string.vnt -o std-string-smoke.exe
+          ./std-string-smoke.exe > std-string-actual.txt
+          tr -d '\r' < std-string-actual.txt > std-string-actual-lf.txt
+          cat > std-string-expected.txt <<'VNT_EXPECTED'
+          true
+          true
+          true
+          false
+          true
+          2
+          4
+          true
+          2
+          ababab
+          1 two 1
+          value
+          4
+          a
+          0
+          b
+          0
+          1
+          0
+          1
+          0
+          1
+          abc
+          abc
+
+          ef
+          abc
+          compiler
+          main
+          vnt
+          vnt
+          007
+          xaba
+          x
+          0
+          2
+          2
+          STRING_STANDARD_LIBRARY_OK
+          VNT_EXPECTED
+          diff -u std-string-expected.txt std-string-actual-lf.txt
+
       - name: Run CSV parser and serializer regressions
         shell: bash
         run: |

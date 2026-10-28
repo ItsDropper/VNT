@@ -100,6 +100,8 @@ Unknown/dynamic types are permitted in selected contexts by design. Do not inter
 - `tests/typecheck_initializer_type_mismatch.vnt`: rejects a string initializer for an explicitly `int`-typed variable.
 - `tests/typecheck_function_arity_mismatch.vnt`: rejects calling a user-defined function with too few arguments.
 - `tests/typecheck_builtin_arity_mismatch.vnt`: rejects calling a builtin with too many arguments.
+- `tests/typecheck_void_argument_rejected.vnt`: rejects passing a void-returning call as a function argument.
+- `tests/typecheck_struct_constructor_arguments_rejected.vnt`: rejects arguments to the current zero-argument struct constructor syntax.
 - `tests/typecheck_nested_function_cannot_break_caller_loop.vnt`: verifies that a nested function cannot break the loop of its caller.
 - `tests/typecheck_duplicate_struct_fields.vnt`: rejects repeated field names in one struct declaration.
 - `tests/typecheck_duplicate_struct_definitions.vnt`: rejects a second declaration using an existing struct name.

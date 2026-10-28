@@ -711,6 +711,12 @@ jobs:
           true
           false
           false
+          true
+          true
+          false
+          false
+          false
+          false
           PATH_STANDARD_LIBRARY_OK
           VNT_EXPECTED
           diff -u std-path-expected.txt std-path-actual-lf.txt

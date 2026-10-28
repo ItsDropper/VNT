@@ -391,8 +391,13 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
         case AST_INDEX_EXPRESSION: {
             TypeKind container = expr_type(tc, n->index_expression.array);
             TypeKind index = expr_type(tc, n->index_expression.index);
-            if (index != TY_INT && index != TY_UNKNOWN)
-                error(tc, "array/string index must be an integer.");
+            if (index != TY_INT && index != TY_UNKNOWN) {
+                char message[192];
+                snprintf(message, sizeof(message),
+                         "array/string index must be an integer (received %s).",
+                         type_name(index));
+                error(tc, message);
+            }
             if (container != TY_ARRAY && container != TY_STRING &&
                 container != TY_UNKNOWN && container != TY_OBJECT)
                 error(tc, "indexing requires an array, string, or object.");

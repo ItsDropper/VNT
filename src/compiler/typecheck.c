@@ -715,6 +715,24 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                     error(tc, "void function call cannot initialize a variable.");
                     break;
                 }
+
+                /* Identifier assignments share this AST node with declarations.
+                   Preserve assignment-specific diagnostics when an existing,
+                   explicitly typed binding is updated without a new annotation. */
+                if (existing_index >= 0 && !shadows_outer &&
+                    !n->variable_declaration.declared_type) {
+                    Symbol *existing = &tc->symbols[existing_index];
+                    if (existing->explicit_type &&
+                        !type_compatible(existing->type, value_type)) {
+                        char message[192];
+                        snprintf(message, sizeof(message),
+                                 "assignment target has type %s but assigned value has type %s.",
+                                 type_name(existing->type), type_name(value_type));
+                        error(tc, message);
+                        break;
+                    }
+                }
+
                 if (n->variable_declaration.declared_type) {
                     TypeKind declared_type =
                         type_from_name(n->variable_declaration.declared_type);

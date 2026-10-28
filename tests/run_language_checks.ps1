@@ -61,6 +61,15 @@ try {
     }
     Write-Host "Unsafe-block branch return checks: PASS"
 
+    $BareReturnExe = Join-Path $OutDir "void_bare_return.exe"
+    & .\vnt.exe --compile tests\void_bare_return.vnt -o $BareReturnExe
+    if ($LASTEXITCODE -ne 0) { throw "Bare void-return program did not compile." }
+    $bareReturnOutput = & $BareReturnExe
+    if ($LASTEXITCODE -ne 0 -or ($bareReturnOutput -join "|") -ne "FALLTHROUGH|VOID_BARE_RETURN_OK") {
+        throw "Unexpected bare void-return output: $($bareReturnOutput -join ' | ')"
+    }
+    Write-Host "Bare void-return semantics: PASS"
+
     foreach ($case in @(
         "tests\typed_function_argument_error.vnt",
         "tests\typed_function_return_error.vnt",

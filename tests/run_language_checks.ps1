@@ -19,6 +19,17 @@ try {
     if (($output -join "|") -ne ($expected -join "|")) {
         throw "Unexpected typed-function output: $($output -join ' | ')"
     }
+    $LoopsExe = Join-Path $OutDir "loops.exe"
+    & .\vnt.exe --compile tests\loops.vnt -o $LoopsExe
+    if ($LASTEXITCODE -ne 0) { throw "Valid break/continue loop program did not compile." }
+    $loopsOutput = & $LoopsExe
+    if ($LASTEXITCODE -ne 0) { throw "Valid break/continue loop program exited unsuccessfully." }
+    $loopsExpected = @("break", "1", "2", "3", "4", "continue", "1", "2", "4", "5", "while", "1", "3", "4")
+    if (($loopsOutput -join "|") -ne ($loopsExpected -join "|")) {
+        throw "Unexpected loop-control output: $($loopsOutput -join ' | ')"
+    }
+    Write-Host "Valid loop-control checks: PASS"
+
     foreach ($case in @(
         "tests\typed_function_argument_error.vnt",
         "tests\typed_function_return_error.vnt",

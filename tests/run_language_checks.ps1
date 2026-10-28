@@ -66,6 +66,7 @@ try {
         "tests\typecheck_unknown_return_type.vnt",
         "tests\typecheck_void_parameter_type.vnt",
         "tests\typecheck_unknown_parameter_type.vnt",
+        "tests\typecheck_duplicate_parameter_names.vnt",
         "tests\typecheck_invalid_ordered_comparison.vnt",
         "tests\typecheck_invalid_equality.vnt",
         "tests\typecheck_invalid_boolean_order.vnt",

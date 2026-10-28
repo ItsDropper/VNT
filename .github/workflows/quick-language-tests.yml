@@ -403,6 +403,9 @@ jobs:
           cat > std-statistics-expected.txt <<'VNT_EXPECTED'
           4.5
           4
+          1.5
+          -0.5
+          1
           1
           9
           8

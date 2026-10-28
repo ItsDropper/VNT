@@ -50,7 +50,7 @@ export fun median(values) {
         i += 1
     }
     if size % 2 == 1 { return upper }
-    return (lower + upper) / 2
+    return (lower + upper) * 1.0 / 2
 }
 
 export fun minimum(values) {

@@ -1,5 +1,13 @@
 import "../lib/std/number.vnt" as number
 
+print(number.min(4, 9))
+print(number.min(-4, -9))
+print(number.max(4, 9))
+print(number.max(-4, -9))
+print(number.clamp(5, 0, 10))
+print(number.clamp(-5, 0, 10))
+print(number.clamp(15, 0, 10))
+print(number.clamp(5, 10, 0))
 print(number.is_even(0))
 print(number.is_even(-4))
 print(number.is_odd(-3))

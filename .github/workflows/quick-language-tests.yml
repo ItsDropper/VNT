@@ -219,6 +219,12 @@ jobs:
           tr -d '\r' < typed-nested-fallthrough-actual.txt > typed-nested-fallthrough-actual-lf.txt
           printf '31\n47\n47\nTYPED_NESTED_FALLTHROUGH_OK\n' > typed-nested-fallthrough-expected.txt
           diff -u typed-nested-fallthrough-expected.txt typed-nested-fallthrough-actual-lf.txt
+
+          ./vnt --compile tests/typed_function_unsafe_return.vnt -o typed-unsafe-return.exe
+          ./typed-unsafe-return.exe > typed-unsafe-return-actual.txt
+          tr -d '\r' < typed-unsafe-return-actual.txt > typed-unsafe-return-actual-lf.txt
+          printf '53\nTYPED_UNSAFE_RETURN_OK\n' > typed-unsafe-return-expected.txt
+          diff -u typed-unsafe-return-expected.txt typed-unsafe-return-actual-lf.txt
           if ./vnt --compile tests/typecheck_break_outside_loop.vnt -o break-outside-loop-invalid.exe; then
             echo "Compiler incorrectly accepted break outside a loop."
             exit 1

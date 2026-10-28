@@ -100,15 +100,19 @@ Unknown/dynamic types are permitted in selected contexts by design. Do not inter
 - `tests/typecheck_builtin_arity_mismatch.vnt`: rejects calls with too many arguments for a builtin.
 - `tests/typecheck_return_type_mismatch.vnt`: rejects a string returned from an `int`-annotated function.
 - `tests/typecheck_explicit_assignment_type_mismatch.vnt`: rejects assigning a string to an `int`-annotated parameter.
-- `tests/typecheck_initializer_type_mismatch.vnt`: rejects a string initializer for an explicitly `int`-typed variable.
-- `tests/typecheck_function_arity_mismatch.vnt`: rejects calling a user-defined function with too few arguments.
-- `tests/typecheck_builtin_arity_mismatch.vnt`: rejects calling a builtin with too many arguments.
 - `tests/typecheck_void_argument_rejected.vnt`: rejects passing a void-returning call as a function argument.
 - `tests/typecheck_struct_constructor_arguments_rejected.vnt`: rejects arguments to the current zero-argument struct constructor syntax.
 - `tests/typecheck_nested_function_cannot_break_caller_loop.vnt`: verifies that a nested function cannot break the loop of its caller.
 - `tests/typecheck_duplicate_struct_fields.vnt`: rejects repeated field names in one struct declaration.
 - `tests/typecheck_duplicate_struct_definitions.vnt`: rejects a second declaration using an existing struct name.
 - `tests/typecheck_duplicate_function_definitions.vnt`: rejects a second function definition using an existing function name.
+- `tests/typecheck_invalid_equality.vnt`: rejects equality between incompatible string and numeric values.
+- `tests/typecheck_invalid_ordered_comparison.vnt`: rejects ordered comparisons between numbers and strings.
+- `tests/typecheck_invalid_boolean_order.vnt`: rejects ordered comparisons on booleans.
+- `tests/typecheck_scope_if_leak.vnt`: rejects references to variables declared only inside an `if` branch.
+- `tests/typecheck_scope_while_leak.vnt`: rejects references to variables declared only inside a loop body.
+- `tests/typecheck_read_before_assignment.vnt`: rejects reading a variable before it has been declared.
+- `tests/typecheck_shadow_same_scope.vnt`: rejects redeclaring a variable in the same lexical scope.
 
 The quick language workflow checks compile failures and verifies expected runtime output on Linux and Windows. The VNX workflow provides additional native-interpreter coverage. A workflow that is queued or in progress is not evidence of a passing test.
 

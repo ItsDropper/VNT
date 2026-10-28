@@ -40,7 +40,7 @@ These tutorials teach VNT through practical projects, from beginner exercises to
 13. [Arrays, functions, and modules](03-arrays-and-modules.md) — a supplemental practice lesson.
 14. [Low-level systems programming](10-low-level-systems-programming.md) — memory, unsafe code, assembly, and the kernel roadmap.
 
-The [API reference](../api-reference.md) summarizes runtime APIs. The [raw-memory guide](../raw-memory.md) and [compiler architecture guide](../compiler-architecture.md) cover lower-level details.
+The [API reference](../api-reference.md) summarizes runtime APIs. The [raw-memory guide](../raw-memory.md), [compiler architecture guide](../compiler-architecture.md), and [semantic-check guide](../semantic-checks.md) cover lower-level details.
 
 ## Compile and run a tutorial
 

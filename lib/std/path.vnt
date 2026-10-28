@@ -12,6 +12,9 @@ export fun normalize_separators(path) {
 
 fun basename_value(path) {
     normalized = normalize_path(path)
+    if len(normalized) == 3 && normalized[1] == ":" && normalized[2] == "/" {
+        return ""
+    }
     size = len(normalized)
     end = size
     while end > 0 && normalized[end - 1] == "/" {
@@ -36,6 +39,9 @@ export fun basename(path) {
 
 fun dirname_value(path) {
     normalized = normalize_path(path)
+    if len(normalized) == 3 && normalized[1] == ":" && normalized[2] == "/" {
+        return normalized
+    }
     size = len(normalized)
     end = size
     while end > 1 && normalized[end - 1] == "/" {

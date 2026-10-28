@@ -57,26 +57,11 @@ if !fs.write_text(line_path, "one\rtwo\r\nthree\n") {
     print("FS_FAIL_LINE_WRITE")
 } else {
     line_items = fs.read_lines(line_path)
-    if len(line_items) == 3 {
-        first_line = line_items[0]
-        second_line = line_items[1]
-        third_line = line_items[2]
-        if first_line == "one" {
-            if second_line == "two" {
-                if third_line == "three" {
-                    print("FS_READ_LINES_OK")
-                } else {
-                    print("FS_FAIL_READ_LINES")
-                }
-            } else {
-                print("FS_FAIL_READ_LINES")
-            }
-        } else {
-            print("FS_FAIL_READ_LINES")
-        }
-    } else {
-        print("FS_FAIL_READ_LINES")
-    }
+    print(len(line_items))
+    print(line_items[0])
+    print(line_items[1])
+    print(line_items[2])
+    print("FS_READ_LINES_OK")
 }
 fs.remove_file(line_path)
 

@@ -68,6 +68,8 @@ try {
         "tests\typecheck_unknown_parameter_type.vnt",
         "tests\typecheck_duplicate_parameter_names.vnt",
         "tests\typecheck_argument_type_mismatch.vnt",
+        "tests\typecheck_return_type_mismatch.vnt",
+        "tests\typecheck_explicit_assignment_type_mismatch.vnt",
         "tests\typecheck_nested_function_cannot_break_caller_loop.vnt",
         "tests\typecheck_duplicate_struct_fields.vnt",
         "tests\typecheck_duplicate_struct_definitions.vnt",

@@ -1,0 +1,5 @@
+let wide: i64 = 5000000000
+wide = 1.5
+let ratio: float = 2.5
+ratio = 3
+print("ALL_NUMERIC_REASSIGNMENT_COMPATIBLE_OK")

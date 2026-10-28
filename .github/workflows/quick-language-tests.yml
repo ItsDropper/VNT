@@ -601,10 +601,12 @@ jobs:
 
           src/main/file.vnt
           /absolute/file
+          D:/absolute/file
           C:/
 
           false
           true
+          false
           .
           archive.tar.zip
           report.pdf

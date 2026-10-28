@@ -135,6 +135,10 @@ export fun join(left, right) {
     if normalized_right[0] == "/" {
         return normalized_right
     }
+    # A drive-rooted Windows path is absolute even though it does not start with '/'.
+    if len(normalized_right) >= 3 && normalized_right[1] == ":" && normalized_right[2] == "/" {
+        return normalized_right
+    }
     if normalized_left[len(normalized_left) - 1] == "/" {
         return normalized_left + normalized_right
     }

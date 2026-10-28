@@ -1,0 +1,5 @@
+fun requires_integer(value: int) -> int {
+    return value
+}
+
+print(requires_integer("not an integer"))

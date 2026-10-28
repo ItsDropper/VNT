@@ -760,8 +760,13 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                     is_string_index_expr(tc, n->assignment.target) &&
                     value == TY_INT;
                 if (target != TY_UNKNOWN && target != TY_UNDECLARED &&
-                    !type_compatible(target, value) && !string_byte_store)
-                    error(tc, "assignment changes an incompatible type.");
+                    !type_compatible(target, value) && !string_byte_store) {
+                    char message[192];
+                    snprintf(message, sizeof(message),
+                             "assignment target has type %s but assigned value has type %s.",
+                             type_name(target), type_name(value));
+                    error(tc, message);
+                }
                 break;
             }
 

@@ -99,6 +99,7 @@ Unknown/dynamic types are permitted in selected contexts by design. Do not inter
 - `tests/typecheck_function_arity_mismatch.vnt`: rejects calls that omit required function arguments.
 - `tests/typecheck_builtin_arity_mismatch.vnt`: rejects calls with too many arguments for a builtin.
 - `tests/typecheck_return_type_mismatch.vnt`: rejects a string returned from an `int`-annotated function.
+- `tests/typecheck_invalid_void_return.vnt`: rejects returning a value from a `void` function.
 - `tests/typecheck_explicit_assignment_type_mismatch.vnt`: rejects assigning a string to an `int`-annotated parameter.
 - `tests/typecheck_void_argument_rejected.vnt`: rejects passing a void-returning call as a function argument.
 - `tests/typecheck_struct_constructor_arguments_rejected.vnt`: rejects arguments to the current zero-argument struct constructor syntax.

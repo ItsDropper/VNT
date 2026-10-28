@@ -717,6 +717,15 @@ jobs:
           false
           false
           false
+          folder/sub
+          C:/
+          /
+          /
+
+          folder/sub/
+          folder/
+          C:/
+
           PATH_STANDARD_LIBRARY_OK
           VNT_EXPECTED
           diff -u std-path-expected.txt std-path-actual-lf.txt

@@ -37,7 +37,13 @@ export fun is_between(value, lower, upper) {
         lower = upper
         upper = temporary
     }
-    return value >= lower and value <= upper
+    if value < lower {
+        return false
+    }
+    if value > upper {
+        return false
+    }
+    return true
 }
 
 export fun is_even(value) {

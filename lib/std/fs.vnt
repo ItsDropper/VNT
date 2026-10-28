@@ -47,8 +47,8 @@ export fun list_dir(path: string) {
     return fs_list(path)
 }
 
-# Line helpers use LF as the serialized newline. read_lines accepts LF and CRLF.
-# A single trailing newline does not create a phantom final line.
+# Line helpers use LF as the serialized newline. read_lines accepts LF, CRLF, and CR.
+# A single trailing line separator does not create a phantom final line.
 export fun read_lines(path) {
     if !fs_exists(path) {
         return []
@@ -57,8 +57,11 @@ export fun read_lines(path) {
     if len(text) == 0 {
         return []
     }
-    lines = strutil.split(text, "\n")
-    if strutil.ends_with(text, "\n") {
+    # Normalize CRLF first so it becomes one separator, then normalize lone CR.
+    normalized = strutil.replace(text, "\r\n", "\n")
+    normalized = strutil.replace(normalized, "\r", "\n")
+    lines = strutil.split(normalized, "\n")
+    if strutil.ends_with(normalized, "\n") {
         trimmed = range(len(lines) - 1)
         i = 0
         while i < len(trimmed) {
@@ -67,18 +70,9 @@ export fun read_lines(path) {
         }
         lines = trimmed
     }
-    i = 0
-    while i < len(lines) {
-        line = lines[i]
-        if strutil.ends_with(line, "\r") {
-            lines[i] = strutil.left(line, len(line) - 1)
-        }
-        i += 1
-    }
     return lines
 }
 
-# Writes each array item as one line and includes a trailing LF when non-empty.
 export fun write_lines(path, lines) {
     contents = ""
     i = 0

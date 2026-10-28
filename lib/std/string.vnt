@@ -366,43 +366,44 @@ export fun remove_suffix(value, suffix) {
     return result
 }
 
+# Pads only when the requested width exceeds the original value length.
+# Repeated fill strings are truncated on the right so the original value is preserved.
 export fun pad_left(value, target_length, fill) {
-    if len(fill) == 0 {
+    value_size = len(value)
+    if target_length <= value_size || len(fill) == 0 {
         return value
     }
-    result = value
-    while len(result) < target_length {
-        result = fill + result
+    needed = target_length - value_size
+    padding = ""
+    while len(padding) < needed {
+        padding = padding + fill
     }
-    if len(result) > target_length && target_length >= 0 {
-        trimmed = ""
-        start = len(result) - target_length
-        i = start
-        while i < len(result) {
-            trimmed = trimmed + result[i]
-            i += 1
-        }
-        result = trimmed
+    result = ""
+    i = 0
+    while i < needed {
+        result = result + padding[i]
+        i += 1
     }
-    return result
+    return result + value
 }
 
+# Pads only when the requested width exceeds the original value length.
+# Repeated fill strings are truncated on the right when the final fill would overshoot.
 export fun pad_right(value, target_length, fill) {
-    if len(fill) == 0 {
+    value_size = len(value)
+    if target_length <= value_size || len(fill) == 0 {
         return value
     }
-    result = value
-    while len(result) < target_length {
-        result = result + fill
+    needed = target_length - value_size
+    padding = ""
+    while len(padding) < needed {
+        padding = padding + fill
     }
-    if len(result) > target_length && target_length >= 0 {
-        trimmed = ""
-        i = 0
-        while i < target_length {
-            trimmed = trimmed + result[i]
-            i += 1
-        }
-        result = trimmed
+    result = value
+    i = 0
+    while i < needed {
+        result = result + padding[i]
+        i += 1
     }
     return result
 }

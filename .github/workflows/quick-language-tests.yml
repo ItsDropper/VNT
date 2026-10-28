@@ -194,6 +194,12 @@ jobs:
           fi
           test ! -e void-while-invalid.exe
           grep -F "void function call cannot be used as a control-flow condition." void-while-invalid.exe.log
+          if ./vnt --compile tests/typecheck_bare_return_nonvoid_rejected.vnt -o bare-return-nonvoid-invalid.exe 2> bare-return-nonvoid-diagnostic.log; then
+            echo "Compiler incorrectly accepted a bare return in a non-void function."
+            exit 1
+          fi
+          grep -F "non-void function must return a value." bare-return-nonvoid-diagnostic.log
+          test ! -e bare-return-nonvoid-invalid.exe
           if ./vnt --compile tests/typecheck_void_array_element_rejected.vnt -o void-array-invalid.exe; then
             echo "Compiler incorrectly accepted a void-returning call as an array element."
             exit 1

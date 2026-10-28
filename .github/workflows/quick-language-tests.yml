@@ -103,14 +103,40 @@ jobs:
         run: |
           ./vnt --compile tests/loops.vnt -o vnt-loops-smoke.exe
           ./vnt-loops-smoke.exe > vnt-loops-actual.txt
-          tr -d '\\r' < vnt-loops-actual.txt > vnt-loops-actual-lf.txt
-          printf 'break\\n1\\n2\\n3\\n4\\ncontinue\\n1\\n2\\n4\\n5\\nwhile\\n1\\n3\\n4\\n' > vnt-loops-expected.txt
+          tr -d '\r' < vnt-loops-actual.txt > vnt-loops-actual-lf.txt
+          cat > vnt-loops-expected.txt <<'VNT_EXPECTED'
+          break
+          1
+          2
+          3
+          4
+          continue
+          1
+          2
+          4
+          5
+          while
+          1
+          3
+          4
+          VNT_EXPECTED
           diff -u vnt-loops-expected.txt vnt-loops-actual-lf.txt
 
           ./vnt --compile tests/nested_loop_control.vnt -o vnt-nested-loops-smoke.exe
           ./vnt-nested-loops-smoke.exe > vnt-nested-loops-actual.txt
-          tr -d '\\r' < vnt-nested-loops-actual.txt > vnt-nested-loops-actual-lf.txt
-          printf 'nested\\n1\\n1\\n3\\n2\\n1\\n3\\n3\\n1\\n3\\n' > vnt-nested-loops-expected.txt
+          tr -d '\r' < vnt-nested-loops-actual.txt > vnt-nested-loops-actual-lf.txt
+          cat > vnt-nested-loops-expected.txt <<'VNT_EXPECTED'
+          nested
+          1
+          1
+          3
+          2
+          1
+          3
+          3
+          1
+          3
+          VNT_EXPECTED
           diff -u vnt-nested-loops-expected.txt vnt-nested-loops-actual-lf.txt
 
       - name: Reject void-returning calls used as values
@@ -156,6 +182,17 @@ jobs:
             exit 1
           fi
           test ! -e continue-outside-loop-invalid.exe
+          for case in \
+            tests/typecheck_break_in_function_rejected.vnt \
+            tests/typecheck_continue_in_function_rejected.vnt \
+            tests/typecheck_break_in_conditional_rejected.vnt; do
+            output="loop-context-invalid.exe"
+            if ./vnt --compile "$case" -o "$output"; then
+              echo "Compiler incorrectly accepted invalid loop control in $case."
+              exit 1
+            fi
+            test ! -e "$output"
+          done
 
       - name: Emit assembly without invoking the hosted linker
         shell: bash

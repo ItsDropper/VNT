@@ -1,5 +1,5 @@
 # Pure VNT numeric helpers implemented with existing operators and control flow.
-# factorial(-n) returns -1 for negative input; gcd() returns a non-negative value.
+# factorial returns -1 for negative input or signed-i64 overflow; gcd returns -1 when 2^63 is unrepresentable.
 # clamp(value, lower, upper) and is_between(value, lower, upper) normalize reversed bounds.
 
 export fun min(left, right) {

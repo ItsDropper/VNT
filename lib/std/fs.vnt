@@ -60,17 +60,12 @@ export fun read_lines(path) {
     # Normalize CRLF first so it becomes one separator, then normalize lone CR.
     normalized = strutil.replace(text, "\r\n", "\n")
     normalized = strutil.replace(normalized, "\r", "\n")
-    lines = strutil.split(normalized, "\n")
+    # Remove exactly one terminal separator before splitting. This avoids a
+    # phantom final item while preserving intentional blank lines.
     if strutil.ends_with(normalized, "\n") {
-        trimmed = range(len(lines) - 1)
-        i = 0
-        while i < len(trimmed) {
-            trimmed[i] = lines[i]
-            i += 1
-        }
-        lines = trimmed
+        normalized = strutil.left(normalized, len(normalized) - 1)
     }
-    return lines
+    return strutil.split(normalized, "\n")
 }
 
 export fun write_lines(path, lines) {

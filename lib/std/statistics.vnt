@@ -24,7 +24,7 @@ fun sorted_copy(values) {
     return result
 }
 
-fun mean_value(values) {
+export fun mean(values) {
     size = len(values)
     if size == 0 { return 0 }
     total = 0
@@ -34,48 +34,6 @@ fun mean_value(values) {
         i += 1
     }
     return total / size
-}
-
-fun min_value(values) {
-    size = len(values)
-    if size == 0 { return 0 }
-    result = values[0]
-    i = 1
-    while i < size {
-        if values[i] < result { result = values[i] }
-        i += 1
-    }
-    return result
-}
-
-fun max_value(values) {
-    size = len(values)
-    if size == 0 { return 0 }
-    result = values[0]
-    i = 1
-    while i < size {
-        if values[i] > result { result = values[i] }
-        i += 1
-    }
-    return result
-}
-
-fun variance_value(values) {
-    size = len(values)
-    if size == 0 { return 0 }
-    center = mean_value(values)
-    total = 0
-    i = 0
-    while i < size {
-        difference = values[i] - center
-        total += difference * difference
-        i += 1
-    }
-    return total / size
-}
-
-export fun mean(values) {
-    return mean_value(values)
 }
 
 export fun median(values) {
@@ -96,24 +54,81 @@ export fun median(values) {
 }
 
 export fun minimum(values) {
-    return min_value(values)
+    size = len(values)
+    if size == 0 { return 0 }
+    result = values[0]
+    i = 1
+    while i < size {
+        if values[i] < result { result = values[i] }
+        i += 1
+    }
+    return result
 }
 
 export fun maximum(values) {
-    return max_value(values)
+    size = len(values)
+    if size == 0 { return 0 }
+    result = values[0]
+    i = 1
+    while i < size {
+        if values[i] > result { result = values[i] }
+        i += 1
+    }
+    return result
 }
 
 export fun span(values) {
-    if len(values) == 0 { return 0 }
-    return max_value(values) - min_value(values)
+    size = len(values)
+    if size == 0 { return 0 }
+    low = values[0]
+    high = values[0]
+    i = 1
+    while i < size {
+        if values[i] < low { low = values[i] }
+        if values[i] > high { high = values[i] }
+        i += 1
+    }
+    return high - low
 }
 
 export fun variance(values) {
-    return variance_value(values)
+    size = len(values)
+    if size == 0 { return 0 }
+    total = 0
+    i = 0
+    while i < size {
+        total += values[i]
+        i += 1
+    }
+    center = total / size
+    squared_total = 0
+    i = 0
+    while i < size {
+        difference = values[i] - center
+        squared_total += difference * difference
+        i += 1
+    }
+    return squared_total / size
 }
 
 export fun standard_deviation(values) {
-    return sqrt(variance_value(values))
+    size = len(values)
+    if size == 0 { return 0 }
+    total = 0
+    i = 0
+    while i < size {
+        total += values[i]
+        i += 1
+    }
+    center = total / size
+    squared_total = 0
+    i = 0
+    while i < size {
+        difference = values[i] - center
+        squared_total += difference * difference
+        i += 1
+    }
+    return sqrt(squared_total / size)
 }
 
 # Percentile p is clamped to [0, 100] and interpolated between adjacent sorted values.

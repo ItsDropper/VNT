@@ -1,0 +1,17 @@
+# Nested conditional returns must satisfy the typed function return contract.
+
+fun classify(flag: bool) -> int {
+    if flag {
+        if true {
+            return 7
+        } else {
+            return 8
+        }
+    } else {
+        return 9
+    }
+}
+
+print(classify(true))
+print(classify(false))
+print("NESTED_TYPED_RETURNS_OK")

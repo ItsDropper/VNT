@@ -103,6 +103,22 @@ export fun extension(path) {
     return extension_value(path)
 }
 
+# Checks the final extension only; matching is case-sensitive.
+# expected_extension may include a leading dot.
+export fun has_extension(path, expected_extension) {
+    if len(expected_extension) == 0 {
+        return false
+    }
+    normalized_expected = expected_extension
+    if normalized_expected[0] == "." {
+        normalized_expected = strutil.remove_prefix(normalized_expected, ".")
+    }
+    if len(normalized_expected) == 0 {
+        return false
+    }
+    return extension_value(path) == normalized_expected
+}
+
 fun stem_value(path) {
     name = basename_value(path)
     ext = extension_value(name)

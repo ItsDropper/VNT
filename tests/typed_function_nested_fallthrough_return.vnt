@@ -1,0 +1,17 @@
+# Copyright (c) 2026 ItsDropper
+# MIT License
+# Nested partial branches may fall through to a later return.
+
+fun nested_fallthrough(outer: bool, inner: bool) -> int {
+    if outer {
+        if inner {
+            return 31
+        }
+    }
+    return 47
+}
+
+print(nested_fallthrough(true, true))
+print(nested_fallthrough(true, false))
+print(nested_fallthrough(false, true))
+print("TYPED_NESTED_FALLTHROUGH_OK")

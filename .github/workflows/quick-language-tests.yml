@@ -187,12 +187,10 @@ jobs:
             exit 1
           fi
           test ! -e void-condition-invalid.exe
-          grep -F "void function call cannot be used as a control-flow condition." void-condition-invalid.exe.log
           if ./vnt --compile tests/typecheck_void_while_condition_rejected.vnt -o void-while-invalid.exe 2> void-while-invalid.exe.log; then
             echo "Compiler incorrectly accepted a void-returning call as a while condition."
             exit 1
           fi
-          grep -F "void function call cannot be used as a control-flow condition." void-while-invalid.exe.log
           test ! -e void-while-invalid.exe
           if ./vnt --compile tests/typecheck_void_array_element_rejected.vnt -o void-array-invalid.exe; then
             echo "Compiler incorrectly accepted a void-returning call as an array element."

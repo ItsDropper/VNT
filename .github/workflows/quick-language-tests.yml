@@ -308,6 +308,12 @@ jobs:
           fi
           grep -F "assignment target has type int but assigned value has type string." assignment-type-diagnostic.log
           test ! -e assignment-type-invalid.exe
+          if ./vnt --compile tests/typecheck_parameter_assignment_type_mismatch.vnt -o parameter-assignment-type-invalid.exe 2> parameter-assignment-type-diagnostic.log; then
+            echo "Compiler incorrectly accepted an incompatible assignment to an explicitly typed parameter."
+            exit 1
+          fi
+          grep -F "assignment target has type int but assigned value has type string." parameter-assignment-type-diagnostic.log
+          test ! -e parameter-assignment-type-invalid.exe
 
       - name: Emit assembly without invoking the hosted linker
         shell: bash

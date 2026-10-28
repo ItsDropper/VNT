@@ -1,10 +1,10 @@
 # Conservative ASCII/text validation helpers. These are not Unicode-aware.
 # Email and URL checks are sanity checks, not complete standards parsers.
 
-import "string.vnt" as text
+import "string.vnt"
 
 export fun is_blank(value) {
-    return text.trim(value) == ""
+    return trim(value) == ""
 }
 
 export fun is_digit(ch) {
@@ -28,81 +28,81 @@ export fun is_alphanumeric(ch) {
 }
 
 fun strip_digits(value) {
-    result = text.replace(value, "0", "")
-    result = text.replace(result, "1", "")
-    result = text.replace(result, "2", "")
-    result = text.replace(result, "3", "")
-    result = text.replace(result, "4", "")
-    result = text.replace(result, "5", "")
-    result = text.replace(result, "6", "")
-    result = text.replace(result, "7", "")
-    result = text.replace(result, "8", "")
-    result = text.replace(result, "9", "")
+    result = replace(value, "0", "")
+    result = replace(result, "1", "")
+    result = replace(result, "2", "")
+    result = replace(result, "3", "")
+    result = replace(result, "4", "")
+    result = replace(result, "5", "")
+    result = replace(result, "6", "")
+    result = replace(result, "7", "")
+    result = replace(result, "8", "")
+    result = replace(result, "9", "")
     return result
 }
 
 fun strip_identifier_characters(value) {
     result = strip_digits(value)
-    result = text.replace(result, "a", "")
-    result = text.replace(result, "b", "")
-    result = text.replace(result, "c", "")
-    result = text.replace(result, "d", "")
-    result = text.replace(result, "e", "")
-    result = text.replace(result, "f", "")
-    result = text.replace(result, "g", "")
-    result = text.replace(result, "h", "")
-    result = text.replace(result, "i", "")
-    result = text.replace(result, "j", "")
-    result = text.replace(result, "k", "")
-    result = text.replace(result, "l", "")
-    result = text.replace(result, "m", "")
-    result = text.replace(result, "n", "")
-    result = text.replace(result, "o", "")
-    result = text.replace(result, "p", "")
-    result = text.replace(result, "q", "")
-    result = text.replace(result, "r", "")
-    result = text.replace(result, "s", "")
-    result = text.replace(result, "t", "")
-    result = text.replace(result, "u", "")
-    result = text.replace(result, "v", "")
-    result = text.replace(result, "w", "")
-    result = text.replace(result, "x", "")
-    result = text.replace(result, "y", "")
-    result = text.replace(result, "z", "")
-    result = text.replace(result, "A", "")
-    result = text.replace(result, "B", "")
-    result = text.replace(result, "C", "")
-    result = text.replace(result, "D", "")
-    result = text.replace(result, "E", "")
-    result = text.replace(result, "F", "")
-    result = text.replace(result, "G", "")
-    result = text.replace(result, "H", "")
-    result = text.replace(result, "I", "")
-    result = text.replace(result, "J", "")
-    result = text.replace(result, "K", "")
-    result = text.replace(result, "L", "")
-    result = text.replace(result, "M", "")
-    result = text.replace(result, "N", "")
-    result = text.replace(result, "O", "")
-    result = text.replace(result, "P", "")
-    result = text.replace(result, "Q", "")
-    result = text.replace(result, "R", "")
-    result = text.replace(result, "S", "")
-    result = text.replace(result, "T", "")
-    result = text.replace(result, "U", "")
-    result = text.replace(result, "V", "")
-    result = text.replace(result, "W", "")
-    result = text.replace(result, "X", "")
-    result = text.replace(result, "Y", "")
-    result = text.replace(result, "Z", "")
-    return text.replace(result, "_", "")
+    result = replace(result, "a", "")
+    result = replace(result, "b", "")
+    result = replace(result, "c", "")
+    result = replace(result, "d", "")
+    result = replace(result, "e", "")
+    result = replace(result, "f", "")
+    result = replace(result, "g", "")
+    result = replace(result, "h", "")
+    result = replace(result, "i", "")
+    result = replace(result, "j", "")
+    result = replace(result, "k", "")
+    result = replace(result, "l", "")
+    result = replace(result, "m", "")
+    result = replace(result, "n", "")
+    result = replace(result, "o", "")
+    result = replace(result, "p", "")
+    result = replace(result, "q", "")
+    result = replace(result, "r", "")
+    result = replace(result, "s", "")
+    result = replace(result, "t", "")
+    result = replace(result, "u", "")
+    result = replace(result, "v", "")
+    result = replace(result, "w", "")
+    result = replace(result, "x", "")
+    result = replace(result, "y", "")
+    result = replace(result, "z", "")
+    result = replace(result, "A", "")
+    result = replace(result, "B", "")
+    result = replace(result, "C", "")
+    result = replace(result, "D", "")
+    result = replace(result, "E", "")
+    result = replace(result, "F", "")
+    result = replace(result, "G", "")
+    result = replace(result, "H", "")
+    result = replace(result, "I", "")
+    result = replace(result, "J", "")
+    result = replace(result, "K", "")
+    result = replace(result, "L", "")
+    result = replace(result, "M", "")
+    result = replace(result, "N", "")
+    result = replace(result, "O", "")
+    result = replace(result, "P", "")
+    result = replace(result, "Q", "")
+    result = replace(result, "R", "")
+    result = replace(result, "S", "")
+    result = replace(result, "T", "")
+    result = replace(result, "U", "")
+    result = replace(result, "V", "")
+    result = replace(result, "W", "")
+    result = replace(result, "X", "")
+    result = replace(result, "Y", "")
+    result = replace(result, "Z", "")
+    return replace(result, "_", "")
 }
 
 export fun is_integer(value) {
     if len(value) == 0 { return false }
     unsigned = value
-    if text.starts_with(unsigned, "-") || text.starts_with(unsigned, "+") {
-        unsigned = text.right(unsigned, len(unsigned) - 1)
+    if starts_with(unsigned, "-") || starts_with(unsigned, "+") {
+        unsigned = right(unsigned, len(unsigned) - 1)
     }
     return len(unsigned) > 0 && strip_digits(unsigned) == ""
 }
@@ -111,11 +111,11 @@ export fun is_integer(value) {
 export fun is_decimal(value) {
     if len(value) == 0 { return false }
     unsigned = value
-    if text.starts_with(unsigned, "-") || text.starts_with(unsigned, "+") {
-        unsigned = text.right(unsigned, len(unsigned) - 1)
+    if starts_with(unsigned, "-") || starts_with(unsigned, "+") {
+        unsigned = right(unsigned, len(unsigned) - 1)
     }
-    if len(unsigned) == 0 || text.count(unsigned, ".") > 1 { return false }
-    without_dot = text.replace(unsigned, ".", "")
+    if len(unsigned) == 0 || count(unsigned, ".") > 1 { return false }
+    without_dot = replace(unsigned, ".", "")
     remaining = strip_digits(without_dot)
     return remaining == "" && len(without_dot) > 0
 }
@@ -126,9 +126,9 @@ export fun is_hex_digit(ch) {
 
 export fun is_identifier(value) {
     if len(value) == 0 { return false }
-    first = text.left(value, 1)
+    first = left(value, 1)
     if !is_ascii_letter(first) && first != "_" { return false }
-    remainder = text.right(value, len(value) - 1)
+    remainder = right(value, len(value) - 1)
     return strip_identifier_characters(remainder) == ""
 }
 
@@ -136,37 +136,37 @@ export fun is_identifier(value) {
 export fun looks_like_email(value) {
     size = len(value)
     if size < 5 || is_blank(value) { return false }
-    if text.count(value, "@") != 1 { return false }
-    at = text.index_of(value, "@")
+    if count(value, "@") != 1 { return false }
+    at = index_of(value, "@")
     if at <= 0 || at >= size - 3 { return false }
-    domain = text.right(value, size - at - 1)
-    if text.starts_with(domain, ".") || text.ends_with(domain, ".") { return false }
-    dot = text.index_of(domain, ".")
+    domain = right(value, size - at - 1)
+    if starts_with(domain, ".") || ends_with(domain, ".") { return false }
+    dot = index_of(domain, ".")
     return dot > 0 && dot < len(domain) - 1 &&
-        !text.contains(value, " ") &&
-        !text.contains(value, "\t") &&
-        !text.contains(value, "\r") &&
-        !text.contains(value, "\n")
+        !contains(value, " ") &&
+        !contains(value, "\t") &&
+        !contains(value, "\r") &&
+        !contains(value, "\n")
 }
 
 # Checks scheme, a non-empty host-like segment, and absence of whitespace.
 export fun looks_like_http_url(value) {
-    if text.starts_with(value, "https://") {
-        remainder = text.remove_prefix(value, "https://")
+    if starts_with(value, "https://") {
+        remainder = remove_prefix(value, "https://")
         if len(remainder) == 0 { return false }
-        if text.starts_with(remainder, "/") ||
-            text.starts_with(remainder, ".") ||
-            text.starts_with(remainder, ":") { return false }
+        if starts_with(remainder, "/") ||
+            starts_with(remainder, ".") ||
+            starts_with(remainder, ":") { return false }
     } else {
-        if !text.starts_with(value, "http://") { return false }
-        remainder = text.remove_prefix(value, "http://")
+        if !starts_with(value, "http://") { return false }
+        remainder = remove_prefix(value, "http://")
         if len(remainder) == 0 { return false }
-        if text.starts_with(remainder, "/") ||
-            text.starts_with(remainder, ".") ||
-            text.starts_with(remainder, ":") { return false }
+        if starts_with(remainder, "/") ||
+            starts_with(remainder, ".") ||
+            starts_with(remainder, ":") { return false }
     }
-    return !text.contains(value, " ") &&
-        !text.contains(value, "\t") &&
-        !text.contains(value, "\r") &&
-        !text.contains(value, "\n")
+    return !contains(value, " ") &&
+        !contains(value, "\t") &&
+        !contains(value, "\r") &&
+        !contains(value, "\n")
 }

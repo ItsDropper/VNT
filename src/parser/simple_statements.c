@@ -47,27 +47,25 @@ AstNode *parse_print(Parser *parser) {
 AstNode *parse_return(Parser *parser) {
     parser_advance(parser);
 
-    AstNode *expression =
-        parse_expression(parser);
+    /* Newlines are not tokens, so use source locations to distinguish a
+       bare return from a value expression that starts on the next line. */
+    int bare_return =
+        parser_check(parser, TOKEN_RIGHT_BRACE) ||
+        parser_check(parser, TOKEN_EOF) ||
+        parser->current.line > parser->previous.line;
+    AstNode *expression = bare_return ? NULL : parse_expression(parser);
 
-    if (expression == NULL) {
-        printf(
-            "Parser error: expected expression after return.\n"
-        );
-
+    if (!bare_return && expression == NULL) {
+        fprintf(stderr,
+                "Parser error at %d:%d: expected expression after return.\n",
+                parser->current.line, parser->current.column);
         return NULL;
     }
 
-    AstNode *node =
-        ast_create_return(expression);
-
+    AstNode *node = ast_create_return(expression);
     if (node == NULL) {
         ast_free(expression);
-
-        printf(
-            "Parser error: out of memory.\n"
-        );
-
+        fprintf(stderr, "Parser error: out of memory.\n");
         return NULL;
     }
 

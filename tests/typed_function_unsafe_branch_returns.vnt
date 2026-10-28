@@ -1,0 +1,17 @@
+# Copyright (c) 2026 ItsDropper
+# MIT License
+# Both branches return from inside an unsafe block.
+
+fun unsafe_branch(flag: bool) -> int {
+    unsafe {
+        if flag {
+            return 67
+        } else {
+            return 68
+        }
+    }
+}
+
+print(unsafe_branch(true))
+print(unsafe_branch(false))
+print("TYPED_UNSAFE_BRANCH_RETURNS_OK")

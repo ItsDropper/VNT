@@ -290,6 +290,12 @@ jobs:
           fi
           grep -F "argument 1 ('value') to function 'requires_integer' expects int but received string." argument-type-diagnostic.log
           test ! -e argument-type-invalid.exe
+          if ./vnt --compile tests/typecheck_return_type_mismatch.vnt -o return-type-invalid.exe 2> return-type-diagnostic.log; then
+            echo "Compiler incorrectly accepted an incompatible function return value."
+            exit 1
+          fi
+          grep -F "function return type mismatch: expected int but returned string." return-type-diagnostic.log
+          test ! -e return-type-invalid.exe
 
       - name: Emit assembly without invoking the hosted linker
         shell: bash

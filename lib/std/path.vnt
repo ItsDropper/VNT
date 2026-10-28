@@ -10,6 +10,46 @@ export fun normalize_separators(path) {
     return normalize_path(path)
 }
 
+# Removes trailing separators without turning a filesystem root into an empty path.
+export fun trim_trailing_separators(path) {
+    normalized = normalize_path(path)
+    if len(normalized) == 0 {
+        return normalized
+    }
+    if normalized[0] == "/" && len(normalized) == 1 {
+        return normalized
+    }
+    if len(normalized) == 3 && normalized[1] == ":" && normalized[2] == "/" {
+        return normalized
+    }
+    end = len(normalized)
+    while end > 0 && normalized[end - 1] == "/" {
+        end -= 1
+    }
+    if end == 0 {
+        return "/"
+    }
+    result = ""
+    i = 0
+    while i < end {
+        result = result + normalized[i]
+        i += 1
+    }
+    return result
+}
+
+# Adds one trailing forward slash to a non-empty path.
+export fun ensure_trailing_separator(path) {
+    normalized = normalize_path(path)
+    if len(normalized) == 0 {
+        return normalized
+    }
+    if normalized[len(normalized) - 1] == "/" {
+        return normalized
+    }
+    return normalized + "/"
+}
+
 fun basename_value(path) {
     normalized = normalize_path(path)
     if len(normalized) == 3 && normalized[1] == ":" && normalized[2] == "/" {

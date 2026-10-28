@@ -151,7 +151,7 @@ static int load_properties(Config *cfg) {
         if (value[0] == '"') {
             size_t value_length = strlen(value);
             if (value_length < 2 || value[value_length - 1] != '"') {
-                fprintf(stderr, "vbuild: unterminated quoted value for property '%s'.\\n", key);
+                fprintf(stderr, "vbuild: unterminated quoted value for property '%s'.\n", key);
                 fclose(f); return 0;
             }
             value[value_length - 1] = '\0';

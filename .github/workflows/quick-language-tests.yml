@@ -700,6 +700,12 @@ jobs:
           ./std-improved-modules-smoke.exe > std-improved-modules-actual.txt
           tr -d '\r' < std-improved-modules-actual.txt > std-improved-modules-actual-lf.txt
           cat > std-improved-modules-expected.txt <<'VNT_EXPECTED'
+          16
+          15
+          5
+          0
+          10
+          5
           120000
           3600000
           86400000

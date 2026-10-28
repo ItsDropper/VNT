@@ -133,8 +133,9 @@ toolchain = C:/path/to/VNT
 ```
 
 Supported properties are `project.name`, `project.version`, `source`,
-`output`, `compiler`, and `toolchain`. `toolchain` is the VNT repository
-root. VBuild launches the compiler from that directory so the compiler can
+`output`, `compiler`, and `toolchain`. Duplicate keys and unknown properties
+are rejected instead of silently allowing a later value to override an earlier
+one. `toolchain` is the VNT repository root. VBuild launches the compiler from that directory so the compiler can
 resolve its native runtime and linker-script paths. `source` is the root VNT
 file; VNT's module loader handles imports.
 

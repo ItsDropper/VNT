@@ -1,0 +1,6 @@
+fun invalid_assignment(count: int) -> int {
+    count = "wrong type"
+    return count
+}
+
+print(invalid_assignment(1))

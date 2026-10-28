@@ -70,7 +70,7 @@ export fun maximum(values) {
     return result
 }
 
-export fun range(values) {
+export fun span(values) {
     if len(values) == 0 { return 0 }
     return maximum(values) - minimum(values)
 }

@@ -286,7 +286,11 @@ static void check_call(TypeChecker *tc, AstNode *n) {
     }
     int builtin = builtin_arity(n->function_call.name, argc);
     if (builtin != -1) { if (!builtin) error(tc, "invalid argument count for builtin function."); return; }
-    if (find_struct(tc, n->function_call.name)) return;
+    if (find_struct(tc, n->function_call.name)) {
+        if (argc != 0)
+            error(tc, "struct constructors currently take no arguments.");
+        return;
+    }
     FunctionDef *fn = find_function(tc, n->function_call.name);
     if (!fn) {
         char message[256];

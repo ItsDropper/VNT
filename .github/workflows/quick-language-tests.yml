@@ -266,6 +266,25 @@ jobs:
             test ! -e "$output"
           done
 
+          if ./vnt --compile tests/typecheck_function_too_many_arguments.vnt -o call-arity-invalid.exe 2> call-arity-diagnostic.log; then
+            echo "Compiler incorrectly accepted a call with too many arguments."
+            exit 1
+          fi
+          grep -F "function 'add' expects 2 arguments but received 3." call-arity-diagnostic.log
+          test ! -e call-arity-invalid.exe
+          if ./vnt --compile tests/typecheck_builtin_arity_mismatch.vnt -o builtin-arity-invalid.exe 2> builtin-arity-diagnostic.log; then
+            echo "Compiler incorrectly accepted a builtin call with too many arguments."
+            exit 1
+          fi
+          grep -F "builtin 'len' does not accept 2 arguments." builtin-arity-diagnostic.log
+          test ! -e builtin-arity-invalid.exe
+          if ./vnt --compile tests/typecheck_struct_constructor_arguments_rejected.vnt -o struct-arity-invalid.exe 2> struct-arity-diagnostic.log; then
+            echo "Compiler incorrectly accepted arguments to a zero-argument struct constructor."
+            exit 1
+          fi
+          grep -F "struct constructor 'Point' currently takes no arguments." struct-arity-diagnostic.log
+          test ! -e struct-arity-invalid.exe
+
       - name: Emit assembly without invoking the hosted linker
         shell: bash
         run: |

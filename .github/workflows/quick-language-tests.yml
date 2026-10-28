@@ -607,6 +607,11 @@ jobs:
           true
           .
           archive.tar.zip
+          report.pdf
+          .env.txt
+          dir/report
+          folder
+          /
           PATH_STANDARD_LIBRARY_OK
           VNT_EXPECTED
           diff -u std-path-expected.txt std-path-actual-lf.txt

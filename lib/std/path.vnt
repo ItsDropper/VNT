@@ -158,10 +158,23 @@ export fun change_extension(path, new_extension) {
     normalized = normalize_path(path)
     name = basename_value(normalized)
     parent = dirname_value(normalized)
-    ext = extension_value(name)
+    # Find the final dot directly so a trailing dot is also replaced.
+    dot = -1
+    i = 0
+    while i < len(name) {
+        if name[i] == "." {
+            dot = i
+        }
+        i += 1
+    }
     stem_name = name
-    if len(ext) > 0 {
-        stem_name = stem_value(name)
+    if dot > 0 {
+        stem_name = ""
+        i = 0
+        while i < dot {
+            stem_name = stem_name + name[i]
+            i += 1
+        }
     }
     clean_extension = new_extension
     if len(clean_extension) > 0 && clean_extension[0] != "." {

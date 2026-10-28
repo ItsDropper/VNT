@@ -72,16 +72,19 @@ try {
         "tests\typecheck_read_before_assignment.vnt",
         "tests\typecheck_shadow_same_scope.vnt"
     )) {
+        $invalidOutput = Join-Path $OutDir ("invalid-" + [System.IO.Path]::GetFileNameWithoutExtension($case) + ".exe")
+        if (Test-Path $invalidOutput) { Remove-Item -Force $invalidOutput }
         $previousPreference = $ErrorActionPreference
         $ErrorActionPreference = "Continue"
         try {
-            & .\vnt.exe --compile $case -o (Join-Path $OutDir "should_not_exist.exe") 2>&1 | Out-Null
+            & .\vnt.exe --compile $case -o $invalidOutput 2>&1 | Out-Null
             $compileExitCode = $LASTEXITCODE
         }
         finally {
             $ErrorActionPreference = $previousPreference
         }
         if ($compileExitCode -eq 0) { throw "Expected type-check failure for $case, but compilation succeeded." }
+        if (Test-Path $invalidOutput) { throw "Failed compilation left an output artifact for $case." }
     }
 
     $ModuleExe = Join-Path $OutDir "modules.exe"

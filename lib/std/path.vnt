@@ -37,6 +37,16 @@ export fun basename(path) {
     return basename_value(path)
 }
 
+# Returns true when the final path component is a hidden-name candidate.
+# A single dot and the parent-directory token are not dotfiles.
+export fun is_dotfile(path) {
+    name = basename_value(path)
+    if name == "." || name == ".." || len(name) == 0 {
+        return false
+    }
+    return name[0] == "."
+}
+
 fun dirname_value(path) {
     normalized = normalize_path(path)
     if len(normalized) == 3 && normalized[1] == ":" && normalized[2] == "/" {

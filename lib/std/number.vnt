@@ -106,13 +106,19 @@ export fun is_prime(value) {
     if value < 2 {
         return false
     }
-    divisor = 2
-    # Division avoids overflow from divisor * divisor near the integer limit.
+    if value == 2 {
+        return true
+    }
+    if value % 2 == 0 {
+        return false
+    }
+    # Check odd divisors only; division avoids divisor * divisor overflow.
+    divisor = 3
     while divisor <= value / divisor {
         if value % divisor == 0 {
             return false
         }
-        divisor += 1
+        divisor += 2
     }
     return true
 }

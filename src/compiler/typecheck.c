@@ -27,6 +27,8 @@ typedef struct {
     int loop_depth;
 } TypeChecker;
 
+static int numeric(TypeKind t);
+
 static void error(TypeChecker *tc, const char *message) {
     if (!tc->error) fprintf(stderr, "Type error: %s\n", message);
     tc->error = 1;

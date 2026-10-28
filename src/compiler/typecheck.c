@@ -804,6 +804,14 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                 if (n->function_declaration.return_type && tc->expected_return == TY_UNDECLARED)
                     error(tc, "function declares an unknown return type.");
                 for (int i = 0; i < n->function_declaration.parameter_count; ++i) {
+                    for (int j = 0; j < i; ++j) {
+                        if (!strcmp(n->function_declaration.parameters[i],
+                                    n->function_declaration.parameters[j])) {
+                            error(tc, "duplicate function parameter name.");
+                            break;
+                        }
+                    }
+                    if (tc->error) break;
                     TypeKind pt = TY_UNKNOWN;
                     if (n->function_declaration.parameter_types && n->function_declaration.parameter_types[i]) {
                         pt = type_from_name(n->function_declaration.parameter_types[i]);

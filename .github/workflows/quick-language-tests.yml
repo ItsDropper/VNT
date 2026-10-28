@@ -214,21 +214,32 @@ jobs:
             tests/typecheck_void_parameter_type.vnt \
             tests/typecheck_unknown_parameter_type.vnt \
             tests/typecheck_duplicate_parameter_names.vnt \
-            tests/typecheck_argument_type_mismatch.vnt \
             tests/typecheck_nested_function_cannot_break_caller_loop.vnt; do
-            output="loop-context-invalid.exe"
+            output="semantic-context-invalid.exe"
             if ./vnt --compile "$case" -o "$output"; then
-              echo "Compiler incorrectly accepted invalid loop control in $case."
+              echo "Compiler incorrectly accepted invalid semantic context in $case."
               exit 1
             fi
             test ! -e "$output"
           done
           for case in \
+            tests/typecheck_argument_type_mismatch.vnt \
             tests/typecheck_return_type_mismatch.vnt \
-            tests/typecheck_explicit_assignment_type_mismatch.vnt; do
+            tests/typecheck_explicit_assignment_type_mismatch.vnt \
+            tests/typecheck_initializer_type_mismatch.vnt; do
             output="type-mismatch-invalid.exe"
             if ./vnt --compile "$case" -o "$output"; then
-              echo "Compiler incorrectly accepted invalid type usage in $case."
+              echo "Compiler incorrectly accepted incompatible typed value in $case."
+              exit 1
+            fi
+            test ! -e "$output"
+          done
+          for case in \
+            tests/typecheck_function_arity_mismatch.vnt \
+            tests/typecheck_builtin_arity_mismatch.vnt; do
+            output="arity-mismatch-invalid.exe"
+            if ./vnt --compile "$case" -o "$output"; then
+              echo "Compiler incorrectly accepted invalid argument count in $case."
               exit 1
             fi
             test ! -e "$output"

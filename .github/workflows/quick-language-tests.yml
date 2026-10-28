@@ -139,7 +139,7 @@ jobs:
           VNT_EXPECTED
           diff -u vnt-nested-loops-expected.txt vnt-nested-loops-actual-lf.txt
 
-      - name: Reject void-returning calls used as values
+      - name: Reject invalid expressions and incomplete return paths
         shell: bash
         run: |
           if ./vnt --compile tests/typecheck_void_value_rejected.vnt -o void-value-invalid.exe; then
@@ -172,6 +172,15 @@ jobs:
             exit 1
           fi
           test ! -e nested-partial-return-invalid.exe
+          ./vnt --compile tests/typed_function_nested_returns.vnt -o nested-typed-returns.exe
+          ./nested-typed-returns.exe > nested-typed-returns-actual.txt
+          tr -d '\r' < nested-typed-returns-actual.txt > nested-typed-returns-actual-lf.txt
+          cat > nested-typed-returns-expected.txt <<'VNT_EXPECTED'
+          7
+          9
+          NESTED_TYPED_RETURNS_OK
+          VNT_EXPECTED
+          diff -u nested-typed-returns-expected.txt nested-typed-returns-actual-lf.txt
           if ./vnt --compile tests/typecheck_break_outside_loop.vnt -o break-outside-loop-invalid.exe; then
             echo "Compiler incorrectly accepted break outside a loop."
             exit 1

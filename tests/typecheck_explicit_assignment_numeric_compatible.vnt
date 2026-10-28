@@ -1,0 +1,4 @@
+let count: int = 10
+count = 11
+print(count)
+print("TYPED_NUMERIC_REASSIGNMENT_OK")

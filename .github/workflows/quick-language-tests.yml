@@ -554,6 +554,17 @@ jobs:
           0
           2
           2
+          true
+          true
+          0
+          2
+          1
+          abc
+          abc
+          3
+          one
+          two
+          0
           STRING_STANDARD_LIBRARY_OK
           VNT_EXPECTED
           diff -u std-string-expected.txt std-string-actual-lf.txt

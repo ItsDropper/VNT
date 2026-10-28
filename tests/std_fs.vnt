@@ -60,13 +60,16 @@ if !fs.write_text(line_path, "one\rtwo\r\nthree\n") {
     if len(line_items) != 3 {
         print("FS_FAIL_READ_LINES")
     } else {
-        if line_items[0] != "one" {
+        first_line = line_items[0]
+        second_line = line_items[1]
+        third_line = line_items[2]
+        if first_line != "one" {
             print("FS_FAIL_READ_LINES")
         } else {
-            if line_items[1] != "two" {
+            if second_line != "two" {
                 print("FS_FAIL_READ_LINES")
             } else {
-                if line_items[2] != "three" {
+                if third_line != "three" {
                     print("FS_FAIL_READ_LINES")
                 } else {
                     print("FS_READ_LINES_OK")

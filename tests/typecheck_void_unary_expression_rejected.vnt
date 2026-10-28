@@ -1,0 +1,9 @@
+# Copyright (c) 2026 ItsDropper
+# MIT License
+# Void-returning calls cannot participate in unary expressions.
+
+fun log_message() -> void {
+    return
+}
+
+let result = -log_message()

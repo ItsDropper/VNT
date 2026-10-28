@@ -94,6 +94,7 @@ Unknown/dynamic types are permitted in selected contexts by design. Do not inter
 - `tests/typecheck_void_parameter_type.vnt`: rejects `void` as a parameter type.
 - `tests/typecheck_unknown_parameter_type.vnt`: rejects an undeclared parameter annotation.
 - `tests/typecheck_duplicate_parameter_names.vnt`: rejects ambiguous duplicate parameter names.
+- `tests/typecheck_nested_function_cannot_break_caller_loop.vnt`: verifies that a nested function cannot break the loop of its caller.
 
 The quick language workflow checks compile failures and verifies expected runtime output on Linux and Windows. The VNX workflow provides additional native-interpreter coverage. A workflow that is queued or in progress is not evidence of a passing test.
 

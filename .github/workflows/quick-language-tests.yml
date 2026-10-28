@@ -152,6 +152,11 @@ jobs:
             exit 1
           fi
           test ! -e duplicate-struct-definitions-invalid.exe
+          if ./vnt --compile tests/typecheck_duplicate_function_definitions.vnt -o duplicate-function-definitions-invalid.exe; then
+            echo "Compiler incorrectly accepted duplicate function definitions."
+            exit 1
+          fi
+          test ! -e duplicate-function-definitions-invalid.exe
           if ./vnt --compile tests/typecheck_void_value_rejected.vnt -o void-value-invalid.exe; then
             echo "Compiler incorrectly accepted a void-returning call as a variable initializer."
             exit 1

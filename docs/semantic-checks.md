@@ -77,7 +77,7 @@ This is a deliberately conservative analysis, not a full control-flow proof. Fut
 
 ## Type compatibility
 
-The checker validates explicit parameter and return annotations, initializer types, assignment compatibility, operators, indexing, and use of void-returning calls. Unknown return types and unknown or `void` parameter types are rejected; `void` is reserved for a function's no-value return contract. Duplicate parameter names are rejected so one declaration cannot silently shadow another parameter in the same signature. Duplicate function definitions are rejected rather than silently binding calls to the first definition. Struct declarations also reject duplicate field names, preventing ambiguous member layouts, and duplicate struct names, preventing later declarations from silently resolving to the first layout. Numeric types are intentionally interoperable in the current language. Inferred variables may become dynamically typed when assignments disagree; explicit annotations remain stricter.
+The checker validates explicit parameter and return annotations, initializer types, assignment compatibility, operators, indexing, and use of void-returning calls. Unknown return types and unknown or `void` parameter types are rejected; `void` is reserved for a function's no-value return contract. Duplicate parameter names are rejected so one declaration cannot silently shadow another parameter in the same signature. Calls to annotated functions are checked against parameter types, while numeric-to-numeric compatibility remains supported. Duplicate function definitions are rejected rather than silently binding calls to the first definition. Struct declarations also reject duplicate field names, preventing ambiguous member layouts, and duplicate struct names, preventing later declarations from silently resolving to the first layout. Numeric types are intentionally interoperable in the current language. Inferred variables may become dynamically typed when assignments disagree; explicit annotations remain stricter.
 
 Unknown/dynamic types are permitted in selected contexts by design. Do not interpret that behavior as strict static typing.
 
@@ -94,6 +94,7 @@ Unknown/dynamic types are permitted in selected contexts by design. Do not inter
 - `tests/typecheck_void_parameter_type.vnt`: rejects `void` as a parameter type.
 - `tests/typecheck_unknown_parameter_type.vnt`: rejects an undeclared parameter annotation.
 - `tests/typecheck_duplicate_parameter_names.vnt`: rejects ambiguous duplicate parameter names.
+- `tests/typecheck_argument_type_mismatch.vnt`: rejects a string passed to an `int`-annotated parameter.
 - `tests/typecheck_nested_function_cannot_break_caller_loop.vnt`: verifies that a nested function cannot break the loop of its caller.
 - `tests/typecheck_duplicate_struct_fields.vnt`: rejects repeated field names in one struct declaration.
 - `tests/typecheck_duplicate_struct_definitions.vnt`: rejects a second declaration using an existing struct name.

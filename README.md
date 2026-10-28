@@ -204,6 +204,8 @@ The source-level standard library lives in `lib/std/`. Available modules include
 | `array.vnt` | Search/count, numeric aggregates, reverse, concatenate, take/drop, stable deduplication, and join |
 | `string.vnt` | Search/split/slicing/padding/replacement, prefix/suffix removal, trimming, and line counting (runtime indexing; no grapheme segmentation) |
 | `number.vnt` | Parity, sign, factorial, GCD, and primality helpers |
+| `statistics.vnt` | Mean, median, sorting, range/span, population variance, standard deviation, and interpolated percentiles |
+| `validate.vnt` | ASCII text checks, numeric-string validation, identifiers, and conservative email/HTTP URL sanity checks |
 | `time.vnt` | Millisecond clock, duration/deadline helpers, Gregorian leap-year/date validation, day-of-year, and weekday (no timezone database or guaranteed monotonic clock) |
 | `os.vnt` | Current directory and environment variables |
 | `process.vnt` | Start, inspect, wait for, and terminate child processes |

@@ -586,7 +586,7 @@ static void emit_stmt(CGen *g, AstNode *node) {
                 emit_expr(g, node->return_statement.expression);
                 fputc(';', g->out);
             } else {
-                fputs("return;", g->out);
+                fputs("return vnt_invalid();", g->out);
             }
             break;
 

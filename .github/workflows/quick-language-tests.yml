@@ -296,6 +296,12 @@ jobs:
           fi
           grep -F "function return type mismatch: expected int but returned string." return-type-diagnostic.log
           test ! -e return-type-invalid.exe
+          if ./vnt --compile tests/typecheck_initializer_type_mismatch.vnt -o initializer-type-invalid.exe 2> initializer-type-diagnostic.log; then
+            echo "Compiler incorrectly accepted an incompatible explicit initializer."
+            exit 1
+          fi
+          grep -F "initializer for 'count' expects int but received string." initializer-type-diagnostic.log
+          test ! -e initializer-type-invalid.exe
 
       - name: Emit assembly without invoking the hosted linker
         shell: bash

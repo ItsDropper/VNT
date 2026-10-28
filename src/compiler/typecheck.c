@@ -733,8 +733,9 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                     if (!type_compatible(declared_type, value_type)) {
                         char message[256];
                         snprintf(message, sizeof(message),
-                                 "initializer type does not match declared type '%s'.",
-                                 n->variable_declaration.declared_type);
+                                 "initializer for '%s' expects %s but received %s.",
+                                 n->variable_declaration.name,
+                                 type_name(declared_type), type_name(value_type));
                         error(tc, message);
                         break;
                     }

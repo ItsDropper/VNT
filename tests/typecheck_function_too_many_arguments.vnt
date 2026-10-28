@@ -1,0 +1,5 @@
+fun add(left: int, right: int) -> int {
+    return left + right
+}
+
+print(add(1, 2, 3))

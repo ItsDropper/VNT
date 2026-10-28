@@ -98,9 +98,20 @@ jobs:
             -o hir-invariants
           ./hir-invariants
 
-      - name: Compile valid loop-control regression program
+      - name: Run loop-control regression programs
         shell: bash
-        run: ./vnt --compile tests/loops.vnt -o vnt-loops-smoke.exe
+        run: |
+          ./vnt --compile tests/loops.vnt -o vnt-loops-smoke.exe
+          ./vnt-loops-smoke.exe > vnt-loops-actual.txt
+          tr -d '\\r' < vnt-loops-actual.txt > vnt-loops-actual-lf.txt
+          printf 'break\\n1\\n2\\n3\\n4\\ncontinue\\n1\\n2\\n4\\n5\\nwhile\\n1\\n3\\n4\\n' > vnt-loops-expected.txt
+          diff -u vnt-loops-expected.txt vnt-loops-actual-lf.txt
+
+          ./vnt --compile tests/nested_loop_control.vnt -o vnt-nested-loops-smoke.exe
+          ./vnt-nested-loops-smoke.exe > vnt-nested-loops-actual.txt
+          tr -d '\\r' < vnt-nested-loops-actual.txt > vnt-nested-loops-actual-lf.txt
+          printf 'nested\\n1\\n1\\n3\\n2\\n1\\n3\\n3\\n1\\n3\\n' > vnt-nested-loops-expected.txt
+          diff -u vnt-nested-loops-expected.txt vnt-nested-loops-actual-lf.txt
 
       - name: Reject void-returning calls used as values
         shell: bash

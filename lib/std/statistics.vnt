@@ -1,6 +1,7 @@
 # Statistical helpers for numeric arrays, implemented entirely in VNT.
 # Functions do not mutate the caller's array. Empty aggregates return 0.
 # variance is population variance (divide by N); percentile linearly interpolates.
+
 fun sorted_copy(values) {
     size = len(values)
     result = range(size)
@@ -39,11 +40,17 @@ export fun median(values) {
     size = len(values)
     if size == 0 { return 0 }
     ordered = sorted_copy(values)
-    middle = floor(size / 2)
-    if size % 2 == 1 {
-        return ordered[middle]
+    target = size / 2
+    lower = 0
+    upper = 0
+    i = 0
+    while i < size {
+        if i == target - 1 { lower = ordered[i] }
+        if i == target { upper = ordered[i] }
+        i += 1
     }
-    return (ordered[middle - 1] + ordered[middle]) / 2
+    if size % 2 == 1 { return upper }
+    return (lower + upper) / 2
 }
 
 export fun minimum(values) {
@@ -103,11 +110,19 @@ export fun percentile(values, p) {
     if percent > 100 { percent = 100 }
     ordered = sorted_copy(values)
     position = (size - 1) * percent / 100
-    lower = floor(position)
-    upper = lower + 1
-    if upper >= size { return ordered[lower] }
-    fraction = position - lower
-    return ordered[lower] + (ordered[upper] - ordered[lower]) * fraction
+    lower_target = floor(position)
+    upper_target = lower_target + 1
+    lower_value = 0
+    upper_value = 0
+    i = 0
+    while i < size {
+        if i == lower_target { lower_value = ordered[i] }
+        if i == upper_target { upper_value = ordered[i] }
+        i += 1
+    }
+    if upper_target >= size { return lower_value }
+    fraction = position - lower_target
+    return lower_value + (upper_value - lower_value) * fraction
 }
 
 export fun sorted(values) {

@@ -1,0 +1,11 @@
+# Copyright (c) 2026 ItsDropper
+# MIT License
+# A void-returning call cannot supply a while-loop condition.
+
+fun touch() -> void {
+    print("touch")
+}
+
+while touch() {
+    print("unreachable")
+}

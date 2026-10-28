@@ -71,7 +71,7 @@ Each invalid case should fail compilation, and tests should check that a failed 
 
 ## Function return rules
 
-For functions with an explicit non-void return type, the current checker requires a return on every statically recognized path. It recognizes direct returns, returns inside an unsafe block, and an `if` whose then and else branches both return. It intentionally does not treat a loop as guaranteed to execute or return.
+For functions with an explicit non-void return type, the current checker requires a return on every statically recognized path. It recognizes direct returns, returns inside an unsafe block, and an `if` whose then and else branches both return. It intentionally does not treat a loop as guaranteed to execute or return. A conditional branch that does not return is still valid when a later statement returns on every path that falls through the conditional; `tests/typed_function_fallthrough_return.vnt` protects this distinction.
 
 This is a deliberately conservative analysis, not a full control-flow proof. Future work should use the control-flow graph to compute whether every reachable exit from a typed function returns a value, and should test early returns, unreachable statements, nested branches, and loops.
 
@@ -102,6 +102,7 @@ Unknown/dynamic types are permitted in selected contexts by design. Do not inter
 - `tests/typecheck_builtin_too_few_arguments.vnt`: rejects calls missing required builtin arguments.
 - `tests/typecheck_undeclared_function.vnt`: rejects calls to unknown function names.
 - `tests/typecheck_return_type_mismatch.vnt`: rejects a string returned from an `int`-annotated function.
+- `tests/typed_function_fallthrough_return.vnt`: accepts a partial conditional followed by a return covering the remaining path.
 - `tests/typecheck_invalid_void_return.vnt`: rejects returning a value from a `void` function.
 - `tests/typecheck_explicit_assignment_type_mismatch.vnt`: rejects assigning a string to an explicitly typed local variable with an assignment-specific expected-versus-actual diagnostic.
 - `tests/typecheck_parameter_assignment_type_mismatch.vnt`: rejects assigning a string to an explicitly typed function parameter, protecting parameter bindings from incompatible reassignment.

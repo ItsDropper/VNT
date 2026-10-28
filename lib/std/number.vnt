@@ -1,5 +1,35 @@
 # Pure VNT numeric helpers implemented with existing operators and control flow.
 # factorial(-n) returns -1 for negative input; gcd() returns a non-negative value.
+# clamp(value, lower, upper) swaps reversed bounds before clamping.
+
+export fun min(left, right) {
+    if left < right {
+        return left
+    }
+    return right
+}
+
+export fun max(left, right) {
+    if left > right {
+        return left
+    }
+    return right
+}
+
+export fun clamp(value, lower, upper) {
+    if lower > upper {
+        temporary = lower
+        lower = upper
+        upper = temporary
+    }
+    if value < lower {
+        return lower
+    }
+    if value > upper {
+        return upper
+    }
+    return value
+}
 
 export fun is_even(value) {
     return value % 2 == 0

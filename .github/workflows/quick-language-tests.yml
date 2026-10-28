@@ -223,6 +223,16 @@ jobs:
             fi
             test ! -e "$output"
           done
+          for case in \
+            tests/typecheck_return_type_mismatch.vnt \
+            tests/typecheck_explicit_assignment_type_mismatch.vnt; do
+            output="type-mismatch-invalid.exe"
+            if ./vnt --compile "$case" -o "$output"; then
+              echo "Compiler incorrectly accepted invalid type usage in $case."
+              exit 1
+            fi
+            test ! -e "$output"
+          done
 
       - name: Emit assembly without invoking the hosted linker
         shell: bash

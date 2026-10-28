@@ -119,6 +119,9 @@ export fun stringify(rows) {
             }
             value = row[column_index]
             needs_quotes = false
+            if len(value) == 0 {
+                needs_quotes = true
+            }
             if string_contains(value, ",") || string_contains(value, "\"") || string_contains(value, "\n") || string_contains(value, "\r") {
                 needs_quotes = true
             }

@@ -476,6 +476,37 @@ jobs:
           VNT_EXPECTED
           diff -u std-validate-expected.txt std-validate-actual-lf.txt
 
+      - name: Run CSV parser and serializer regressions
+        shell: bash
+        run: |
+          ./vnt --compile tests/std_csv.vnt -o std-csv-smoke.exe
+          ./std-csv-smoke.exe > std-csv-actual.txt
+          tr -d '\r' < std-csv-actual.txt > std-csv-actual-lf.txt
+          cat > std-csv-expected.txt <<'VNT_EXPECTED'
+          4
+          name
+          Ada
+          likes, commas
+          13
+          a "quote"
+          likes, commas
+          13
+          a "quote"
+          []
+          []
+          ""
+          1
+          1
+          0
+          "",middle,""
+          3
+          0
+          middle
+          0
+          CSV_STANDARD_LIBRARY_OK
+          VNT_EXPECTED
+          diff -u std-csv-expected.txt std-csv-actual-lf.txt
+
       - name: Emit assembly without invoking the hosted linker
         shell: bash
         run: |

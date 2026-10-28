@@ -318,6 +318,36 @@ try {
     }
     Write-Host "Standard array/string/number libraries: PASS"
 
+    $StatisticsExe = Join-Path $OutDir "std_statistics.exe"
+    & .\vnt.exe --compile tests\std_statistics.vnt -o $StatisticsExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard statistics library did not compile." }
+    $statisticsOutput = & $StatisticsExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard statistics program exited unsuccessfully." }
+    $statisticsExpected = @(
+        "4.5", "4", "1", "9", "8", "8.75", "0", "1", "2.5", "4", "9", "1", "9",
+        "[1, 3, 5, 9]", "[9, 1, 5, 3]", "0", "0", "0", "STDLIB_STATISTICS_OK"
+    )
+    if (($statisticsOutput -join "|") -ne ($statisticsExpected -join "|")) {
+        throw "Unexpected standard statistics output: $($statisticsOutput -join ' | ')"
+    }
+    Write-Host "Standard statistics library: PASS"
+
+    $ValidateExe = Join-Path $OutDir "std_validate.exe"
+    & .\vnt.exe --compile tests\std_validate.vnt -o $ValidateExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard validation library did not compile." }
+    $validateOutput = & $ValidateExe
+    if ($LASTEXITCODE -ne 0) { throw "Standard validation program exited unsuccessfully." }
+    $validateExpected = @(
+        "true", "true", "false", "true", "false", "true", "false", "true", "false",
+        "true", "true", "true", "false", "false", "true", "true", "true", "false",
+        "false", "true", "false", "true", "false", "true", "false", "false",
+        "true", "true", "false", "false", "STDLIB_VALIDATE_OK"
+    )
+    if (($validateOutput -join "|") -ne ($validateExpected -join "|")) {
+        throw "Unexpected standard validation output: $($validateOutput -join ' | ')"
+    }
+    Write-Host "Standard validation library: PASS"
+
     $StdFoundationExe = Join-Path $OutDir "std_foundation.exe"
     & .\vnt.exe --compile tests\std_foundation.vnt -o $StdFoundationExe
     if ($LASTEXITCODE -ne 0) { throw "Standard foundation libraries did not compile." }

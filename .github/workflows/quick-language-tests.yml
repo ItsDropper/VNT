@@ -254,7 +254,10 @@ jobs:
           done
           for case in \
             tests/typecheck_function_arity_mismatch.vnt \
-            tests/typecheck_builtin_arity_mismatch.vnt; do
+            tests/typecheck_function_too_many_arguments.vnt \
+            tests/typecheck_builtin_arity_mismatch.vnt \
+            tests/typecheck_builtin_too_few_arguments.vnt \
+            tests/typecheck_undeclared_function.vnt; do
             output="arity-mismatch-invalid.exe"
             if ./vnt --compile "$case" -o "$output"; then
               echo "Compiler incorrectly accepted invalid argument count in $case."

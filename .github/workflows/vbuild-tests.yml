@@ -70,6 +70,13 @@ jobs:
               throw "duplicate project properties were not rejected with a targeted diagnostic: $($duplicatePropertyOutput -join ' | ')"
             }
             Set-Content -NoNewline -Path vbuild.properties -Value $validProperties
+            Add-Content vbuild.properties 'project.version = "unterminated'
+            $malformedPropertyOutput = & $binary build 2>&1
+            $malformedPropertyExitCode = $LASTEXITCODE
+            if ($malformedPropertyExitCode -eq 0 -or ($malformedPropertyOutput -join "`n") -notmatch "unterminated quoted value for property 'project.version'") {
+              throw "malformed quoted properties were not rejected with a targeted diagnostic: $($malformedPropertyOutput -join ' | ')"
+            }
+            Set-Content -NoNewline -Path vbuild.properties -Value $validProperties
             Add-Content build.vbuild 'task verify = none depends check, build'
             & $binary tasks
             if ($LASTEXITCODE -ne 0) { throw 'task graph parsing failed' }

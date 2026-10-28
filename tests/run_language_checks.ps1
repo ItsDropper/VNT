@@ -73,6 +73,8 @@ try {
         "tests\typecheck_initializer_type_mismatch.vnt",
         "tests\typecheck_function_arity_mismatch.vnt",
         "tests\typecheck_builtin_arity_mismatch.vnt",
+        "tests\typecheck_void_argument_rejected.vnt",
+        "tests\typecheck_struct_constructor_arguments_rejected.vnt",
         "tests\typecheck_nested_function_cannot_break_caller_loop.vnt",
         "tests\typecheck_duplicate_struct_fields.vnt",
         "tests\typecheck_duplicate_struct_definitions.vnt",

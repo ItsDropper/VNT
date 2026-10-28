@@ -6,7 +6,7 @@ export fun is_blank(value) {
     i = 0
     while i < size {
         ch = value[i]
-        if ch != " " && ch != "\t" && ch != "\r" && ch != "\n" {
+        if ch != " " && ch != "\\t" && ch != "\\r" && ch != "\\n" {
             return false
         }
         i += 1
@@ -103,20 +103,22 @@ export fun looks_like_email(value) {
             if at != -1 { return false }
             at = i
         }
-        if value[i] == " " || value[i] == "\t" || value[i] == "\r" || value[i] == "\n" {
+        if value[i] == " " || value[i] == "\\t" || value[i] == "\\r" || value[i] == "\\n" {
             return false
         }
         i += 1
     }
     if at <= 0 || at >= size - 3 { return false }
-    if value[at + 1] == "." || value[size - 1] == "." { return false }
+    domain_start = at + 1
+    last = size - 1
+    if value[domain_start] == "." || value[last] == "." { return false }
     dot = -1
-    i = at + 1
+    i = domain_start
     while i < size {
         if value[i] == "." { dot = i }
         i += 1
     }
-    return dot > at + 1 && dot < size - 1
+    return dot > domain_start && dot < last
 }
 
 # Checks scheme, a non-empty host-like segment, and absence of whitespace.
@@ -138,7 +140,7 @@ export fun looks_like_http_url(value) {
     if value[start] == "/" || value[start] == "." || value[start] == ":" { return false }
     i = 0
     while i < size {
-        if value[i] == " " || value[i] == "\t" || value[i] == "\r" || value[i] == "\n" {
+        if value[i] == " " || value[i] == "\\t" || value[i] == "\\r" || value[i] == "\\n" {
             return false
         }
         i += 1

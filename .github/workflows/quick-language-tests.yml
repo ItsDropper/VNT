@@ -682,6 +682,10 @@ jobs:
           ./vnt --compile tests/std_fs.vnt -o std-fs-smoke.exe
           ./std-fs-smoke.exe > std-fs-actual.txt
           grep -Fx "FS_OK" std-fs-actual.txt
+          grep -Fx "3" std-fs-actual.txt
+          grep -Fx "one" std-fs-actual.txt
+          grep -Fx "two" std-fs-actual.txt
+          grep -Fx "three" std-fs-actual.txt
           grep -Fx "FS_READ_LINES_OK" std-fs-actual.txt
           grep -Fx "STANDARD_FS_OK" std-fs-actual.txt
 

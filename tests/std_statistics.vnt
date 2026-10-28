@@ -1,0 +1,22 @@
+import "../lib/std/statistics.vnt" as stats
+
+values = [9, 1, 5, 3]
+print(stats.mean(values))
+print(stats.median(values))
+print(stats.minimum(values))
+print(stats.maximum(values))
+print(stats.range(values))
+print(stats.variance(values))
+print(stats.standard_deviation([4, 4, 4]))
+print(stats.percentile(values, 0))
+print(stats.percentile(values, 25))
+print(stats.percentile(values, 50))
+print(stats.percentile(values, 100))
+print(stats.percentile(values, -20))
+print(stats.percentile(values, 120))
+print(stats.sorted(values))
+print(values)
+print(stats.mean([]))
+print(stats.median([]))
+print(stats.variance([]))
+print("STDLIB_STATISTICS_OK")

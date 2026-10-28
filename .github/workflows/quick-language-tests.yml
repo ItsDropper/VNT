@@ -607,6 +607,10 @@ jobs:
           1
           abc
           abc
+          -1
+          false
+          -1
+          abcabc
           3
           one
           two

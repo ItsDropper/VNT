@@ -217,7 +217,7 @@ jobs:
           ./vnt --compile tests/typed_function_nested_fallthrough_return.vnt -o typed-nested-fallthrough.exe
           ./typed-nested-fallthrough.exe > typed-nested-fallthrough-actual.txt
           tr -d '\\r' < typed-nested-fallthrough-actual.txt > typed-nested-fallthrough-actual-lf.txt
-          printf '31\\n47\\n47\\nTYPED_NESTED_FALLTHROUGH_OK\\n' > typed-nested-fallthrough-expected.txt
+          printf '31\n47\n47\nTYPED_NESTED_FALLTHROUGH_OK\n' > typed-nested-fallthrough-expected.txt
           diff -u typed-nested-fallthrough-expected.txt typed-nested-fallthrough-actual-lf.txt
           if ./vnt --compile tests/typecheck_break_outside_loop.vnt -o break-outside-loop-invalid.exe; then
             echo "Compiler incorrectly accepted break outside a loop."

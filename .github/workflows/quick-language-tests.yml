@@ -231,7 +231,8 @@ jobs:
             tests/typecheck_scope_if_leak.vnt \
             tests/typecheck_scope_while_leak.vnt \
             tests/typecheck_read_before_assignment.vnt \
-            tests/typecheck_shadow_same_scope.vnt; do
+            tests/typecheck_shadow_same_scope.vnt \
+            tests/typecheck_invalid_void_return.vnt; do
             output="semantic-context-invalid.exe"
             if ./vnt --compile "$case" -o "$output"; then
               echo "Compiler incorrectly accepted invalid semantic context in $case."

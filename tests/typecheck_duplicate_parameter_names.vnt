@@ -1,0 +1,5 @@
+fun ambiguous(value: int, value: string) -> int {
+    return 1
+}
+
+print(ambiguous(2, "two"))

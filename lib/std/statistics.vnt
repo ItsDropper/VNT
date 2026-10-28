@@ -33,7 +33,7 @@ export fun mean(values) {
         total += values[i]
         i += 1
     }
-    return total / size
+    return total * 1.0 / size
 }
 
 export fun median(values) {
@@ -100,7 +100,7 @@ export fun variance(values) {
         total += values[i]
         i += 1
     }
-    center = total / size
+    center = total * 1.0 / size
     squared_total = 0
     i = 0
     while i < size {
@@ -108,7 +108,7 @@ export fun variance(values) {
         squared_total += difference * difference
         i += 1
     }
-    return squared_total / size
+    return squared_total * 1.0 / size
 }
 
 export fun standard_deviation(values) {
@@ -140,7 +140,7 @@ export fun percentile(values, p) {
     if percent < 0 { percent = 0 }
     if percent > 100 { percent = 100 }
     ordered = sorted_copy(values)
-    position = (size - 1) * percent / 100
+    position = (size - 1) * percent * 1.0 / 100
     lower_target = floor(position)
     upper_target = lower_target + 1
     lower_value = 0

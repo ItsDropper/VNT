@@ -476,6 +476,34 @@ jobs:
           VNT_EXPECTED
           diff -u std-validate-expected.txt std-validate-actual-lf.txt
 
+      - name: Run array standard-library regressions
+        shell: bash
+        run: |
+          ./vnt --compile tests/std_array.vnt -o std-array-smoke.exe
+          ./std-array-smoke.exe > std-array-actual.txt
+          tr -d '\r' < std-array-actual.txt > std-array-actual-lf.txt
+          cat > std-array-expected.txt <<'VNT_EXPECTED'
+          true
+          1
+          2
+          6
+          1.5
+          0
+          -3
+          5
+          3
+          3
+          2
+          2
+          2
+          b
+          a-b-c
+          0
+          0
+          ARRAY_STANDARD_LIBRARY_OK
+          VNT_EXPECTED
+          diff -u std-array-expected.txt std-array-actual-lf.txt
+
       - name: Run CSV parser and serializer regressions
         shell: bash
         run: |

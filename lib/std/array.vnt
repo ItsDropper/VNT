@@ -47,10 +47,17 @@ export fun sum(values) {
 }
 
 export fun average(values) {
-    if len(values) == 0 {
+    size = len(values)
+    if size == 0 {
         return 0
     }
-    return sum(values) / len(values)
+    total = 0
+    i = 0
+    while i < size {
+        total += values[i]
+        i += 1
+    }
+    return total * 1.0 / size
 }
 
 export fun min(values) {
@@ -148,13 +155,31 @@ export fun drop(values, requested) {
 }
 
 # Stable deduplication: keeps the first occurrence of each value.
+# Inline the scan so module qualification does not affect internal helper resolution.
 export fun unique(values) {
-    result = []
+    size = len(values)
+    scratch = range(size)
+    unique_count = 0
     i = 0
-    while i < len(values) {
-        if !contains(result, values[i]) {
-            result = concat(result, [values[i]])
+    while i < size {
+        found = false
+        j = 0
+        while j < unique_count {
+            if scratch[j] == values[i] {
+                found = true
+            }
+            j += 1
         }
+        if !found {
+            scratch[unique_count] = values[i]
+            unique_count += 1
+        }
+        i += 1
+    }
+    result = range(unique_count)
+    i = 0
+    while i < unique_count {
+        result[i] = scratch[i]
         i += 1
     }
     return result

@@ -6,7 +6,7 @@ export fun is_blank(value) {
     i = 0
     while i < size {
         ch = value[i]
-        if ch != " " && ch != "\\t" && ch != "\\r" && ch != "\\n" {
+        if ch != " " && ch != "\t" && ch != "\r" && ch != "\n" {
             return false
         }
         i += 1
@@ -38,9 +38,7 @@ export fun is_integer(value) {
     size = len(value)
     if size == 0 { return false }
     start = 0
-    if value[0] == "-" || value[0] == "+" {
-        start = 1
-    }
+    if value[0] == "-" || value[0] == "+" { start = 1 }
     if start == size { return false }
     while start < size {
         if !is_digit(value[start]) { return false }
@@ -97,28 +95,30 @@ export fun looks_like_email(value) {
     size = len(value)
     if size < 5 || is_blank(value) { return false }
     at = -1
+    last_char = ""
+    first_domain_char = ""
+    dot = -1
     i = 0
     while i < size {
-        if value[i] == "@" {
+        ch = value[i]
+        if ch == "@" {
             if at != -1 { return false }
             at = i
+        } else {
+            if at != -1 {
+                if first_domain_char == "" { first_domain_char = ch }
+                if ch == "." { dot = i }
+            }
         }
-        if value[i] == " " || value[i] == "\\t" || value[i] == "\\r" || value[i] == "\\n" {
+        if ch == " " || ch == "\t" || ch == "\r" || ch == "\n" {
             return false
         }
+        last_char = ch
         i += 1
     }
     if at <= 0 || at >= size - 3 { return false }
-    domain_start = at + 1
-    last = size - 1
-    if value[domain_start] == "." || value[last] == "." { return false }
-    dot = -1
-    i = domain_start
-    while i < size {
-        if value[i] == "." { dot = i }
-        i += 1
-    }
-    return dot > domain_start && dot < last
+    if first_domain_char == "." || last_char == "." { return false }
+    return dot > at + 1 && dot < size - 1
 }
 
 # Checks scheme, a non-empty host-like segment, and absence of whitespace.
@@ -126,21 +126,24 @@ export fun looks_like_http_url(value) {
     size = len(value)
     if size < 9 { return false }
     https = false
-    if len(value) >= 8 && value[0] == "h" && value[1] == "t" && value[2] == "t" && value[3] == "p" && value[4] == "s" && value[5] == ":" && value[6] == "/" && value[7] == "/" {
+    if value[0] == "h" && value[1] == "t" && value[2] == "t" && value[3] == "p" && value[4] == "s" && value[5] == ":" && value[6] == "/" && value[7] == "/" {
         https = true
     }
     http = false
-    if len(value) >= 7 && value[0] == "h" && value[1] == "t" && value[2] == "t" && value[3] == "p" && value[4] == ":" && value[5] == "/" && value[6] == "/" {
+    if value[0] == "h" && value[1] == "t" && value[2] == "t" && value[3] == "p" && value[4] == ":" && value[5] == "/" && value[6] == "/" {
         http = true
     }
     if !https && !http { return false }
-    start = 7
-    if https { start = 8 }
-    if start >= size { return false }
-    if value[start] == "/" || value[start] == "." || value[start] == ":" { return false }
+    if https {
+        if size <= 8 { return false }
+        if value[8] == "/" || value[8] == "." || value[8] == ":" { return false }
+    } else {
+        if size <= 7 { return false }
+        if value[7] == "/" || value[7] == "." || value[7] == ":" { return false }
+    }
     i = 0
     while i < size {
-        if value[i] == " " || value[i] == "\\t" || value[i] == "\\r" || value[i] == "\\n" {
+        if value[i] == " " || value[i] == "\t" || value[i] == "\r" || value[i] == "\n" {
             return false
         }
         i += 1

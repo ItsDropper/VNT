@@ -1,6 +1,8 @@
 # Conservative ASCII/text validation helpers. These are not Unicode-aware.
 # Email and URL checks are practical sanity checks, not complete standards parsers.
 
+import "string.vnt" as text
+
 export fun is_blank(value) {
     size = len(value)
     i = 0
@@ -94,59 +96,37 @@ export fun is_identifier(value) {
 export fun looks_like_email(value) {
     size = len(value)
     if size < 5 || is_blank(value) { return false }
-    at = -1
-    last_char = ""
-    first_domain_char = ""
-    dot = -1
-    i = 0
-    while i < size {
-        ch = value[i]
-        if ch == "@" {
-            if at != -1 { return false }
-            at = i
-        } else {
-            if at != -1 {
-                if first_domain_char == "" { first_domain_char = ch }
-                if ch == "." { dot = i }
-            }
-        }
-        if ch == " " || ch == "\t" || ch == "\r" || ch == "\n" {
-            return false
-        }
-        last_char = ch
-        i += 1
-    }
+    if text.count(value, "@") != 1 { return false }
+    at = text.index_of(value, "@")
     if at <= 0 || at >= size - 3 { return false }
-    if first_domain_char == "." || last_char == "." { return false }
-    return dot > at + 1 && dot < size - 1
+    domain = text.right(value, size - at - 1)
+    if text.starts_with(domain, ".") || text.ends_with(domain, ".") { return false }
+    dot = text.index_of(domain, ".")
+    return dot > 0 && dot < len(domain) - 1 &&
+        !text.contains(value, " ") &&
+        !text.contains(value, "\t") &&
+        !text.contains(value, "\r") &&
+        !text.contains(value, "\n")
 }
 
 # Checks scheme, a non-empty host-like segment, and absence of whitespace.
 export fun looks_like_http_url(value) {
-    size = len(value)
-    if size < 9 { return false }
-    https = false
-    if value[0] == "h" && value[1] == "t" && value[2] == "t" && value[3] == "p" && value[4] == "s" && value[5] == ":" && value[6] == "/" && value[7] == "/" {
-        https = true
-    }
-    http = false
-    if value[0] == "h" && value[1] == "t" && value[2] == "t" && value[3] == "p" && value[4] == ":" && value[5] == "/" && value[6] == "/" {
-        http = true
-    }
-    if !https && !http { return false }
-    if https {
-        if size <= 8 { return false }
-        if value[8] == "/" || value[8] == "." || value[8] == ":" { return false }
+    if text.starts_with(value, "https://") {
+        remainder = text.remove_prefix(value, "https://")
+        if len(remainder) == 0 { return false }
+        if text.starts_with(remainder, "/") ||
+            text.starts_with(remainder, ".") ||
+            text.starts_with(remainder, ":") { return false }
     } else {
-        if size <= 7 { return false }
-        if value[7] == "/" || value[7] == "." || value[7] == ":" { return false }
+        if !text.starts_with(value, "http://") { return false }
+        remainder = text.remove_prefix(value, "http://")
+        if len(remainder) == 0 { return false }
+        if text.starts_with(remainder, "/") ||
+            text.starts_with(remainder, ".") ||
+            text.starts_with(remainder, ":") { return false }
     }
-    i = 0
-    while i < size {
-        if value[i] == " " || value[i] == "\t" || value[i] == "\r" || value[i] == "\n" {
-            return false
-        }
-        i += 1
-    }
-    return true
+    return !text.contains(value, " ") &&
+        !text.contains(value, "\t") &&
+        !text.contains(value, "\r") &&
+        !text.contains(value, "\n")
 }

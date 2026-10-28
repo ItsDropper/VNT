@@ -68,6 +68,7 @@ try {
         "tests\typecheck_unknown_parameter_type.vnt",
         "tests\typecheck_duplicate_parameter_names.vnt",
         "tests\typecheck_nested_function_cannot_break_caller_loop.vnt",
+        "tests\typecheck_duplicate_struct_fields.vnt",
         "tests\typecheck_invalid_ordered_comparison.vnt",
         "tests\typecheck_invalid_equality.vnt",
         "tests\typecheck_invalid_boolean_order.vnt",

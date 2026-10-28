@@ -2,12 +2,16 @@
 # These functions manipulate path strings only; they do not access the filesystem or resolve symlinks.
 import "string.vnt" as strutil
 
-export fun normalize_separators(path) {
+fun normalize_path(path) {
     return strutil.replace(path, "\\", "/")
 }
 
-export fun basename(path) {
-    normalized = strutil.replace(path, "\\", "/")
+export fun normalize_separators(path) {
+    return normalize_path(path)
+}
+
+fun basename_value(path) {
+    normalized = normalize_path(path)
     size = len(normalized)
     end = size
     while end > 0 && normalized[end - 1] == "/" {
@@ -26,8 +30,12 @@ export fun basename(path) {
     return result
 }
 
-export fun dirname(path) {
-    normalized = strutil.replace(path, "\\", "/")
+export fun basename(path) {
+    return basename_value(path)
+}
+
+fun dirname_value(path) {
+    normalized = normalize_path(path)
     size = len(normalized)
     end = size
     while end > 1 && normalized[end - 1] == "/" {
@@ -59,22 +67,12 @@ export fun dirname(path) {
     return result
 }
 
-export fun extension(path) {
-    normalized = strutil.replace(path, "\\", "/")
-    end = len(normalized)
-    while end > 0 && normalized[end - 1] == "/" {
-        end -= 1
-    }
-    start = end
-    while start > 0 && normalized[start - 1] != "/" {
-        start -= 1
-    }
-    name = ""
-    i = start
-    while i < end {
-        name = name + normalized[i]
-        i += 1
-    }
+export fun dirname(path) {
+    return dirname_value(path)
+}
+
+fun extension_value(path) {
+    name = basename_value(path)
     dot = -1
     i = 0
     while i < len(name) {
@@ -95,34 +93,17 @@ export fun extension(path) {
     return result
 }
 
-export fun stem(path) {
-    normalized = strutil.replace(path, "\\", "/")
-    end = len(normalized)
-    while end > 0 && normalized[end - 1] == "/" {
-        end -= 1
+export fun extension(path) {
+    return extension_value(path)
+}
+
+fun stem_value(path) {
+    name = basename_value(path)
+    ext = extension_value(name)
+    if len(ext) == 0 {
+        return name
     }
-    start = end
-    while start > 0 && normalized[start - 1] != "/" {
-        start -= 1
-    }
-    name = ""
-    i = start
-    while i < end {
-        name = name + normalized[i]
-        i += 1
-    }
-    dot = -1
-    i = 0
-    while i < len(name) {
-        if name[i] == "." {
-            dot = i
-        }
-        i += 1
-    }
-    target_size = len(name)
-    if dot > 0 {
-        target_size = dot
-    }
+    target_size = len(name) - len(ext) - 1
     result = ""
     i = 0
     while i < target_size {
@@ -132,15 +113,19 @@ export fun stem(path) {
     return result
 }
 
+export fun stem(path) {
+    return stem_value(path)
+}
+
 export fun join(left, right) {
     if len(right) == 0 {
-        return strutil.replace(left, "\\", "/")
+        return normalize_path(left)
     }
     if len(left) == 0 {
-        return strutil.replace(right, "\\", "/")
+        return normalize_path(right)
     }
-    normalized_left = strutil.replace(left, "\\", "/")
-    normalized_right = strutil.replace(right, "\\", "/")
+    normalized_left = normalize_path(left)
+    normalized_right = normalize_path(right)
     if normalized_right[0] == "/" {
         return normalized_right
     }
@@ -151,7 +136,7 @@ export fun join(left, right) {
 }
 
 export fun is_absolute(path) {
-    normalized = strutil.replace(path, "\\", "/")
+    normalized = normalize_path(path)
     if len(normalized) == 0 {
         return false
     }
@@ -164,67 +149,13 @@ export fun is_absolute(path) {
 # Replaces the final extension. A leading dot alone is not treated as an extension.
 # Pass an extension with or without a leading dot.
 export fun change_extension(path, new_extension) {
-    normalized = strutil.replace(path, "\\", "/")
-    name_end = len(normalized)
-    while name_end > 0 && normalized[name_end - 1] == "/" {
-        name_end -= 1
-    }
-    name_start = name_end
-    while name_start > 0 && normalized[name_start - 1] != "/" {
-        name_start -= 1
-    }
-    name = ""
-    i = name_start
-    while i < name_end {
-        name = name + normalized[i]
-        i += 1
-    }
-    separator = -1
-    i = 0
-    while i < name_end {
-        if normalized[i] == "/" {
-            separator = i
-        }
-        i += 1
-    }
-    if separator == -1 {
-        parent = "."
-    } else if separator == 0 {
-        parent = "/"
-    } else if separator == 2 && len(normalized) >= 3 && normalized[1] == ":" {
-        parent = normalized[0] + normalized[1] + "/"
-    } else {
-        parent = ""
-        i = 0
-        while i < separator {
-            parent = parent + normalized[i]
-            i += 1
-        }
-    }
-    dot = -1
-    i = 0
-    while i < len(name) {
-        if name[i] == "." {
-            dot = i
-        }
-        i += 1
-    }
-    ext = ""
-    if dot > 0 {
-        i = dot + 1
-        while i < len(name) {
-            ext = ext + name[i]
-            i += 1
-        }
-    }
+    normalized = normalize_path(path)
+    name = basename_value(normalized)
+    parent = dirname_value(normalized)
+    ext = extension_value(name)
     stem_name = name
     if len(ext) > 0 {
-        stem_name = ""
-        i = 0
-        while i < dot {
-            stem_name = stem_name + name[i]
-            i += 1
-        }
+        stem_name = stem_value(name)
     }
     clean_extension = new_extension
     if len(clean_extension) > 0 && clean_extension[0] != "." {

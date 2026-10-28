@@ -5,44 +5,80 @@ export fun now_ms() {
     return time_ms()
 }
 
-export fun sleep_ms(milliseconds) {
+fun sleep_value(milliseconds) {
     return sleep_ms(milliseconds)
+}
+
+export fun sleep_ms(milliseconds) {
+    return sleep_value(milliseconds)
 }
 
 export fun elapsed_ms(start_ms) {
     return time_ms() - start_ms
 }
 
-export fun seconds_to_ms(seconds) {
+fun seconds_to_ms_value(seconds) {
     return seconds * 1000
 }
 
-export fun ms_to_seconds(milliseconds) {
+export fun seconds_to_ms(seconds) {
+    return seconds_to_ms_value(seconds)
+}
+
+fun ms_to_seconds_value(milliseconds) {
     return milliseconds / 1000
 }
 
+export fun ms_to_seconds(milliseconds) {
+    return ms_to_seconds_value(milliseconds)
+}
+
+fun minutes_to_ms_value(minutes) {
+    return seconds_to_ms_value(minutes * 60)
+}
+
 export fun minutes_to_ms(minutes) {
-    return seconds_to_ms(minutes * 60)
+    return minutes_to_ms_value(minutes)
+}
+
+fun hours_to_ms_value(hours) {
+    return minutes_to_ms_value(hours * 60)
 }
 
 export fun hours_to_ms(hours) {
-    return minutes_to_ms(hours * 60)
+    return hours_to_ms_value(hours)
+}
+
+fun days_to_ms_value(days) {
+    return hours_to_ms_value(days * 24)
 }
 
 export fun days_to_ms(days) {
-    return hours_to_ms(days * 24)
+    return days_to_ms_value(days)
+}
+
+fun ms_to_minutes_value(milliseconds) {
+    return ms_to_seconds_value(milliseconds) / 60
 }
 
 export fun ms_to_minutes(milliseconds) {
-    return ms_to_seconds(milliseconds) / 60
+    return ms_to_minutes_value(milliseconds)
+}
+
+fun ms_to_hours_value(milliseconds) {
+    return ms_to_minutes_value(milliseconds) / 60
 }
 
 export fun ms_to_hours(milliseconds) {
-    return ms_to_minutes(milliseconds) / 60
+    return ms_to_hours_value(milliseconds)
+}
+
+fun ms_to_days_value(milliseconds) {
+    return ms_to_hours_value(milliseconds) / 24
 }
 
 export fun ms_to_days(milliseconds) {
-    return ms_to_hours(milliseconds) / 24
+    return ms_to_days_value(milliseconds)
 }
 
 # Deadline helpers use the runtime clock exposed by time_ms; they are not a
@@ -65,7 +101,7 @@ export fun has_elapsed(start_ms, duration_ms) {
 
 # Proleptic Gregorian calendar helpers. Years start at 1; no timezone/DST
 # conversion is performed. weekday() uses 0=Sunday through 6=Saturday.
-export fun is_leap_year(year) {
+fun leap_year_value(year) {
     if mod(year, 400) == 0 {
         return true
     }
@@ -75,12 +111,16 @@ export fun is_leap_year(year) {
     return mod(year, 4) == 0
 }
 
-export fun days_in_month(year, month) {
+export fun is_leap_year(year) {
+    return leap_year_value(year)
+}
+
+fun days_in_month_value(year, month) {
     if month < 1 || month > 12 {
         return 0
     }
     if month == 2 {
-        if is_leap_year(year) {
+        if leap_year_value(year) {
             return 29
         }
         return 28
@@ -91,29 +131,41 @@ export fun days_in_month(year, month) {
     return 31
 }
 
-export fun is_valid_date(year, month, day) {
+export fun days_in_month(year, month) {
+    return days_in_month_value(year, month)
+}
+
+fun valid_date_value(year, month, day) {
     if year < 1 || day < 1 {
         return false
     }
-    month_days = days_in_month(year, month)
+    month_days = days_in_month_value(year, month)
     return month_days > 0 && day <= month_days
 }
 
-export fun day_of_year(year, month, day) {
-    if !is_valid_date(year, month, day) {
+export fun is_valid_date(year, month, day) {
+    return valid_date_value(year, month, day)
+}
+
+fun day_of_year_value(year, month, day) {
+    if !valid_date_value(year, month, day) {
         return -1
     }
     total = day
     current_month = 1
     while current_month < month {
-        total += days_in_month(year, current_month)
+        total += days_in_month_value(year, current_month)
         current_month += 1
     }
     return total
 }
 
-export fun weekday(year, month, day) {
-    if !is_valid_date(year, month, day) {
+export fun day_of_year(year, month, day) {
+    return day_of_year_value(year, month, day)
+}
+
+fun weekday_value(year, month, day) {
+    if !valid_date_value(year, month, day) {
         return -1
     }
     adjusted_year = year
@@ -122,6 +174,10 @@ export fun weekday(year, month, day) {
     }
     offsets = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4]
     return mod(adjusted_year + adjusted_year / 4 - adjusted_year / 100 + adjusted_year / 400 + offsets[month - 1] + day, 7)
+}
+
+export fun weekday(year, month, day) {
+    return weekday_value(year, month, day)
 }
 
 # Convert Unix epoch milliseconds to calendar fields using the host timezone.

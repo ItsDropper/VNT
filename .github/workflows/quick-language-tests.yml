@@ -98,6 +98,10 @@ jobs:
             -o hir-invariants
           ./hir-invariants
 
+      - name: Compile valid loop-control regression program
+        shell: bash
+        run: ./vnt --compile tests/loops.vnt -o vnt-loops-smoke.exe
+
       - name: Reject void-returning calls used as values
         shell: bash
         run: |

@@ -95,6 +95,9 @@ Unknown/dynamic types are permitted in selected contexts by design. Do not inter
 - `tests/typecheck_unknown_parameter_type.vnt`: rejects an undeclared parameter annotation.
 - `tests/typecheck_duplicate_parameter_names.vnt`: rejects ambiguous duplicate parameter names.
 - `tests/typecheck_argument_type_mismatch.vnt`: rejects a string passed to an `int`-annotated parameter.
+- `tests/typecheck_initializer_type_mismatch.vnt`: rejects a string initializer for an `int`-annotated variable.
+- `tests/typecheck_function_arity_mismatch.vnt`: rejects calls that omit required function arguments.
+- `tests/typecheck_builtin_arity_mismatch.vnt`: rejects calls with too many arguments for a builtin.
 - `tests/typecheck_return_type_mismatch.vnt`: rejects a string returned from an `int`-annotated function.
 - `tests/typecheck_explicit_assignment_type_mismatch.vnt`: rejects assigning a string to an `int`-annotated parameter.
 - `tests/typecheck_initializer_type_mismatch.vnt`: rejects a string initializer for an explicitly `int`-typed variable.

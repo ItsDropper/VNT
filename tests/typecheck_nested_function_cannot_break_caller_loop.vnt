@@ -1,0 +1,6 @@
+while true {
+    fun invalid_control() {
+        break
+    }
+    break
+}

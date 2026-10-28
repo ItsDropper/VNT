@@ -1,0 +1,7 @@
+# Copyright (c) 2026 ItsDropper
+# MIT License
+# Bare returns are only valid in void functions.
+
+fun invalid_return() -> int {
+    return
+}

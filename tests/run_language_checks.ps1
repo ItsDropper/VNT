@@ -24,6 +24,7 @@ try {
         "tests\typed_function_return_error.vnt",
         "tests\typed_function_missing_return.vnt",
         "tests\typed_function_loop_only_return.vnt",
+        "tests\typed_function_nested_partial_return.vnt",
         "tests\typecheck_invalid_ordered_comparison.vnt",
         "tests\typecheck_invalid_equality.vnt",
         "tests\typecheck_invalid_boolean_order.vnt",

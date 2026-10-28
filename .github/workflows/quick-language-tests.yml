@@ -524,6 +524,7 @@ jobs:
           false
           true
           false
+          false
           NUMBER_STANDARD_LIBRARY_OK
           VNT_EXPECTED
           diff -u std-number-expected.txt std-number-actual-lf.txt

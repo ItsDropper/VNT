@@ -24,6 +24,7 @@ typedef struct {
     int in_function;
     int scope_depth;
     int unsafe_depth;
+    int loop_depth;
 } TypeChecker;
 
 static void error(TypeChecker *tc, const char *message) {
@@ -742,7 +743,9 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                 {
                     int outer_count = tc->count;
                     tc->scope_depth++;
+                    tc->loop_depth++;
                     check_statements(tc, n->while_statement.body);
+                    tc->loop_depth--;
                     discard_symbols_to(tc, outer_count);
                     tc->scope_depth--;
                 }
@@ -791,7 +794,10 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                 int old_scope_depth = tc->scope_depth;
                 TypeKind old_return = tc->expected_return;
                 int old_in_function = tc->in_function;
+                int old_loop_depth = tc->loop_depth;
                 tc->scope_depth = old_scope_depth + 1;
+                /* A function declared in a loop cannot break/continue that outer loop. */
+                tc->loop_depth = 0;
                 tc->in_function = 1;
                 tc->expected_return = n->function_declaration.return_type
                     ? type_from_name(n->function_declaration.return_type) : TY_UNKNOWN;
@@ -815,13 +821,22 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                 while (tc->count > old_count) { free(tc->symbols[tc->count - 1].name); tc->count--; }
                 tc->expected_return = old_return;
                 tc->in_function = old_in_function;
+                tc->loop_depth = old_loop_depth;
                 tc->scope_depth = old_scope_depth;
                 break;
             }
 
-            case AST_STRUCT_DECLARATION:
             case AST_BREAK_STATEMENT:
+                if (tc->loop_depth == 0)
+                    error(tc, "break used outside a loop.");
+                break;
+
             case AST_CONTINUE_STATEMENT:
+                if (tc->loop_depth == 0)
+                    error(tc, "continue used outside a loop.");
+                break;
+
+            case AST_STRUCT_DECLARATION:
                 break;
 
             default:

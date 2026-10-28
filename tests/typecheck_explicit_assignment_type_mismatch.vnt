@@ -1,3 +1,5 @@
-value: int = 10
-value = "wrong type"
-print(value)
+fun invalid_assignment(value: int) {
+    value = "wrong type"
+}
+
+invalid_assignment(10)

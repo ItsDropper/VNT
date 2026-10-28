@@ -180,6 +180,24 @@ static TypeKind type_from_name(const char *name) {
     return TY_UNDECLARED;
 }
 
+static const char *type_name(TypeKind type) {
+    switch (type) {
+        case TY_UNDECLARED: return "undeclared";
+        case TY_UNKNOWN: return "unknown";
+        case TY_INT: return "int";
+        case TY_I64: return "i64";
+        case TY_FLOAT: return "float";
+        case TY_BOOL: return "bool";
+        case TY_STRING: return "string";
+        case TY_ARRAY: return "array";
+        case TY_OBJECT: return "object";
+        case TY_REFERENCE: return "reference";
+        case TY_POINTER: return "ptr";
+        case TY_VOID: return "void";
+        default: return "unknown";
+    }
+}
+
 static FunctionDef *find_function(TypeChecker *tc, const char *name) {
     for (int i = 0; i < tc->function_count; ++i)
         if (!strcmp(tc->functions[i].name, name))
@@ -330,8 +348,16 @@ static void check_call(TypeChecker *tc, AstNode *n) {
             error(tc, "function parameter uses an invalid type.");
         else if (!type_compatible(expected, actual) &&
                  !(expected == TY_INT && actual == TY_STRING &&
-                   is_string_index_expr(tc, arg)))
-            error(tc, "function argument type does not match its parameter annotation.");
+                   is_string_index_expr(tc, arg))) {
+            char message[320];
+            const char *parameter =
+                decl->function_declaration.parameters[i];
+            snprintf(message, sizeof(message),
+                     "argument %d ('%s') to function '%s' expects %s but received %s.",
+                     i + 1, parameter, n->function_call.name,
+                     type_name(expected), type_name(actual));
+            error(tc, message);
+        }
     }
 }
 

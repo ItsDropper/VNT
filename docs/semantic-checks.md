@@ -98,6 +98,9 @@ Unknown/dynamic types are permitted in selected contexts by design. Do not inter
 - `tests/typecheck_initializer_type_mismatch.vnt`: rejects a string initializer for an `int`-annotated variable.
 - `tests/typecheck_function_arity_mismatch.vnt`: rejects calls that omit required function arguments.
 - `tests/typecheck_builtin_arity_mismatch.vnt`: rejects calls with too many arguments for a builtin.
+- `tests/typecheck_function_too_many_arguments.vnt`: rejects calls with excess user-function arguments.
+- `tests/typecheck_builtin_too_few_arguments.vnt`: rejects calls missing required builtin arguments.
+- `tests/typecheck_undeclared_function.vnt`: rejects calls to unknown function names.
 - `tests/typecheck_return_type_mismatch.vnt`: rejects a string returned from an `int`-annotated function.
 - `tests/typecheck_invalid_void_return.vnt`: rejects returning a value from a `void` function.
 - `tests/typecheck_explicit_assignment_type_mismatch.vnt`: rejects assigning a string to an `int`-annotated parameter.

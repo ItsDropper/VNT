@@ -104,6 +104,7 @@ Unknown/dynamic types are permitted in selected contexts by design. Do not inter
 - `tests/typecheck_return_type_mismatch.vnt`: rejects a string returned from an `int`-annotated function.
 - `tests/typed_function_fallthrough_return.vnt`: accepts a partial conditional followed by a return covering the remaining path.
 - `tests/typed_function_nested_fallthrough_return.vnt`: accepts a nested partial conditional when a later return covers every fallthrough path, and verifies all three runtime paths.
+- `tests/typed_function_unsafe_partial_return.vnt`: rejects a typed function when an `unsafe` block contains a conditional return but can still fall through.
 - `tests/typed_function_unsafe_return.vnt`: verifies a return nested inside an `unsafe` block satisfies the typed function return contract and executes correctly.
 - `tests/typecheck_invalid_void_return.vnt`: rejects returning a value from a `void` function.
 - `tests/typecheck_explicit_assignment_type_mismatch.vnt`: rejects assigning a string to an explicitly typed local variable with an assignment-specific expected-versus-actual diagnostic.

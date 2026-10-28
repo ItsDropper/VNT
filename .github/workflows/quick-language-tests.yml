@@ -317,9 +317,10 @@ jobs:
 
           ./vnt --compile tests/typecheck_explicit_assignment_numeric_compatible.vnt -o typed-numeric-reassignment.exe
           ./typed-numeric-reassignment.exe > typed-numeric-reassignment-actual.txt
-          tr -d '\\r' < typed-numeric-reassignment-actual.txt > typed-numeric-reassignment-actual-lf.txt
+          tr -d '\r' < typed-numeric-reassignment-actual.txt > typed-numeric-reassignment-actual-lf.txt
           printf '11\nTYPED_NUMERIC_REASSIGNMENT_OK\n' > typed-numeric-reassignment-expected.txt
-          diff -u typed-numeric-reassignment-expected.txt typed-numeric-reassignment-actual-lf.txt
+          tr -d '\r' < typed-numeric-reassignment-expected.txt > typed-numeric-reassignment-expected-lf.txt
+          diff -u typed-numeric-reassignment-expected-lf.txt typed-numeric-reassignment-actual-lf.txt
 
           ./vnt --compile tests/typecheck_all_numeric_reassignment_compatible.vnt -o all-numeric-reassignment.exe
           ./all-numeric-reassignment.exe > all-numeric-reassignment-actual.txt

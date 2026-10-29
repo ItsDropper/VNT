@@ -1847,8 +1847,16 @@ static VNT_NATIVE_ABI void vnt_json_extract_value(const char *json,const char *k
         size_t key_len=(size_t)(p-start);
         const char *after=p+1;
         while(*after==' '||*after=='\t'||*after=='\r'||*after=='\n')after++;
-        if(*after==':' && key_len==strlen(key) && memcmp(start,key,key_len)==0) {
-            if(found++==wanted) {
+        if(*after==':') {
+            char *decoded_key=(char*)malloc(key_len+1);
+            if(!decoded_key) {
+                fprintf(stderr,"Runtime error: json_value_at() could not allocate a key buffer.\n");
+                exit(1);
+            }
+            vnt_json_copy_string(start-1,decoded_key,key_len+1);
+            int matches=strcmp(decoded_key,key)==0;
+            free(decoded_key);
+            if(matches && found++==wanted) {
                 after++;
                 while(*after==' '||*after=='\t'||*after=='\r'||*after=='\n')after++;
                 if(*after=='"')vnt_json_copy_string(after,out,cap);

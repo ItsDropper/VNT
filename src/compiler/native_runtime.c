@@ -1792,7 +1792,7 @@ VNT_NATIVE_ABI VntValue * vnt_json_value_at(VntValue *json_value,VntValue *key_v
     size_t capacity=strlen(json)+1;
     char *out=(char*)malloc(capacity);
     if(!out) {
-        fprintf(stderr,"Runtime error: json_value_at() could not allocate its result buffer.\\n");
+        fprintf(stderr,"Runtime error: json_value_at() could not allocate its result buffer.\n");
         exit(1);
     }
     vnt_json_extract_value(json,key,index_value->integer,out,capacity);

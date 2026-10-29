@@ -63,8 +63,7 @@ export fun read_lines(path) {
     # Remove exactly one terminal separator before splitting. This avoids a
     # phantom final item while preserving intentional blank lines.
     if strutil.ends_with(normalized, "\n") {
-        normalized_length = len(normalized) - 1
-        normalized = strutil.left(normalized, normalized_length)
+        normalized = strutil.remove_suffix(normalized, "\n")
     }
     return strutil.split(normalized, "\n")
 }

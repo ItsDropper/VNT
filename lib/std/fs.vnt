@@ -22,7 +22,9 @@ export fun write_text(path: string, contents: string) -> bool {
     return fs_write(path, contents)
 }
 
-# Writes a sibling temporary file and atomically replaces the destination when supported.
+# Writes a sibling temporary file, flushes it, then atomically replaces the destination when supported.
+# Returns false on failure; it does not create parent directories or promise that directory metadata
+# survives sudden power loss on every filesystem. The destination is not opened/truncated first.
 export fun write_text_atomic(path: string, contents: string) -> bool {
     return fs_write_atomic(path, contents)
 }

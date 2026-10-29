@@ -1,12 +1,20 @@
 import "../lib/std/fs.vnt" as fs
 
 directory = "tests/out/std_fs_tmp"
+standalone_call_path = directory + "/standalone-call.txt"
 first_path = directory + "/sample.txt"
 renamed_path = directory + "/renamed.txt"
 
 created_dir = fs.create_dir(directory)
 removed_first = fs.remove_file(first_path)
 removed_renamed = fs.remove_file(renamed_path)
+removed_standalone_call = fs.remove_file(standalone_call_path)
+
+# A qualified call used as a statement must accept multiple arguments.
+fs.write_text(standalone_call_path, "standalone-call-content")
+if fs.read_text(standalone_call_path) != "standalone-call-content" {
+    print("FS_FAIL_STANDALONE_MULTIARG_CALL")
+}
 
 if !fs.is_dir(directory) {
     print("FS_FAIL_DIR")

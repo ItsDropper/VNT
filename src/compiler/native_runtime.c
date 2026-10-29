@@ -1678,7 +1678,7 @@ static char *vnt_bigint_format(int sign,const char *digits,size_t length) {
     int zero=length==1&&digits[0]=='0';
     size_t prefix=(sign<0&&!zero)?1:0;
     if(length>SIZE_MAX-prefix-1) {
-        fprintf(stderr,"Runtime error: bigint result size overflow.\\n");
+        fprintf(stderr,"Runtime error: bigint result size overflow.\n");
         exit(1);
     }
     char *out=(char *)malloc(prefix+length+1);
@@ -1689,7 +1689,7 @@ static char *vnt_bigint_format(int sign,const char *digits,size_t length) {
 static char *vnt_bigint_addmag(const VntBigInt *a,const VntBigInt *b,size_t *outlen) {
     size_t largest=a->length>b->length?a->length:b->length;
     if(largest>SIZE_MAX-2) {
-        fprintf(stderr,"Runtime error: bigint addition size overflow.\\n");
+        fprintf(stderr,"Runtime error: bigint addition size overflow.\n");
         exit(1);
     }
     size_t n=largest+1;
@@ -1727,12 +1727,12 @@ static VntValue *vnt_bigint_binary(VntValue *av,VntValue *bv,int operation) {
         if(a.sign==0||b.sign==0){digits=strdup("0");length=1;sign=0;}
         else {
             if(a.length>SIZE_MAX-b.length) {
-                fprintf(stderr,"Runtime error: bigint multiplication size overflow.\\n");
+                fprintf(stderr,"Runtime error: bigint multiplication size overflow.\n");
                 exit(1);
             }
             length=a.length+b.length;
             if(length>SIZE_MAX/sizeof(int)-1) {
-                fprintf(stderr,"Runtime error: bigint multiplication allocation size overflow.\\n");
+                fprintf(stderr,"Runtime error: bigint multiplication allocation size overflow.\n");
                 exit(1);
             }
             int *acc=(int *)calloc(length+1,sizeof(int));

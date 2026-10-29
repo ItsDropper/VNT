@@ -52,15 +52,151 @@ if !fs.is_dir(directory) {
     }
 }
 
+line_checks_ok = true
 line_path = directory + "/lines.txt"
-if !fs.write_text(line_path, "one\rtwo\r\nthree\n") {
-    print("FS_FAIL_LINE_WRITE")
+missing_path = directory + "/missing.txt"
+empty_path = directory + "/empty.txt"
+append_empty_path = directory + "/append-empty.txt"
+append_plain_path = directory + "/append-plain.txt"
+append_lf_path = directory + "/append-lf.txt"
+
+removed_lines = fs.remove_file(line_path)
+removed_missing = fs.remove_file(missing_path)
+removed_empty = fs.remove_file(empty_path)
+removed_append_empty = fs.remove_file(append_empty_path)
+removed_append_plain = fs.remove_file(append_plain_path)
+removed_append_lf = fs.remove_file(append_lf_path)
+
+if len(fs.read_lines(missing_path)) != 0 {
+    line_checks_ok = false
+}
+if !fs.write_text(empty_path, "") {
+    line_checks_ok = false
+} else {
+    if len(fs.read_lines(empty_path)) != 0 {
+        line_checks_ok = false
+    }
+}
+
+if !fs.write_text(line_path, "one\ntwo\nthree\n") {
+    line_checks_ok = false
 } else {
     line_items = fs.read_lines(line_path)
-    print(len(line_items))
-    print(line_items)
-    print("FS_READ_LINES_OK")
+    if len(line_items) != 3 {
+        line_checks_ok = false
+    } else {
+        if line_items[0] != "one" {
+            line_checks_ok = false
+        }
+        if line_items[1] != "two" {
+            line_checks_ok = false
+        }
+        if line_items[2] != "three" {
+            line_checks_ok = false
+        }
+    }
 }
+
+if !fs.write_text(line_path, "one\r\ntwo\r\nthree\r\n") {
+    line_checks_ok = false
+} else {
+    line_items = fs.read_lines(line_path)
+    if len(line_items) != 3 {
+        line_checks_ok = false
+    } else {
+        if line_items[0] != "one" {
+            line_checks_ok = false
+        }
+        if line_items[1] != "two" {
+            line_checks_ok = false
+        }
+        if line_items[2] != "three" {
+            line_checks_ok = false
+        }
+    }
+}
+
+if !fs.write_text(line_path, "one\rtwo\rthree\r") {
+    line_checks_ok = false
+} else {
+    line_items = fs.read_lines(line_path)
+    if len(line_items) != 3 {
+        line_checks_ok = false
+    } else {
+        if line_items[0] != "one" {
+            line_checks_ok = false
+        }
+        if line_items[1] != "two" {
+            line_checks_ok = false
+        }
+        if line_items[2] != "three" {
+            line_checks_ok = false
+        }
+    }
+}
+
+if !fs.write_text(line_path, "one\n\n") {
+    line_checks_ok = false
+} else {
+    line_items = fs.read_lines(line_path)
+    if len(line_items) != 2 {
+        line_checks_ok = false
+    } else {
+        if line_items[0] != "one" {
+            line_checks_ok = false
+        }
+        if line_items[1] != "" {
+            line_checks_ok = false
+        }
+    }
+}
+
+if !fs.write_text(append_empty_path, "") {
+    line_checks_ok = false
+} else {
+    if !fs.append_line(append_empty_path, "first") {
+        line_checks_ok = false
+    } else {
+        if fs.read_text(append_empty_path) != "first\n" {
+            line_checks_ok = false
+        }
+    }
+}
+
+if !fs.write_text(append_plain_path, "alpha") {
+    line_checks_ok = false
+} else {
+    if !fs.append_line(append_plain_path, "beta") {
+        line_checks_ok = false
+    } else {
+        if fs.read_text(append_plain_path) != "alpha\nbeta\n" {
+            line_checks_ok = false
+        }
+    }
+}
+
+if !fs.write_text(append_lf_path, "alpha\n") {
+    line_checks_ok = false
+} else {
+    if !fs.append_line(append_lf_path, "beta") {
+        line_checks_ok = false
+    } else {
+        if fs.read_text(append_lf_path) != "alpha\nbeta\n" {
+            line_checks_ok = false
+        }
+    }
+}
+
+if line_checks_ok {
+    print("FS_READ_LINES_OK")
+} else {
+    print("FS_FAIL_LINE_REGRESSION")
+}
+
 fs.remove_file(line_path)
+fs.remove_file(empty_path)
+fs.remove_file(append_empty_path)
+fs.remove_file(append_plain_path)
+fs.remove_file(append_lf_path)
 
 print("STANDARD_FS_OK")

@@ -1677,13 +1677,22 @@ static char *vnt_bigint_format(int sign,const char *digits,size_t length) {
     while(length>1&&*digits=='0'){digits++;length--;}
     int zero=length==1&&digits[0]=='0';
     size_t prefix=(sign<0&&!zero)?1:0;
+    if(length>SIZE_MAX-prefix-1) {
+        fprintf(stderr,"Runtime error: bigint result size overflow.\\n");
+        exit(1);
+    }
     char *out=(char *)malloc(prefix+length+1);
     if(!out){fprintf(stderr,"Runtime error: out of memory formatting bigint.\\n");exit(1);}
     if(prefix)out[0]='-';
     memcpy(out+prefix,digits,length);out[prefix+length]=0;return out;
 }
 static char *vnt_bigint_addmag(const VntBigInt *a,const VntBigInt *b,size_t *outlen) {
-    size_t n=(a->length>b->length?a->length:b->length)+1;
+    size_t largest=a->length>b->length?a->length:b->length;
+    if(largest>SIZE_MAX-2) {
+        fprintf(stderr,"Runtime error: bigint addition size overflow.\\n");
+        exit(1);
+    }
+    size_t n=largest+1;
     char *out=(char *)malloc(n+1);if(!out){fprintf(stderr,"Runtime error: out of memory.\\n");exit(1);}
     int carry=0;
     for(size_t k=0;k<n-1;k++){
@@ -1717,7 +1726,15 @@ static VntValue *vnt_bigint_binary(VntValue *av,VntValue *bv,int operation) {
     if(operation==2) {
         if(a.sign==0||b.sign==0){digits=strdup("0");length=1;sign=0;}
         else {
+            if(a.length>SIZE_MAX-b.length) {
+                fprintf(stderr,"Runtime error: bigint multiplication size overflow.\\n");
+                exit(1);
+            }
             length=a.length+b.length;
+            if(length>SIZE_MAX/sizeof(int)-1) {
+                fprintf(stderr,"Runtime error: bigint multiplication allocation size overflow.\\n");
+                exit(1);
+            }
             int *acc=(int *)calloc(length+1,sizeof(int));
             digits=(char *)malloc(length+1);
             if(!acc||!digits){free(acc);free(digits);fprintf(stderr,"Runtime error: out of memory multiplying bigint.\\n");exit(1);}

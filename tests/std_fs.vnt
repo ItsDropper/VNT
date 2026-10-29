@@ -240,12 +240,12 @@ if line_checks_ok {
     print("FS_FAIL_LINE_REGRESSION")
 }
 
-cleanup_line_path = fs.remove_file(line_path)
-cleanup_empty_path = fs.remove_file(empty_path)
-cleanup_append_empty_path = fs.remove_file(append_empty_path)
-cleanup_append_plain_path = fs.remove_file(append_plain_path)
-cleanup_append_lf_path = fs.remove_file(append_lf_path)
-cleanup_write_lines_path = fs.remove_file(write_lines_path)
+fs.remove_file(line_path)
+fs.remove_file(empty_path)
+fs.remove_file(append_empty_path)
+fs.remove_file(append_plain_path)
+fs.remove_file(append_lf_path)
+fs.remove_file(write_lines_path)
 
 atomic_path = directory + "/atomic.txt"
 removed_atomic = fs.remove_file(atomic_path)
@@ -256,6 +256,6 @@ if !fs.write_text_atomic(atomic_path, "atomic-content") {
         print("FS_FAIL_ATOMIC_CONTENT")
     }
 }
-cleanup_atomic_path = fs.remove_file(atomic_path)
+fs.remove_file(atomic_path)
 
 print("STANDARD_FS_OK")

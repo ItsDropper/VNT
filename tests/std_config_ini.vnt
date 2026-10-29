@@ -1,6 +1,6 @@
 import "../lib/std/config.vnt" as config
 
-settings = "# app settings\nroot = enabled\n\n[display]\n; comment\ntheme = \"dark mode\"\nscale=125\nfeature=true\nfeature_off=no\nvalue=a=b\n[network]\ntimeout = 30\n"
+settings = "# app settings\nroot = enabled\n\n[display]\n; comment\ntheme = \"dark mode\"\nscale=125\nfeature=true\nfeature_off=no\nvalue=a=b\nsentinel=__VNT_CONFIG_KEY_NOT_FOUND_7F2A__\n[network]\ntimeout = 30\n"
 
 print(config.get(settings, "", "root", "missing"))
 print(config.get(settings, "display", "theme", "missing"))
@@ -12,6 +12,7 @@ print(config.get_bool(settings, "display", "feature_off", true))
 print(config.get_bool(settings, "display", "unknown", true))
 print(config.has_key(settings, "display", "theme"))
 print(config.has_key(settings, "display", "absent"))
+print(config.has_key(settings, "display", "sentinel"))
 print(config.section_exists(settings, "network"))
 print(config.section_exists(settings, "missing"))
 print("INI_CONFIG_OK")

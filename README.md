@@ -236,7 +236,7 @@ File operations handle text, not arbitrary binary data. Networking is implemente
 
 Generated executables link the VNT native runtime. Its built-ins include:
 
-- **Files:** `fs_exists`, `fs_read`, `fs_write`, `fs_append`, `fs_delete`, `dir_create`
+- **Files:** `fs_exists`, `fs_read`, `fs_write`, `fs_write_atomic`, `fs_append`, `fs_delete`, `fs_rename`, `fs_is_file`, `fs_is_dir`, `dir_create`
 - **Environment and paths:** `cwd`, `env_get`, `env_set`
 - **Time:** `time_ms`, `sleep_ms`
 - **Processes:** `process_start`, `process_poll`, `process_wait`, `process_pid`, `process_terminate`, `process_stdout`, `process_stderr`, `process_exit_code`

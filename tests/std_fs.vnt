@@ -220,4 +220,15 @@ fs.remove_file(append_empty_path)
 fs.remove_file(append_plain_path)
 fs.remove_file(append_lf_path)
 
+atomic_path = directory + "/atomic.txt"
+removed_atomic = fs.remove_file(atomic_path)
+if !fs.write_text_atomic(atomic_path, "atomic-content") {
+    print("FS_FAIL_ATOMIC_WRITE")
+} else {
+    if fs.read_text(atomic_path) != "atomic-content" {
+        print("FS_FAIL_ATOMIC_CONTENT")
+    }
+}
+fs.remove_file(atomic_path)
+
 print("STANDARD_FS_OK")

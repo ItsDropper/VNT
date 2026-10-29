@@ -68,7 +68,7 @@ export fun get(text, section, key, default_value) {
 }
 
 export fun get_bool(text, section, key, default_value) {
-    value = get(text, section, key, "")
+    value = lowercase_ascii(strutil.trim(get(text, section, key, "")))
     if value == "true" || value == "1" || value == "yes" {
         return true
     }
@@ -76,6 +76,31 @@ export fun get_bool(text, section, key, default_value) {
         return false
     }
     return default_value
+}
+
+# Normalize only ASCII A-Z; this helper does not claim Unicode case folding.
+fun lowercase_ascii(value) {
+    result = ""
+    i = 0
+    while i < len(value) {
+        ch = value[i]
+        if ch >= "A" && ch <= "Z" {
+            # VNT character arithmetic is intentionally avoided: map the alphabet explicitly.
+            upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            lower = "abcdefghijklmnopqrstuvwxyz"
+            j = 0
+            while j < 26 {
+                if ch == upper[j] {
+                    ch = lower[j]
+                    break
+                }
+                j += 1
+            }
+        }
+        result = result + ch
+        i += 1
+    }
+    return result
 }
 
 # Check key presence independently of its value to avoid sentinel collisions.

@@ -111,27 +111,38 @@ export fun looks_like_email(value) {
     while i < size {
         ch = value[i]
         if ch == "@" {
-            if at != -1 { return false }
+            if at != -1 || i == 0 || value[i - 1] == "." { return false }
             at = i
         } else {
-            if at != -1 {
+            if at == -1 {
+                if ch == "." {
+                    if i == 0 || value[i - 1] == "." { return false }
+                } else {
+                    if !alphanumeric_value(ch) && ch != "_" && ch != "%" && ch != "+" && ch != "-" {
+                        return false
+                    }
+                }
+            } else {
                 if first_domain_char == "" { first_domain_char = ch }
                 if ch == "." {
-                    if previous_domain_char == "." { return false }
+                    if previous_domain_char == "." || previous_domain_char == "-" { return false }
                     dot = i
+                } else {
+                    if !alphanumeric_value(ch) && ch != "-" { return false }
+                    if previous_domain_char == "." && ch == "-" { return false }
                 }
                 previous_domain_char = ch
             }
         }
-        if ch == " " || ch == "\t" || ch == "\r" || ch == "\n" {
+        if ch == " " || ch == "\\t" || ch == "\\r" || ch == "\\n" {
             return false
         }
         last_char = ch
         i += 1
     }
     if at <= 0 || at >= size - 3 { return false }
-    return first_domain_char != "." && last_char != "." &&
-        dot > at + 1 && dot < size - 1
+    return first_domain_char != "." && first_domain_char != "-" &&
+        last_char != "." && last_char != "-" && dot > at + 1 && dot < size - 1
 }
 
 # Checks scheme, a non-empty host-like segment, and absence of whitespace.

@@ -269,7 +269,7 @@ try {
     & .\vnt.exe --compile tests\std_fs.vnt -o $StdFsExe
     if ($LASTEXITCODE -ne 0) { throw "Standard filesystem library program did not compile." }
     $fsOutput = & $StdFsExe
-    if ($LASTEXITCODE -ne 0 -or ($fsOutput -join "|") -ne "FS_OK|STANDARD_FS_OK") {
+    if ($LASTEXITCODE -ne 0 -or ($fsOutput -join "|") -ne "FS_OK|FS_READ_LINES_OK|STANDARD_FS_OK") {
         throw "Unexpected standard filesystem output: $($fsOutput -join ' | ')"
     }
     Write-Host "Standard filesystem library: PASS"

@@ -1039,13 +1039,23 @@ static VNT_NATIVE_ABI VntValue * vnt_fs_write_mode(VntValue *path, VntValue *con
 /* Atomic text replacement: write a sibling temporary file, flush it, then
    replace the destination. This is atomic on filesystems that provide atomic
    same-directory rename; it does not promise crash-proof directory metadata. */
-static unsigned long vnt_atomic_write_counter;
+#ifdef _WIN32
+static volatile LONG64 vnt_atomic_write_counter;
+static unsigned long long vnt_next_atomic_write_sequence(void) {
+    return (unsigned long long)InterlockedIncrement64(&vnt_atomic_write_counter);
+}
+#else
+static unsigned long long vnt_atomic_write_counter;
+static unsigned long long vnt_next_atomic_write_sequence(void) {
+    return __atomic_add_fetch(&vnt_atomic_write_counter, 1ULL, __ATOMIC_RELAXED);
+}
+#endif
 VNT_NATIVE_ABI VntValue *vnt_fs_write_atomic(VntValue *path_value,VntValue *contents_value) {
     const char *path=vnt_app_string(path_value,"fs_write_atomic()");
     const char *contents=vnt_app_string(contents_value,"fs_write_atomic()");
     char *temporary=NULL; FILE *file=NULL;
     for(int attempt=0;attempt<32;attempt++) {
-        unsigned long sequence=++vnt_atomic_write_counter;
+        unsigned long long sequence=vnt_next_atomic_write_sequence();
 #ifdef _WIN32
         unsigned long process_id=(unsigned long)GetCurrentProcessId();
 #else
@@ -1054,7 +1064,7 @@ VNT_NATIVE_ABI VntValue *vnt_fs_write_atomic(VntValue *path_value,VntValue *cont
         size_t needed=strlen(path)+80;
         temporary=(char *)malloc(needed);
         if(!temporary){fprintf(stderr,"Runtime error: out of memory in fs_write_atomic().\\n");exit(1);}
-        snprintf(temporary,needed,"%s.vnt-tmp-%lu-%lu",path,process_id,sequence);
+        snprintf(temporary,needed,"%s.vnt-tmp-%lu-%llu",path,process_id,sequence);
         file=fopen(temporary,"wbx");
         if(file) break;
         free(temporary);temporary=NULL;

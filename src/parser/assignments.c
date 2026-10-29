@@ -229,6 +229,43 @@ if (parser_check(
     }
 
     /*
+     * A module-qualified call used as a statement (for example,
+     * fs.remove_file(path)) is a call, not an assignment target.
+     * Keep its naming convention consistent with parse_postfix().
+     */
+    if (
+        target->type == AST_MEMBER_EXPRESSION &&
+        target->member_expression.object != NULL &&
+        target->member_expression.object->type == AST_VARIABLE &&
+        parser_check(parser, TOKEN_LEFT_PAREN)
+    ) {
+        const char *module_name =
+            target->member_expression.object->variable.name;
+        const char *function_name =
+            target->member_expression.member;
+        size_t qualified_length =
+            strlen(module_name) + strlen(function_name) + 3;
+        char *qualified_name = malloc(qualified_length);
+
+        if (qualified_name == NULL) {
+            ast_free(target);
+            printf("Parser error: out of memory.\\n");
+            return NULL;
+        }
+
+        snprintf(
+            qualified_name,
+            qualified_length,
+            "%s__%s",
+            module_name,
+            function_name
+        );
+
+        ast_free(target);
+        return parse_function_call(parser, qualified_name);
+    }
+
+    /*
      * Read the assignment operator.
      */
     TokenType assignment_operator =

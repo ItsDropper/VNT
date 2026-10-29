@@ -6,6 +6,9 @@ print(json.value_at(payload, "slug", 1))
 print(json.value_at(payload, "downloads", 0))
 escaped_key_payload = "{\"ti\\u0074le\":\"escaped-key\"}"
 print(json.value_at(escaped_key_payload, "title", 0))
+control_payload = "{\"backspace\":\"\\b\",\"formfeed\":\"\\f\"}"
+print(json.value_at(control_payload, "backspace", 0) == " ")
+print(json.value_at(control_payload, "formfeed", 0) == " ")
 print(json.value_at(payload, "title", 4294967296))
 unicode_payload = "{\"emoji\":\"\\uD83D\\uDE00\"}"
 print(len(json.value_at(unicode_payload, "emoji", 0)))

@@ -10,6 +10,6 @@ while i < 2500 {
     long_value = long_value + "x"
     i += 1
 }
-long_payload = "{\\"long\\":\\"" + long_value + "\\"}"
+long_payload = "{\"long\":\"" + long_value + "\"}"
 print(len(json.value_at(long_payload, "long", 0)))
 print("JSON_VALUE_AT_OK")

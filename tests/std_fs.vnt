@@ -298,6 +298,17 @@ if !fs.write_text(atomic_path, "before-atomic-replacement") {
         if fs.read_text(atomic_path) != "atomic-content" {
             print("FS_FAIL_ATOMIC_CONTENT")
         }
+        if !fs.write_text_atomic(atomic_path, "") {
+            print("FS_FAIL_ATOMIC_EMPTY_WRITE")
+        } else {
+            if !fs.exists(atomic_path) {
+                print("FS_FAIL_ATOMIC_EMPTY_EXISTS")
+            } else {
+                if fs.read_text(atomic_path) != "" {
+                    print("FS_FAIL_ATOMIC_EMPTY_CONTENT")
+                }
+            }
+        }
     }
 }
 missing_parent_atomic_path = directory + "/missing-parent/atomic.txt"

@@ -1,6 +1,6 @@
 # RFC 4180-style CSV helpers implemented entirely in VNT.
 # parse(text) returns rows of string fields. Quoted fields may contain commas/newlines;
-# doubled quotes inside quoted fields decode to one quote. CRLF and LF row endings are accepted.
+# doubled quotes inside quoted fields decode to one quote. CRLF, LF, and lone-CR row endings are accepted.
 # Malformed quoting returns an empty array; this is indistinguishable from empty input.
 # stringify(rows) quotes fields only when required and escapes embedded quotes.
 

@@ -6,6 +6,27 @@ fun normalize_path(path) {
     return strutil.replace(path, "\\", "/")
 }
 
+# A drive root may contain redundant trailing separators (for example C:////).
+fun is_drive_root(path) {
+    normalized = normalize_path(path)
+    if len(normalized) < 3 || normalized[1] != ":" || normalized[2] != "/" {
+        return false
+    }
+    i = 2
+    while i < len(normalized) {
+        if normalized[i] != "/" {
+            return false
+        }
+        i += 1
+    }
+    return true
+}
+
+fun drive_root_value(path) {
+    normalized = normalize_path(path)
+    return normalized[0] + normalized[1] + "/"
+}
+
 export fun normalize_separators(path) {
     return normalize_path(path)
 }
@@ -19,8 +40,8 @@ export fun trim_trailing_separators(path) {
     if normalized[0] == "/" && len(normalized) == 1 {
         return normalized
     }
-    if len(normalized) == 3 && normalized[1] == ":" && normalized[2] == "/" {
-        return normalized
+    if is_drive_root(normalized) {
+        return drive_root_value(normalized)
     }
     end = len(normalized)
     while end > 0 && normalized[end - 1] == "/" {
@@ -44,6 +65,9 @@ export fun ensure_trailing_separator(path) {
     if len(normalized) == 0 {
         return normalized
     }
+    if is_drive_root(normalized) {
+        return drive_root_value(normalized)
+    }
     if normalized[len(normalized) - 1] == "/" {
         return normalized
     }
@@ -52,7 +76,7 @@ export fun ensure_trailing_separator(path) {
 
 fun basename_value(path) {
     normalized = normalize_path(path)
-    if len(normalized) == 3 && normalized[1] == ":" && normalized[2] == "/" {
+    if is_drive_root(normalized) {
         return ""
     }
     size = len(normalized)
@@ -89,8 +113,8 @@ export fun is_dotfile(path) {
 
 fun dirname_value(path) {
     normalized = normalize_path(path)
-    if len(normalized) == 3 && normalized[1] == ":" && normalized[2] == "/" {
-        return normalized
+    if is_drive_root(normalized) {
+        return drive_root_value(normalized)
     }
     size = len(normalized)
     end = size

@@ -682,8 +682,11 @@ jobs:
           ./vnt --compile tests/std_fs.vnt -o std-fs-smoke.exe
           ./std-fs-smoke.exe > std-fs-actual.txt
           grep -Fx "FS_OK" std-fs-actual.txt
-          grep -Fx "3" std-fs-actual.txt
           grep -Fx "FS_READ_LINES_OK" std-fs-actual.txt
+          if grep -F "FS_FAIL_" std-fs-actual.txt; then
+            echo "Filesystem regression test reported a failure."
+            exit 1
+          fi
           grep -Fx "STANDARD_FS_OK" std-fs-actual.txt
 
       - name: Run portable path helper regressions

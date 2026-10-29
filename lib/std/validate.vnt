@@ -134,7 +134,7 @@ export fun looks_like_email(value) {
                 previous_domain_char = ch
             }
         }
-        if ch == " " || ch == "\\t" || ch == "\\r" || ch == "\\n" {
+        if ch == " " || ch == "\t" || ch == "\r" || ch == "\n" {
             return false
         }
         last_char = ch

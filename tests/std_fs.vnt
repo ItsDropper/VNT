@@ -284,6 +284,7 @@ fs.remove_file(empty_path)
 fs.remove_file(append_empty_path)
 fs.remove_file(append_plain_path)
 fs.remove_file(append_lf_path)
+cleanup_append_blank = fs.remove_file(append_blank_path)
 fs.remove_file(write_lines_path)
 cleanup_empty_write_lines = fs.remove_file(empty_write_lines_path)
 

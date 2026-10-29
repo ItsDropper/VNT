@@ -418,7 +418,7 @@ try {
     $pathExpected = @(
         "src/main/file.vnt", "main.vnt", "C:/Users/dropper/project", "gz",
         "archive.tar", "", ".env", ".", "", "src/main/file.vnt",
-        "/absolute/file", "D:/absolute/file", "C:/", "", "false", "true", "false", "true", ".", "archive.tar.zip", "report.pdf", ".env.txt", "dir/report", "folder", "/", "PATH_STANDARD_LIBRARY_OK"
+        "/absolute/file", "D:/absolute/file", "C:/", "", "false", "true", "false", "true", ".", "archive.tar.zip", "report.pdf", ".env.txt", "dir/report", "folder", "/", "C:/", "", "C:/", "C:/", "PATH_STANDARD_LIBRARY_OK"
     )
     if (($pathOutput -join "|") -ne ($pathExpected -join "|")) {
         throw "Unexpected standard path output: $($pathOutput -join ' | ')"

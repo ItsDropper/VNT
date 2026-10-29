@@ -1064,7 +1064,7 @@ VNT_NATIVE_ABI VntValue *vnt_fs_write_atomic(VntValue *path_value,VntValue *cont
 #endif
         size_t needed=strlen(path)+80;
         temporary=(char *)malloc(needed);
-        if(!temporary){fprintf(stderr,"Runtime error: out of memory in fs_write_atomic().\\n");exit(1);}
+        if(!temporary){fprintf(stderr,"Runtime error: out of memory in fs_write_atomic().\n");exit(1);}
         snprintf(temporary,needed,"%s.vnt-tmp-%lu-%llu",path,process_id,sequence);
         file=fopen(temporary,"wbx");
         if(file) break;

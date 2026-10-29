@@ -237,6 +237,20 @@ if !fs.write_text(append_lf_path, "alpha\n") {
     }
 }
 
+append_blank_path = directory + "/append-blank.txt"
+if !fs.write_text(append_blank_path, "alpha\n\n") {
+    line_checks_ok = false
+} else {
+    if !fs.append_line(append_blank_path, "beta") {
+        line_checks_ok = false
+    } else {
+        if fs.read_text(append_blank_path) != "alpha\n\nbeta\n" {
+            line_checks_ok = false
+        }
+    }
+}
+
+
 write_lines_path = directory + "/write-lines.txt"
 removed_write_lines = fs.remove_file(write_lines_path)
 sample_lines = ["red", "green", "blue"]

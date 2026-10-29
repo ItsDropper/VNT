@@ -2523,6 +2523,8 @@ static void *vnt_require_pointer(VntValue *value) {
 
 static size_t vnt_require_memory_size(VntValue *value, int allow_zero) {
     if (!value || value->type != VNT_INT || value->integer < 0 ||
+        (value && value->type == VNT_INT &&
+         (uint64_t)value->integer > (uint64_t)SIZE_MAX) ||
         (!allow_zero && value->integer == 0)) {
         fprintf(stderr, "Runtime error: memory size/offset must be a valid non-negative int.\n");
         exit(1);

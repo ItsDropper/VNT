@@ -1,5 +1,6 @@
 # Conservative ASCII/text validation helpers. These are not Unicode-aware.
-# Email and URL checks are sanity checks, not complete standards parsers.
+# Email accepts an unquoted local-part subset and DNS-style domain labels; it is not a full standards parser.
+# URL checks are sanity checks, not complete standards parsers.
 
 fun blank_value(value) {
     size = len(value)

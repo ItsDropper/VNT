@@ -62,7 +62,8 @@ export fun read_lines(path) {
     normalized = strutil.replace(normalized, "\r", "\n")
     # Remove exactly one terminal separator before splitting. This avoids a
     # phantom final item while preserving intentional blank lines.
-    if strutil.ends_with(normalized, "\n") {
+    has_trailing_separator = strutil.ends_with(normalized, "\n")
+    if has_trailing_separator {
         normalized = strutil.remove_suffix(normalized, "\n")
     }
     return strutil.split(normalized, "\n")

@@ -341,7 +341,7 @@ try {
         "true", "true", "false", "true", "false", "true", "false", "true", "false",
         "true", "true", "true", "false", "false", "true", "true", "true", "false",
         "false", "true", "false", "true", "false", "true", "false", "false",
-        "true", "true", "false", "false", "STDLIB_VALIDATE_OK"
+        "true", "true", "false", "false", "false", "false", "false", "false", "true", "STDLIB_VALIDATE_OK"
     )
     if (($validateOutput -join "|") -ne ($validateExpected -join "|")) {
         throw "Unexpected standard validation output: $($validateOutput -join ' | ')"

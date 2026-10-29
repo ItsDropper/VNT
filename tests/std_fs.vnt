@@ -36,13 +36,17 @@ if !fs.is_dir(directory) {
                     if !fs.rename_path(first_path, renamed_path) {
                         print("FS_FAIL_RENAME")
                     } else {
-                        if !fs.exists(renamed_path) || !fs.is_file(renamed_path) {
+                        if !fs.exists(renamed_path) {
                             print("FS_FAIL_RENAMED_FILE")
                         } else {
-                            if !fs.remove_file(renamed_path) {
-                                print("FS_FAIL_DELETE")
+                            if !fs.is_file(renamed_path) {
+                                print("FS_FAIL_RENAMED_FILE")
                             } else {
-                                print("FS_OK")
+                                if !fs.remove_file(renamed_path) {
+                                    print("FS_FAIL_DELETE")
+                                } else {
+                                    print("FS_OK")
+                                }
                             }
                         }
                     }

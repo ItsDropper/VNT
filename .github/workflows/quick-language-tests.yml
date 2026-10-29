@@ -662,6 +662,9 @@ jobs:
           a "quote"
           []
           []
+          2
+          left
+          right
           ""
           1
           1

@@ -1,0 +1,23 @@
+# Exercise object field insertion beyond multiple capacity doublings and updates.
+record = object()
+record.a = 1
+record.b = 2
+record.c = 3
+record.d = 4
+record.e = 5
+record.f = 6
+record.g = 7
+record.h = 8
+record.i = 9
+record.j = 10
+record.k = 11
+record.l = 12
+
+# Replacing an existing field must not append a duplicate or corrupt neighbors.
+record.a = 101
+print(record.a)
+print(record.e)
+print(record.i)
+print(record.l)
+print(record.m)
+print("OBJECT_GROWTH_OK")

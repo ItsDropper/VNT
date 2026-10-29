@@ -4,4 +4,12 @@ payload = "{\"hits\":[{\"title\":\"Sodium\",\"slug\":\"sodium\",\"downloads\":10
 print(json.value_at(payload, "title", 0))
 print(json.value_at(payload, "slug", 1))
 print(json.value_at(payload, "downloads", 0))
+long_value = ""
+i = 0
+while i < 2500 {
+    long_value = long_value + "x"
+    i += 1
+}
+long_payload = "{\\"long\\":\\"" + long_value + "\\"}"
+print(len(json.value_at(long_payload, "long", 0)))
 print("JSON_VALUE_AT_OK")

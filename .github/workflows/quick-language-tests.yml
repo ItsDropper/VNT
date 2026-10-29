@@ -472,6 +472,11 @@ jobs:
           false
           false
           true
+          false
+          false
+          false
+          false
+          true
           STDLIB_VALIDATE_OK
           VNT_EXPECTED
           diff -u std-validate-expected.txt std-validate-actual-lf.txt

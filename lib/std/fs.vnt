@@ -84,7 +84,9 @@ export fun append_line(path, line) {
         return fs_write(path, line + "\n")
     }
     contents = fs_read(path)
-    if len(contents) == 0 || strutil.ends_with(contents, "\n") {
+    contents_is_empty = len(contents) == 0
+    contents_has_trailing_lf = strutil.ends_with(contents, "\n")
+    if contents_is_empty || contents_has_trailing_lf {
         return fs_append(path, line + "\n")
     }
     return fs_write(path, contents + "\n" + line + "\n")

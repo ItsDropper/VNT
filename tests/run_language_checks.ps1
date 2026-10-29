@@ -387,7 +387,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Standard CSV program exited unsuccessfully." }
     $csvExpected = @(
         "4", "name", "Ada", "likes, commas", "13", "a `"quote`"",
-        "likes, commas", "13", "a `"quote`"", "[]", "[]", "2", "left", "right", '""', "1", "1", "0", '"",middle,""', "3", "0", "middle", "0", "CSV_STANDARD_LIBRARY_OK"
+        "likes, commas", "13", "a `\"quote`\"", "[]", "[]", "[]", "1", "13", "tail", "2", "0", "2", "left", "right", '\"\"', "1", "1", "0", '\"\",middle,\"\"', "3", "0", "middle", "0", "CSV_STANDARD_LIBRARY_OK"
     )
     if (($csvOutput -join "|") -ne ($csvExpected -join "|")) {
         throw "Unexpected standard CSV output: $($csvOutput -join ' | ')"

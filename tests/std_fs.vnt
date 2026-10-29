@@ -176,7 +176,7 @@ if !fs.write_text(line_path, "one\n\n") {
     }
 }
 
-if !fs.write_text(line_path, "\\n") {
+if !fs.write_text(line_path, "\n") {
     line_checks_ok = false
 } else {
     blank_only_lines = fs.read_lines(line_path)

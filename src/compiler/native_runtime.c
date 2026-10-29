@@ -394,8 +394,16 @@ VNT_NATIVE_ABI VntValue * vnt_array_push(VntValue *a, VntValue *item) {
         exit(1);
     }
     if (a->array.count == a->array.capacity) {
+        if (a->array.capacity > INT_MAX / 2) {
+            fprintf(stderr, "Runtime error: array capacity limit exceeded.\n");
+            exit(1);
+        }
         int cap = a->array.capacity ? a->array.capacity * 2 : 4;
-        VntValue **items = realloc(a->array.items, sizeof(*items) * cap);
+        if ((size_t)cap > SIZE_MAX / sizeof(*a->array.items)) {
+            fprintf(stderr, "Runtime error: array allocation size overflow.\n");
+            exit(1);
+        }
+        VntValue **items = realloc(a->array.items, sizeof(*items) * (size_t)cap);
         if (!items) {
             fprintf(stderr, "Runtime error: out of memory.\n");
             exit(1);

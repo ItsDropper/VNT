@@ -1789,9 +1789,16 @@ VNT_NATIVE_ABI VntValue * vnt_json_value_at(VntValue *json_value,VntValue *key_v
         fprintf(stderr,"Runtime error: json_value_at() expects an integer occurrence index.\n");
         exit(1);
     }
-    char out[2048];
-    vnt_json_extract_value(json,key,index_value->integer,out,sizeof(out));
-    return vnt_string(out);
+    size_t capacity=strlen(json)+1;
+    char *out=(char*)malloc(capacity);
+    if(!out) {
+        fprintf(stderr,"Runtime error: json_value_at() could not allocate its result buffer.\\n");
+        exit(1);
+    }
+    vnt_json_extract_value(json,key,index_value->integer,out,capacity);
+    VntValue *result=vnt_string(out);
+    free(out);
+    return result;
 }
 
 /* Vanta GUI native backend: retained command list + double-buffered WM_PAINT. */

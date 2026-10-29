@@ -78,9 +78,38 @@ export fun get_bool(text, section, key, default_value) {
     return default_value
 }
 
+# Check key presence independently of its value to avoid sentinel collisions.
 export fun has_key(text, section, key) {
-    marker = "__VNT_CONFIG_KEY_NOT_FOUND_7F2A__"
-    return get(text, section, key, marker) != marker
+    current_section = ""
+    size = len(text)
+    start = 0
+    while start < size {
+        end = start
+        while end < size && text[end] != "\n" {
+            end += 1
+        }
+        line = ""
+        i = start
+        while i < end {
+            if text[i] != "\r" {
+                line = line + text[i]
+            }
+            i += 1
+        }
+        line = strutil.trim(line)
+        if len(line) > 0 && line[0] != "#" && line[0] != ";" {
+            if line[0] == "[" && line[len(line) - 1] == "]" {
+                current_section = strutil.trim(slice_inner(line))
+            } else if current_section == section {
+                equals = find_char(line, "=")
+                if equals > 0 && strutil.trim(prefix(line, equals)) == key {
+                    return true
+                }
+            }
+        }
+        start = end + 1
+    }
+    return false
 }
 
 export fun section_exists(text, section) {

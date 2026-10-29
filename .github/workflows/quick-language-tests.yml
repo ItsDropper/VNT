@@ -139,6 +139,15 @@ jobs:
           VNT_EXPECTED
           diff -u vnt-nested-loops-expected.txt vnt-nested-loops-actual-lf.txt
 
+      - name: Verify JSON field accessor edge cases
+        shell: bash
+        run: |
+          ./vnt --compile tests/json_value_at.vnt -o vnt-json-value-at.exe
+          ./vnt-json-value-at.exe > vnt-json-value-at-actual.txt
+          tr -d '\r' < vnt-json-value-at-actual.txt > vnt-json-value-at-actual-lf.txt
+          printf 'Sodium\nlithium\n100\nescaped-key\n\n1\n2500\nJSON_VALUE_AT_OK\n' > vnt-json-value-at-expected.txt
+          diff -u vnt-json-value-at-expected.txt vnt-json-value-at-actual-lf.txt
+
       - name: Verify native object field growth and replacement
         shell: bash
         run: |

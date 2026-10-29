@@ -274,13 +274,20 @@ fs.remove_file(write_lines_path)
 cleanup_empty_write_lines = fs.remove_file(empty_write_lines_path)
 
 atomic_path = directory + "/atomic.txt"
-removed_atomic = fs.remove_file(atomic_path)
-if !fs.write_text_atomic(atomic_path, "atomic-content") {
-    print("FS_FAIL_ATOMIC_WRITE")
+if !fs.write_text(atomic_path, "before-atomic-replacement") {
+    print("FS_FAIL_ATOMIC_SETUP")
 } else {
-    if fs.read_text(atomic_path) != "atomic-content" {
-        print("FS_FAIL_ATOMIC_CONTENT")
+    if !fs.write_text_atomic(atomic_path, "atomic-content") {
+        print("FS_FAIL_ATOMIC_WRITE")
+    } else {
+        if fs.read_text(atomic_path) != "atomic-content" {
+            print("FS_FAIL_ATOMIC_CONTENT")
+        }
     }
+}
+missing_parent_atomic_path = directory + "/missing-parent/atomic.txt"
+if fs.write_text_atomic(missing_parent_atomic_path, "must-not-exist") {
+    print("FS_FAIL_ATOMIC_MISSING_PARENT")
 }
 fs.remove_file(atomic_path)
 

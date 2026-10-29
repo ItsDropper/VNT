@@ -1798,7 +1798,7 @@ static VNT_NATIVE_ABI int vnt_json_append_codepoint(char *out,size_t cap,size_t 
     else if(cp<=0xffff && !(cp>=0xd800&&cp<=0xdfff)){bytes[0]=(unsigned char)(0xe0|(cp>>12));bytes[1]=(unsigned char)(0x80|((cp>>6)&0x3f));bytes[2]=(unsigned char)(0x80|(cp&0x3f));count=3;}
     else if(cp<=0x10ffff){bytes[0]=(unsigned char)(0xf0|(cp>>18));bytes[1]=(unsigned char)(0x80|((cp>>12)&0x3f));bytes[2]=(unsigned char)(0x80|((cp>>6)&0x3f));bytes[3]=(unsigned char)(0x80|(cp&0x3f));count=4;}
     else return 0;
-    if(*n+count>=cap)return 0;
+    if(*n>=cap || count>=cap-*n)return 0;
     memcpy(out+*n,bytes,count);
     *n+=count;
     out[*n]=0;

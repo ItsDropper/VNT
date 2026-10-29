@@ -432,7 +432,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Standard INI configuration program exited unsuccessfully." }
     $configIniExpected = @(
         "enabled", "dark mode", "125", "a=b", "fallback",
-        "true", "false", "true", "true", "false", "true", "false", "INI_CONFIG_OK"
+        "true", "false", "true", "true", "false", "true", "false", "true", "INI_CONFIG_OK"
     )
     if (($configIniOutput -join "|") -ne ($configIniExpected -join "|")) {
         throw "Unexpected standard INI configuration output: $($configIniOutput -join ' | ')"

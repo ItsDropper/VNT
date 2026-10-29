@@ -860,8 +860,8 @@ VNT_NATIVE_ABI VntValue * vnt_struct_new(const char *name) {
 }
 
 VNT_NATIVE_ABI VntValue * vnt_object_get(VntValue *object, const char *key) {
-    if (!object || object->type != VNT_OBJECT) {
-        fprintf(stderr, "Runtime error: member access requires an object.\n");
+    if (!object || object->type != VNT_OBJECT || !key) {
+        fprintf(stderr, "Runtime error: member access requires an object and non-null key.\n");
         exit(1);
     }
     for (int i=0;i<object->object.count;i++)
@@ -1365,10 +1365,26 @@ static void process_refresh(VntProcess *p) {
 }
 #ifdef _WIN32
 static void append_win_arg(char **cmd, size_t *len, size_t *cap, const char *arg) {
-    size_t need = strlen(arg) * 2 + 4;
-    if (*len + need + 1 > *cap) {
+    size_t arg_len = strlen(arg);
+    if (arg_len > (SIZE_MAX - 4) / 2) {
+        fprintf(stderr, "Runtime error: process argument is too large to quote.\n");
+        exit(1);
+    }
+    size_t need = arg_len * 2 + 4;
+    if (*len > SIZE_MAX - need - 1) {
+        fprintf(stderr, "Runtime error: process command line is too large.\n");
+        exit(1);
+    }
+    size_t required = *len + need + 1;
+    if (required > *cap) {
         size_t nc = *cap ? *cap : 128;
-        while (nc < *len + need + 1) nc *= 2;
+        while (nc < required) {
+            if (nc > SIZE_MAX / 2) {
+                nc = required;
+                break;
+            }
+            nc *= 2;
+        }
         char *next = realloc(*cmd, nc);
         if (!next) { fprintf(stderr, "Runtime error: out of memory building process command line.\n"); exit(1); }
         *cmd = next; *cap = nc;

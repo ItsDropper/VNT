@@ -1818,8 +1818,8 @@ static VNT_NATIVE_ABI void vnt_json_copy_string(const char *p, char *out, size_t
                 case 'n': ch='\n'; break;
                 case 'r': ch='\r'; break;
                 case 't': ch='\t'; break;
-                case 'b': ch=' '; break;
-                case 'f': ch=' '; break;
+                case 'b': ch='\b'; break;
+                case 'f': ch='\f'; break;
                 case 'u': {
                     uint32_t cp;
                     if(!vnt_json_read_hex4(&p,&cp)) { ch='?'; break; }

@@ -1770,9 +1770,12 @@ static VNT_NATIVE_ABI void vnt_json_copy_string(const char *p, char *out, size_t
                     if(cp>=0xd800&&cp<=0xdbff) {
                         const char *next=p;
                         uint32_t low;
-                        if(next[0]=='\\'&&next[1]=='u'&&vnt_json_read_hex4(&(next+=2),&low)&&low>=0xdc00&&low<=0xdfff) {
-                            cp=0x10000+((cp-0xd800)<<10)+(low-0xdc00);
-                            p=next;
+                        if(next[0]=='\\'&&next[1]=='u') {
+                            next+=2;
+                            if(vnt_json_read_hex4(&next,&low)&&low>=0xdc00&&low<=0xdfff) {
+                                cp=0x10000+((cp-0xd800)<<10)+(low-0xdc00);
+                                p=next;
+                            } else cp=0xfffd;
                         } else cp=0xfffd;
                     } else if(cp>=0xdc00&&cp<=0xdfff) cp=0xfffd;
                     if(!vnt_json_append_codepoint(out,cap,&n,cp)) return;

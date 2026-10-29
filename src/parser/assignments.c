@@ -249,7 +249,7 @@ if (parser_check(
 
         if (qualified_name == NULL) {
             ast_free(target);
-            printf("Parser error: out of memory.\\n");
+            printf("Parser error: out of memory.\n");
             return NULL;
         }
 

@@ -1746,8 +1746,8 @@ static VNT_NATIVE_ABI void vnt_json_copy_string(const char *p, char *out, size_t
     }
     out[n]=0;
 }
-static VNT_NATIVE_ABI void vnt_json_extract_value(const char *json,const char *key,int wanted,char *out,size_t cap) {
-    int found=0;
+static VNT_NATIVE_ABI void vnt_json_extract_value(const char *json,const char *key,int64_t wanted,char *out,size_t cap) {
+    int64_t found=0;
     out[0]=0;
     if(!json||!key||wanted<0||cap<2)return;
     const char *p=json;

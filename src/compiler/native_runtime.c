@@ -1719,8 +1719,39 @@ VNT_NATIVE_ABI VntValue *vnt_bigint_compare(VntValue *a,VntValue *b){return vnt_
 
 /* Read a scalar field from the Nth JSON object/key occurrence. This is a
    deliberately small accessor for API responses, not a full JSON DOM. */
+static VNT_NATIVE_ABI int vnt_json_read_hex4(const char **p, uint32_t *value) {
+    uint32_t result=0;
+    for(int i=0;i<4;i++) {
+        unsigned char ch=(unsigned char)(*p)[i];
+        uint32_t digit;
+        if(ch>='0'&&ch<='9')digit=(uint32_t)(ch-'0');
+        else if(ch>='a'&&ch<='f')digit=(uint32_t)(ch-'a'+10);
+        else if(ch>='A'&&ch<='F')digit=(uint32_t)(ch-'A'+10);
+        else return 0;
+        result=(result<<4)|digit;
+    }
+    *p+=4;
+    *value=result;
+    return 1;
+}
+static VNT_NATIVE_ABI int vnt_json_append_codepoint(char *out,size_t cap,size_t *n,uint32_t cp) {
+    unsigned char bytes[4];
+    size_t count;
+    if(cp<=0x7f){bytes[0]=(unsigned char)cp;count=1;}
+    else if(cp<=0x7ff){bytes[0]=(unsigned char)(0xc0|(cp>>6));bytes[1]=(unsigned char)(0x80|(cp&0x3f));count=2;}
+    else if(cp<=0xffff && !(cp>=0xd800&&cp<=0xdfff)){bytes[0]=(unsigned char)(0xe0|(cp>>12));bytes[1]=(unsigned char)(0x80|((cp>>6)&0x3f));bytes[2]=(unsigned char)(0x80|(cp&0x3f));count=3;}
+    else if(cp<=0x10ffff){bytes[0]=(unsigned char)(0xf0|(cp>>18));bytes[1]=(unsigned char)(0x80|((cp>>12)&0x3f));bytes[2]=(unsigned char)(0x80|((cp>>6)&0x3f));bytes[3]=(unsigned char)(0x80|(cp&0x3f));count=4;}
+    else return 0;
+    if(*n+count>=cap)return 0;
+    memcpy(out+*n,bytes,count);
+    *n+=count;
+    out[*n]=0;
+    return 1;
+}
 static VNT_NATIVE_ABI void vnt_json_copy_string(const char *p, char *out, size_t cap) {
     size_t n=0;
+    if(cap==0)return;
+    out[0]=0;
     if(*p=='"')p++;
     while(*p && *p!='"' && n+1<cap) {
         unsigned char ch=(unsigned char)*p++;
@@ -1733,18 +1764,27 @@ static VNT_NATIVE_ABI void vnt_json_copy_string(const char *p, char *out, size_t
                 case 't': ch='\t'; break;
                 case 'b': ch=' '; break;
                 case 'f': ch=' '; break;
-                case 'u':
-                    /* Preserve parsing alignment; ASCII keys and ordinary
-                       Latin text decode directly, other code points use '?'. */
-                    for(int i=0;i<4 && *p;i++)p++;
-                    ch='?';
-                    break;
+                case 'u': {
+                    uint32_t cp;
+                    if(!vnt_json_read_hex4(&p,&cp)) { ch='?'; break; }
+                    if(cp>=0xd800&&cp<=0xdbff) {
+                        const char *next=p;
+                        uint32_t low;
+                        if(next[0]=='\\'&&next[1]=='u'&&vnt_json_read_hex4(&(next+=2),&low)&&low>=0xdc00&&low<=0xdfff) {
+                            cp=0x10000+((cp-0xd800)<<10)+(low-0xdc00);
+                            p=next;
+                        } else cp=0xfffd;
+                    } else if(cp>=0xdc00&&cp<=0xdfff) cp=0xfffd;
+                    if(!vnt_json_append_codepoint(out,cap,&n,cp)) return;
+                    continue;
+                }
                 default: break;
             }
         }
+        if(n+1>=cap)break;
         out[n++]=(char)ch;
+        out[n]=0;
     }
-    out[n]=0;
 }
 static VNT_NATIVE_ABI void vnt_json_extract_value(const char *json,const char *key,int64_t wanted,char *out,size_t cap) {
     int64_t found=0;

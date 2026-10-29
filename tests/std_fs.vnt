@@ -324,5 +324,6 @@ if fs.write_text_atomic(missing_parent_atomic_path, "must-not-exist") {
     print("FS_FAIL_ATOMIC_MISSING_PARENT")
 }
 fs.remove_file(atomic_path)
+fs.remove_file(standalone_call_path)
 
 print("STANDARD_FS_OK")

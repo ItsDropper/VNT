@@ -1722,6 +1722,7 @@ VNT_NATIVE_ABI VntValue *vnt_bigint_compare(VntValue *a,VntValue *b){return vnt_
 static VNT_NATIVE_ABI int vnt_json_read_hex4(const char **p, uint32_t *value) {
     uint32_t result=0;
     for(int i=0;i<4;i++) {
+        if(!(*p)[i])return 0;
         unsigned char ch=(unsigned char)(*p)[i];
         uint32_t digit;
         if(ch>='0'&&ch<='9')digit=(uint32_t)(ch-'0');

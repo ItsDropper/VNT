@@ -539,6 +539,12 @@ VNT_NATIVE_ABI VntValue * vnt_add(VntValue *a, VntValue *b) {
             exit(1);
         }
         size_t la = strlen(left), lb = strlen(right);
+        if (la > SIZE_MAX - lb - 1) {
+            free(left);
+            free(right);
+            fprintf(stderr, "Runtime error: string concatenation size overflow.\n");
+            exit(1);
+        }
         char *joined = malloc(la + lb + 1);
         if (!joined) {
             free(left);
@@ -865,8 +871,8 @@ VNT_NATIVE_ABI VntValue * vnt_object_get(VntValue *object, const char *key) {
 }
 
 VNT_NATIVE_ABI VntValue * vnt_object_set(VntValue *object, const char *key, VntValue *value) {
-    if (!object || object->type != VNT_OBJECT) {
-        fprintf(stderr, "Runtime error: member assignment requires an object.\n");
+    if (!object || object->type != VNT_OBJECT || !key) {
+        fprintf(stderr, "Runtime error: member assignment requires an object and non-null key.\n");
         exit(1);
     }
     for (int i=0;i<object->object.count;i++) {
@@ -876,8 +882,16 @@ VNT_NATIVE_ABI VntValue * vnt_object_set(VntValue *object, const char *key, VntV
         }
     }
     if (object->object.count == object->object.capacity) {
+        if (object->object.capacity > INT_MAX / 2) {
+            fprintf(stderr, "Runtime error: object capacity limit exceeded.\n");
+            exit(1);
+        }
         int cap=object->object.capacity ? object->object.capacity*2 : 4;
-        VntField *fields=realloc(object->object.fields,sizeof(*fields)*cap);
+        if ((size_t)cap > SIZE_MAX / sizeof(*object->object.fields)) {
+            fprintf(stderr, "Runtime error: object allocation size overflow.\n");
+            exit(1);
+        }
+        VntField *fields=realloc(object->object.fields,sizeof(*fields)*(size_t)cap);
         if (!fields) { fprintf(stderr,"Runtime error: out of memory.\n"); exit(1); }
         object->object.fields=fields;
         object->object.capacity=cap;

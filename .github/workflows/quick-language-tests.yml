@@ -703,6 +703,30 @@ jobs:
           fi
           grep -Fx "STANDARD_FS_OK" std-fs-actual.txt
 
+      - name: Run INI configuration helper regressions
+        shell: bash
+        run: |
+          ./vnt --compile tests/std_config_ini.vnt -o std-config-ini-smoke.exe
+          ./std-config-ini-smoke.exe > std-config-ini-actual.txt
+          tr -d '\r' < std-config-ini-actual.txt > std-config-ini-actual-lf.txt
+          cat > std-config-ini-expected.txt <<'VNT_EXPECTED'
+          enabled
+          dark mode
+          125
+          a=b
+          fallback
+          true
+          false
+          true
+          true
+          false
+          true
+          false
+          true
+          INI_CONFIG_OK
+          VNT_EXPECTED
+          diff -u std-config-ini-expected.txt std-config-ini-actual-lf.txt
+
       - name: Run portable path helper regressions
         shell: bash
         run: |

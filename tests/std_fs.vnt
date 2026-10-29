@@ -176,6 +176,31 @@ if !fs.write_text(line_path, "one\n\n") {
     }
 }
 
+if !fs.write_text(line_path, "\\n") {
+    line_checks_ok = false
+} else {
+    blank_only_lines = fs.read_lines(line_path)
+    if len(blank_only_lines) != 1 {
+        line_checks_ok = false
+    } else {
+        if blank_only_lines[0] != "" {
+            line_checks_ok = false
+        }
+    }
+}
+
+empty_write_lines_path = directory + "/write-lines-empty.txt"
+removed_empty_write_lines = fs.remove_file(empty_write_lines_path)
+empty_source_lines = []
+if !fs.write_lines(empty_write_lines_path, empty_source_lines) {
+    line_checks_ok = false
+} else {
+    empty_round_trip_lines = fs.read_lines(empty_write_lines_path)
+    if len(empty_round_trip_lines) != 0 {
+        line_checks_ok = false
+    }
+}
+
 if !fs.write_text(append_empty_path, "") {
     line_checks_ok = false
 } else {

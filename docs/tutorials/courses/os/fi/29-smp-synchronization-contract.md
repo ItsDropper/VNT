@@ -132,9 +132,9 @@ Kernelin synkronointityössä on nyt ensimmäinen konkreettinen askel, mutta yle
 - Se palauttaa muistipaikassa olleen 64-bittisen arvon ja tuottaa x86-64-käskyn `xchgq %rax, (%rdi)`. Muistioperandin kanssa `xchg` on prosessorin puolella atominen ja toimii tässä kohdekohtaisena acquire-release-esteenä.
 - Intrinsic vaatii `unsafe { ... }` -lohkon. CI:ssä on positiivinen käännöskoe, joka tarkistaa käskyn, sekä negatiivinen koe, jonka pitää hylätä käyttö unsafe-lohkon ulkopuolella.
 - `os/kernel/sync.vnt` sisältää `spinlock_init`, `spinlock_try_acquire`, `spinlock_acquire` ja `spinlock_release`.
-- Komento `synctest` testaa vain yhden CPU:n tilanteessa lukon hankinnan, epäonnistuvan try-acquire-operaation, vapautuksen ja toisen vapautuksen hylkäämisen.
+- Komento `synctest` testaa yhden CPU:n perustoimintojen lisäksi moniydinkilpailua: BSP lähettää IPI:n kaikille online-AP-ytimille, kaikki CPU:t kohtaavat käynnistysesteellä ja kasvattavat samaa tavallista laskuria 1 000 kertaa lukon sisällä. Neljän CPU:n QEMU-CI tarkistaa odotetun kokonaismäärän 4 000.
 
-Tämä ei vielä todista lukon toimivan kilpailutilanteessa. Fyysisten sivukehysten varaaja ei käytä lukkoa, eikä AP:ita saa vielä päästää yleiseen rinnakkaiseen allokointiin. Seuraava hyväksymiskriteeri on moniydintesti, jossa useat CPU:t yrittävät samaa lukkoa ja tarkistavat, ettei jaettu laskuri tai allokaattorin bittikartta rikkoudu.
+Tämä ei vielä todista lukon toimivan kilpailutilanteessa. Fyysisten sivukehysten varaaja ei käytä lukkoa, eikä AP:ita saa vielä päästää yleiseen rinnakkaiseen allokointiin. Moniydintesti lukon kilpailulle on nyt olemassa, mutta se on rajattu smoke-testi. Seuraava hyväksymiskriteeri on allokaattorin integrointi, jossa tarkistetaan erilliset sivuvaraukset ja vapaan sivumäärän palautuminen.
 
 ---
 

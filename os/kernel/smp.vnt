@@ -202,6 +202,10 @@ fun smp_start_aps() -> int {
 # The BSP arms the test before sending IPIs and disarms it after all APs finish.
 fun smp_handle_ipi() -> int {
     if state_get(309) == 2 {
+        let lock_address: i64 = 0
+        unsafe {
+            lock_address = symbol_address("vntos_sync_test_lock")
+        }
         state_increment_atomic(311)
         let barrier_spins: int = 0
         while state_get(312) == 0 && barrier_spins < 50000000 {
@@ -210,9 +214,9 @@ fun smp_handle_ipi() -> int {
         if state_get(312) == 1 {
             let work: int = 0
             while work < 1000 {
-                if spinlock_acquire(symbol_address("vntos_sync_test_lock")) == 1 {
+                if spinlock_acquire(lock_address) == 1 {
                     state_set(313, state_get(313) + 1)
-                    spinlock_release(symbol_address("vntos_sync_test_lock"))
+                    spinlock_release(lock_address)
                 }
                 work = work + 1
             }

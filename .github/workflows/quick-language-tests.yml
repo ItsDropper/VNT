@@ -905,7 +905,7 @@ jobs:
         run: |
           ./vnt-memory-smoke.exe > vnt-memory-actual.txt
           tr -d '\r' < vnt-memory-actual.txt > vnt-memory-actual-lf.txt
-          printf '305419896\n305419896\n255\n42\ntrue\n1\n1\n2\n3\ntrue\n165\n165\ntrue\ntrue\ntrue\ntrue\nRAW_MEMORY_OK\n' > vnt-memory-expected.txt
+          printf '305419896\n305419896\n255\n42\ntrue\n1\n1\n2\n3\ntrue\n165\n165\ntrue\ntrue\ntrue\ntrue\ntrue\ntrue\nRAW_MEMORY_OK\n' > vnt-memory-expected.txt
           diff -u vnt-memory-expected.txt vnt-memory-actual-lf.txt
 
       - name: Reject pointer arithmetic on a null pointer

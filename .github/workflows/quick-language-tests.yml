@@ -890,6 +890,11 @@ jobs:
           ./vnt --emit-freestanding-asm tests/freestanding_i64.vnt -o freestanding-i64.s
           grep -F 'addq %rcx, %rax' freestanding-i64.s
           grep -F 'cmpq %rcx, %rax' freestanding-i64.s
+          ./vnt --emit-freestanding-asm tests/freestanding_division.vnt -o freestanding-division.s
+          grep -F 'testq %rcx, %rcx' freestanding-division.s
+          grep -F 'cmpq $-1, %rcx' freestanding-division.s
+          grep -F 'movabsq $-9223372036854775808, %rdx' freestanding-division.s
+          grep -F 'idivq %rcx' freestanding-division.s
           if ./vnt --emit-freestanding-asm tests/freestanding_hosted_rejected.vnt -o freestanding-invalid.s; then
             echo "Freestanding backend incorrectly accepted a hosted print operation."
             exit 1

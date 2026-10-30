@@ -167,6 +167,18 @@ fun shell_run() {
                 } else {
                     console_puts("Spinlock self-test: FAIL\r\n")
                 }
+                let contention_result: int = smp_spinlock_contention_self_test()
+                if contention_result == 1 {
+                    console_puts("Spinlock SMP contention self-test: PASS; protected increments: ")
+                    console_decimal(state_get(313))
+                    console_puts("\\r\\n")
+                } else if contention_result == -1 {
+                    console_puts("Spinlock SMP contention self-test: SKIP; requires at least two online CPUs and all discovered CPUs online.\\r\\n")
+                } else {
+                    console_puts("Spinlock SMP contention self-test: FAIL; protected increments: ")
+                    console_decimal(state_get(313))
+                    console_puts("\\r\\n")
+                }
                 handled = 1
             }
             if str_eq(buffer, "atomictest") {

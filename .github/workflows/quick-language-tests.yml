@@ -896,6 +896,11 @@ jobs:
           test -z "$(nm -u freestanding-calls.elf)"
           ./vnt --build-freestanding tests/freestanding_negative.vnt -o freestanding-negative.elf
           test -z "$(nm -u freestanding-negative.elf)"
+          ./vnt --build-freestanding tests/freestanding_string_index.vnt -o freestanding-string-index.elf
+          test -z "$(nm -u freestanding-string-index.elf)"
+          ./vnt --emit-freestanding-asm tests/freestanding_string_index.vnt -o freestanding-string-index.s
+          grep -F "movzbl (%rax,%rcx), %eax" freestanding-string-index.s
+          grep -F ".Lvnt_str_" freestanding-string-index.s
           ./vnt --build-freestanding tests/freestanding_call_abi.vnt -o freestanding-call-abi.elf
           test -z "$(nm -u freestanding-call-abi.elf)"
           ./vnt --emit-freestanding-asm tests/freestanding_call_abi.vnt -o freestanding-call-abi.s

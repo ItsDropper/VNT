@@ -412,7 +412,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Native signed 64-bit overflow regression did not compile." }
     $overflowOutput = & $NativeI64OverflowExe 2>&1
     $overflowExitCode = $LASTEXITCODE
-    if ($overflowExitCode -eq 0 -or ($overflowOutput -join "|") -notmatch "Runtime error: signed 64-bit integer overflow in addition\\.") {
+    if ($overflowExitCode -eq 0 -or ($overflowOutput -join "|") -notmatch "Runtime error: signed 64-bit integer overflow in addition\.") {
         throw "Native signed 64-bit overflow was not rejected as expected: $($overflowOutput -join ' | ')"
     }
     Write-Host "Native signed 64-bit overflow trap: PASS"

@@ -46,6 +46,7 @@ fun spinlock_acquire(address: i64) -> int {
         while observed != 0 {
             unsafe {
                 observed = mem_read_u64(address, 0)
+                asm volatile("pause")
             }
         }
     }

@@ -896,6 +896,16 @@ jobs:
           test -z "$(nm -u freestanding-calls.elf)"
           ./vnt --build-freestanding tests/freestanding_negative.vnt -o freestanding-negative.elf
           test -z "$(nm -u freestanding-negative.elf)"
+          ./vnt --build-freestanding tests/freestanding_raw_memory.vnt -o freestanding-raw-memory.elf
+          test -z "$(nm -u freestanding-raw-memory.elf)"
+          ./vnt --emit-freestanding-asm tests/freestanding_raw_memory.vnt -o freestanding-raw-memory.s
+          grep -F "movb %dl, (%rdi,%rsi)" freestanding-raw-memory.s
+          grep -F "movl %edx, (%rdi,%rsi)" freestanding-raw-memory.s
+          grep -F "movq %rdx, (%rdi,%rsi)" freestanding-raw-memory.s
+          grep -F "movzbl (%rdi,%rsi), %eax" freestanding-raw-memory.s
+          grep -F "movl (%rdi,%rsi), %eax" freestanding-raw-memory.s
+          grep -F "movq (%rdi,%rsi), %rax" freestanding-raw-memory.s
+          grep -F "call vnt_fn_zero" freestanding-raw-memory.s
           ./vnt --build-freestanding tests/freestanding_string_index.vnt -o freestanding-string-index.elf
           test -z "$(nm -u freestanding-string-index.elf)"
           ./vnt --emit-freestanding-asm tests/freestanding_string_index.vnt -o freestanding-string-index.s

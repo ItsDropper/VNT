@@ -36,19 +36,52 @@ static int variable_index(const FreestandingGen *g, const char *name) {
 static int add_variable(FreestandingGen *g, const char *name) {
     if (!name) return 0;
     if (variable_index(g, name) >= 0) return 1;
+
+    /* Stack slots use signed 32-bit RBP-relative displacements. Keep both
+       the slot offset and the variable-index representation in range. */
+    const size_t max_variables = (size_t)INT32_MAX / 8u - 1u;
+    if (g->variable_count >= max_variables) return 0;
+
     if (g->variable_count == g->variable_capacity) {
-        size_t capacity = g->variable_capacity ? g->variable_capacity * 2 : 16;
-        char **variables = realloc(g->variables, capacity * sizeof(*variables));
-        if (!variables) return 0;
+        size_t capacity = g->variable_capacity ? g->variable_capacity : 16;
+        if (capacity > max_variables / 2u) capacity = max_variables;
+        else capacity *= 2u;
+        if (capacity <= g->variable_count ||
+            capacity > SIZE_MAX / sizeof(*g->variables) ||
+            capacity > SIZE_MAX / sizeof(*g->variable_types))
+            return 0;
+
+        /* Grow the parallel arrays transactionally. A failed second
+           allocation must not leave the generator with mismatched arrays. */
+        char **variables = malloc(capacity * sizeof(*variables));
+        char **types = malloc(capacity * sizeof(*types));
+        if (!variables || !types) {
+            free(variables);
+            free(types);
+            return 0;
+        }
+        if (g->variable_count) {
+            memcpy(variables, g->variables,
+                   g->variable_count * sizeof(*variables));
+            memcpy(types, g->variable_types,
+                   g->variable_count * sizeof(*types));
+        }
+        free(g->variables);
+        free(g->variable_types);
         g->variables = variables;
-        char **types = realloc(g->variable_types, capacity * sizeof(*types));
-        if (!types) return 0;
         g->variable_types = types;
         g->variable_capacity = capacity;
     }
-    g->variables[g->variable_count] = strdup(name);
-    g->variable_types[g->variable_count] = strdup("int");
-    if (!g->variables[g->variable_count] || !g->variable_types[g->variable_count]) return 0;
+
+    char *variable_name = strdup(name);
+    char *variable_type = strdup("int");
+    if (!variable_name || !variable_type) {
+        free(variable_name);
+        free(variable_type);
+        return 0;
+    }
+    g->variables[g->variable_count] = variable_name;
+    g->variable_types[g->variable_count] = variable_type;
     ++g->variable_count;
     return 1;
 }

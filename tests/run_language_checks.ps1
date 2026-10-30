@@ -394,6 +394,29 @@ try {
     }
     Write-Host "64-bit raw memory read/write: PASS"
 
+    $NativeI64Exe = Join-Path $OutDir "native_i64.exe"
+    & .\\vnt.exe --compile tests\\native_i64.vnt -o $NativeI64Exe
+    if ($LASTEXITCODE -ne 0) { throw "Native signed 64-bit regression did not compile." }
+    $nativeI64Output = & $NativeI64Exe
+    $nativeI64Expected = @(
+        "6442450944", "4294967296", "12884901888", "NATIVE_I64_OK",
+        "9007199254740992", "9007199254740993", "-9223372036854775808"
+    )
+    if ($LASTEXITCODE -ne 0 -or ($nativeI64Output -join "|") -ne ($nativeI64Expected -join "|")) {
+        throw "Unexpected native signed 64-bit output: $($nativeI64Output -join ' | ')"
+    }
+    Write-Host "Native signed 64-bit arithmetic and literal precision: PASS"
+
+    $NativeI64OverflowExe = Join-Path $OutDir "native_i64_overflow.exe"
+    & .\\vnt.exe --compile tests\\native_i64_overflow.vnt -o $NativeI64OverflowExe
+    if ($LASTEXITCODE -ne 0) { throw "Native signed 64-bit overflow regression did not compile." }
+    $overflowOutput = & $NativeI64OverflowExe 2>&1
+    $overflowExitCode = $LASTEXITCODE
+    if ($overflowExitCode -eq 0 -or ($overflowOutput -join "|") -notmatch "Runtime error: signed 64-bit integer overflow in addition\\.") {
+        throw "Native signed 64-bit overflow was not rejected as expected: $($overflowOutput -join ' | ')"
+    }
+    Write-Host "Native signed 64-bit overflow trap: PASS"
+
     $JsonExe = Join-Path $OutDir "json_value_at.exe"
     & .\vnt.exe --compile tests\json_value_at.vnt -o $JsonExe
     if ($LASTEXITCODE -ne 0) { throw "JSON field accessor test did not compile." }

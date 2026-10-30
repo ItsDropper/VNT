@@ -326,7 +326,7 @@ static int emit_expression(FreestandingGen *g, size_t index) {
         if (n->value.integer < INT32_MIN || n->value.integer > INT32_MAX)
             fprintf(g->out, "    movabsq $%lld, %%rax\n", (long long)n->value.integer);
         else
-            fprintf(g->out, "    movl $%d, %%eax\n", (int)n->value.integer);
+            fprintf(g->out, "    movq $%d, %%rax\n", (int)n->value.integer);
         return 1;
     case VNT_IR_BOOLEAN:
         fprintf(g->out, "    movl $%d, %%eax\n", !!n->value.boolean);

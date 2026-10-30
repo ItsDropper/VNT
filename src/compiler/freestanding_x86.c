@@ -316,9 +316,10 @@ static int emit_expression(FreestandingGen *g, size_t index) {
         const VntIrNode *offset = child_role(g->ir, index, VNT_IR_EDGE_INDEX);
         if (!base || !offset) { fail(g, "malformed byte-index expression."); return 0; }
         if (!emit_expression(g, (size_t)(base - g->ir->nodes))) return 0;
-        fputs("    pushq %rax\n", g->out);
+        fputs("    subq $16, %rsp\n    movq %rax, (%rsp)\n", g->out);
         if (!emit_expression(g, (size_t)(offset - g->ir->nodes))) return 0;
-        fputs("    movq %rax, %rcx\n    popq %rax\n    movzbl (%rax,%rcx), %eax\n", g->out);
+        fputs("    movq %rax, %rcx\n    movq (%rsp), %rax\n    addq $16, %rsp\n"
+              "    movzbl (%rax,%rcx), %eax\n", g->out);
         return 1;
     }
     case VNT_IR_INTEGER:
@@ -376,9 +377,12 @@ static int emit_expression(FreestandingGen *g, size_t index) {
         }
         int wide = 1; /* All freestanding VNT integer arithmetic is 64-bit. */
         if (!emit_expression(g, li)) return 0;
-        fputs("    pushq %rax\n", g->out);
+        /* Keep temporary spills 16-byte aligned. The right operand may call
+           another VNT function, whose entry follows the SysV AMD64 ABI. */
+        fputs("    subq $16, %rsp\n    movq %rax, (%rsp)\n", g->out);
         if (!emit_expression(g, ri)) return 0;
-        fputs(wide ? "    movq %rax, %rcx\n    popq %rax\n" : "    movl %eax, %ecx\n    popq %rax\n", g->out);
+        fputs(wide ? "    movq %rax, %rcx\n    movq (%rsp), %rax\n    addq $16, %rsp\n"
+                   : "    movl %eax, %ecx\n    movq (%rsp), %rax\n    addq $16, %rsp\n", g->out);
         switch (n->operation) {
         case BINARY_ADD:
             fputs(wide ? "    addq %rcx, %rax\n    jo .Lvnt_arithmetic_fault\n" : "    addl %ecx, %eax\n    jo .Lvnt_arithmetic_fault\n", g->out); return 1;

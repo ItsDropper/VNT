@@ -1,0 +1,14 @@
+# Copyright (c) 2026 ItsDropper
+# Licensed under the MIT License. See LICENSE in the repository root.
+
+fun add_pair(a: i64, b: i64) -> i64 {
+    return a + b
+}
+
+fun kernel_main() {
+    let result: i64 = add_pair(20, 1) + add_pair(20, 1)
+    if result == 42 {
+        return 0
+    }
+    return 1
+}

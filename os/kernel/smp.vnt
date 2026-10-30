@@ -9,6 +9,7 @@ import "core.vnt"
 import "../firmware/acpi.vnt"
 import "../arch/x86_64/apic.vnt"
 import "../mm/phys.vnt"
+import "sync.vnt"
 
 fun smp_prepare_trampoline() -> int {
     let source: i64 = 0
@@ -200,6 +201,24 @@ fun smp_start_aps() -> int {
 # During atomictest, each AP performs a fixed batch against a dedicated counter.
 # The BSP arms the test before sending IPIs and disarms it after all APs finish.
 fun smp_handle_ipi() -> int {
+    if state_get(309) == 2 {
+        state_increment_atomic(311)
+        let barrier_spins: int = 0
+        while state_get(312) == 0 && barrier_spins < 50000000 {
+            barrier_spins = barrier_spins + 1
+        }
+        if state_get(312) == 1 {
+            let work: int = 0
+            while work < 1000 {
+                if spinlock_acquire(symbol_address("vntos_sync_test_lock")) == 1 {
+                    state_set(313, state_get(313) + 1)
+                    spinlock_release(symbol_address("vntos_sync_test_lock"))
+                }
+                work = work + 1
+            }
+        }
+        state_increment_atomic(310)
+    }
     if state_get(309) == 1 {
         # Every AP reports readiness, then waits for the BSP's release.
         state_increment_atomic(311)
@@ -288,6 +307,80 @@ fun smp_atomic_counter_self_test() -> int {
         return 0
     }
     if state_get(308) != online * 1000 {
+        return 0
+    }
+    return 1
+}
+
+# Contend on one shared software spinlock from the BSP and every online AP.
+# The protected counter uses ordinary load/store operations; correctness depends
+# on the lock, not on LOCK INC. This remains a bounded QEMU smoke test.
+fun smp_spinlock_contention_self_test() -> int {
+    let online: int = smp_online_cpu_count()
+    if online < 2 || online != smp_discovered_cpu_count() {
+        return -1
+    }
+    let lock_address: i64 = 0
+    unsafe {
+        lock_address = symbol_address("vntos_sync_test_lock")
+    }
+    if spinlock_init(lock_address) != 1 {
+        return 0
+    }
+    state_set(309, 2)
+    state_set(310, 0)
+    state_set(311, 0)
+    state_set(312, 0)
+    state_set(313, 0)
+
+    let index: int = 0
+    while index < acpi_cpu_count() && index < 16 {
+        let apic_id: int = acpi_cpu_apic_id(index)
+        if smp_cpu_online(index) == 1 && apic_id != smp_bsp_apic_id() {
+            if apic_send_icr(apic_id, 0xf0) != 1 {
+                state_set(309, 0)
+                state_set(312, 1)
+                return 0
+            }
+        }
+        index = index + 1
+    }
+
+    let expected_completions: int = online - 1
+    let ready_spins: int = 0
+    while state_get(311) < expected_completions && ready_spins < 50000000 {
+        ready_spins = ready_spins + 1
+    }
+    if state_get(311) != expected_completions {
+        state_set(309, 0)
+        state_set(312, 1)
+        return 0
+    }
+    state_set(312, 1)
+
+    let work: int = 0
+    while work < 1000 {
+        if spinlock_acquire(lock_address) != 1 {
+            state_set(309, 0)
+            return 0
+        }
+        state_set(313, state_get(313) + 1)
+        spinlock_release(lock_address)
+        work = work + 1
+    }
+
+    let spins: int = 0
+    while state_get(310) < expected_completions && spins < 50000000 {
+        spins = spins + 1
+    }
+    state_set(309, 0)
+    if state_get(310) != expected_completions {
+        return 0
+    }
+    if state_get(313) != online * 1000 {
+        return 0
+    }
+    if spinlock_release(lock_address) != 0 {
         return 0
     }
     return 1

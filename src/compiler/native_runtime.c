@@ -2608,6 +2608,7 @@ VNT_MEM_WRITE(u64, uint64_t)
 VNT_NATIVE_ABI VntValue *vnt_mem_copy(VntValue *destination, VntValue *source,
                                       VntValue *length_value) {
     size_t length = vnt_require_memory_size(length_value, 1);
+    if (length == 0) return vnt_bool(1);
     VntValue zero_offset;
     memset(&zero_offset, 0, sizeof(zero_offset));
     zero_offset.type = VNT_INT;
@@ -2625,6 +2626,7 @@ VNT_NATIVE_ABI VntValue *vnt_mem_set(VntValue *destination, VntValue *byte_value
         exit(1);
     }
     size_t length = vnt_require_memory_size(length_value, 1);
+    if (length == 0) return vnt_bool(1);
     VntValue zero_offset;
     memset(&zero_offset, 0, sizeof(zero_offset));
     zero_offset.type = VNT_INT;

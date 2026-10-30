@@ -892,6 +892,11 @@ jobs:
           grep -F 'cmpq %rcx, %rax' freestanding-i64.s
           ./vnt --build-freestanding tests/freestanding_division.vnt -o freestanding-division.elf
           test -z "$(nm -u freestanding-division.elf)"
+          ./vnt --build-freestanding tests/freestanding_calls.vnt -o freestanding-calls.elf
+          test -z "$(nm -u freestanding-calls.elf)"
+          ./vnt --emit-freestanding-asm tests/freestanding_calls.vnt -o freestanding-calls.s
+          grep -F 'subq $16, %rsp' freestanding-calls.s
+          grep -F 'call vnt_fn_add_pair' freestanding-calls.s
           readelf -h freestanding-division.elf | grep -F 'ELF64'
           ./vnt --emit-freestanding-asm tests/freestanding_division.vnt -o freestanding-division.s
           grep -F 'testq %rcx, %rcx' freestanding-division.s

@@ -12,19 +12,19 @@ fun kernel_main() {
         if mem_read_u8(storage, zero()) != 0 {
             return 1
         }
-        if mem_write_u8(storage, zero(), 165) != 1 {
+        if !mem_write_u8(storage, zero(), 165) {
             return 2
         }
         if mem_read_u8(storage, zero()) != 165 {
             return 3
         }
-        if mem_write_u32(storage, 4, 305419896) != 1 {
+        if !mem_write_u32(storage, 4, 305419896) {
             return 4
         }
         if mem_read_u32(storage, 4) != 305419896 {
             return 5
         }
-        if mem_write_u64(storage, 8, 81985529216486895) != 1 {
+        if !mem_write_u64(storage, 8, 81985529216486895) {
             return 6
         }
         if mem_read_u64(storage, 8) != 81985529216486895 {

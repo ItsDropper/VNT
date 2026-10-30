@@ -890,6 +890,9 @@ jobs:
           ./vnt --emit-freestanding-asm tests/freestanding_i64.vnt -o freestanding-i64.s
           grep -F 'addq %rcx, %rax' freestanding-i64.s
           grep -F 'cmpq %rcx, %rax' freestanding-i64.s
+          ./vnt --build-freestanding tests/freestanding_division.vnt -o freestanding-division.elf
+          test -z "$(nm -u freestanding-division.elf)"
+          readelf -h freestanding-division.elf | grep -F 'ELF64'
           ./vnt --emit-freestanding-asm tests/freestanding_division.vnt -o freestanding-division.s
           grep -F 'testq %rcx, %rcx' freestanding-division.s
           grep -F 'cmpq $-1, %rcx' freestanding-division.s

@@ -6,12 +6,12 @@ fun zero() -> i64 {
 }
 
 fun sum_six(a: i64, b: i64, c: i64, d: i64, e: i64, f: i64) -> i64 {
-    return a + b + c + d + e + f
+    return a + b * 10 + c * 100 + d * 1000 + e * 10000 + f * 100000
 }
 
 fun kernel_main() {
     let result: i64 = sum_six(1, 2, 3, 4, 5, zero())
-    if result == 22 {
+    if result == 754321 {
         return 0
     }
     return 1

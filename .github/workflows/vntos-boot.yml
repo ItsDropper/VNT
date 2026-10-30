@@ -47,6 +47,9 @@ jobs:
           readelf -h build/kernel.elf | grep -F 'ELF64'
           test -s build/vntos.iso
           test -z "$(nm -u build/kernel.elf)"
+          objdump -d build/kernel.elf | grep -F 'pause'
+          objdump -d build/kernel.elf | grep -F 'xchg'
+          nm build/kernel.elf | grep -F 'vnt_fn_smp_spinlock_contention_self_test'
 
       - name: Verify freestanding unsafe-memory code generation
         run: |

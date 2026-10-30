@@ -2,11 +2,17 @@
 # Licensed under the MIT License. See LICENSE in the repository root.
 # Compiler regression fixture for the target-specific atomic exchange intrinsic.
 
+fun atomic_address() -> i64 {
+    return 4096
+}
+
+fun atomic_value() -> i64 {
+    return 1
+}
+
 fun kernel_main() {
-    let address: i64 = 4096
-    let desired: i64 = 1
     let previous: i64 = 0
     unsafe {
-        previous = cpu_atomic_exchange_u64(address, desired)
+        previous = cpu_atomic_exchange_u64(atomic_address(), atomic_value())
     }
 }

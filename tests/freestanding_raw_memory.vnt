@@ -5,6 +5,22 @@ fun zero() -> i64 {
     return 0
 }
 
+fun offset_four() -> i64 {
+    return 4
+}
+
+fun offset_eight() -> i64 {
+    return 8
+}
+
+fun payload_u32() -> i64 {
+    return 305419896
+}
+
+fun payload_u64() -> i64 {
+    return 81985529216486895
+}
+
 fun kernel_main() {
     let storage: i64 = 0
     unsafe {
@@ -18,13 +34,13 @@ fun kernel_main() {
         if mem_read_u8(storage, zero()) != 165 {
             return 3
         }
-        if !mem_write_u32(storage, 4, 305419896) {
+        if !mem_write_u32(storage, offset_four(), payload_u32()) {
             return 4
         }
         if mem_read_u32(storage, 4) != 305419896 {
             return 5
         }
-        if !mem_write_u64(storage, 8, 81985529216486895) {
+        if !mem_write_u64(storage, offset_eight(), payload_u64()) {
             return 6
         }
         if mem_read_u64(storage, 8) != 81985529216486895 {

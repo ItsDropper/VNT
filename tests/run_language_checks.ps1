@@ -370,6 +370,30 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Standard logging/configuration libraries did not compile." }
     Write-Host "Standard logging/configuration library compile: PASS"
 
+    $RawMemoryExe = Join-Path $OutDir "unsafe_memory.exe"
+    & .\\vnt.exe --compile tests\\unsafe_memory.vnt -o $RawMemoryExe
+    if ($LASTEXITCODE -ne 0) { throw "Raw memory regression did not compile." }
+    $rawMemoryOutput = & $RawMemoryExe
+    if ($LASTEXITCODE -ne 0) { throw "Raw memory regression exited unsuccessfully." }
+    $rawMemoryExpected = @(
+        "305419896", "305419896", "255", "42", "true", "1", "2", "3",
+        "true", "165", "165", "true", "true", "true", "true", "true", "true",
+        "RAW_MEMORY_OK"
+    )
+    if (($rawMemoryOutput -join "|") -ne ($rawMemoryExpected -join "|")) {
+        throw "Unexpected raw memory output: $($rawMemoryOutput -join ' | ')"
+    }
+    Write-Host "Unsafe raw memory operations and zero-length null-pointer no-ops: PASS"
+
+    $MemoryU64Exe = Join-Path $OutDir "native_memory_u64.exe"
+    & .\\vnt.exe --compile tests\\native_memory_u64.vnt -o $MemoryU64Exe
+    if ($LASTEXITCODE -ne 0) { throw "64-bit raw memory regression did not compile." }
+    $memoryU64Output = & $MemoryU64Exe
+    if ($LASTEXITCODE -ne 0 -or ($memoryU64Output -join "|") -ne "true|81985529216486895|239|1|true|true|MEM_U64_OK") {
+        throw "Unexpected 64-bit raw memory output: $($memoryU64Output -join ' | ')"
+    }
+    Write-Host "64-bit raw memory read/write: PASS"
+
     $JsonExe = Join-Path $OutDir "json_value_at.exe"
     & .\vnt.exe --compile tests\json_value_at.vnt -o $JsonExe
     if ($LASTEXITCODE -ne 0) { throw "JSON field accessor test did not compile." }

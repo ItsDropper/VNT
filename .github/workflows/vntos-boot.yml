@@ -72,6 +72,10 @@ jobs:
         run: |
           ./build/vnt --emit-freestanding-asm tests/freestanding_atomic_exchange.vnt -o build/freestanding-atomic-exchange.s
           grep -F 'xchgq %rax, (%rdi)' build/freestanding-atomic-exchange.s
+          grep -F 'call vnt_fn_atomic_address' build/freestanding-atomic-exchange.s
+          grep -F 'call vnt_fn_atomic_value' build/freestanding-atomic-exchange.s
+          grep -F 'movq 0(%rsp), %rdi' build/freestanding-atomic-exchange.s
+          grep -F 'movq 8(%rsp), %rax' build/freestanding-atomic-exchange.s
 
           if ./build/vnt --emit-freestanding-asm tests/freestanding_atomic_exchange_rejected.vnt -o build/atomic-exchange-rejected.s; then
             echo "Atomic exchange unexpectedly compiled outside unsafe { ... }" >&2

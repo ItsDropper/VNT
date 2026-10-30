@@ -900,6 +900,11 @@ jobs:
           test -z "$(nm -u freestanding-call-abi.elf)"
           ./vnt --emit-freestanding-asm tests/freestanding_call_abi.vnt -o freestanding-call-abi.s
           grep -F "movq 40(%rsp), %r9" freestanding-call-abi.s
+          grep -F "movq 0(%rsp), %rdi" freestanding-call-abi.s
+          grep -F "movq 8(%rsp), %rsi" freestanding-call-abi.s
+          grep -F "movq 16(%rsp), %rdx" freestanding-call-abi.s
+          grep -F "movq 24(%rsp), %rcx" freestanding-call-abi.s
+          grep -F "movq 32(%rsp), %r8" freestanding-call-abi.s
           grep -F "call vnt_fn_sum_six" freestanding-call-abi.s
           grep -F "call vnt_fn_zero" freestanding-call-abi.s
           ./vnt --emit-freestanding-asm tests/freestanding_negative.vnt -o freestanding-negative.s

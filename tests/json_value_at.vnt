@@ -11,6 +11,8 @@ print(json.value_at(control_payload, "backspace", 0) == " ")
 print(json.value_at(control_payload, "formfeed", 0) == " ")
 print(json.value_at(payload, "title", 4294967296))
 unicode_payload = "{\"emoji\":\"\\uD83D\\uDE00\"}"
+
+# VNT string length and indexing currently count UTF-8 bytes, not Unicode scalars.
 print(len(json.value_at(unicode_payload, "emoji", 0)))
 long_value = ""
 i = 0

@@ -1,0 +1,16 @@
+# Copyright (c) 2026 ItsDropper
+# Licensed under the MIT License. See LICENSE in the repository root.
+
+fun kernel_main() {
+    let message: string = "OK"
+    if message[0] != 79 {
+        return 1
+    }
+    if message[1] != 75 {
+        return 2
+    }
+    if message[2] != 0 {
+        return 3
+    }
+    return 0
+}

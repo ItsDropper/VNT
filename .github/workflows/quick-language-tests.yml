@@ -906,6 +906,10 @@ jobs:
           grep -F "movl (%rdi,%rsi), %eax" freestanding-raw-memory.s
           grep -F "movq (%rdi,%rsi), %rax" freestanding-raw-memory.s
           grep -F "call vnt_fn_zero" freestanding-raw-memory.s
+          grep -F "call vnt_fn_offset_four" freestanding-raw-memory.s
+          grep -F "call vnt_fn_payload_u32" freestanding-raw-memory.s
+          grep -F "call vnt_fn_offset_eight" freestanding-raw-memory.s
+          grep -F "call vnt_fn_payload_u64" freestanding-raw-memory.s
           ./vnt --build-freestanding tests/freestanding_string_index.vnt -o freestanding-string-index.elf
           test -z "$(nm -u freestanding-string-index.elf)"
           ./vnt --emit-freestanding-asm tests/freestanding_string_index.vnt -o freestanding-string-index.s

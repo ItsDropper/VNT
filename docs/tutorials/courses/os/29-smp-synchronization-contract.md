@@ -20,7 +20,7 @@ Start with these files:
 - `src/compiler/freestanding_x86.c`: code generation for the freestanding VNT subset.
 - `.github/workflows/vntos-boot.yml`: the authoritative QEMU boot regression test.
 
-The BSP starts APs serially. Each AP gets a separately allocated stack page, enters VNT, publishes its online state, enables interrupts, and idles with `hlt`. The BSP then sends one IPI at a time and waits for the corresponding response counter. The handler increments a counter and acknowledges the Local APIC.
+The BSP starts APs serially. Each AP gets a separately allocated stack page, enters VNT, publishes its online state, enables interrupts, and idles with `hlt`. The BSP then sends one IPI at a time and waits for the corresponding response counter. The handler increments a counter and acknowledges the Local APIC. The `synctest` command now also sends an IPI to every online AP, rendezvous them at a barrier, and has the BSP and APs each perform 1,000 increments of one ordinary shared counter while holding the same software spinlock. CI requires the exact total on the four-CPU QEMU configuration.
 
 The IPI test proves that a remote CPU can take an interrupt and return. It does **not** prove that two CPUs can safely allocate memory, update a shared bitmap, schedule tasks, or execute the same service concurrently.
 
@@ -76,7 +76,7 @@ The next implementation must keep its scope narrow and prove the lock under cont
 - Define interrupt interaction before using the lock from interrupt context. A CPU must not deadlock by taking a lock in ordinary code and then being interrupted by a handler that tries to take that same lock.
 - Only then protect allocator bitmap changes and cached counts as one transaction.
 
-Do not enable general concurrent allocation merely because the lock compiles. CI now checks the emitted `xchgq` instruction and rejects use outside `unsafe { ... }`. The shell's `synctest` covers only uncontended acquire/try-acquire/release/double-release behavior. A QEMU test must still exercise contention from more than one CPU, detect duplicate allocations, and verify that the free-page count returns to its starting value.
+Do not enable general concurrent allocation merely because the lock compiles. CI now checks the emitted `xchgq` instruction and rejects use outside `unsafe { ... }`. The shell's `synctest` covers only uncontended acquire/try-acquire/release/double-release behavior. The current QEMU test exercises lock contention, but it does not yet detect duplicate allocations or verify that the free-page count returns to its starting value.
 
 ## 5. Verification available today
 
@@ -89,15 +89,15 @@ qemu-system-x86_64 -cdrom build/vntos.iso -m 128M -smp 4 -serial stdio
 
 In the existing shell, run `mem`, `memtest`, `vmtest`, and `smp`. These validate the current single-core allocator paths, virtual-memory probe, topology, and IPI counters. They are not a concurrency test.
 
-The GitHub Actions workflow `VNTOS Boot and Serial Shell` builds the freestanding kernel and boots four virtual CPUs. Treat its exact result as the evidence; source inspection alone is not a build or boot result. Do not treat the current single-CPU `synctest` as a concurrency test. A multi-CPU lock-contention test and allocator integration are still required.
+The GitHub Actions workflow `VNTOS Boot and Serial Shell` builds the freestanding kernel and boots four virtual CPUs. Treat its exact result as the evidence; source inspection alone is not a build or boot result. The `synctest` command now includes a multi-CPU lock-contention smoke test. Allocator integration, duplicate-allocation detection, and free-page accounting under concurrent allocation are still required.
 
 ## 6. Completion criteria
 
-The synchronization milestone is complete only when all of these are true:
+The synchronization milestone is still incomplete. The new contention smoke test is evidence for the lock path, not allocator safety. The milestone is complete only when all of these are true:
 
 - The atomic primitive is implemented in the compiler/backend with a documented contract and a regression fixture.
 - Generated assembly is checked in CI for the expected atomic instruction and operand behavior.
-- The VNT spinlock has tests for uncontended acquisition, contention, release, and lock-state invariants.
+- The VNT spinlock has tests for uncontended acquisition, contention, release, and lock-state invariants. The current `synctest` covers uncontended behavior and a bounded BSP/AP contention run with an exact protected-counter total.
 - A four-CPU QEMU test repeatedly allocates distinct pages from concurrent CPUs, frees them, and verifies accounting.
 - Existing boot, shell, IPI, `memtest`, and `vmtest` checks still pass.
 

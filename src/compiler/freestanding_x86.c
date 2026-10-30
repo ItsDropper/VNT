@@ -354,9 +354,29 @@ static int emit_expression(FreestandingGen *g, size_t index) {
         case BINARY_MULTIPLY:
             fputs(wide ? "    imulq %rcx, %rax\n    jo .Lvnt_arithmetic_fault\n" : "    imull %ecx, %eax\n    jo .Lvnt_arithmetic_fault\n", g->out); return 1;
         case BINARY_DIVIDE:
-            fputs(wide ? "    cqto\n    idivq %rcx\n" : "    cltd\n    idivl %ecx\n", g->out); return 1;
-        case BINARY_MODULO:
-            fputs(wide ? "    cqto\n    idivq %rcx\n    movq %rdx, %rax\n" : "    cltd\n    idivl %ecx\n    movl %edx, %eax\n", g->out); return 1;
+        case BINARY_MODULO: {
+            if (wide) {
+                /* IDIV faults on zero divisors and INT64_MIN / -1. Convert
+                   both cases into the backend's deterministic arithmetic trap. */
+                int safe_label = label_new(g);
+                fputs("    testq %rcx, %rcx\n"
+                      "    jz .Lvnt_arithmetic_fault\n"
+                      "    cmpq $-1, %rcx\n", g->out);
+                fprintf(g->out, "    jne .Lvnt_free_%d\n", safe_label);
+                fputs("    movabsq $-9223372036854775808, %rdx\n"
+                      "    cmpq %rdx, %rax\n"
+                      "    je .Lvnt_arithmetic_fault\n", g->out);
+                label_emit(g, safe_label);
+                fputs("    cqto\n    idivq %rcx\n", g->out);
+                if (n->operation == BINARY_MODULO)
+                    fputs("    movq %rdx, %rax\n", g->out);
+            } else {
+                fputs("    cltd\n    idivl %ecx\n", g->out);
+                if (n->operation == BINARY_MODULO)
+                    fputs("    movl %edx, %eax\n", g->out);
+            }
+            return 1;
+        }
         case BINARY_EQUAL: fputs(wide ? "    cmpq %rcx, %rax\n    sete %al\n" : "    cmpl %ecx, %eax\n    sete %al\n", g->out); break;
         case BINARY_NOT_EQUAL: fputs(wide ? "    cmpq %rcx, %rax\n    setne %al\n" : "    cmpl %ecx, %eax\n    setne %al\n", g->out); break;
         case BINARY_GREATER: fputs(wide ? "    cmpq %rcx, %rax\n    setg %al\n" : "    cmpl %ecx, %eax\n    setg %al\n", g->out); break;

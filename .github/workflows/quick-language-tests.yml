@@ -894,6 +894,11 @@ jobs:
           test -z "$(nm -u freestanding-division.elf)"
           ./vnt --build-freestanding tests/freestanding_calls.vnt -o freestanding-calls.elf
           test -z "$(nm -u freestanding-calls.elf)"
+          ./vnt --build-freestanding tests/freestanding_negative.vnt -o freestanding-negative.elf
+          test -z "$(nm -u freestanding-negative.elf)"
+          ./vnt --emit-freestanding-asm tests/freestanding_negative.vnt -o freestanding-negative.s
+          grep -F "movq $-1, %rax" freestanding-negative.s
+          grep -F "movq $-2, %rax" freestanding-negative.s
           ./vnt --emit-freestanding-asm tests/freestanding_calls.vnt -o freestanding-calls.s
           grep -F 'subq $16, %rsp' freestanding-calls.s
           grep -F 'call vnt_fn_add_pair' freestanding-calls.s

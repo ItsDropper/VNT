@@ -357,6 +357,7 @@ vntos_state:
     .quad 0       /* Atomic SMP self-test AP completion count: state 310 */
     .quad 0       /* Atomic SMP self-test AP-ready count: state 311 */
     .quad 0       /* Atomic SMP self-test start barrier: state 312 */
+    .quad 0       /* Spinlock contention protected counter: state 313 */
 .balign 8
 .global vntos_sync_test_lock
 vntos_sync_test_lock:

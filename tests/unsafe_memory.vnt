@@ -47,6 +47,13 @@ unsafe {
     print(empty_copy)
     print(empty_set)
 
+    # Zero-length operations do not dereference their pointer arguments.
+    let null_pointer: ptr = null
+    let null_empty_copy: bool = mem.copy(null_pointer, null_pointer, 0)
+    let null_empty_set: bool = mem.set(null_pointer, 0, 0)
+    print(null_empty_copy)
+    print(null_empty_set)
+
     let freed_first: bool = mem.free(first)
     let freed_second: bool = mem.free(second)
     print(freed_first)

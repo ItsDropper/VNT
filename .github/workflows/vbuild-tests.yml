@@ -103,6 +103,12 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'clean task failed' }
             & $binary test
             if ($LASTEXITCODE -ne 1) { throw 'test task without a tests/ directory should fail clearly' }
+            New-Item -ItemType Directory -Force -Path (Join-Path 'tests' 'ignored.vnt') | Out-Null
+            $directoryTestOutput = & $binary test 2>&1
+            $directoryTestExitCode = $LASTEXITCODE
+            if ($directoryTestExitCode -ne 1 -or ($directoryTestOutput -join [Environment]::NewLine) -notmatch 'no tests found|contains no .vnt test programs') {
+              throw "VBuild treated a directory as a test source: $($directoryTestOutput -join ' | ')"
+            }
             & $binary clean
             if ($LASTEXITCODE -ne 0) { throw 'clean task failed' }
             & $binary clean

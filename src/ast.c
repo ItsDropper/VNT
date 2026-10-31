@@ -250,6 +250,13 @@ AstNode *ast_create_boolean(int value) {
     return node;
 }
 
+AstNode *ast_create_null(void) {
+    AstNode *node = calloc(1, sizeof(*node));
+    if (!node) return NULL;
+    node->type = AST_NULL_LITERAL;
+    return node;
+}
+
 AstNode *ast_create_array(
     AstNode *elements,
     int element_count
@@ -533,6 +540,7 @@ void ast_free(AstNode *node) {
                 break;
 
             case AST_BOOLEAN_LITERAL:
+            case AST_NULL_LITERAL:
                 break;
 
             case AST_ARRAY_LITERAL:

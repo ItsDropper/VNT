@@ -105,9 +105,11 @@ transitive resolution, remote repositories, and package downloads are not
 implemented.
 
 `run` is intentionally limited to `target exe`; it refuses to pretend an
-assembly file or freestanding kernel is a hosted application. The `output`
-property is the artifact basename, and VBuild appends the target's conventional
-extension when needed.
+assembly file or freestanding kernel is a hosted application. Before launching,
+VBuild also verifies that the output is a non-empty regular executable artifact.
+A run task should normally declare `depends build` so the artifact is produced or
+revalidated in the same invocation. The `output` property is the artifact
+basename, and VBuild appends the target's conventional extension when needed.
 
 ## Task syntax and dependencies
 

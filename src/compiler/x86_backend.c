@@ -298,6 +298,7 @@ static void emit_expr(HirGen *g,size_t i) {
     switch(n->opcode){
     case VNT_IR_INTEGER:fprintf(g->out,"    movabsq $%lld,%%rcx\n",(long long)n->value.integer);call0(g,"vnt_int");break;
     case VNT_IR_BOOLEAN:fprintf(g->out,"    movl $%d,%%ecx\n",!!n->value.boolean);call0(g,"vnt_bool");break;
+    case VNT_IR_NULL:fputs("    xorq %rax,%rax\n",g->out);break;
     case VNT_IR_FLOAT:fprintf(g->out,"    movsd .Lflt%d(%%rip),%%xmm0\n",float_label(g,n->value.floating));call0(g,"vnt_float");break;
     case VNT_IR_STRING:fprintf(g->out,"    lea .Lstr%d(%%rip),%%rcx\n",string_label(g,n->value.text));call0(g,"vnt_string");break;
     case VNT_IR_VARIABLE:{

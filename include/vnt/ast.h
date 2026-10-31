@@ -20,6 +20,7 @@ typedef enum {
     AST_INTEGER_LITERAL,
     AST_FLOAT_LITERAL,
     AST_BOOLEAN_LITERAL,
+    AST_NULL_LITERAL,
     AST_ARRAY_LITERAL,
 
     AST_VARIABLE_DECLARATION,
@@ -170,6 +171,7 @@ AstNode *ast_create_string(const char *value);
 AstNode *ast_create_integer(int64_t value);
 AstNode *ast_create_float(double value);
 AstNode *ast_create_boolean(int value);
+AstNode *ast_create_null(void);
 AstNode *ast_create_array(AstNode *elements, int element_count);
 AstNode *ast_create_variable_declaration(const char *name, AstNode *value);
 AstNode *ast_create_typed_variable_declaration(const char *name, const char *type, AstNode *value);

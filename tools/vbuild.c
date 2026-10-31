@@ -1271,9 +1271,26 @@ static int execute_task(int index, Config *cfg) {
     return 0;
 }
 
+/* A task graph needs the project lock if any reachable action can mutate
+ * project state or execute a program. Read-only checks and grouping tasks do not. */
+static int task_graph_requires_lock(int index, unsigned char visited[TASK_CAP]) {
+    int i;
+    Task *task = &tasks[index];
+    if (visited[index]) return 0;
+    visited[index] = 1;
+    if (task->action != ACT_CHECK && task->action != ACT_NONE) return 1;
+    for (i = 0; i < task->dep_count; i++) {
+        int dependency = find_task(task->deps[i]);
+        if (dependency >= 0 && task_graph_requires_lock(dependency, visited))
+            return 1;
+    }
+    return 0;
+}
+
 int main(int argc, char **argv) {
     Config cfg = {0};
-    int index;
+    int index, lock_required;
+    unsigned char visited[TASK_CAP] = {0};
 #ifdef _WIN32
     if (!_getcwd(project_root, sizeof project_root)) {
 #else
@@ -1306,10 +1323,11 @@ int main(int argc, char **argv) {
         fprintf(stderr, "vbuild: unknown task '%s'; run 'vbuild tasks'.\n", argv[1]);
         return 2;
     }
-    if (!acquire_project_lock()) return 1;
+    lock_required = task_graph_requires_lock(index, visited);
+    if (lock_required && !acquire_project_lock()) return 1;
     {
         int rc = execute_task(index, &cfg);
-        release_project_lock();
+        if (lock_required) release_project_lock();
         return rc;
     }
 }

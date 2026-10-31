@@ -1,4 +1,10 @@
 import "../lib/std/config.vnt" as config
+ 
+# Deliberately collide with an exported config helper. Calls made inside the
+# imported module must bind to config__get, not this caller-scope function.
+fun get(text, section, key, default_value) {
+    return "GLOBAL_SHADOW"
+}
 
 settings = "# app settings\nroot = enabled\n\n[display]\n; comment\ntheme = \"dark mode\"\nscale=125\nfeature=true\nfeature_off=no\nfeature_mixed= TrUe \nfeature_no=No\nfeature_unknown=perhaps\nvalue=a=b\nsentinel=__VNT_CONFIG_KEY_NOT_FOUND_7F2A__\n[network]\ntimeout = 30\n"
 

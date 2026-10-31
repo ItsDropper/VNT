@@ -33,7 +33,7 @@ export fun get(text, section, key, default_value) {
     start = 0
     while start < size {
         end = start
-        while end < size && text[end] != "\n" {
+        while end < size && text[end] != "\n" && text[end] != "\r" {
             end += 1
         }
         line = ""
@@ -63,6 +63,9 @@ export fun get(text, section, key, default_value) {
             }
         }
         start = end + 1
+        if end < size && text[end] == "\r" && start < size && text[start] == "\n" {
+            start += 1
+        }
     }
     return default_value
 }
@@ -110,7 +113,7 @@ export fun has_key(text, section, key) {
     start = 0
     while start < size {
         end = start
-        while end < size && text[end] != "\n" {
+        while end < size && text[end] != "\n" && text[end] != "\r" {
             end += 1
         }
         line = ""
@@ -133,6 +136,9 @@ export fun has_key(text, section, key) {
             }
         }
         start = end + 1
+        if end < size && text[end] == "\r" && start < size && text[start] == "\n" {
+            start += 1
+        }
     }
     return false
 }
@@ -143,7 +149,7 @@ export fun section_exists(text, section) {
     start = 0
     while start < size {
         end = start
-        while end < size && text[end] != "\n" {
+        while end < size && text[end] != "\n" && text[end] != "\r" {
             end += 1
         }
         line = ""
@@ -162,6 +168,9 @@ export fun section_exists(text, section) {
             }
         }
         start = end + 1
+        if end < size && text[end] == "\r" && start < size && text[start] == "\n" {
+            start += 1
+        }
     }
     return false
 }

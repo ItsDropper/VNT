@@ -918,7 +918,327 @@ static int manifest_matches(const char *output, const char *fingerprint) {
     return n >= 0 && (size_t)n < sizeof expected && !strcmp(saved, expected);
 }
 
+static int atomic_replace_file(const char *temporary, const char *destination) {
+#ifdef _WIN32
+    if (!MoveFileExA(temporary, destination,
+                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        fprintf(stderr, "vbuild: cannot replace '%s' with '%s' (Windows error %lu).\n",
+                destination, temporary, (unsigned long)GetLastError());
+        return 0;
+    }
+#else
+    if (rename(temporary, destination) != 0) {
+        fprintf(stderr, "vbuild: cannot replace '%s' with '%s': %s\n",
+                destination, temporary, strerror(errno));
+        return 0;
+    }
+#endif
+    return 1;
+}
+
+static int make_temporary_path(const char *destination, const char *kind,
+                               char *temporary, size_t cap) {
+#ifdef _WIN32
+    long process_id = (long)_getpid();
+#else
+    long process_id = (long)getpid();
+#endif
+    int n = snprintf(temporary, cap, "%s.vbuild-%s-%ld", destination, kind, process_id);
+    if (n < 0 || (size_t)n >= cap) {
+        fprintf(stderr, "vbuild: temporary path is too long for '%s'.\n", destination);
+        return 0;
+    }
+    return 1;
+}
+
 static int write_manifest(const char *output, const char *fingerprint) {
+    char path[PATH_CAP], temporary[PATH_CAP];
+    FILE *file;
+    int n = snprintf(path, sizeof path, "%s.vbuild-inputs", output);
+    if (n < 0 || (size_t)n >= sizeof path) {
+        fprintf(stderr, "vbuild: build manifest path is too long.\n");
+        return 0;
+    }
+    if (!make_temporary_path(path, "manifest", temporary, sizeof temporary)) return 0;
+    (void)remove(temporary);
+    file = fopen(temporary, "w");
+    if (!file) {
+        fprintf(stderr, "vbuild: cannot write temporary manifest '%s': %s\n",
+                temporary, strerror(errno));
+        return 0;
+    }
+    if (fprintf(file, "vbuild-inputs-v1 %s\n", fingerprint) < 0 || fclose(file) != 0) {
+        (void)remove(temporary);
+        fprintf(stderr, "vbuild: failed writing temporary manifest '%s'.\n", temporary);
+        return 0;
+    }
+    if (!atomic_replace_file(temporary, path)) {
+        (void)remove(temporary);
+        return 0;
+    }
+    return 1;
+}
+
+static int run_compiler(Config *cfg, int check);
+static int run_tests(Config *cfg);
+
+static int run_compiler(Config *cfg, int check) {
+    char output[PATH_CAP];
+    char temporary_output[PATH_CAP];
+    char source[PATH_CAP];
+    char compiler[PATH_CAP];
+    char toolchain[PATH_CAP];
+    char *args[6];
+    const char *mode = NULL;
+    const char *suffix = NULL;
+    struct stat output_stat;
+    char fingerprint[64];
+    int fingerprint_ready;
+    int import_graph_current;
+    int build_inputs_current;
+    if (!configure_module_path()) return 1;
+    if (!exists(cfg->source)) {
+        fprintf(stderr, "vbuild: source file not found: %s\n", cfg->source); return 1;
+    }
+    if (!check && !ensure_build_dir()) return 1;
+    if (!absolute_path(cfg->source, source, sizeof source) ||
+        !absolute_path(cfg->toolchain, toolchain, sizeof toolchain) ||
+        !is_directory(toolchain)) {
+        fprintf(stderr, "vbuild: toolchain directory not found or path invalid: %s\n", cfg->toolchain); return 1;
+    }
+    if (!resolve_compiler(cfg->compiler, toolchain, compiler, sizeof compiler)) return 1;
+
+    if (!strcmp(cfg->target, "exe")) { mode = "--compile"; suffix = EXE_SUFFIX; }
+    else if (!strcmp(cfg->target, "elf")) { mode = "--build-freestanding"; suffix = ".elf"; }
+    else if (!strcmp(cfg->target, "asm")) { mode = "--emit-asm"; suffix = ".s"; }
+    else if (!strcmp(cfg->target, "freestanding-asm")) { mode = "--emit-freestanding-asm"; suffix = ".s"; }
+    else { fprintf(stderr, "vbuild: unsupported target '%s'.\n", cfg->target); return 1; }
+    if (!absolute_path("build", output, sizeof output)) return 1;
+    {
+        size_t len = strlen(output);
+        const char *append = suffix;
+        size_t name_len = strlen(cfg->output);
+        if (!strcmp(cfg->target, "exe") && name_len >= 4 && !strcmp(cfg->output + name_len - 4, ".exe")) append = "";
+        if (!strcmp(cfg->target, "elf") && name_len >= 4 && !strcmp(cfg->output + name_len - 4, ".elf")) append = "";
+        if ((!strcmp(cfg->target, "asm") || !strcmp(cfg->target, "freestanding-asm")) &&
+            name_len >= 2 && !strcmp(cfg->output + name_len - 2, ".s")) append = "";
+        int n = snprintf(output + len, sizeof output - len, "/%s%s", cfg->output, append);
+        if (n < 0 || (size_t)n >= sizeof output - len) {
+            fprintf(stderr, "vbuild: output path is too long.\n"); return 1;
+        }
+    }
+    import_graph_current = imports_are_current(source, output);
+    if (import_graph_current < 0) return 1;
+    build_inputs_current = build_inputs_are_current(output, cfg->target, toolchain);
+    if (build_inputs_current < 0) return 1;
+    fingerprint_ready = compute_fingerprint(source, compiler, toolchain, cfg->target,
+                                            fingerprint, sizeof fingerprint);
+    if (!fingerprint_ready) return 1;
+    if (!check && !force_build && import_graph_current && build_inputs_current &&
+        stat(output, &output_stat) == 0 &&
+        manifest_matches(output, fingerprint)) {
+        printf("Up to date: %s\n", output);
+        return 0;
+    }
+    args[0] = compiler;
+    if (check) {
+        args[1] = "--dump-ir"; args[2] = source; args[3] = NULL;
+    } else {
+        if (!make_temporary_path(output, "artifact", temporary_output, sizeof temporary_output)) return 1;
+        (void)remove(temporary_output);
+        args[1] = (char *)mode; args[2] = source; args[3] = "-o";
+        args[4] = temporary_output; args[5] = NULL;
+    }
+    if (run_process(args, toolchain) != 0) {
+        if (!check) (void)remove(temporary_output);
+        fprintf(stderr, "vbuild: compiler command failed.\n"); return 1;
+    }
+    if (!check && !exists(temporary_output)) {
+        fprintf(stderr, "vbuild: compiler returned success but temporary output is missing: %s\n",
+                temporary_output);
+        return 1;
+    }
+    if (!check && !atomic_replace_file(temporary_output, output)) {
+        (void)remove(temporary_output);
+        return 1;
+    }
+    if (!check && !write_manifest(output, fingerprint)) return 1;
+    if (!check) printf("Built %s (target=%s)\n", output, cfg->target);
+    return 0;
+}
+static int clean_build(void) {
+#ifdef _WIN32
+    int rc = system("if exist build rmdir /s /q build");
+#else
+    int rc = system("rm -rf -- build");
+#endif
+    if (rc != 0) { fprintf(stderr, "vbuild: could not clean build/.\n"); return 1; }
+    puts("Cleaned build/.");
+    return 0;
+}
+
+static int run_one_test(Config *cfg, const char *filename) {
+    Config test_cfg = *cfg;
+    char output_path[PATH_CAP];
+    char source_path[PATH_CAP];
+    char *args[2];
+    size_t name_len = strlen(filename);
+    char name[256];
+    int n;
+    if (name_len < 5 || strcmp(filename + name_len - 4, ".vnt")) return 0;
+    if (name_len - 4 >= sizeof name) {
+        fprintf(stderr, "vbuild: test filename too long: %s\n", filename);
+        return 1;
+    }
+    memcpy(name, filename, name_len - 4);
+    name[name_len - 4] = '\0';
+    if (!safe_filename(name) || snprintf(source_path, sizeof source_path, "tests/%s", filename) >= (int)sizeof source_path) {
+        fprintf(stderr, "vbuild: invalid test filename: %s\n", filename);
+        return 1;
+    }
+    if (!copy_value(test_cfg.source, sizeof test_cfg.source, source_path, "source") ||
+        !copy_value(test_cfg.output, sizeof test_cfg.output, name, "output") ||
+        !copy_value(test_cfg.target, sizeof test_cfg.target, "exe", "target")) return 1;
+    printf("[test] %s\n", filename);
+    if (run_compiler(&test_cfg, 0) != 0) return 1;
+    if (!absolute_path("build", output_path, sizeof output_path)) return 1;
+    {
+        size_t len = strlen(output_path);
+        n = snprintf(output_path + len, sizeof output_path - len, "/%s%s", name, EXE_SUFFIX);
+        if (n < 0 || (size_t)n >= sizeof output_path - len) {
+            fprintf(stderr, "vbuild: test output path too long.\n");
+            return 1;
+        }
+    }
+    args[0] = output_path;
+    args[1] = NULL;
+    return run_process(args, project_root) == 0 ? 0 : 1;
+}
+
+static int run_tests(Config *cfg) {
+    int count = 0, failures = 0;
+#ifdef _WIN32
+    WIN32_FIND_DATAA data;
+    HANDLE handle = FindFirstFileA("tests\\*.vnt", &data);
+    if (handle == INVALID_HANDLE_VALUE) {
+        fprintf(stderr, "vbuild: no tests found. Add passing .vnt programs under tests/.\n");
+        return 1;
+    }
+    do {
+        if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+        if (strlen(data.cFileName) < 5 || strcmp(data.cFileName + strlen(data.cFileName) - 4, ".vnt")) continue;
+        count++;
+        if (run_one_test(cfg, data.cFileName) != 0) failures++;
+    } while (FindNextFileA(handle, &data));
+    FindClose(handle);
+#else
+    DIR *dir = opendir("tests");
+    struct dirent *entry;
+    if (!dir) {
+        fprintf(stderr, "vbuild: no tests directory found. Add passing .vnt programs under tests/.\n");
+        return 1;
+    }
+    while ((entry = readdir(dir)) != NULL) {
+        size_t len = strlen(entry->d_name);
+        if (len < 5 || strcmp(entry->d_name + len - 4, ".vnt")) continue;
+        count++;
+        if (run_one_test(cfg, entry->d_name) != 0) failures++;
+    }
+    closedir(dir);
+#endif
+    if (count == 0) {
+        fprintf(stderr, "vbuild: tests/ contains no .vnt test programs.\n");
+        return 1;
+    }
+    if (failures) fprintf(stderr, "vbuild: %d of %d test(s) failed.\n", failures, count);
+    else printf("VBuild tests passed: %d\n", count);
+    return failures ? 1 : 0;
+}
+
+static int execute_action(Action action, Config *cfg) {
+    if (action == ACT_BUILD) return run_compiler(cfg, 0);
+    if (action == ACT_CHECK) return run_compiler(cfg, 1);
+    if (action == ACT_CLEAN) return clean_build();
+    if (action == ACT_TEST) return run_tests(cfg);
+    if (action == ACT_RUN) {
+        char output[PATH_CAP];
+        char *args[2];
+        size_t name_len = strlen(cfg->output);
+        const char *suffix = EXE_SUFFIX;
+        if (strcmp(cfg->target, "exe")) {
+            fprintf(stderr, "vbuild: run requires target exe; selected target is '%s'.\n", cfg->target);
+            return 1;
+        }
+        if (name_len >= 4 && !strcmp(cfg->output + name_len - 4, ".exe")) suffix = "";
+        if (!absolute_path("build", output, sizeof output)) return 1;
+        {
+            size_t len = strlen(output);
+            int n = snprintf(output + len, sizeof output - len, "/%s%s", cfg->output, suffix);
+            if (n < 0 || (size_t)n >= sizeof output - len) {
+                fprintf(stderr, "vbuild: output path is too long.\n"); return 1;
+            }
+        }
+        if (!exists(output)) {
+            fprintf(stderr, "vbuild: output not found; add 'depends build' to this task or run the build task first.\n");
+            return 1;
+        }
+        args[0] = output; args[1] = NULL;
+        return run_process(args, project_root);
+    }
+    return 0;
+}
+
+static int execute_task(int index, Config *cfg) {
+    int i, rc;
+    Task *task = &tasks[index];
+    if (task->state == 1) {
+        fprintf(stderr, "vbuild: dependency cycle detected at task '%s'.\n", task->name); return 1;
+    }
+    if (task->state == 2) return 0;
+    task->state = 1;
+    for (i = 0; i < task->dep_count; i++) {
+        int dep = find_task(task->deps[i]);
+        rc = execute_task(dep, cfg);
+        if (rc) return rc;
+    }
+    printf("VBuild task: %s\n", task->name);
+    rc = execute_action(task->action, cfg);
+    if (rc) return rc;
+    task->state = 2;
+    return 0;
+}
+
+int main(int argc, char **argv) {
+    Config cfg = {0};
+    int index;
+#ifdef _WIN32
+    if (!_getcwd(project_root, sizeof project_root)) {
+#else
+    if (!getcwd(project_root, sizeof project_root)) {
+#endif
+        fprintf(stderr, "vbuild: cannot determine project directory: %s\n", strerror(errno));
+        return 1;
+    }
+    if (argc < 2 || argc > 3 || (argc == 3 && strcmp(argv[2], "--force"))) {
+        fprintf(stderr, "Usage: vbuild <task-name|init|tasks> [--force]\n");
+        return 2;
+    }
+    force_build = argc == 3;
+    if (!strcmp(argv[1], "init")) return init_project();
+    if (!load_tasks()) return 1;
+    if (!strcmp(argv[1], "tasks")) {
+        int i;
+        for (i = 0; i < task_count; i++) printf("%-20s action=%s dependencies=%d\n", tasks[i].name, action_label(tasks[i].action), tasks[i].dep_count);
+        return 0;
+    }
+    if (!load_properties(&cfg)) return 1;
+    index = find_task(argv[1]);
+    if (index < 0) {
+        fprintf(stderr, "vbuild: unknown task '%s'; run 'vbuild tasks'.\n", argv[1]);
+        return 2;
+    }
+    return execute_task(index, &cfg);
+}
     char path[PATH_CAP];
     FILE *file;
     int n = snprintf(path, sizeof path, "%s.vbuild-inputs", output);

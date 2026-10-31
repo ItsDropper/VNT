@@ -158,10 +158,12 @@ For hosted executables, VBuild fingerprints the native runtime sources and
 runtime header used by VNT's link step. For freestanding ELF targets, it
 fingerprints \`freestanding/x86_64.ld\`. VBuild currently uses a portable
 64-bit FNV-1a fingerprint, intended for change detection rather than
-cryptographic integrity. If the compiler is resolved only through \`PATH\`,
-VBuild fingerprints the configured command name rather than the external
-binary. System libraries, environment variables, and other external toolchain
-state are not fingerprinted; use \`--force\` after changing those inputs.
+When the compiler is resolved through `PATH`, VBuild resolves the
+executable against the compiler working directory and the configured search
+path, then fingerprints the resolved executable contents. Replacing a
+PATH-resolved compiler therefore invalidates the cache even when its command
+name is unchanged. System libraries, environment variables, and other external
+toolchain state are not fingerprinted; use `--force` after changing those inputs.
 
 ## Tests
 

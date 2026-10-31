@@ -197,16 +197,19 @@ jobs:
           path_compiler_rebuild="$("$GITHUB_WORKSPACE/vbuild" build)"
           printf '%s\n' "$path_compiler_rebuild" | grep -Fq 'Built '
           # A failed compiler must not leave an old manifest authorizing a damaged artifact.
+          cp build/hello "$RUNNER_TEMP/vbuild-good-artifact"
           cp src/main.vnt "$RUNNER_TEMP/vbuild-main-backup.vnt"
           printf '\n' >> src/main.vnt
           if VBUILD_TEST_FAIL_COMPILER=1 "$GITHUB_WORKSPACE/vbuild" build > "$RUNNER_TEMP/vbuild-failed-build.log" 2>&1; then
             echo 'expected injected compiler failure'
             exit 1
           fi
+          cmp build/hello "$RUNNER_TEMP/vbuild-good-artifact"
+          test ! -e build/hello.vbuild-artifact-$
           cp "$RUNNER_TEMP/vbuild-main-backup.vnt" src/main.vnt
           recovery_build="$("$GITHUB_WORKSPACE/vbuild" build)"
-          printf '%s\n' "$recovery_build" | grep -Fq 'Built '
-          test -s build/hello
+          printf '%s\n' "$recovery_build" | grep -Fq 'Up to date:'
+          cmp build/hello "$RUNNER_TEMP/vbuild-good-artifact"
           output="$("$GITHUB_WORKSPACE/vbuild" run)"
           printf '%s\n' "$output"
           printf '%s\n' "$output" | grep -Fq '49'

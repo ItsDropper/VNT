@@ -943,6 +943,11 @@ jobs:
             echo "Freestanding backend incorrectly accepted a hosted print operation."
             exit 1
           fi
+          if [ -e freestanding-invalid.s ]; then
+            echo "Unexpected freestanding output artifact remains:"
+            ls -la freestanding-invalid.s
+            find . -name 'freestanding-invalid.s' -print
+          fi
           test ! -e freestanding-invalid.s
 
       - name: Compile raw memory regression program

@@ -227,29 +227,42 @@ jobs:
           recovery_build="$("$GITHUB_WORKSPACE/vbuild" build)"
           printf '%s\n' "$recovery_build" | grep -Fq 'Up to date:'
           cmp build/hello "$RUNNER_TEMP/vbuild-good-artifact"
-          # Hold the exact OS file lock used by VBuild while competing tasks start.
-          flock -n .vbuild.lock -c 'sleep 3' > "$RUNNER_TEMP/vbuild-lock-holder.log" 2>&1 &
+          # Use a ready/release handshake instead of timing the lock holder with sleep.
+          rm -f "$RUNNER_TEMP/vbuild-lock-held" "$RUNNER_TEMP/vbuild-lock-release"
+          flock -n .vbuild.lock -c 'printf held > "$RUNNER_TEMP/vbuild-lock-held"; while [ ! -e "$RUNNER_TEMP/vbuild-lock-release" ]; do sleep 0.05; done' > "$RUNNER_TEMP/vbuild-lock-holder.log" 2>&1 &
           lock_holder_pid=$!
-          sleep 1
+          trap 'touch "$RUNNER_TEMP/vbuild-lock-release"; wait "$lock_holder_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 100); do
+            [ -e "$RUNNER_TEMP/vbuild-lock-held" ] && break
+            sleep 0.05
+          done
+          if [ ! -e "$RUNNER_TEMP/vbuild-lock-held" ]; then
+            cat "$RUNNER_TEMP/vbuild-lock-holder.log"
+            exit 1
+          fi
+          # A check-only task graph is read-only and must not contend for the lock.
+          "$GITHUB_WORKSPACE/vbuild" check > "$RUNNER_TEMP/vbuild-lock-check.log" 2>&1 || {
+            cat "$RUNNER_TEMP/vbuild-lock-check.log"
+            exit 1
+          }
           if "$GITHUB_WORKSPACE/vbuild" build > "$RUNNER_TEMP/vbuild-lock-build.log" 2>&1; then
             echo 'concurrent build unexpectedly acquired the project lock'
-            wait "$lock_holder_pid" || true
             exit 1
           fi
           if ! grep -Fq 'another VBuild process is using this project' "$RUNNER_TEMP/vbuild-lock-build.log"; then cat "$RUNNER_TEMP/vbuild-lock-build.log"; cat "$RUNNER_TEMP/vbuild-lock-holder.log"; exit 1; fi
           if "$GITHUB_WORKSPACE/vbuild" clean > "$RUNNER_TEMP/vbuild-lock-clean.log" 2>&1; then
             echo 'clean unexpectedly acquired the project lock during a build'
-            wait "$lock_holder_pid" || true
             exit 1
           fi
           if ! grep -Fq 'another VBuild process is using this project' "$RUNNER_TEMP/vbuild-lock-clean.log"; then cat "$RUNNER_TEMP/vbuild-lock-clean.log"; cat "$RUNNER_TEMP/vbuild-lock-holder.log"; exit 1; fi
           if "$GITHUB_WORKSPACE/vbuild" init > "$RUNNER_TEMP/vbuild-lock-init.log" 2>&1; then
             echo 'init unexpectedly acquired the project lock during another operation'
-            wait "$lock_holder_pid" || true
             exit 1
           fi
           if ! grep -Fq 'another VBuild process is using this project' "$RUNNER_TEMP/vbuild-lock-init.log"; then cat "$RUNNER_TEMP/vbuild-lock-init.log"; exit 1; fi
+          touch "$RUNNER_TEMP/vbuild-lock-release"
           if ! wait "$lock_holder_pid"; then cat "$RUNNER_TEMP/vbuild-lock-holder.log"; exit 1; fi
+          trap - EXIT
           released_lock_build="$("$GITHUB_WORKSPACE/vbuild" build --force)"
           printf '%s\n' "$released_lock_build" | grep -Fq 'Built '
           output="$("$GITHUB_WORKSPACE/vbuild" run)"

@@ -331,6 +331,9 @@ static int emit_expression(FreestandingGen *g, size_t index) {
     case VNT_IR_BOOLEAN:
         fprintf(g->out, "    movl $%d, %%eax\n", !!n->value.boolean);
         return 1;
+    case VNT_IR_NULL:
+        fail(g, "null pointers are not supported by the freestanding value subset.");
+        return 0;
     case VNT_IR_VARIABLE: {
         int vi = variable_index(g, n->value.text);
         if (vi < 0) { fail(g, "unknown local variable."); return 0; }

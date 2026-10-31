@@ -24,4 +24,11 @@ print(config.has_key(settings, "display", "absent"))
 print(config.has_key(settings, "display", "sentinel"))
 print(config.section_exists(settings, "network"))
 print(config.section_exists(settings, "missing"))
+
+# INI documents may use LF, CRLF, or legacy CR line endings.
+crlf_settings = "[display]\r\ntheme=light\r\n[network]\rtimeout=45\r"
+print(config.get(crlf_settings, "display", "theme", "missing"))
+print(config.get(crlf_settings, "network", "timeout", "missing"))
+print(config.has_key(crlf_settings, "network", "timeout"))
+print(config.section_exists(crlf_settings, "network"))
 print("INI_CONFIG_OK")

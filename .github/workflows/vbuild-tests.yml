@@ -96,6 +96,23 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'clean task failed' }
             & $binary clean
             if ($LASTEXITCODE -ne 0) { throw 'repeat clean failed' }
+            $lockPath = Join-Path $project '.vbuild.lock'
+            $lockStream = [System.IO.File]::Open($lockPath, [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::ReadWrite)
+            $lockHeld = $false
+            try {
+              $lockStream.Lock(0, 1)
+              $lockHeld = $true
+              $lockOutput = & $binary clean 2>&1
+              $lockExitCode = $LASTEXITCODE
+              if ($lockExitCode -eq 0 -or ($lockOutput -join "`n") -notmatch 'another VBuild process is using this project') {
+                throw "Windows project lock was not enforced: $($lockOutput -join ' | ')"
+              }
+            } finally {
+              if ($lockHeld) { $lockStream.Unlock(0, 1) }
+              $lockStream.Dispose()
+            }
+            & $binary clean
+            if ($LASTEXITCODE -ne 0) { throw 'clean failed after releasing the Windows project lock' }
             Add-Content build.vbuild 'task broken = none depends missing'
             & $binary tasks
             if ($LASTEXITCODE -eq 0) { throw 'undefined dependency was not rejected' }

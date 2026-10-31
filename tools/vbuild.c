@@ -1321,8 +1321,9 @@ static int execute_action(Action action, Config *cfg) {
                 fprintf(stderr, "vbuild: output path is too long.\n"); return 1;
             }
         }
-        if (!exists(output)) {
-            fprintf(stderr, "vbuild: output not found; add 'depends build' to this task or run the build task first.\n");
+        if (!artifact_is_usable(output, "exe")) {
+            fprintf(stderr, "vbuild: output is not a usable executable; add 'depends build' to this task or run the build task first: %s\n",
+                    output);
             return 1;
         }
         args[0] = output; args[1] = NULL;

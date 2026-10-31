@@ -205,14 +205,8 @@ jobs:
             exit 1
           fi
           cmp build/hello "$RUNNER_TEMP/vbuild-good-artifact"
-          # Hold the project lock inside a deliberately slow compiler invocation.
-          cat > "$compiler_tools/vnt-cache-wrapper" <<'EOF'
-          #!/bin/sh
-          sleep 3
-          exec "$VNT_TEST_REAL_COMPILER" "$@"
-          EOF
-          chmod +x "$compiler_tools/vnt-cache-wrapper"
-          "$GITHUB_WORKSPACE/vbuild" build --force > "$RUNNER_TEMP/vbuild-lock-holder.log" 2>&1 &
+          # Hold the exact OS file lock used by VBuild while competing tasks start.
+          flock -n .vbuild.lock -c 'sleep 3' > "$RUNNER_TEMP/vbuild-lock-holder.log" 2>&1 &
           lock_holder_pid=$!
           sleep 1
           if "$GITHUB_WORKSPACE/vbuild" build > "$RUNNER_TEMP/vbuild-lock-build.log" 2>&1; then

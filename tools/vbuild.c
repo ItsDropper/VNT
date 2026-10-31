@@ -81,7 +81,7 @@ static int project_lock_fd = -1;
 static int acquire_project_lock(void) {
 #ifdef _WIN32
     project_lock_handle = CreateFileA(".vbuild.lock", GENERIC_READ | GENERIC_WRITE,
-                                      FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                      FILE_SHARE_READ | FILE_SHARE_WRITE,
                                       NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (project_lock_handle == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "vbuild: cannot open project lock file (Windows error %lu).\n",

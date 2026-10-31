@@ -118,8 +118,14 @@ task NAME = ACTION [depends TASK[, TASK...]]
 Supported actions are `build`, `run`, `check`, `clean`, `test`, and
 `none`. The `none` action groups dependencies without running another
 action. A dependency runs at most once per invocation. Undefined dependencies,
-duplicate task names, invalid actions, and dependency cycles are rejected.
+duplicate task names, invalid actions, and dependency cycles are rejected
+before any task executes, preventing partial work from an invalid graph.
 Custom shell commands are intentionally unsupported.
+
+`check` runs the compiler front end with `--dump-ir`. It does not create
+`build/`, inspect the incremental manifest, or require hosted runtime sources
+or the freestanding linker script. It still resolves configured source imports
+and the compiler itself.
 
 ## vbuild.properties
 
@@ -211,7 +217,9 @@ directories and expected-output assertions are not yet supported.
 
 VBuild directs compiler output to a process-specific temporary file in the
 same build directory. It replaces the final artifact only after the compiler
-succeeds and the temporary output exists. Failed compilation therefore leaves
-the previous executable or object untouched. The input manifest is written to
+succeeds and the temporary output is validated as a non-empty regular file
+(and executable for hosted and freestanding executable targets). Compiler
+assembly sidecars are removed after compilation. Failed compilation or invalid
+compiler output therefore leaves the previous executable or object untouched. The input manifest is written to
 a temporary file and atomically replaced after the artifact commit; an
 interrupted manifest update cannot leave a partially written cache record.

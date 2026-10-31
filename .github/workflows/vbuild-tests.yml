@@ -107,6 +107,11 @@ jobs:
               if ($lockExitCode -eq 0 -or ($lockOutput -join "`n") -notmatch 'another VBuild process is using this project') {
                 throw "Windows project lock was not enforced: $($lockOutput -join ' | ')"
               }
+              $verifyOutput = & $binary verify 2>&1
+              $verifyExitCode = $LASTEXITCODE
+              if ($verifyExitCode -eq 0 -or ($verifyOutput -join "`n") -notmatch 'another VBuild process is using this project') {
+                throw "task graph dependency bypassed the project lock: $($verifyOutput -join ' | ')"
+              }
             } finally {
               if ($lockHeld) { $lockStream.Unlock(0, 1) }
               $lockStream.Dispose()

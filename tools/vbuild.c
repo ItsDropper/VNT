@@ -84,7 +84,7 @@ static int acquire_project_lock(void) {
                                       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
                                       NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (project_lock_handle == INVALID_HANDLE_VALUE) {
-        fprintf(stderr, "vbuild: cannot open project lock file (Windows error %lu).\\n",
+        fprintf(stderr, "vbuild: cannot open project lock file (Windows error %lu).\n",
                 (unsigned long)GetLastError());
         return 0;
     }
@@ -96,16 +96,16 @@ static int acquire_project_lock(void) {
         CloseHandle(project_lock_handle);
         project_lock_handle = INVALID_HANDLE_VALUE;
         if (error == ERROR_LOCK_VIOLATION)
-            fprintf(stderr, "vbuild: another VBuild process is using this project.\\n");
+            fprintf(stderr, "vbuild: another VBuild process is using this project.\n");
         else
-            fprintf(stderr, "vbuild: cannot acquire project lock (Windows error %lu).\\n",
+            fprintf(stderr, "vbuild: cannot acquire project lock (Windows error %lu).\n",
                     (unsigned long)error);
         return 0;
     }
 #else
     project_lock_fd = open(".vbuild.lock", O_CREAT | O_RDWR, 0666);
     if (project_lock_fd < 0) {
-        fprintf(stderr, "vbuild: cannot open project lock file: %s\\n", strerror(errno));
+        fprintf(stderr, "vbuild: cannot open project lock file: %s\n", strerror(errno));
         return 0;
     }
     if (flock(project_lock_fd, LOCK_EX | LOCK_NB) != 0) {
@@ -113,9 +113,9 @@ static int acquire_project_lock(void) {
         close(project_lock_fd);
         project_lock_fd = -1;
         if (error == EWOULDBLOCK || error == EAGAIN)
-            fprintf(stderr, "vbuild: another VBuild process is using this project.\\n");
+            fprintf(stderr, "vbuild: another VBuild process is using this project.\n");
         else
-            fprintf(stderr, "vbuild: cannot acquire project lock: %s\\n", strerror(error));
+            fprintf(stderr, "vbuild: cannot acquire project lock: %s\n", strerror(error));
         return 0;
     }
 #endif

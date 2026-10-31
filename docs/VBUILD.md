@@ -159,7 +159,7 @@ tracked inputs match the saved manifest, VBuild prints \`Up to date\`. Use
 For hosted executables, VBuild fingerprints the native runtime sources and
 runtime header used by VNT's link step. For freestanding ELF targets, it
 fingerprints \`freestanding/x86_64.ld\`. VBuild currently uses a portable
-64-bit FNV-1a fingerprint, intended for change detection rather than
+64-bit FNV-1a fingerprint for change detection, not cryptographic integrity.
 When the compiler is resolved through `PATH`, VBuild resolves the
 executable against the compiler working directory and the configured search
 path, then fingerprints the resolved executable contents. Replacing a

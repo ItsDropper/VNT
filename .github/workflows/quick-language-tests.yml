@@ -154,7 +154,7 @@ jobs:
           ./vnt --compile tests/object_growth.vnt -o vnt-object-growth.exe
           ./vnt-object-growth.exe > vnt-object-growth-actual.txt
           tr -d '\r' < vnt-object-growth-actual.txt > vnt-object-growth-actual-lf.txt
-          printf '101\n5\n9\n12\n\nOBJECT_GROWTH_OK\n' > vnt-object-growth-expected.txt
+          printf '101\n5\n9\n12\nnull\nOBJECT_GROWTH_OK\n' > vnt-object-growth-expected.txt
           diff -u vnt-object-growth-expected.txt vnt-object-growth-actual-lf.txt
 
       - name: Reject invalid expressions and incomplete return paths

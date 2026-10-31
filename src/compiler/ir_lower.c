@@ -23,6 +23,7 @@ static VntIrOpcode opcode_for(AstNodeType type) {
         case AST_INTEGER_LITERAL: return VNT_IR_INTEGER;
         case AST_FLOAT_LITERAL: return VNT_IR_FLOAT;
         case AST_BOOLEAN_LITERAL: return VNT_IR_BOOLEAN;
+        case AST_NULL_LITERAL: return VNT_IR_NULL;
         case AST_ARRAY_LITERAL: return VNT_IR_ARRAY;
         case AST_VARIABLE_DECLARATION: return VNT_IR_VARIABLE_DECL;
         case AST_VARIABLE: return VNT_IR_VARIABLE;

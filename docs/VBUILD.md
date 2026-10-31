@@ -189,3 +189,13 @@ directories and expected-output assertions are not yet supported.
   cross-compilation, remote repositories, versioned/transitive package
   coordinates, arbitrary custom tasks, and reproducible-build guarantees are
   not implemented.
+
+
+## Transactional artifact replacement
+
+VBuild directs compiler output to a process-specific temporary file in the
+same build directory. It replaces the final artifact only after the compiler
+succeeds and the temporary output exists. Failed compilation therefore leaves
+the previous executable or object untouched. The input manifest is written to
+a temporary file and atomically replaced after the artifact commit; an
+interrupted manifest update cannot leave a partially written cache record.

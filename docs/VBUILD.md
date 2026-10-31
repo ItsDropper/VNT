@@ -150,10 +150,9 @@ resolves each import relative to its importer before searching configured local
 repositories, and visits each source file once to handle repeated and cyclic
 imports. A content change invalidates the build even if the file's modification
 timestamp is unchanged. The fingerprint is saved beside the artifact as
-The previous manifest is invalidated before the compiler runs, so a failed
-compile cannot leave an older fingerprint authorizing a partially overwritten
-artifact on a later invocation.
-\`<artifact>.vbuild-inputs\` and is updated only after a successful build. If
+\`<artifact>.vbuild-inputs\` and is updated only after a successful build.
+A failed compile preserves the previous artifact and manifest; changed source
+content still invalidates the old fingerprint on the next invocation. If
 tracked inputs match the saved manifest, VBuild prints \`Up to date\`. Use
 \`vbuild build --force\` to force recompilation.
 
@@ -167,6 +166,22 @@ path, then fingerprints the resolved executable contents. Replacing a
 PATH-resolved compiler therefore invalidates the cache even when its command
 name is unchanged. System libraries, environment variables, and other external
 toolchain state are not fingerprinted; use `--force` after changing those inputs.
+
+
+## Concurrent invocations
+
+Every task invocation acquires an exclusive, non-blocking project lock before
+executing its task graph. This prevents concurrent builds, tests, runs, and
+clean operations from racing over the same \`build/\` directory. A competing
+VBuild process exits with an explicit diagnostic instead of waiting or
+modifying project outputs.
+
+The lock is implemented with operating-system file locks (\`flock\` on
+POSIX and \`LockFileEx\` on Windows), so the OS releases it when VBuild exits,
+including after abnormal process termination. VBuild retains the small
+\`.vbuild.lock\` file in the project root; its presence does not mean the
+project is locked, and it should not be deleted while VBuild processes may be
+running.
 
 ## Tests
 

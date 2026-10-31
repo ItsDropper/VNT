@@ -84,18 +84,18 @@ fun lowercase_ascii(value) {
     i = 0
     while i < len(value) {
         ch = value[i]
-        if ch >= "A" && ch <= "Z" {
-            # VNT character arithmetic is intentionally avoided: map the alphabet explicitly.
-            upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-            lower = "abcdefghijklmnopqrstuvwxyz"
-            j = 0
-            while j < 26 {
-                if ch == upper[j] {
-                    ch = lower[j]
-                    break
-                }
-                j += 1
+        # VNT currently defines ordered comparisons for numeric values only.
+        # Equality-based lookup also handles every ASCII character without
+        # relying on unsupported string ordering.
+        upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        lower = "abcdefghijklmnopqrstuvwxyz"
+        j = 0
+        while j < 26 {
+            if ch == upper[j] {
+                ch = lower[j]
+                break
             }
+            j += 1
         }
         result = result + ch
         i += 1

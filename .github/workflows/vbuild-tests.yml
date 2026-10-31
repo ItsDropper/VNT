@@ -205,6 +205,18 @@ jobs:
             if ($LASTEXITCODE -eq 0) { throw 'undefined dependency was not rejected' }
             & $binary init
             if ($LASTEXITCODE -eq 0) { throw 'init overwrote existing project files' }
+            $existingSourceProject = Join-Path $env:RUNNER_TEMP 'vbuild existing source project'
+            New-Item -ItemType Directory -Force -Path (Join-Path $existingSourceProject 'src') | Out-Null
+            Set-Content -NoNewline -Path (Join-Path $existingSourceProject 'src/main.vnt') -Value 'print("preserve this source")'
+            Push-Location $existingSourceProject
+            try {
+              $existingSourceInitOutput = & $binary init 2>&1
+              if ($LASTEXITCODE -eq 0) { throw 'init overwrote an existing src/main.vnt' }
+              if ((Get-Content -Raw src/main.vnt) -notmatch 'preserve this source') { throw 'init modified an existing source file' }
+              if ((Test-Path build.vbuild) -or (Test-Path vbuild.properties)) { throw 'failed init left partial project configuration behind' }
+            } finally {
+              Pop-Location
+            }
             $global:LASTEXITCODE = 0
           } finally {
             Pop-Location

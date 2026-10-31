@@ -715,6 +715,8 @@ static int run_process(char *const argv[], const char *working_directory) {
     int status;
     if (pid < 0) { fprintf(stderr, "vbuild: fork failed: %s\n", strerror(errno)); return 127; }
     if (pid == 0) {
+        /* The parent owns the project lock; do not leak it into toolchains. */
+        if (project_lock_fd >= 0) close(project_lock_fd);
         if (working_directory && chdir(working_directory) != 0) {
             fprintf(stderr, "vbuild: cannot enter working directory '%s': %s\n", working_directory, strerror(errno));
             _exit(127);

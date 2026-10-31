@@ -228,8 +228,8 @@ jobs:
           fi
           if ! grep -Fq 'another VBuild process is using this project' "$RUNNER_TEMP/vbuild-lock-clean.log"; then cat "$RUNNER_TEMP/vbuild-lock-clean.log"; cat "$RUNNER_TEMP/vbuild-lock-holder.log"; exit 1; fi
           wait "$lock_holder_pid"
-          released_lock_build="$("$GITHUB_WORKSPACE/vbuild" build)"
-          printf '%s\\n' "$released_lock_build" | grep -Fq 'Up to date:'
+          released_lock_build="$("$GITHUB_WORKSPACE/vbuild" build --force)"
+          printf '%s\n' "$released_lock_build" | grep -Fq 'Built '
           test ! -e build/hello.vbuild-artifact-$
           cp "$RUNNER_TEMP/vbuild-main-backup.vnt" src/main.vnt
           recovery_build="$("$GITHUB_WORKSPACE/vbuild" build)"

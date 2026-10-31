@@ -197,8 +197,9 @@ running.
 ## Tests
 
 Put passing, standalone VNT programs in the project's `tests/` directory,
-for example `tests/smoke.vnt`. `vbuild test` discovers the top-level
-`*.vnt` files there, compiles each as a hosted executable, runs it, and fails
+for example `tests/smoke.vnt`. `vbuild test` discovers top-level regular
+`*.vnt` files there (directories with that suffix are ignored), compiles each
+as a hosted executable, runs it, and fails
 if compilation or execution returns a non-zero status. Tests should return
 success when their assertions pass. Test discovery is non-recursive; nested
 directories and expected-output assertions are not yet supported.

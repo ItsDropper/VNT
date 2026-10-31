@@ -1284,7 +1284,7 @@ static int run_tests(Config *cfg) {
         if (strlen(data.cFileName) < 5 || strcmp(data.cFileName + strlen(data.cFileName) - 4, ".vnt")) continue;
         n = snprintf(test_path, sizeof test_path, "tests/%s", data.cFileName);
         if (n < 0 || (size_t)n >= sizeof test_path) {
-            fprintf(stderr, "vbuild: test path is too long: %s\\n", data.cFileName);
+            fprintf(stderr, "vbuild: test path is too long: %s\n", data.cFileName);
             failures++;
             continue;
         }
@@ -1307,7 +1307,7 @@ static int run_tests(Config *cfg) {
         if (len < 5 || strcmp(entry->d_name + len - 4, ".vnt")) continue;
         n = snprintf(test_path, sizeof test_path, "tests/%s", entry->d_name);
         if (n < 0 || (size_t)n >= sizeof test_path) {
-            fprintf(stderr, "vbuild: test path is too long: %s\\n", entry->d_name);
+            fprintf(stderr, "vbuild: test path is too long: %s\n", entry->d_name);
             failures++;
             continue;
         }

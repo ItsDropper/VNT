@@ -273,6 +273,15 @@ jobs:
           printf '# changed compiler wrapper identity\n' >> "$compiler_tools/vnt-cache-wrapper"
           path_compiler_rebuild="$("$GITHUB_WORKSPACE/vbuild" build)"
           printf '%s\n' "$path_compiler_rebuild" | grep -Fq 'Built '
+          # Front-end checking must not require build-only runtime inputs.
+          runtime_source="$GITHUB_WORKSPACE/src/compiler/native_runtime.c"
+          mv "$runtime_source" "$runtime_source.vbuild-check-hidden"
+          if ! "$GITHUB_WORKSPACE/vbuild" check > "$RUNNER_TEMP/vbuild-check-without-runtime.log" 2>&1; then
+            mv "$runtime_source.vbuild-check-hidden" "$runtime_source"
+            cat "$RUNNER_TEMP/vbuild-check-without-runtime.log"
+            exit 1
+          fi
+          mv "$runtime_source.vbuild-check-hidden" "$runtime_source"
           # A failed compiler must not leave an old manifest authorizing a damaged artifact.
           cp build/hello "$RUNNER_TEMP/vbuild-good-artifact"
           cp src/main.vnt "$RUNNER_TEMP/vbuild-main-backup.vnt"

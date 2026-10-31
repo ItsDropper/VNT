@@ -119,6 +119,7 @@ static int validate_node_shape(const VntIrProgram *ir, const VntIrNode *node) {
         case VNT_IR_INTEGER:
         case VNT_IR_FLOAT:
         case VNT_IR_BOOLEAN:
+        case VNT_IR_NULL:
         case VNT_IR_VARIABLE:
         case VNT_IR_ASM:
             return node->child_count == 0;
@@ -259,7 +260,7 @@ static const char *opcode_name(VntIrOpcode opcode) {
     static const char *const names[] = {
         "program", "print", "if", "while", "function", "struct", "call",
         "return", "break", "continue", "string", "integer", "float",
-        "boolean", "array", "variable_decl", "variable", "index", "member",
+        "boolean", "null", "array", "variable_decl", "variable", "index", "member",
         "assign", "binary", "unary", "reassign", "asm"
     };
     return (unsigned)opcode < sizeof(names) / sizeof(names[0]) ? names[opcode] : "invalid";

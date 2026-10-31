@@ -886,21 +886,6 @@ static int compute_fingerprint(const char *source, const char *compiler,
     return 1;
 }
 
-static int invalidate_manifest(const char *output) {
-    char path[PATH_CAP];
-    int n = snprintf(path, sizeof path, "%s.vbuild-inputs", output);
-    if (n < 0 || (size_t)n >= sizeof path) {
-        fprintf(stderr, "vbuild: build manifest path is too long.\n");
-        return 0;
-    }
-    if (remove(path) != 0 && errno != ENOENT) {
-        fprintf(stderr, "vbuild: cannot invalidate build manifest '%s': %s\n",
-                path, strerror(errno));
-        return 0;
-    }
-    return 1;
-}
-
 static int manifest_matches(const char *output, const char *fingerprint) {
     char path[PATH_CAP], saved[96], expected[96];
     FILE *file;
@@ -967,10 +952,14 @@ static int write_manifest(const char *output, const char *fingerprint) {
                 temporary, strerror(errno));
         return 0;
     }
-    if (fprintf(file, "vbuild-inputs-v1 %s\n", fingerprint) < 0 || fclose(file) != 0) {
-        (void)remove(temporary);
-        fprintf(stderr, "vbuild: failed writing temporary manifest '%s'.\n", temporary);
-        return 0;
+    {
+        int write_failed = fprintf(file, "vbuild-inputs-v1 %s\n", fingerprint) < 0;
+        int close_failed = fclose(file) != 0;
+        if (write_failed || close_failed) {
+            (void)remove(temporary);
+            fprintf(stderr, "vbuild: failed writing temporary manifest '%s'.\n", temporary);
+            return 0;
+        }
     }
     if (!atomic_replace_file(temporary, path)) {
         (void)remove(temporary);

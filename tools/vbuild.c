@@ -886,6 +886,21 @@ static int compute_fingerprint(const char *source, const char *compiler,
     return 1;
 }
 
+static int invalidate_manifest(const char *output) {
+    char path[PATH_CAP];
+    int n = snprintf(path, sizeof path, "%s.vbuild-inputs", output);
+    if (n < 0 || (size_t)n >= sizeof path) {
+        fprintf(stderr, "vbuild: build manifest path is too long.\n");
+        return 0;
+    }
+    if (remove(path) != 0 && errno != ENOENT) {
+        fprintf(stderr, "vbuild: cannot invalidate build manifest '%s': %s\n",
+                path, strerror(errno));
+        return 0;
+    }
+    return 1;
+}
+
 static int manifest_matches(const char *output, const char *fingerprint) {
     char path[PATH_CAP], saved[96], expected[96];
     FILE *file;
@@ -988,6 +1003,7 @@ static int run_compiler(Config *cfg, int check) {
         printf("Up to date: %s\n", output);
         return 0;
     }
+    if (!check && !invalidate_manifest(output)) return 1;
     args[0] = compiler;
     if (check) {
         args[1] = "--dump-ir"; args[2] = source; args[3] = NULL;

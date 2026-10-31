@@ -49,6 +49,9 @@ static int compile_mode(AstNode *program, const char *assembly_path,
         ? vnt_emit_freestanding_x86_64(&ir, assembly_path)
         : vnt_emit_x86_64(&ir, assembly_path);
     if (!emitted) {
+        /* Never leave a partial or stale assembly artifact after a rejected
+           program. Callers and build scripts rely on failure being atomic. */
+        remove(assembly_path);
         fprintf(stderr, "%s compiler: x86-64 code generation failed.\n",
                 freestanding ? "Freestanding" : "Native");
         vnt_ir_free(&ir);

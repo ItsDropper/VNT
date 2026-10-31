@@ -564,6 +564,24 @@ static int find_task(const char *name) {
     return -1;
 }
 
+static int validate_task_graph(int index, unsigned char states[TASK_CAP]) {
+    int i;
+    Task *task = &tasks[index];
+    if (states[index] == 1) {
+        fprintf(stderr, "vbuild: dependency cycle detected at task '%s'.\\n", task->name);
+        return 0;
+    }
+    if (states[index] == 2) return 1;
+    states[index] = 1;
+    for (i = 0; i < task->dep_count; i++) {
+        int dependency = find_task(task->deps[i]);
+        if (dependency < 0 ||
+            !validate_task_graph(dependency, states)) return 0;
+    }
+    states[index] = 2;
+    return 1;
+}
+
 /* Grammar: task NAME = ACTION [depends NAME[, NAME...]] */
 static int load_tasks(void) {
     FILE *f = fopen("build.vbuild", "r");
@@ -683,12 +701,16 @@ static int load_tasks(void) {
     if (!task_count) { fprintf(stderr, "vbuild: build.vbuild defines no tasks.\n"); return 0; }
     {
         int i, j;
+        unsigned char states[TASK_CAP] = {0};
         for (i = 0; i < task_count; i++)
             for (j = 0; j < tasks[i].dep_count; j++)
                 if (find_task(tasks[i].deps[j]) < 0) {
-                    fprintf(stderr, "vbuild: task '%s' depends on undefined task '%s'.\n", tasks[i].name, tasks[i].deps[j]);
+                    fprintf(stderr, "vbuild: task '%s' depends on undefined task '%s'.\\n", tasks[i].name, tasks[i].deps[j]);
                     return 0;
                 }
+        /* Reject cycles before any task can perform a partial build or cleanup. */
+        for (i = 0; i < task_count; i++)
+            if (!validate_task_graph(i, states)) return 0;
     }
     return 1;
 }

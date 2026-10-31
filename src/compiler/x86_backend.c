@@ -150,7 +150,7 @@ static void emit_stmt_role(HirGen *g,size_t i,VntIrEdgeRole role) {
     for(size_t c=child(g,i,role);c!=VNT_IR_NO_NODE&&!g->error;c=next_role(g,c,role))emit_stmt(g,c);
 }
 static void emit_user_call_area(HirGen *g, const VntIrNode *n,
-                                const size_t *args, int count, int area) {
+                                int count, int area) {
     static const char *regs[] = {"%rcx", "%rdx", "%r8", "%r9"};
     fprintf(g->out, "    subq $%d,%%rsp\n", area);
     for (int a = 0; a < 4; a++)
@@ -163,7 +163,6 @@ static void emit_user_call_area(HirGen *g, const VntIrNode *n,
     cname(g->out, "", n->value.text);
     fputc('\n', g->out);
     fprintf(g->out, "    addq $%d,%%rsp\n", area + count * 8);
-    (void)args;
 }
 
 static void emit_user_call(HirGen *g,const VntIrNode*n,size_t i) {
@@ -199,10 +198,10 @@ static void emit_user_call(HirGen *g,const VntIrNode*n,size_t i) {
         int padded=label_new(g),done=label_new(g);
         fputs("    testq $8,%rsp\n",g->out);
         fprintf(g->out,needs_padding ? "    jnz .L%d\n" : "    jz .L%d\n",padded);
-        emit_user_call_area(g,n,args,count,area);
+        emit_user_call_area(g,n,count,area);
         fprintf(g->out,"    jmp .L%d\n",done);
         label_emit(g,padded);
-        emit_user_call_area(g,n,args,count,area+8);
+        emit_user_call_area(g,n,count,area+8);
         label_emit(g,done);
     }
     (void)i;

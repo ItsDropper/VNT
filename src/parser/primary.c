@@ -353,6 +353,11 @@ static AstNode *parse_primary(Parser *parser) {
             return ast_create_boolean(0);
         }
 
+        if (strcmp(name, "null") == 0) {
+            free(name);
+            return ast_create_null();
+        }
+
         AstNode *variable =
             ast_create_variable(name);
 

@@ -744,6 +744,10 @@ jobs:
           true
           true
           false
+          light
+          45
+          true
+          true
           INI_CONFIG_OK
           VNT_EXPECTED
           diff -u std-config-ini-expected.txt std-config-ini-actual-lf.txt

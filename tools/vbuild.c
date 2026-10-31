@@ -314,6 +314,16 @@ static int exists(const char *path) {
     return stat(path, &st) == 0;
 }
 
+static int is_regular_file(const char *path) {
+    struct stat st;
+    if (stat(path, &st) != 0) return 0;
+#ifdef _WIN32
+    return (st.st_mode & _S_IFREG) != 0;
+#else
+    return S_ISREG(st.st_mode);
+#endif
+}
+
 static int artifact_is_usable(const char *path, const char *target) {
     struct stat st;
 #ifdef _WIN32
@@ -1268,8 +1278,17 @@ static int run_tests(Config *cfg) {
         return 1;
     }
     do {
+        char test_path[PATH_CAP];
+        int n;
         if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
         if (strlen(data.cFileName) < 5 || strcmp(data.cFileName + strlen(data.cFileName) - 4, ".vnt")) continue;
+        n = snprintf(test_path, sizeof test_path, "tests/%s", data.cFileName);
+        if (n < 0 || (size_t)n >= sizeof test_path) {
+            fprintf(stderr, "vbuild: test path is too long: %s\\n", data.cFileName);
+            failures++;
+            continue;
+        }
+        if (!is_regular_file(test_path)) continue;
         count++;
         if (run_one_test(cfg, data.cFileName) != 0) failures++;
     } while (FindNextFileA(handle, &data));
@@ -1282,8 +1301,17 @@ static int run_tests(Config *cfg) {
         return 1;
     }
     while ((entry = readdir(dir)) != NULL) {
+        char test_path[PATH_CAP];
         size_t len = strlen(entry->d_name);
+        int n;
         if (len < 5 || strcmp(entry->d_name + len - 4, ".vnt")) continue;
+        n = snprintf(test_path, sizeof test_path, "tests/%s", entry->d_name);
+        if (n < 0 || (size_t)n >= sizeof test_path) {
+            fprintf(stderr, "vbuild: test path is too long: %s\\n", entry->d_name);
+            failures++;
+            continue;
+        }
+        if (!is_regular_file(test_path)) continue;
         count++;
         if (run_one_test(cfg, entry->d_name) != 0) failures++;
     }

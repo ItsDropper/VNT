@@ -243,6 +243,104 @@ static int exists(const char *path) {
     return stat(path, &st) == 0;
 }
 
+static int compiler_file_is_usable(const char *path) {
+    struct stat st;
+    if (stat(path, &st) != 0) return 0;
+#ifdef _WIN32
+    return (st.st_mode & _S_IFREG) != 0;
+#else
+    return S_ISREG(st.st_mode) && access(path, X_OK) == 0;
+#endif
+}
+
+static int try_compiler_candidate(const char *candidate, char *resolved, size_t cap) {
+#ifdef _WIN32
+    char with_extension[PATH_CAP];
+    size_t length;
+    int n;
+#endif
+    if (compiler_file_is_usable(candidate))
+        return copy_value(resolved, cap, candidate, "resolved compiler");
+#ifdef _WIN32
+    length = strlen(candidate);
+    if (length + 5 >= sizeof with_extension) return 0;
+    if (length >= 4 && !strcmp(candidate + length - 4, ".exe")) return 0;
+    n = snprintf(with_extension, sizeof with_extension, "%s.exe", candidate);
+    if (n < 0 || (size_t)n >= sizeof with_extension) return 0;
+    if (compiler_file_is_usable(with_extension))
+        return copy_value(resolved, cap, with_extension, "resolved compiler");
+#endif
+    return 0;
+}
+
+/* Resolve PATH entries against the compiler's actual working directory. */
+static int resolve_path_compiler(const char *name, const char *working_directory,
+                                 char *resolved, size_t cap) {
+    const char *path = getenv("PATH");
+    const char *cursor;
+    if (!path) return 0;
+    cursor = path;
+    for (;;) {
+        const char *end;
+        char directory[PATH_CAP];
+        char candidate[PATH_CAP];
+        size_t length;
+        int n;
+#ifdef _WIN32
+        end = strchr(cursor, ';');
+#else
+        end = strchr(cursor, ':');
+#endif
+        length = end ? (size_t)(end - cursor) : strlen(cursor);
+        if (length >= sizeof directory) {
+            fprintf(stderr, "vbuild: PATH entry is too long while resolving '%s'.\n", name);
+            return 0;
+        }
+        if (length == 0) {
+            if (!copy_value(directory, sizeof directory, working_directory, "PATH directory")) return 0;
+        } else {
+            memcpy(directory, cursor, length);
+            directory[length] = '\0';
+            if (!path_is_absolute(directory)) {
+                char absolute[PATH_CAP];
+                n = snprintf(absolute, sizeof absolute, "%s/%s", working_directory, directory);
+                if (n < 0 || (size_t)n >= sizeof absolute) {
+                    fprintf(stderr, "vbuild: PATH directory is too long while resolving '%s'.\n", name);
+                    return 0;
+                }
+                if (!copy_value(directory, sizeof directory, absolute, "PATH directory")) return 0;
+            }
+        }
+        n = snprintf(candidate, sizeof candidate, "%s/%s", directory, name);
+        if (n < 0 || (size_t)n >= sizeof candidate) {
+            fprintf(stderr, "vbuild: compiler path is too long for '%s'.\n", name);
+            return 0;
+        }
+        if (try_compiler_candidate(candidate, resolved, cap)) return 1;
+        if (!end) break;
+        cursor = end + 1;
+    }
+    return 0;
+}
+
+static int resolve_compiler(const char *configured, const char *toolchain,
+                            char *resolved, size_t cap) {
+    char candidate[PATH_CAP];
+    int n;
+    if (strchr(configured, '/') || strchr(configured, '\\')) {
+        if (!absolute_path(configured, candidate, sizeof candidate)) return 0;
+        if (try_compiler_candidate(candidate, resolved, cap)) return 1;
+    } else {
+        n = snprintf(candidate, sizeof candidate, "%s/%s", toolchain, configured);
+        if (n < 0 || (size_t)n >= sizeof candidate) return 0;
+        if (try_compiler_candidate(candidate, resolved, cap)) return 1;
+        if (resolve_path_compiler(configured, toolchain, resolved, cap)) return 1;
+    }
+    fprintf(stderr, "vbuild: compiler '%s' was not found as an executable in the toolchain or PATH.\n",
+            configured);
+    return 0;
+}
+
 static int configure_module_path(void) {
     char search_path[PATH_CAP * 4] = {0};
     size_t used = 0;
@@ -856,23 +954,8 @@ static int run_compiler(Config *cfg, int check) {
         !is_directory(toolchain)) {
         fprintf(stderr, "vbuild: toolchain directory not found or path invalid: %s\n", cfg->toolchain); return 1;
     }
-    if (strchr(cfg->compiler, '/') || strchr(cfg->compiler, '\\')) {
-        if (!absolute_path(cfg->compiler, compiler, sizeof compiler)) return 1;
-    } else {
-        char candidate[PATH_CAP];
-        int n = snprintf(candidate, sizeof candidate, "%s/%s", toolchain, cfg->compiler);
-        if (n >= 0 && (size_t)n < sizeof candidate && exists(candidate)) {
-            if (!copy_value(compiler, sizeof compiler, candidate, "compiler")) return 1;
-        } else {
-#ifdef _WIN32
-            n = snprintf(candidate, sizeof candidate, "%s/%s.exe", toolchain, cfg->compiler);
-            if (n >= 0 && (size_t)n < sizeof candidate && exists(candidate)) {
-                if (!copy_value(compiler, sizeof compiler, candidate, "compiler")) return 1;
-            } else
-#endif
-            if (!copy_value(compiler, sizeof compiler, cfg->compiler, "compiler")) return 1;
-        }
-    }
+    if (!resolve_compiler(cfg->compiler, toolchain, compiler, sizeof compiler)) return 1;
+
     if (!strcmp(cfg->target, "exe")) { mode = "--compile"; suffix = EXE_SUFFIX; }
     else if (!strcmp(cfg->target, "elf")) { mode = "--build-freestanding"; suffix = ".elf"; }
     else if (!strcmp(cfg->target, "asm")) { mode = "--emit-asm"; suffix = ".s"; }

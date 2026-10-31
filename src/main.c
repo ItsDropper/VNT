@@ -21,6 +21,10 @@ static int compile_native(AstNode *program, const char *output_path) {
     sprintf(assembly_path, "%s.s", output_path);
 
     if (!compiler_compile(program, assembly_path)) {
+        /* A failed compile must not leave a previous executable or a partial
+           assembly file looking like a fresh build artifact. */
+        remove(assembly_path);
+        remove(output_path);
         free(assembly_path);
         return 1;
     }
@@ -80,6 +84,9 @@ static int build_freestanding(AstNode *program, const char *output_path) {
     snprintf(object_path, length + 3, "%s.o", output_path);
 
     if (!compiler_compile_freestanding(program, assembly_path)) {
+        remove(assembly_path);
+        remove(object_path);
+        remove(output_path);
         free(assembly_path);
         free(object_path);
         return 1;
@@ -168,10 +175,14 @@ int main(int argc, char *argv[]) {
         result = compiler_compile(program, argv[4]) ? 0 : 1;
         if (result == 0)
             printf("Assembly emitted without linking: %s\n", argv[4]);
+        else
+            remove(argv[4]);
     } else if (emit_freestanding) {
         result = compiler_compile_freestanding(program, argv[4]) ? 0 : 1;
         if (result == 0)
             printf("Freestanding x86-64 assembly emitted: %s\n", argv[4]);
+        else
+            remove(argv[4]);
     } else if (build_free) {
         result = build_freestanding(program, argv[4]);
     } else {

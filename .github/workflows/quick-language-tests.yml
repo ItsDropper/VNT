@@ -927,9 +927,8 @@ jobs:
           grep -F "call vnt_fn_sum_six" freestanding-call-abi.s
           grep -F "call vnt_fn_zero" freestanding-call-abi.s
           ./vnt --emit-freestanding-asm tests/freestanding_negative.vnt -o freestanding-negative.s
-          cat freestanding-negative.s
-          grep -F "movq $-1, %rax" freestanding-negative.s
-          grep -F "movq $-2, %rax" freestanding-negative.s
+          grep -F 'movq $-1, %rax' freestanding-negative.s
+          grep -F 'movq $-2, %rax' freestanding-negative.s
           ./vnt --emit-freestanding-asm tests/freestanding_calls.vnt -o freestanding-calls.s
           grep -F 'subq $16, %rsp' freestanding-calls.s
           grep -F 'call vnt_fn_add_pair' freestanding-calls.s
@@ -943,11 +942,6 @@ jobs:
           if ./vnt --emit-freestanding-asm tests/freestanding_hosted_rejected.vnt -o freestanding-invalid.s; then
             echo "Freestanding backend incorrectly accepted a hosted print operation."
             exit 1
-          fi
-          if [ -e freestanding-invalid.s ]; then
-            echo "Unexpected freestanding output artifact remains:"
-            ls -la freestanding-invalid.s
-            find . -name 'freestanding-invalid.s' -print
           fi
           test ! -e freestanding-invalid.s
 

@@ -518,7 +518,15 @@ static int write_file(const char *path, const char *contents) {
     }
     ok = fputs(contents, f) >= 0;
     if (fclose(f) != 0) ok = 0;
-    if (!ok) fprintf(stderr, "vbuild: failed writing %s.\n", path);
+    if (!ok) {
+        int error = errno;
+        if (remove(path) != 0 && errno != ENOENT) {
+            fprintf(stderr, "vbuild: cannot remove incomplete file '%s': %s\n",
+                    path, strerror(errno));
+        }
+        errno = error;
+        fprintf(stderr, "vbuild: failed writing %s.\n", path);
+    }
     return ok;
 }
 

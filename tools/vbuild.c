@@ -1105,78 +1105,41 @@ static int run_compiler(Config *cfg, int check) {
     }
     if (!resolve_compiler(cfg->compiler, toolchain, compiler, sizeof compiler)) return 1;
 
-    if (!strcmp(cfg->target, "exe")) { mode = "--compile"; suffix = EXE_SUFFIX; }
-    else if (!strcmp(cfg->target, "elf")) { mode = "--build-freestanding"; suffix = ".elf"; }
-    else if (!strcmp(cfg->target, "asm")) { mode = "--emit-asm"; suffix = ".s"; }
-    else if (!strcmp(cfg->target, "freestanding-asm")) { mode = "--emit-freestanding-asm"; suffix = ".s"; }
-    else { fprintf(stderr, "vbuild: unsupported target '%s'.\n", cfg->target); return 1; }
-    if (!absolute_path("build", output, sizeof output)) return 1;
-    {
-        size_t len = strlen(output);
-        const char *append = suffix;
-        size_t name_len = strlen(cfg->output);
-        if (!strcmp(cfg->target, "exe") && name_len >= 4 && !strcmp(cfg->output + name_len - 4, ".exe")) append = "";
-        if (!strcmp(cfg->target, "elf") && name_len >= 4 && !strcmp(cfg->output + name_len - 4, ".elf")) append = "";
-        if ((!strcmp(cfg->target, "asm") || !strcmp(cfg->target, "freestanding-asm")) &&
-            name_len >= 2 && !strcmp(cfg->output + name_len - 2, ".s")) append = "";
-        int n = snprintf(output + len, sizeof output - len, "/%s%s", cfg->output, append);
-        if (n < 0 || (size_t)n >= sizeof output - len) {
-            fprintf(stderr, "vbuild: output path is too long.\n"); return 1;
-        }
-    }
-    import_graph_current = imports_are_current(source, output);
-    if (import_graph_current < 0) return 1;
-    build_inputs_current = build_inputs_are_current(output, cfg->target, toolchain);
-    if (build_inputs_current < 0) return 1;
-    fingerprint_ready = compute_fingerprint(source, compiler, toolchain, cfg->target,
-                                            fingerprint, sizeof fingerprint);
-    if (!fingerprint_ready) return 1;
-    if (!check && !force_build && import_graph_current && build_inputs_current &&
-        artifact_is_usable(output, cfg->target) &&
-        manifest_matches(output, fingerprint)) {
-        printf("Up to date: %s\n", output);
-        return 0;
-    }
-    args[0] = compiler;
     if (check) {
-        args[1] = "--dump-ir"; args[2] = source; args[3] = NULL;
-    } else {
-        if (!make_temporary_path(output, "artifact", temporary_output, sizeof temporary_output)) return 1;
-        (void)remove(temporary_output);
-        if (!strcmp(cfg->target, "exe") || !strcmp(cfg->target, "elf")) {
-            int n = snprintf(temporary_assembly, sizeof temporary_assembly,
-                             "%s.s", temporary_output);
-            if (n < 0 || (size_t)n >= sizeof temporary_assembly) {
-                fprintf(stderr, "vbuild: temporary assembly path is too long.\n");
-                return 1;
-            }
-            (void)remove(temporary_assembly);
+        args[0] = compiler;
+    if (!make_temporary_path(output, "artifact", temporary_output, sizeof temporary_output)) return 1;
+    (void)remove(temporary_output);
+    if (!strcmp(cfg->target, "exe") || !strcmp(cfg->target, "elf")) {
+        int n = snprintf(temporary_assembly, sizeof temporary_assembly,
+                         "%s.s", temporary_output);
+        if (n < 0 || (size_t)n >= sizeof temporary_assembly) {
+            fprintf(stderr, "vbuild: temporary assembly path is too long.\n");
+            return 1;
         }
-        args[1] = (char *)mode; args[2] = source; args[3] = "-o";
-        args[4] = temporary_output; args[5] = NULL;
+        (void)remove(temporary_assembly);
     }
+    args[1] = (char *)mode; args[2] = source; args[3] = "-o";
+    args[4] = temporary_output; args[5] = NULL;
     if (run_process(args, toolchain) != 0) {
-        if (!check) {
-            (void)remove(temporary_output);
-            if (temporary_assembly[0]) (void)remove(temporary_assembly);
-        }
+        (void)remove(temporary_output);
+        if (temporary_assembly[0]) (void)remove(temporary_assembly);
         fprintf(stderr, "vbuild: compiler command failed.\n"); return 1;
     }
-    if (!check && !artifact_is_usable(temporary_output, cfg->target)) {
+    if (!artifact_is_usable(temporary_output, cfg->target)) {
         fprintf(stderr, "vbuild: compiler returned success but temporary output is not a usable artifact: %s\n",
                 temporary_output);
         (void)remove(temporary_output);
         if (temporary_assembly[0]) (void)remove(temporary_assembly);
         return 1;
     }
-    if (!check && temporary_assembly[0] &&
+    if (temporary_assembly[0] &&
         remove(temporary_assembly) != 0 && errno != ENOENT) {
         fprintf(stderr, "vbuild: cannot remove temporary assembly '%s': %s\n",
                 temporary_assembly, strerror(errno));
         (void)remove(temporary_output);
         return 1;
     }
-    if (!check && !atomic_replace_file(temporary_output, output)) {
+    if (!atomic_replace_file(temporary_output, output)) {
         (void)remove(temporary_output);
         return 1;
     }

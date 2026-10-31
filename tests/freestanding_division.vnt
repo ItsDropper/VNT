@@ -1,9 +1,17 @@
 # Copyright (c) 2026 ItsDropper
 # Licensed under the MIT License. See LICENSE in the repository root.
 
+fun divide_i64(dividend: i64, divisor: i64) -> i64 {
+    return dividend / divisor
+}
+
+fun modulo_i64(dividend: i64, divisor: i64) -> i64 {
+    return dividend % divisor
+}
+
 fun kernel_main() {
-    let quotient: i64 = 84 / 2
-    let remainder: i64 = 85 % 7
+    let quotient: i64 = divide_i64(84, 2)
+    let remainder: i64 = modulo_i64(85, 7)
     if quotient == 42 && remainder == 1 {
         return 0
     }

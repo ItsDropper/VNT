@@ -113,6 +113,18 @@ jobs:
             if ($LASTEXITCODE -eq 0) { throw 'dependency cycle was not rejected before execution' }
             if (Test-Path build) { throw 'VBuild executed a build dependency before rejecting the cyclic task graph' }
             Set-Content -NoNewline -Path build.vbuild -Value $validBuild
+            Add-Content build.vbuild 'task run_without_build = run'
+            $artifactName = if ($IsWindows) { 'hello.exe' } else { 'hello' }
+            $invalidArtifact = Join-Path 'build' $artifactName
+            New-Item -ItemType Directory -Force -Path $invalidArtifact | Out-Null
+            $invalidRunOutput = & $binary run_without_build 2>&1
+            $invalidRunExitCode = $LASTEXITCODE
+            if ($invalidRunExitCode -eq 0 -or ($invalidRunOutput -join [Environment]::NewLine) -notmatch 'output is not a usable executable') {
+              throw "run accepted a directory as its executable artifact: $($invalidRunOutput -join ' | ')"
+            }
+            & $binary clean
+            if ($LASTEXITCODE -ne 0) { throw 'clean failed after invalid run artifact test' }
+            Set-Content -NoNewline -Path build.vbuild -Value $validBuild
             $lockPath = Join-Path $project '.vbuild.lock'
             $lockStream = [System.IO.File]::Open($lockPath, [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::ReadWrite)
             $lockHeld = $false

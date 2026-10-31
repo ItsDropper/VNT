@@ -255,6 +255,11 @@ jobs:
             : > "$4"
             exit 1
           fi
+          if [ "${VBUILD_TEST_INVALID_OUTPUT:-}" = "1" ]; then
+            printf 'not an executable\\n' > "$4"
+            chmod 644 "$4"
+            exit 0
+          fi
           exec "$VNT_TEST_REAL_COMPILER" "$@"
           EOF
           export VNT_TEST_REAL_COMPILER="$GITHUB_WORKSPACE/vnt"
@@ -278,6 +283,15 @@ jobs:
           fi
           cmp build/hello "$RUNNER_TEMP/vbuild-good-artifact"
           test ! -e build/hello.vbuild-artifact-$
+          if VBUILD_TEST_INVALID_OUTPUT=1 "$GITHUB_WORKSPACE/vbuild" build --force > "$RUNNER_TEMP/vbuild-invalid-output.log" 2>&1; then
+            echo 'non-executable compiler output was accepted as a successful artifact'
+            exit 1
+          fi
+          if ! grep -Fq 'temporary output is not a usable artifact' "$RUNNER_TEMP/vbuild-invalid-output.log"; then
+            cat "$RUNNER_TEMP/vbuild-invalid-output.log"
+            exit 1
+          fi
+          cmp build/hello "$RUNNER_TEMP/vbuild-good-artifact"
           cp "$RUNNER_TEMP/vbuild-main-backup.vnt" src/main.vnt
           recovery_build="$("$GITHUB_WORKSPACE/vbuild" build)"
           printf '%s\n' "$recovery_build" | grep -Fq 'Up to date:'

@@ -113,6 +113,51 @@ jobs:
             }
             & $binary clean
             if ($LASTEXITCODE -ne 0) { throw 'clean failed after releasing the Windows project lock' }
+
+            # Keep a VBuild parent alive in "run", then terminate it. Its child must
+            # not inherit the lock handle, and the OS must release the parent's lock.
+            $holdSource = @'
+          #include <windows.h>
+          #include <stdio.h>
+          int main(void) {
+              FILE *file = fopen("hold.pid", "w");
+              if (!file) return 2;
+              fprintf(file, "%lu", (unsigned long)GetCurrentProcessId());
+              fclose(file);
+              Sleep(60000);
+              return 0;
+          }
+          '@
+            Set-Content -NoNewline -Path hold.c -Value $holdSource
+            New-Item -ItemType Directory -Force -Path build | Out-Null
+            gcc hold.c -o build/hold.exe
+            if ($LASTEXITCODE -ne 0) { throw 'could not compile Windows lock-holder test program' }
+            (Get-Content -Raw vbuild.properties).Replace('output = hello', 'output = hold') | Set-Content -NoNewline vbuild.properties
+            Add-Content build.vbuild 'task hold = run'
+            $vbuildProcess = Start-Process -FilePath $binary -ArgumentList 'hold' -WorkingDirectory $project -PassThru -WindowStyle Hidden
+            try {
+              $deadline = [DateTime]::UtcNow.AddSeconds(10)
+              while (-not (Test-Path hold.pid) -and [DateTime]::UtcNow -lt $deadline) {
+                Start-Sleep -Milliseconds 50
+              }
+              if (-not (Test-Path hold.pid)) { throw 'VBuild run child did not start' }
+              try {
+                [System.IO.File]::Delete($lockPath)
+              } catch {
+                # Expected: VBuild's lock handle deliberately denies FILE_SHARE_DELETE.
+              }
+              if (-not (Test-Path $lockPath)) { throw 'active Windows project lock file was deleted' }
+              Stop-Process -Id $vbuildProcess.Id -Force
+              $vbuildProcess.WaitForExit()
+              $holderPid = [int](Get-Content -Raw hold.pid)
+              Stop-Process -Id $holderPid -Force -ErrorAction SilentlyContinue
+              Wait-Process -Id $holderPid -Timeout 5 -ErrorAction SilentlyContinue
+            } finally {
+              if (-not $vbuildProcess.HasExited) { Stop-Process -Id $vbuildProcess.Id -Force }
+            }
+            & $binary clean
+            if ($LASTEXITCODE -ne 0) { throw 'VBuild did not release its lock after forced process termination' }
+
             Add-Content build.vbuild 'task broken = none depends missing'
             & $binary tasks
             if ($LASTEXITCODE -eq 0) { throw 'undefined dependency was not rejected' }

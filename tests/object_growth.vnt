@@ -14,6 +14,7 @@ record.k = 11
 record.l = 12
 
 # Replacing an existing field must not append a duplicate or corrupt neighbors.
+# Reading an absent field yields null without changing the object.
 record.a = 101
 print(record.a)
 print(record.e)

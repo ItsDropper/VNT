@@ -25,6 +25,10 @@ typedef struct {
     int scope_depth;
     int unsafe_depth;
     int loop_depth;
+    /* Imported exports are flattened as alias__function. Resolve calls to
+       sibling exports from within that module using the active alias. */
+    const char *function_namespace;
+    size_t function_namespace_length;
 } TypeChecker;
 
 static int numeric(TypeKind t);
@@ -285,6 +289,40 @@ static int builtin_arity(const char *name, int argc) {
     return -1;
 }
 
+/* Module loading flattens exported declarations into alias__name symbols.
+   Calls written without an alias inside that module still refer to those
+   sibling exports. Canonicalize the AST call name here so every later phase
+   (HIR lowering and both backends) sees the same resolved symbol. */
+static FunctionDef *resolve_function_call(TypeChecker *tc, AstNode *call) {
+    const char *name = call->function_call.name;
+    FunctionDef *fn = find_function(tc, name);
+    if (fn || builtin_arity(name, call->function_call.argument_count) != -1 ||
+        find_struct(tc, name) || !tc->function_namespace ||
+        strstr(name, "__") != NULL)
+        return fn;
+
+    size_t name_length = strlen(name);
+    size_t qualified_length = tc->function_namespace_length + 2 + name_length;
+    char *qualified = malloc(qualified_length + 1);
+    if (!qualified) {
+        error(tc, "out of memory resolving imported module function.");
+        return NULL;
+    }
+    memcpy(qualified, tc->function_namespace, tc->function_namespace_length);
+    qualified[tc->function_namespace_length] = '_';
+    qualified[tc->function_namespace_length + 1] = '_';
+    memcpy(qualified + tc->function_namespace_length + 2, name, name_length + 1);
+
+    fn = find_function(tc, qualified);
+    if (fn) {
+        free(call->function_call.name);
+        call->function_call.name = qualified;
+        return fn;
+    }
+    free(qualified);
+    return NULL;
+}
+
 static TypeKind expr_type(TypeChecker *tc, AstNode *n);
 
 /* One compatibility rule shared by initializers, calls, assignments, and returns.
@@ -418,7 +456,7 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
             return TY_UNKNOWN;
 
         case AST_FUNCTION_CALL: {
-            FunctionDef *called_function = find_function(tc, n->function_call.name);
+            FunctionDef *called_function = resolve_function_call(tc, n);
             if (called_function && called_function->node &&
                 called_function->node->function_declaration.is_unsafe &&
                 tc->unsafe_depth == 0)
@@ -899,6 +937,15 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                 TypeKind old_return = tc->expected_return;
                 int old_in_function = tc->in_function;
                 int old_loop_depth = tc->loop_depth;
+                const char *old_function_namespace = tc->function_namespace;
+                size_t old_function_namespace_length = tc->function_namespace_length;
+                const char *namespace_separator =
+                    strstr(n->function_declaration.name, "__");
+                if (namespace_separator) {
+                    tc->function_namespace = n->function_declaration.name;
+                    tc->function_namespace_length =
+                        (size_t)(namespace_separator - n->function_declaration.name);
+                }
                 tc->scope_depth = old_scope_depth + 1;
                 /* A function declared in a loop cannot break/continue that outer loop. */
                 tc->loop_depth = 0;
@@ -941,6 +988,8 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                 tc->expected_return = old_return;
                 tc->in_function = old_in_function;
                 tc->loop_depth = old_loop_depth;
+                tc->function_namespace = old_function_namespace;
+                tc->function_namespace_length = old_function_namespace_length;
                 tc->scope_depth = old_scope_depth;
                 break;
             }

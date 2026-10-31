@@ -1082,6 +1082,7 @@ static int run_tests(Config *cfg);
 static int run_compiler(Config *cfg, int check) {
     char output[PATH_CAP];
     char temporary_output[PATH_CAP];
+    char temporary_assembly[PATH_CAP] = {0};
     char source[PATH_CAP];
     char compiler[PATH_CAP];
     char toolchain[PATH_CAP];
@@ -1142,16 +1143,36 @@ static int run_compiler(Config *cfg, int check) {
     } else {
         if (!make_temporary_path(output, "artifact", temporary_output, sizeof temporary_output)) return 1;
         (void)remove(temporary_output);
+        if (!strcmp(cfg->target, "exe") || !strcmp(cfg->target, "elf")) {
+            int n = snprintf(temporary_assembly, sizeof temporary_assembly,
+                             "%s.s", temporary_output);
+            if (n < 0 || (size_t)n >= sizeof temporary_assembly) {
+                fprintf(stderr, "vbuild: temporary assembly path is too long.\n");
+                return 1;
+            }
+            (void)remove(temporary_assembly);
+        }
         args[1] = (char *)mode; args[2] = source; args[3] = "-o";
         args[4] = temporary_output; args[5] = NULL;
     }
     if (run_process(args, toolchain) != 0) {
-        if (!check) (void)remove(temporary_output);
+        if (!check) {
+            (void)remove(temporary_output);
+            if (temporary_assembly[0]) (void)remove(temporary_assembly);
+        }
         fprintf(stderr, "vbuild: compiler command failed.\n"); return 1;
     }
     if (!check && !artifact_is_usable(temporary_output, cfg->target)) {
         fprintf(stderr, "vbuild: compiler returned success but temporary output is not a usable artifact: %s\n",
                 temporary_output);
+        (void)remove(temporary_output);
+        if (temporary_assembly[0]) (void)remove(temporary_assembly);
+        return 1;
+    }
+    if (!check && temporary_assembly[0] &&
+        remove(temporary_assembly) != 0 && errno != ENOENT) {
+        fprintf(stderr, "vbuild: cannot remove temporary assembly '%s': %s\n",
+                temporary_assembly, strerror(errno));
         (void)remove(temporary_output);
         return 1;
     }

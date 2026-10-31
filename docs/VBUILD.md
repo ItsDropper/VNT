@@ -117,9 +117,10 @@ task NAME = ACTION [depends TASK[, TASK...]]
 
 Supported actions are `build`, `run`, `check`, `clean`, `test`, and
 `none`. The `none` action groups dependencies without running another
-action. A dependency runs at most once per invocation. Undefined dependencies,
-duplicate task names, invalid actions, and dependency cycles are rejected
-before any task executes, preventing partial work from an invalid graph.
+action. A dependency runs at most once per invocation. Empty dependency lists,
+duplicate dependencies, undefined dependencies, duplicate task names, invalid
+actions, and dependency cycles are rejected before any task executes, preventing
+partial work from an invalid graph.
 Custom shell commands are intentionally unsupported.
 
 `check` runs the compiler front end with `--dump-ir`. It does not create
@@ -177,11 +178,12 @@ toolchain state are not fingerprinted; use `--force` after changing those inputs
 ## Concurrent invocations
 
 Every project-mutating invocation acquires an exclusive, non-blocking
-project lock. This includes \`init\` and every task graph, preventing
-concurrent initialization, builds, tests, runs, and clean operations from
-racing over project files and the \`build/\` directory. Read-only task listing
-does not acquire the lock. A competing VBuild process exits with an explicit
-diagnostic instead of waiting or modifying project outputs.
+project lock. This includes \`init\` and any task graph containing \`build\`,
+\`clean\`, \`test\`, or \`run\`, preventing concurrent operations from racing
+over project files and the \`build/\` directory. Task listing and graphs
+containing only \`check\` and \`none\` do not acquire the lock. A competing
+VBuild process exits with an explicit diagnostic instead of waiting or
+modifying project outputs.
 
 The lock is implemented with operating-system file locks (\`flock\` on
 POSIX and \`LockFileEx\` on Windows), so the OS releases it when VBuild exits,

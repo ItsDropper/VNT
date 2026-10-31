@@ -928,7 +928,7 @@ jobs:
           grep -F "call vnt_fn_zero" freestanding-call-abi.s
           ./vnt --emit-freestanding-asm tests/freestanding_negative.vnt -o freestanding-negative.s
           grep -F 'movq $-1, %rax' freestanding-negative.s
-          grep -F 'movq $-2, %rax' freestanding-negative.s
+          grep -F 'negq %rax' freestanding-negative.s
           ./vnt --emit-freestanding-asm tests/freestanding_calls.vnt -o freestanding-calls.s
           grep -F 'subq $16, %rsp' freestanding-calls.s
           grep -F 'call vnt_fn_add_pair' freestanding-calls.s

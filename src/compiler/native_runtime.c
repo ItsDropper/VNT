@@ -2514,7 +2514,11 @@ static VntValue *vnt_pointer_value(void *pointer) {
 }
 
 static void *vnt_require_pointer(VntValue *value) {
-    if (!value || value->type != VNT_POINTER) {
+    /* The source-level null literal is represented by a C null VntValue
+       pointer. Treat it as a null native address; individual operations
+       decide whether that address is valid for their requested length. */
+    if (!value) return NULL;
+    if (value->type != VNT_POINTER) {
         fprintf(stderr, "Runtime error: memory operation requires ptr.\n");
         exit(1);
     }
@@ -2551,6 +2555,7 @@ VNT_NATIVE_ABI VntValue *vnt_mem_alloc(VntValue *size_value) {
 }
 
 VNT_NATIVE_ABI VntValue *vnt_mem_free(VntValue *pointer) {
+    if (!pointer) return vnt_bool(1);
     free(vnt_require_pointer(pointer));
     pointer->pointer = NULL;
     return vnt_bool(1);

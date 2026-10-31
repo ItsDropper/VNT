@@ -149,6 +149,23 @@ static void emit_stmt(HirGen *g,size_t i);
 static void emit_stmt_role(HirGen *g,size_t i,VntIrEdgeRole role) {
     for(size_t c=child(g,i,role);c!=VNT_IR_NO_NODE&&!g->error;c=next_role(g,c,role))emit_stmt(g,c);
 }
+static void emit_user_call_area(HirGen *g, const VntIrNode *n,
+                                const size_t *args, int count, int area) {
+    static const char *regs[] = {"%rcx", "%rdx", "%r8", "%r9"};
+    fprintf(g->out, "    subq $%d,%%rsp\n", area);
+    for (int a = 0; a < 4; a++)
+        fprintf(g->out, "    movq %d(%%rsp),%s\n",
+                area + (count - 1 - a) * 8, regs[a]);
+    for (int a = 4; a < count; a++)
+        fprintf(g->out, "    movq %d(%%rsp),%%r10\n    movq %%r10,%d(%%rsp)\n",
+                area + (count - 1 - a) * 8, 32 + (a - 4) * 8);
+    fputs("    call vnt_fn_", g->out);
+    cname(g->out, "", n->value.text);
+    fputc('\n', g->out);
+    fprintf(g->out, "    addq $%d,%%rsp\n", area + count * 8);
+    (void)args;
+}
+
 static void emit_user_call(HirGen *g,const VntIrNode*n,size_t i) {
     size_t args[32];int count=0;
     for(size_t c=n->first_child;c!=VNT_IR_NO_NODE;c=g->ir->nodes[c].next_sibling) {
@@ -160,16 +177,33 @@ static void emit_user_call(HirGen *g,const VntIrNode*n,size_t i) {
     if(count<=4){
         for(int a=0;a<count;a++)fprintf(g->out,"    movq %d(%%rsp),%s\n",(count-1-a)*8,regs[a]);
         if(count)fprintf(g->out,"    addq $%d,%%rsp\n",count*8);
+
+        /* The caller may already have a temporary expression spill on its
+           stack. Select the 32- or 40-byte home area from the actual RSP
+           alignment instead of assuming every call starts at function depth 0. */
+        int aligned=label_new(g),done=label_new(g);
+        fputs("    testq $8,%rsp\n",g->out);
+        fprintf(g->out,"    jz .L%d\n    subq $40,%%rsp\n    call vnt_fn_",aligned);
+        cname(g->out,"",n->value.text);
+        fprintf(g->out,"\n    addq $40,%%rsp\n    jmp .L%d\n",done);
+        label_emit(g,aligned);
         fputs("    subq $32,%rsp\n    call vnt_fn_",g->out);
-        cname(g->out,"",n->value.text);fputs("\n    addq $32,%rsp\n",g->out);
+        cname(g->out,"",n->value.text);
+        fputs("\n    addq $32,%rsp\n",g->out);
+        label_emit(g,done);
     } else {
         int stack_count=count-4,area=32+stack_count*8;
-        if(((count*8+area)&15)!=0)area+=8;
-        fprintf(g->out,"    subq $%d,%%rsp\n",area);
-        for(int a=0;a<4;a++)fprintf(g->out,"    movq %d(%%rsp),%s\n",area+(count-1-a)*8,regs[a]);
-        for(int a=4;a<count;a++)fprintf(g->out,"    movq %d(%%rsp),%%r10\n    movq %%r10,%d(%%rsp)\n",area+(count-1-a)*8,32+(a-4)*8);
-        fputs("    call vnt_fn_",g->out);cname(g->out,"",n->value.text);fputc('\n',g->out);
-        fprintf(g->out,"    addq $%d,%%rsp\n",area+count*8);
+        /* Stack arguments begin at [rsp+32]. Add one alignment slot only
+           when the current spill depth and the ABI area have different parity. */
+        int needs_padding = (area & 15) == 0;
+        int padded=label_new(g),done=label_new(g);
+        fputs("    testq $8,%rsp\n",g->out);
+        fprintf(g->out,needs_padding ? "    jnz .L%d\n" : "    jz .L%d\n",padded);
+        emit_user_call_area(g,n,args,count,area);
+        fprintf(g->out,"    jmp .L%d\n",done);
+        label_emit(g,padded);
+        emit_user_call_area(g,n,args,count,area+8);
+        label_emit(g,done);
     }
     (void)i;
 }

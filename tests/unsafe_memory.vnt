@@ -49,6 +49,7 @@ unsafe {
 
     # Zero-length operations do not dereference their pointer arguments.
     let null_pointer: ptr = null
+    print(mem.is_null(null_pointer))
     let null_empty_copy: bool = mem.copy(null_pointer, null_pointer, 0)
     let null_empty_set: bool = mem.set(null_pointer, 0, 0)
     print(null_empty_copy)

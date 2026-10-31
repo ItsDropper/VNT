@@ -314,6 +314,18 @@ static int exists(const char *path) {
     return stat(path, &st) == 0;
 }
 
+static int artifact_is_usable(const char *path, const char *target) {
+    struct stat st;
+#ifdef _WIN32
+    if (stat(path, &st) != 0 || (st.st_mode & _S_IFREG) == 0) return 0;
+#else
+    if (lstat(path, &st) != 0 || !S_ISREG(st.st_mode)) return 0;
+    if ((!strcmp(target, "exe") || !strcmp(target, "elf")) &&
+        access(path, X_OK) != 0) return 0;
+#endif
+    return st.st_size > 0;
+}
+
 static int compiler_file_is_usable(const char *path) {
     struct stat st;
     if (stat(path, &st) != 0) return 0;
@@ -1075,7 +1087,6 @@ static int run_compiler(Config *cfg, int check) {
     char *args[6];
     const char *mode = NULL;
     const char *suffix = NULL;
-    struct stat output_stat;
     char fingerprint[64];
     int fingerprint_ready;
     int import_graph_current;
@@ -1119,7 +1130,7 @@ static int run_compiler(Config *cfg, int check) {
                                             fingerprint, sizeof fingerprint);
     if (!fingerprint_ready) return 1;
     if (!check && !force_build && import_graph_current && build_inputs_current &&
-        stat(output, &output_stat) == 0 &&
+        artifact_is_usable(output, cfg->target) &&
         manifest_matches(output, fingerprint)) {
         printf("Up to date: %s\n", output);
         return 0;
@@ -1137,8 +1148,8 @@ static int run_compiler(Config *cfg, int check) {
         if (!check) (void)remove(temporary_output);
         fprintf(stderr, "vbuild: compiler command failed.\n"); return 1;
     }
-    if (!check && !exists(temporary_output)) {
-        fprintf(stderr, "vbuild: compiler returned success but temporary output is missing: %s\n",
+    if (!check && !artifact_is_usable(temporary_output, cfg->target)) {
+        fprintf(stderr, "vbuild: compiler returned success but temporary output is not a usable artifact: %s\\n",
                 temporary_output);
         (void)remove(temporary_output);
         return 1;

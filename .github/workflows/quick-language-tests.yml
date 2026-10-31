@@ -1029,7 +1029,7 @@ jobs:
         run: |
           ./vnt-native-smoke.exe > vnt-native-actual.txt
           tr -d '\r' < vnt-native-actual.txt > vnt-native-actual-lf.txt
-          printf 'IR:\n14\ntrue\ntrue\n30\nNative compiler OK\n' > vnt-native-expected.txt
+          printf 'IR:\n14\ntrue\ntrue\n30\n72\nNative compiler OK\n' > vnt-native-expected.txt
           diff -u vnt-native-expected.txt vnt-native-actual-lf.txt
 
           ./vnt-hir-smoke.exe > vnt-hir-actual.txt

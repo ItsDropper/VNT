@@ -177,14 +177,15 @@ jobs:
           # PATH-resolved compiler changes must invalidate the cache.
           compiler_tools="$RUNNER_TEMP/vbuild compiler tools"
           mkdir -p "$compiler_tools"
-          cat > "$compiler_tools/vnt-cache-wrapper" <<EOF
+          cat > "$compiler_tools/vnt-cache-wrapper" <<'EOF'
           #!/bin/sh
           if [ "${VBUILD_TEST_FAIL_COMPILER:-}" = "1" ]; then
-                      : > "$4"
-                      exit 1
-                    fi
-                    exec "$GITHUB_WORKSPACE/vnt" "\$@"
+            : > "$4"
+            exit 1
+          fi
+          exec "$VNT_TEST_REAL_COMPILER" "$@"
           EOF
+          export VNT_TEST_REAL_COMPILER="$GITHUB_WORKSPACE/vnt"
           chmod +x "$compiler_tools/vnt-cache-wrapper"
           sed -i 's/^compiler = vnt$/compiler = vnt-cache-wrapper/' vbuild.properties
           export PATH="$compiler_tools:$PATH"

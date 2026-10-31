@@ -217,16 +217,16 @@ jobs:
           sleep 1
           if "$GITHUB_WORKSPACE/vbuild" build > "$RUNNER_TEMP/vbuild-lock-build.log" 2>&1; then
             echo 'concurrent build unexpectedly acquired the project lock'
-            wait "$lock_holder_pid" || true
+          if ! wait "$lock_holder_pid"; then cat "$RUNNER_TEMP/vbuild-lock-holder.log"; exit 1; fi
             exit 1
           fi
-          grep -Fq 'another VBuild process is using this project' "$RUNNER_TEMP/vbuild-lock-build.log"
+          if ! grep -Fq 'another VBuild process is using this project' "$RUNNER_TEMP/vbuild-lock-build.log"; then cat "$RUNNER_TEMP/vbuild-lock-build.log"; cat "$RUNNER_TEMP/vbuild-lock-holder.log"; exit 1; fi
           if "$GITHUB_WORKSPACE/vbuild" clean > "$RUNNER_TEMP/vbuild-lock-clean.log" 2>&1; then
             echo 'clean unexpectedly acquired the project lock during a build'
             wait "$lock_holder_pid" || true
             exit 1
           fi
-          grep -Fq 'another VBuild process is using this project' "$RUNNER_TEMP/vbuild-lock-clean.log"
+          if ! grep -Fq 'another VBuild process is using this project' "$RUNNER_TEMP/vbuild-lock-clean.log"; then cat "$RUNNER_TEMP/vbuild-lock-clean.log"; cat "$RUNNER_TEMP/vbuild-lock-holder.log"; exit 1; fi
           wait "$lock_holder_pid"
           released_lock_build="$("$GITHUB_WORKSPACE/vbuild" build)"
           printf '%s\\n' "$released_lock_build" | grep -Fq 'Up to date:'

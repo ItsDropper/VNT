@@ -150,6 +150,9 @@ resolves each import relative to its importer before searching configured local
 repositories, and visits each source file once to handle repeated and cyclic
 imports. A content change invalidates the build even if the file's modification
 timestamp is unchanged. The fingerprint is saved beside the artifact as
+The previous manifest is invalidated before the compiler runs, so a failed
+compile cannot leave an older fingerprint authorizing a partially overwritten
+artifact on a later invocation.
 \`<artifact>.vbuild-inputs\` and is updated only after a successful build. If
 tracked inputs match the saved manifest, VBuild prints \`Up to date\`. Use
 \`vbuild build --force\` to force recompilation.

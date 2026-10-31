@@ -205,6 +205,31 @@ jobs:
             exit 1
           fi
           cmp build/hello "$RUNNER_TEMP/vbuild-good-artifact"
+          # Hold the project lock inside a deliberately slow compiler invocation.
+          cat > "$compiler_tools/vnt-cache-wrapper" <<'EOF'
+          #!/bin/sh
+          sleep 3
+          exec "$VNT_TEST_REAL_COMPILER" "$@"
+          EOF
+          chmod +x "$compiler_tools/vnt-cache-wrapper"
+          "$GITHUB_WORKSPACE/vbuild" build --force > "$RUNNER_TEMP/vbuild-lock-holder.log" 2>&1 &
+          lock_holder_pid=$!
+          sleep 1
+          if "$GITHUB_WORKSPACE/vbuild" build > "$RUNNER_TEMP/vbuild-lock-build.log" 2>&1; then
+            echo 'concurrent build unexpectedly acquired the project lock'
+            wait "$lock_holder_pid" || true
+            exit 1
+          fi
+          grep -Fq 'another VBuild process is using this project' "$RUNNER_TEMP/vbuild-lock-build.log"
+          if "$GITHUB_WORKSPACE/vbuild" clean > "$RUNNER_TEMP/vbuild-lock-clean.log" 2>&1; then
+            echo 'clean unexpectedly acquired the project lock during a build'
+            wait "$lock_holder_pid" || true
+            exit 1
+          fi
+          grep -Fq 'another VBuild process is using this project' "$RUNNER_TEMP/vbuild-lock-clean.log"
+          wait "$lock_holder_pid"
+          released_lock_build="$(\"$GITHUB_WORKSPACE/vbuild\" build)"
+          printf '%s\\n' "$released_lock_build" | grep -Fq 'Up to date:'
           test ! -e build/hello.vbuild-artifact-$
           cp "$RUNNER_TEMP/vbuild-main-backup.vnt" src/main.vnt
           recovery_build="$("$GITHUB_WORKSPACE/vbuild" build)"

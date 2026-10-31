@@ -295,11 +295,14 @@ static int builtin_arity(const char *name, int argc) {
    (HIR lowering and both backends) sees the same resolved symbol. */
 static FunctionDef *resolve_function_call(TypeChecker *tc, AstNode *call) {
     const char *name = call->function_call.name;
-    FunctionDef *fn = find_function(tc, name);
-    if (fn || builtin_arity(name, call->function_call.argument_count) != -1 ||
+
+    /* Builtins and explicitly qualified calls keep their normal meaning.
+       Within an imported module, however, an unqualified sibling export must
+       win over an unrelated function in the importing source file. */
+    if (builtin_arity(name, call->function_call.argument_count) != -1 ||
         find_struct(tc, name) || !tc->function_namespace ||
         strstr(name, "__") != NULL)
-        return fn;
+        return find_function(tc, name);
 
     size_t name_length = strlen(name);
     size_t qualified_length = tc->function_namespace_length + 2 + name_length;
@@ -313,14 +316,14 @@ static FunctionDef *resolve_function_call(TypeChecker *tc, AstNode *call) {
     qualified[tc->function_namespace_length + 1] = '_';
     memcpy(qualified + tc->function_namespace_length + 2, name, name_length + 1);
 
-    fn = find_function(tc, qualified);
+    FunctionDef *fn = find_function(tc, qualified);
     if (fn) {
         free(call->function_call.name);
         call->function_call.name = qualified;
         return fn;
     }
     free(qualified);
-    return NULL;
+    return find_function(tc, name);
 }
 
 static TypeKind expr_type(TypeChecker *tc, AstNode *n);

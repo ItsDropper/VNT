@@ -22,6 +22,8 @@
 #define WAIT_STATUS(rc) (rc)
 #else
 #include <dirent.h>
+#include <fcntl.h>
+#include <sys/file.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -66,6 +68,75 @@ typedef struct {
 
 static Task tasks[TASK_CAP];
 static int task_count;
+
+#ifdef _WIN32
+static HANDLE project_lock_handle = INVALID_HANDLE_VALUE;
+static OVERLAPPED project_lock_overlapped;
+#else
+static int project_lock_fd = -1;
+#endif
+
+/* OS-managed locks release on process exit. Keep the lock file to avoid
+ * splitting locks across different file objects after an unlink race. */
+static int acquire_project_lock(void) {
+#ifdef _WIN32
+    project_lock_handle = CreateFileA(".vbuild.lock", GENERIC_READ | GENERIC_WRITE,
+                                      FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                      NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (project_lock_handle == INVALID_HANDLE_VALUE) {
+        fprintf(stderr, "vbuild: cannot open project lock file (Windows error %lu).\\n",
+                (unsigned long)GetLastError());
+        return 0;
+    }
+    memset(&project_lock_overlapped, 0, sizeof project_lock_overlapped);
+    if (!LockFileEx(project_lock_handle,
+                    LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY,
+                    0, 1, 0, &project_lock_overlapped)) {
+        DWORD error = GetLastError();
+        CloseHandle(project_lock_handle);
+        project_lock_handle = INVALID_HANDLE_VALUE;
+        if (error == ERROR_LOCK_VIOLATION)
+            fprintf(stderr, "vbuild: another VBuild process is using this project.\\n");
+        else
+            fprintf(stderr, "vbuild: cannot acquire project lock (Windows error %lu).\\n",
+                    (unsigned long)error);
+        return 0;
+    }
+#else
+    project_lock_fd = open(".vbuild.lock", O_CREAT | O_RDWR, 0666);
+    if (project_lock_fd < 0) {
+        fprintf(stderr, "vbuild: cannot open project lock file: %s\\n", strerror(errno));
+        return 0;
+    }
+    if (flock(project_lock_fd, LOCK_EX | LOCK_NB) != 0) {
+        int error = errno;
+        close(project_lock_fd);
+        project_lock_fd = -1;
+        if (error == EWOULDBLOCK || error == EAGAIN)
+            fprintf(stderr, "vbuild: another VBuild process is using this project.\\n");
+        else
+            fprintf(stderr, "vbuild: cannot acquire project lock: %s\\n", strerror(error));
+        return 0;
+    }
+#endif
+    return 1;
+}
+
+static void release_project_lock(void) {
+#ifdef _WIN32
+    if (project_lock_handle != INVALID_HANDLE_VALUE) {
+        (void)UnlockFileEx(project_lock_handle, 0, 1, 0, &project_lock_overlapped);
+        CloseHandle(project_lock_handle);
+        project_lock_handle = INVALID_HANDLE_VALUE;
+    }
+#else
+    if (project_lock_fd >= 0) {
+        (void)flock(project_lock_fd, LOCK_UN);
+        (void)close(project_lock_fd);
+        project_lock_fd = -1;
+    }
+#endif
+}
 
 static void trim(char *s) {
     size_t n = strlen(s);
@@ -1227,5 +1298,10 @@ int main(int argc, char **argv) {
         fprintf(stderr, "vbuild: unknown task '%s'; run 'vbuild tasks'.\n", argv[1]);
         return 2;
     }
-    return execute_task(index, &cfg);
+    if (!acquire_project_lock()) return 1;
+    {
+        int rc = execute_task(index, &cfg);
+        release_project_lock();
+        return rc;
+    }
 }

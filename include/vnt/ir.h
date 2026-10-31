@@ -28,6 +28,7 @@ typedef enum {
     VNT_IR_INTEGER,
     VNT_IR_FLOAT,
     VNT_IR_BOOLEAN,
+    VNT_IR_NULL,
     VNT_IR_ARRAY,
     VNT_IR_VARIABLE_DECL,
     VNT_IR_VARIABLE,

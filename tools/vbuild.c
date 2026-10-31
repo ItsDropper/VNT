@@ -317,6 +317,7 @@ static int exists(const char *path) {
 static int artifact_is_usable(const char *path, const char *target) {
     struct stat st;
 #ifdef _WIN32
+    (void)target;
     if (stat(path, &st) != 0 || (st.st_mode & _S_IFREG) == 0) return 0;
 #else
     if (lstat(path, &st) != 0 || !S_ISREG(st.st_mode)) return 0;

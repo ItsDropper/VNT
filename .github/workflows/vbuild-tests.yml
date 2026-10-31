@@ -205,6 +205,11 @@ jobs:
             exit 1
           fi
           cmp build/hello "$RUNNER_TEMP/vbuild-good-artifact"
+          test ! -e build/hello.vbuild-artifact-$
+          cp "$RUNNER_TEMP/vbuild-main-backup.vnt" src/main.vnt
+          recovery_build="$("$GITHUB_WORKSPACE/vbuild" build)"
+          printf '%s\n' "$recovery_build" | grep -Fq 'Up to date:'
+          cmp build/hello "$RUNNER_TEMP/vbuild-good-artifact"
           # Hold the exact OS file lock used by VBuild while competing tasks start.
           flock -n .vbuild.lock -c 'sleep 3' > "$RUNNER_TEMP/vbuild-lock-holder.log" 2>&1 &
           lock_holder_pid=$!
@@ -224,11 +229,6 @@ jobs:
           if ! wait "$lock_holder_pid"; then cat "$RUNNER_TEMP/vbuild-lock-holder.log"; exit 1; fi
           released_lock_build="$("$GITHUB_WORKSPACE/vbuild" build --force)"
           printf '%s\n' "$released_lock_build" | grep -Fq 'Built '
-          test ! -e build/hello.vbuild-artifact-$
-          cp "$RUNNER_TEMP/vbuild-main-backup.vnt" src/main.vnt
-          recovery_build="$("$GITHUB_WORKSPACE/vbuild" build)"
-          printf '%s\n' "$recovery_build" | grep -Fq 'Up to date:'
-          cmp build/hello "$RUNNER_TEMP/vbuild-good-artifact"
           output="$("$GITHUB_WORKSPACE/vbuild" run)"
           printf '%s\n' "$output"
           printf '%s\n' "$output" | grep -Fq '49'

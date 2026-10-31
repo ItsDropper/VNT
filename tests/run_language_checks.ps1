@@ -430,7 +430,7 @@ try {
     & .\vnt.exe --compile tests\object_growth.vnt -o $ObjectGrowthExe
     if ($LASTEXITCODE -ne 0) { throw "Native object-growth regression did not compile." }
     $objectGrowthOutput = & $ObjectGrowthExe
-    if ($LASTEXITCODE -ne 0 -or ($objectGrowthOutput -join "|") -ne "101|5|9|12||OBJECT_GROWTH_OK") {
+    if ($LASTEXITCODE -ne 0 -or ($objectGrowthOutput -join "|") -ne "101|5|9|12|null|OBJECT_GROWTH_OK") {
         throw "Unexpected native object-growth output: $($objectGrowthOutput -join ' | ')"
     }
     Write-Host "Native object capacity growth and replacement: PASS"

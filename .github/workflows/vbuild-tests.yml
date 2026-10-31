@@ -87,15 +87,18 @@ jobs:
             Set-Content -NoNewline -Path build.vbuild -Value $validBuild
             & $binary clean
             if ($LASTEXITCODE -ne 0) { throw 'clean task failed' }
-            Add-Content build.vbuild 'task cycle = none depends cycle'
-            & $binary cycle
-            if ($LASTEXITCODE -eq 0) { throw 'dependency cycle was not rejected' }
             & $binary test
             if ($LASTEXITCODE -ne 1) { throw 'test task without a tests/ directory should fail clearly' }
             & $binary clean
             if ($LASTEXITCODE -ne 0) { throw 'clean task failed' }
             & $binary clean
             if ($LASTEXITCODE -ne 0) { throw 'repeat clean failed' }
+            Add-Content build.vbuild 'task cycle = none depends cycle'
+            Add-Content build.vbuild 'task cycle_after_build = none depends build, cycle'
+            & $binary cycle_after_build
+            if ($LASTEXITCODE -eq 0) { throw 'dependency cycle was not rejected before execution' }
+            if (Test-Path build) { throw 'VBuild executed a build dependency before rejecting the cyclic task graph' }
+            Set-Content -NoNewline -Path build.vbuild -Value $validBuild
             $lockPath = Join-Path $project '.vbuild.lock'
             $lockStream = [System.IO.File]::Open($lockPath, [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::ReadWrite)
             $lockHeld = $false

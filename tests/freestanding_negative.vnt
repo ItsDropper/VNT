@@ -1,6 +1,10 @@
 # Copyright (c) 2026 ItsDropper
 # Licensed under the MIT License. See LICENSE in the repository root.
 
+fun negate_i64(value: i64) -> i64 {
+    return -value
+}
+
 fun kernel_main() {
     let minus_one: i64 = -1
     let computed: i64 = -2 + 1
@@ -9,6 +13,9 @@ fun kernel_main() {
     }
     if computed != -1 {
         return 2
+    }
+    if negate_i64(2) != -2 {
+        return 5
     }
     if -7 / 2 != -3 {
         return 3

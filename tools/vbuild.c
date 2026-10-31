@@ -1287,7 +1287,13 @@ int main(int argc, char **argv) {
         return 2;
     }
     force_build = argc == 3;
-    if (!strcmp(argv[1], "init")) return init_project();
+    if (!strcmp(argv[1], "init")) {
+        int rc;
+        if (!acquire_project_lock()) return 1;
+        rc = init_project();
+        release_project_lock();
+        return rc;
+    }
     if (!load_tasks()) return 1;
     if (!strcmp(argv[1], "tasks")) {
         int i;

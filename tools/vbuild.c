@@ -1131,8 +1131,8 @@ static int run_compiler(Config *cfg, int check) {
         size_t name_len = strlen(cfg->output);
         if (!strcmp(cfg->target, "exe") && name_len >= 4 && !strcmp(cfg->output + name_len - 4, ".exe")) append = "";
         if (!strcmp(cfg->target, "elf") && name_len >= 4 && !strcmp(cfg->output + name_len - 4, ".elf")) append = "";
-        if ((!strcmp(cfg->target, "asm") || !strcmp(cfg->target, "freestanding-asm") &&
-             name_len >= 2 && !strcmp(cfg->output + name_len - 2, ".s")) append = "";
+        if ((!strcmp(cfg->target, "asm") || !strcmp(cfg->target, "freestanding-asm")) &&
+            name_len >= 2 && !strcmp(cfg->output + name_len - 2, ".s")) append = "";
         int n = snprintf(output + len, sizeof output - len, "/%s%s", cfg->output, append);
         if (n < 0 || (size_t)n >= sizeof output - len) {
             fprintf(stderr, "vbuild: output path is too long.\n"); return 1;

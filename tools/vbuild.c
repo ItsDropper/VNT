@@ -1105,8 +1105,54 @@ static int run_compiler(Config *cfg, int check) {
     }
     if (!resolve_compiler(cfg->compiler, toolchain, compiler, sizeof compiler)) return 1;
 
+    /* Source checking is a front-end operation: it must not depend on build
+     * outputs, linker scripts, runtime sources, or the incremental cache. */
     if (check) {
         args[0] = compiler;
+        args[1] = "--dump-ir";
+        args[2] = source;
+        args[3] = NULL;
+        if (run_process(args, toolchain) != 0) {
+            fprintf(stderr, "vbuild: source check failed.\n");
+            return 1;
+        }
+        return 0;
+    }
+
+    if (!strcmp(cfg->target, "exe")) { mode = "--compile"; suffix = EXE_SUFFIX; }
+    else if (!strcmp(cfg->target, "elf")) { mode = "--build-freestanding"; suffix = ".elf"; }
+    else if (!strcmp(cfg->target, "asm")) { mode = "--emit-asm"; suffix = ".s"; }
+    else if (!strcmp(cfg->target, "freestanding-asm")) { mode = "--emit-freestanding-asm"; suffix = ".s"; }
+    else { fprintf(stderr, "vbuild: unsupported target '%s'.\n", cfg->target); return 1; }
+    if (!absolute_path("build", output, sizeof output)) return 1;
+    {
+        size_t len = strlen(output);
+        const char *append = suffix;
+        size_t name_len = strlen(cfg->output);
+        if (!strcmp(cfg->target, "exe") && name_len >= 4 && !strcmp(cfg->output + name_len - 4, ".exe")) append = "";
+        if (!strcmp(cfg->target, "elf") && name_len >= 4 && !strcmp(cfg->output + name_len - 4, ".elf")) append = "";
+        if ((!strcmp(cfg->target, "asm") || !strcmp(cfg->target, "freestanding-asm") &&
+             name_len >= 2 && !strcmp(cfg->output + name_len - 2, ".s")) append = "";
+        int n = snprintf(output + len, sizeof output - len, "/%s%s", cfg->output, append);
+        if (n < 0 || (size_t)n >= sizeof output - len) {
+            fprintf(stderr, "vbuild: output path is too long.\n"); return 1;
+        }
+    }
+    import_graph_current = imports_are_current(source, output);
+    if (import_graph_current < 0) return 1;
+    build_inputs_current = build_inputs_are_current(output, cfg->target, toolchain);
+    if (build_inputs_current < 0) return 1;
+    fingerprint_ready = compute_fingerprint(source, compiler, toolchain, cfg->target,
+                                            fingerprint, sizeof fingerprint);
+    if (!fingerprint_ready) return 1;
+    if (!force_build && import_graph_current && build_inputs_current &&
+        artifact_is_usable(output, cfg->target) &&
+        manifest_matches(output, fingerprint)) {
+        printf("Up to date: %s\n", output);
+        return 0;
+    }
+
+    args[0] = compiler;
     if (!make_temporary_path(output, "artifact", temporary_output, sizeof temporary_output)) return 1;
     (void)remove(temporary_output);
     if (!strcmp(cfg->target, "exe") || !strcmp(cfg->target, "elf")) {
@@ -1143,8 +1189,8 @@ static int run_compiler(Config *cfg, int check) {
         (void)remove(temporary_output);
         return 1;
     }
-    if (!check && !write_manifest(output, fingerprint)) return 1;
-    if (!check) printf("Built %s (target=%s)\n", output, cfg->target);
+    if (!write_manifest(output, fingerprint)) return 1;
+    printf("Built %s (target=%s)\n", output, cfg->target);
     return 0;
 }
 static int clean_build(void) {

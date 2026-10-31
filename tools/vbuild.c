@@ -688,7 +688,16 @@ static int load_tasks(void) {
         action_name = name + 1;
         while (*action_name && isspace((unsigned char)*action_name)) action_name++;
         depends = strstr(action_name, " depends ");
-        if (depends) { *depends = '\0'; depends += 9; trim(action_name); trim(depends); }
+        if (depends) {
+            *depends = '\0';
+            depends += 9;
+            trim(action_name);
+            trim(depends);
+            if (!depends[0]) {
+                fprintf(stderr, "vbuild: build.vbuild:%d: 'depends' requires at least one task name.\n", lineno);
+                fclose(f); return 0;
+            }
+        }
         if (!parse_action(action_name, &task->action)) {
             fprintf(stderr, "vbuild: build.vbuild:%d: unknown action '%s'.\n", lineno, action_name);
             fclose(f); return 0;
@@ -699,9 +708,16 @@ static int load_tasks(void) {
                 char *comma = strchr(token, ',');
                 if (comma) *comma = '\0';
                 trim(token);
+                int previous;
                 if (!token[0] || task->dep_count >= DEP_CAP || strlen(token) >= TASK_NAME_CAP) {
                     fprintf(stderr, "vbuild: build.vbuild:%d: invalid/too many dependencies.\n", lineno);
                     fclose(f); return 0;
+                }
+                for (previous = 0; previous < task->dep_count; previous++) {
+                    if (!strcmp(task->deps[previous], token)) {
+                        fprintf(stderr, "vbuild: build.vbuild:%d: duplicate dependency '%s'.\n", lineno, token);
+                        fclose(f); return 0;
+                    }
                 }
                 strcpy(task->deps[task->dep_count++], token);
                 token = comma ? comma + 1 : NULL;

@@ -1149,7 +1149,7 @@ static int run_compiler(Config *cfg, int check) {
         fprintf(stderr, "vbuild: compiler command failed.\n"); return 1;
     }
     if (!check && !artifact_is_usable(temporary_output, cfg->target)) {
-        fprintf(stderr, "vbuild: compiler returned success but temporary output is not a usable artifact: %s\\n",
+        fprintf(stderr, "vbuild: compiler returned success but temporary output is not a usable artifact: %s\n",
                 temporary_output);
         (void)remove(temporary_output);
         return 1;

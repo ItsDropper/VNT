@@ -282,7 +282,10 @@ jobs:
             exit 1
           fi
           cmp build/hello "$RUNNER_TEMP/vbuild-good-artifact"
-          test ! -e build/hello.vbuild-artifact-$
+          if compgen -G 'build/hello.vbuild-artifact-*' > /dev/null; then
+            echo 'failed compiler left a temporary artifact behind'
+            exit 1
+          fi
           if VBUILD_TEST_INVALID_OUTPUT=1 "$GITHUB_WORKSPACE/vbuild" build --force > "$RUNNER_TEMP/vbuild-invalid-output.log" 2>&1; then
             echo 'non-executable compiler output was accepted as a successful artifact'
             exit 1

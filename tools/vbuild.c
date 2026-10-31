@@ -687,10 +687,10 @@ static int load_tasks(void) {
         if (*name != '=') { fprintf(stderr, "vbuild: build.vbuild:%d: expected '=' after task name.\n", lineno); fclose(f); return 0; }
         action_name = name + 1;
         while (*action_name && isspace((unsigned char)*action_name)) action_name++;
-        depends = strstr(action_name, " depends ");
-        if (depends) {
+        depends = strstr(action_name, " depends");
+        if (depends && (depends[8] == '\0' || isspace((unsigned char)depends[8]))) {
             *depends = '\0';
-            depends += 9;
+            depends += 8;
             trim(action_name);
             trim(depends);
             if (!depends[0]) {

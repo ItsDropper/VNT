@@ -938,6 +938,7 @@ jobs:
           grep -F 'cmpq $-1, %rcx' freestanding-division.s
           grep -F 'movabsq $-9223372036854775808, %rdx' freestanding-division.s
           grep -F 'idivq %rcx' freestanding-division.s
+          rm -f freestanding-invalid.s
           if ./vnt --emit-freestanding-asm tests/freestanding_hosted_rejected.vnt -o freestanding-invalid.s; then
             echo "Freestanding backend incorrectly accepted a hosted print operation."
             exit 1

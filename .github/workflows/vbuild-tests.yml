@@ -274,16 +274,16 @@ jobs:
           recovery_build="$("$GITHUB_WORKSPACE/vbuild" build)"
           printf '%s\n' "$recovery_build" | grep -Fq 'Up to date:'
           cmp build/hello "$RUNNER_TEMP/vbuild-good-artifact"
-          # Hold the lock with a child process and synchronize through its PID file.
+          # -F makes flock exec the holder directly, so its PID is the lock owner.
           rm -f "$RUNNER_TEMP/vbuild-lock-held"
-          flock -n .vbuild.lock -c 'printf "%s" "$" > "$RUNNER_TEMP/vbuild-lock-held"; exec sleep 60' > "$RUNNER_TEMP/vbuild-lock-holder.log" 2>&1 &
+          flock -n -F .vbuild.lock sh -c 'touch "$RUNNER_TEMP/vbuild-lock-held"; exec sleep 60' > "$RUNNER_TEMP/vbuild-lock-holder.log" 2>&1 &
           lock_holder_pid=$!
-          trap 'if [ -s "$RUNNER_TEMP/vbuild-lock-held" ]; then kill "$(cat "$RUNNER_TEMP/vbuild-lock-held")" 2>/dev/null || true; fi; wait "$lock_holder_pid" 2>/dev/null || true' EXIT
+          trap 'kill "$lock_holder_pid" 2>/dev/null || true; wait "$lock_holder_pid" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 100); do
-            [ -s "$RUNNER_TEMP/vbuild-lock-held" ] && break
+            [ -e "$RUNNER_TEMP/vbuild-lock-held" ] && break
             sleep 0.05
           done
-          if [ ! -s "$RUNNER_TEMP/vbuild-lock-held" ]; then
+          if [ ! -e "$RUNNER_TEMP/vbuild-lock-held" ]; then
             cat "$RUNNER_TEMP/vbuild-lock-holder.log"
             exit 1
           fi
@@ -316,7 +316,7 @@ jobs:
           fi
           if ! grep -Fq 'another VBuild process is using this project' "$RUNNER_TEMP/vbuild-lock-init.log"; then cat "$RUNNER_TEMP/vbuild-lock-init.log"; exit 1; fi
           # Killing the lock owner must release the OS-managed lock without cleanup code.
-          kill "$(cat "$RUNNER_TEMP/vbuild-lock-held")"
+          kill "$lock_holder_pid"
           wait "$lock_holder_pid" || true
           trap - EXIT
           released_lock_build="$("$GITHUB_WORKSPACE/vbuild" build --force)"

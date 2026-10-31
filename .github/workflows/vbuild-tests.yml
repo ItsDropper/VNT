@@ -85,6 +85,20 @@ jobs:
             & $binary tasks
             if ($LASTEXITCODE -eq 0) { throw 'duplicate target declarations were not rejected' }
             Set-Content -NoNewline -Path build.vbuild -Value $validBuild
+            Add-Content build.vbuild 'task empty_dependencies = none depends'
+            $emptyDependencyOutput = & $binary tasks 2>&1
+            $emptyDependencyExitCode = $LASTEXITCODE
+            if ($emptyDependencyExitCode -eq 0 -or ($emptyDependencyOutput -join [Environment]::NewLine) -notmatch "'depends' requires at least one task name") {
+              throw "empty dependency lists were not rejected: $($emptyDependencyOutput -join ' | ')"
+            }
+            Set-Content -NoNewline -Path build.vbuild -Value $validBuild
+            Add-Content build.vbuild 'task duplicate_dependencies = none depends build, build'
+            $duplicateDependencyOutput = & $binary tasks 2>&1
+            $duplicateDependencyExitCode = $LASTEXITCODE
+            if ($duplicateDependencyExitCode -eq 0 -or ($duplicateDependencyOutput -join [Environment]::NewLine) -notmatch "duplicate dependency 'build'") {
+              throw "duplicate task dependencies were not rejected: $($duplicateDependencyOutput -join ' | ')"
+            }
+            Set-Content -NoNewline -Path build.vbuild -Value $validBuild
             & $binary clean
             if ($LASTEXITCODE -ne 0) { throw 'clean task failed' }
             & $binary test

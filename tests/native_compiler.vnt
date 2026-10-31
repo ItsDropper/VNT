@@ -1,5 +1,23 @@
+fun add_pair(a, b) {
+    return a + b
+}
+
+fun sum_five(a, b, c, d, e) {
+    return a + b + c + d + e
+}
+
+fun nested_call_sum(a, b, c, d, e) {
+    return sum_five(
+        add_pair(a, b),
+        add_pair(b, c),
+        add_pair(c, d),
+        add_pair(d, e),
+        add_pair(e, a)
+    )
+}
+
 print("IR:")
 print(2 + 3 * 4)
 print(100 > 50)
 print(true && true)
-print("Native compiler OK")
+print(nested_call_sum(1, 2, 3, 4, 5))\nprint("Native compiler OK")

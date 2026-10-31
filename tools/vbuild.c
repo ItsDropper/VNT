@@ -1045,6 +1045,7 @@ static int run_compiler(Config *cfg, int check) {
     if (!check && !exists(temporary_output)) {
         fprintf(stderr, "vbuild: compiler returned success but temporary output is missing: %s\n",
                 temporary_output);
+        (void)remove(temporary_output);
         return 1;
     }
     if (!check && !atomic_replace_file(temporary_output, output)) {

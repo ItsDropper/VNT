@@ -568,7 +568,7 @@ static int validate_task_graph(int index, unsigned char states[TASK_CAP]) {
     int i;
     Task *task = &tasks[index];
     if (states[index] == 1) {
-        fprintf(stderr, "vbuild: dependency cycle detected at task '%s'.\\n", task->name);
+        fprintf(stderr, "vbuild: dependency cycle detected at task '%s'.\n", task->name);
         return 0;
     }
     if (states[index] == 2) return 1;
@@ -705,7 +705,7 @@ static int load_tasks(void) {
         for (i = 0; i < task_count; i++)
             for (j = 0; j < tasks[i].dep_count; j++)
                 if (find_task(tasks[i].deps[j]) < 0) {
-                    fprintf(stderr, "vbuild: task '%s' depends on undefined task '%s'.\\n", tasks[i].name, tasks[i].deps[j]);
+                    fprintf(stderr, "vbuild: task '%s' depends on undefined task '%s'.\n", tasks[i].name, tasks[i].deps[j]);
                     return 0;
                 }
         /* Reject cycles before any task can perform a partial build or cleanup. */

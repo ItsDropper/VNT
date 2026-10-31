@@ -421,7 +421,7 @@ try {
     & .\vnt.exe --compile tests\json_value_at.vnt -o $JsonExe
     if ($LASTEXITCODE -ne 0) { throw "JSON field accessor test did not compile." }
     $jsonOutput = & $JsonExe
-    if ($LASTEXITCODE -ne 0 -or ($jsonOutput -join "|") -ne "Sodium|lithium|100|escaped-key|false|false||4|2500|JSON_VALUE_AT_OK") {
+    if ($LASTEXITCODE -ne 0 -or ($jsonOutput -join "|") -ne "Sodium|lithium|100|escaped-key|C:\VNT/bin|false|false||4|2500|JSON_VALUE_AT_OK") {
         throw "Unexpected JSON field accessor output: $($jsonOutput -join ' | ')"
     }
     Write-Host "Standard JSON field accessor: PASS"

@@ -410,6 +410,7 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                    n->integer_literal.value > INT32_MAX ? TY_I64 : TY_INT;
         case AST_FLOAT_LITERAL: return TY_FLOAT;
         case AST_BOOLEAN_LITERAL: return TY_BOOL;
+        case AST_NULL_LITERAL: return TY_POINTER;
         case AST_STRING_LITERAL: return TY_STRING;
 
         case AST_ARRAY_LITERAL:

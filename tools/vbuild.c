@@ -1128,8 +1128,9 @@ static int run_compiler(Config *cfg, int check) {
     int import_graph_current;
     int build_inputs_current;
     if (!configure_module_path()) return 1;
-    if (!exists(cfg->source)) {
-        fprintf(stderr, "vbuild: source file not found: %s\n", cfg->source); return 1;
+    if (!is_regular_file(cfg->source)) {
+        fprintf(stderr, "vbuild: source is not a readable regular file: %s\n", cfg->source);
+        return 1;
     }
     if (!check && !ensure_build_dir()) return 1;
     if (!absolute_path(cfg->source, source, sizeof source) ||

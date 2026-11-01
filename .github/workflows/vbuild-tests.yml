@@ -301,7 +301,7 @@ jobs:
           rm libs/non_regular_import.vnt
           mkfifo libs/non_regular_dependency.vnt
           cp build.vbuild "$RUNNER_TEMP/vbuild-build-before-fifo.vbuild"
-          sed -i '/implementation("math_helpers.vnt")/a\\    implementation("non_regular_dependency.vnt")' build.vbuild
+          sed -i '/implementation("math_helpers.vnt")/a\    implementation("non_regular_dependency.vnt")' build.vbuild
           if "$GITHUB_WORKSPACE/vbuild" build > "$RUNNER_TEMP/vbuild-fifo-dependency.log" 2>&1; then
             echo 'VBuild accepted a FIFO as a declared dependency'
             exit 1

@@ -958,20 +958,31 @@ static void fingerprint_bytes(const unsigned char *data, size_t size) {
 }
 
 static int fingerprint_file(const char *path) {
-    FILE *file = fopen(path, "rb");
+    FILE *file;
     unsigned char buffer[8192];
     size_t count;
-    if (!file) return 0;
+    if (!is_regular_file(path)) {
+        fprintf(stderr, "vbuild: fingerprint input is not a readable regular file: %s\n", path);
+        return 0;
+    }
+    file = fopen(path, "rb");
+    if (!file) {
+        fprintf(stderr, "vbuild: cannot open fingerprint input '%s': %s\n", path, strerror(errno));
+        return 0;
+    }
     fingerprint_bytes((const unsigned char *)path, strlen(path));
     fingerprint_bytes((const unsigned char *)"\0", 1);
     while ((count = fread(buffer, 1, sizeof buffer, file)) > 0)
         fingerprint_bytes(buffer, count);
     if (ferror(file)) {
-        fprintf(stderr, "vbuild: cannot fingerprint input '%s'.\n", path);
+        fprintf(stderr, "vbuild: cannot read fingerprint input '%s'.\n", path);
         fclose(file);
         return 0;
     }
-    fclose(file);
+    if (fclose(file) != 0) {
+        fprintf(stderr, "vbuild: cannot close fingerprint input '%s': %s\n", path, strerror(errno));
+        return 0;
+    }
     fingerprint_bytes((const unsigned char *)"\xff", 1);
     return 1;
 }

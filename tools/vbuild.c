@@ -468,7 +468,7 @@ static int configure_module_path(void) {
                 fprintf(stderr, "vbuild: dependency path is too long: %s\n", module_dependencies[i]);
                 return 0;
             }
-            if (exists(candidate) && !is_directory(candidate)) {
+            if (is_regular_file(candidate)) {
                 if (!copy_value(resolved_dependencies[i], sizeof resolved_dependencies[i],
                                 candidate, "dependency")) return 0;
                 found = 1;
@@ -839,7 +839,7 @@ static int resolve_import_for_build(const char *importer, const char *module,
         if (!absolute_path(repositories[i], root, sizeof root)) return 0;
         n = snprintf(candidate, sizeof candidate, "%s/%s", root, module);
         if (n < 0 || (size_t)n >= sizeof candidate) continue;
-        if (exists(candidate) && !is_directory(candidate))
+        if (is_regular_file(candidate))
             return copy_value(resolved, resolved_cap, candidate, "resolved import");
     }
     fprintf(stderr, "vbuild: imported module '%s' (from '%s') was not found.\n", module, importer);

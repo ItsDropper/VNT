@@ -93,13 +93,13 @@ import "math_helpers.vnt" as math_helpers
 print(math_helpers.square(7))
 ```
 
-The compiler first resolves imports relative to the importing file, then
-searches each configured local repository. VBuild validates that every declared
-`implementation` module resolves to a regular file before compiling and adds
-repository paths to `VNT_MODULE_PATH` for the compiler process. Imported
-modules and declared dependencies that resolve to directories, FIFOs, device
-nodes, or other non-regular filesystem objects are rejected. Repository and
-dependency paths must be relative and cannot contain lexical `.` or `..`
+The configured root source, imported modules, and declared dependencies
+must resolve to regular files before compilation. The compiler first resolves
+imports relative to the importing file, then searches each configured local
+repository. VBuild adds repository paths to `VNT_MODULE_PATH` for the compiler
+process. Source files and dependencies that resolve to directories, FIFOs,
+device nodes, or other non-regular filesystem objects are rejected. Repository
+and dependency paths must be relative and cannot contain lexical `.` or `..`
 path components.
 
 Only `local("directory")` repositories and `implementation("relative-file.vnt")`

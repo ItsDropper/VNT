@@ -288,6 +288,27 @@ jobs:
           task clean = clean
           task test = test
           EOF
+          # FIFOs and device nodes are not valid VNT source modules.
+          mkfifo libs/non_regular_import.vnt
+          cp src/main.vnt "$RUNNER_TEMP/vbuild-main-before-fifo.vnt"
+          { printf 'import "non_regular_import.vnt" as invalid_module\n'; cat "$RUNNER_TEMP/vbuild-main-before-fifo.vnt"; } > src/main.vnt
+          if "$GITHUB_WORKSPACE/vbuild" build > "$RUNNER_TEMP/vbuild-fifo-import.log" 2>&1; then
+            echo 'VBuild accepted a FIFO as an imported source module'
+            exit 1
+          fi
+          grep -Fq "imported module 'non_regular_import.vnt'" "$RUNNER_TEMP/vbuild-fifo-import.log"
+          mv "$RUNNER_TEMP/vbuild-main-before-fifo.vnt" src/main.vnt
+          rm libs/non_regular_import.vnt
+          mkfifo libs/non_regular_dependency.vnt
+          cp build.vbuild "$RUNNER_TEMP/vbuild-build-before-fifo.vbuild"
+          sed -i '/implementation("math_helpers.vnt")/a\\    implementation("non_regular_dependency.vnt")' build.vbuild
+          if "$GITHUB_WORKSPACE/vbuild" build > "$RUNNER_TEMP/vbuild-fifo-dependency.log" 2>&1; then
+            echo 'VBuild accepted a FIFO as a declared dependency'
+            exit 1
+          fi
+          grep -Fq "dependency 'non_regular_dependency.vnt' was not found" "$RUNNER_TEMP/vbuild-fifo-dependency.log"
+          mv "$RUNNER_TEMP/vbuild-build-before-fifo.vbuild" build.vbuild
+          rm libs/non_regular_dependency.vnt
           "$GITHUB_WORKSPACE/vbuild" build
           test -x build/hello
           # PATH-resolved compiler changes must invalidate the cache.

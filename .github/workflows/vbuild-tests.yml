@@ -309,6 +309,17 @@ jobs:
           grep -Fq "dependency 'non_regular_dependency.vnt' was not found" "$RUNNER_TEMP/vbuild-fifo-dependency.log"
           mv "$RUNNER_TEMP/vbuild-build-before-fifo.vbuild" build.vbuild
           rm libs/non_regular_dependency.vnt
+          # The configured root source must also be a regular file.
+          mkfifo src/non_regular_source.vnt
+          cp vbuild.properties "$RUNNER_TEMP/vbuild-properties-before-fifo.vbuild"
+          sed -i 's|^source = src/main.vnt$|source = src/non_regular_source.vnt|' vbuild.properties
+          if "$GITHUB_WORKSPACE/vbuild" build > "$RUNNER_TEMP/vbuild-fifo-source.log" 2>&1; then
+            echo 'VBuild accepted a FIFO as the configured root source'
+            exit 1
+          fi
+          grep -Fq 'source is not a readable regular file' "$RUNNER_TEMP/vbuild-fifo-source.log"
+          mv "$RUNNER_TEMP/vbuild-properties-before-fifo.vbuild" vbuild.properties
+          rm src/non_regular_source.vnt
           "$GITHUB_WORKSPACE/vbuild" build
           test -x build/hello
           # PATH-resolved compiler changes must invalidate the cache.

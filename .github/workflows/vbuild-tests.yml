@@ -332,6 +332,16 @@ jobs:
           grep -Fq 'source is not a readable regular file' "$RUNNER_TEMP/vbuild-fifo-source.log"
           mv "$RUNNER_TEMP/vbuild-properties-before-fifo.vbuild" vbuild.properties
           rm src/non_regular_source.vnt
+          # Fingerprinting must reject special files instead of blocking on a FIFO.
+          runtime_source="$GITHUB_WORKSPACE/src/compiler/native_runtime.c"
+          mv "$runtime_source" "$runtime_source.vbuild-fingerprint-backup"
+          mkfifo "$runtime_source"
+          if "$GITHUB_WORKSPACE/vbuild" build > "$RUNNER_TEMP/vbuild-fifo-fingerprint.log" 2>&1; then
+            echo 'VBuild accepted a FIFO as a fingerprint input'
+            exit 1
+          fi
+          mv "$runtime_source.vbuild-fingerprint-backup" "$runtime_source"
+          grep -Fq 'fingerprint input is not a readable regular file' "$RUNNER_TEMP/vbuild-fifo-fingerprint.log"
           "$GITHUB_WORKSPACE/vbuild" build
           test -x build/hello
           # PATH-resolved compiler changes must invalidate the cache.

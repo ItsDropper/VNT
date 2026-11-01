@@ -322,6 +322,17 @@ jobs:
           grep -Fq "imported module 'symlink_import.vnt'" "$RUNNER_TEMP/vbuild-symlink-import.log"
           mv "$RUNNER_TEMP/vbuild-main-before-symlink.vnt" src/main.vnt
           rm libs/symlink_import.vnt
+          # Importer-relative paths must reject symlinked intermediate directories.
+          ln -s ../libs src/linked_modules
+          cp src/main.vnt "$RUNNER_TEMP/vbuild-main-before-directory-symlink.vnt"
+          { printf 'import "linked_modules/math_helpers.vnt" as invalid_module\\n'; cat "$RUNNER_TEMP/vbuild-main-before-directory-symlink.vnt"; } > src/main.vnt
+          if "$GITHUB_WORKSPACE/vbuild" build > "$RUNNER_TEMP/vbuild-directory-symlink-import.log" 2>&1; then
+            echo 'VBuild accepted an imported module through a symlinked directory'
+            exit 1
+          fi
+          grep -Fq "imported module 'linked_modules/math_helpers.vnt'" "$RUNNER_TEMP/vbuild-directory-symlink-import.log"
+          mv "$RUNNER_TEMP/vbuild-main-before-directory-symlink.vnt" src/main.vnt
+          rm src/linked_modules
           # A repository directory reached through a symlink must be rejected too.
           ln -s libs libs-link
           cp build.vbuild "$RUNNER_TEMP/vbuild-build-before-symlink.vbuild"

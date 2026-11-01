@@ -314,9 +314,54 @@ static int exists(const char *path) {
     return stat(path, &st) == 0;
 }
 
+static int path_has_symlink_component(const char *path) {
+    char prefix[PATH_CAP];
+    size_t length = strlen(path), i, start = 0;
+    if (!length || length >= sizeof prefix) return 1;
+    memcpy(prefix, path, length + 1);
+#ifdef _WIN32
+    if (length >= 3 && prefix[1] == ':' &&
+        (prefix[2] == '/' || prefix[2] == '\\')) start = 3;
+    else if (length >= 2 && prefix[0] == '\\' && prefix[1] == '\\') {
+        /* UNC paths are checked component-by-component after the server/share root. */
+        start = 2;
+    }
+#else
+    if (prefix[0] == '/') start = 1;
+#endif
+    for (i = start; i <= length; i++) {
+        if (i != length && prefix[i] != '/' 
+#ifdef _WIN32
+            && prefix[i] != '\\'
+#endif
+        ) continue;
+        if (i == start) continue;
+        {
+            char saved = prefix[i];
+            prefix[i] = '\0';
+#ifdef _WIN32
+            {
+                DWORD attributes = GetFileAttributesA(prefix);
+                if (attributes != INVALID_FILE_ATTRIBUTES &&
+                    (attributes & FILE_ATTRIBUTE_REPARSE_POINT)) return 1;
+            }
+#else
+            {
+                struct stat component_stat;
+                if (lstat(prefix, &component_stat) == 0 && S_ISLNK(component_stat.st_mode))
+                    return 1;
+            }
+#endif
+            prefix[i] = saved;
+        }
+        start = i + 1;
+    }
+    return 0;
+}
+
 static int is_regular_file(const char *path) {
     struct stat st;
-    if (stat(path, &st) != 0) return 0;
+    if (path_has_symlink_component(path) || stat(path, &st) != 0) return 0;
 #ifdef _WIN32
     return (st.st_mode & _S_IFREG) != 0;
 #else

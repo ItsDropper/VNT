@@ -322,6 +322,17 @@ jobs:
           grep -Fq "imported module 'symlink_import.vnt'" "$RUNNER_TEMP/vbuild-symlink-import.log"
           mv "$RUNNER_TEMP/vbuild-main-before-symlink.vnt" src/main.vnt
           rm libs/symlink_import.vnt
+          # A repository directory reached through a symlink must be rejected too.
+          ln -s libs libs-link
+          cp build.vbuild "$RUNNER_TEMP/vbuild-build-before-symlink.vbuild"
+          sed -i 's|local("libs")|local("libs-link")|' build.vbuild
+          if "$GITHUB_WORKSPACE/vbuild" build > "$RUNNER_TEMP/vbuild-symlink-repository.log" 2>&1; then
+            echo 'VBuild accepted a symlinked repository directory'
+            exit 1
+          fi
+          grep -Fq "dependency 'math_helpers.vnt' was not found" "$RUNNER_TEMP/vbuild-symlink-repository.log"
+          mv "$RUNNER_TEMP/vbuild-build-before-symlink.vbuild" build.vbuild
+          rm libs-link
           mkfifo libs/non_regular_dependency.vnt
           cp build.vbuild "$RUNNER_TEMP/vbuild-build-before-fifo.vbuild"
           sed -i '/implementation("math_helpers.vnt")/a\    implementation("non_regular_dependency.vnt")' build.vbuild

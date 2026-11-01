@@ -832,7 +832,7 @@ static int resolve_import_for_build(const char *importer, const char *module,
     n = separator ? snprintf(candidate, sizeof candidate, "%.*s/%s",
                               (int)dir_len, importer, module)
                   : snprintf(candidate, sizeof candidate, "%s", module);
-    if (n >= 0 && (size_t)n < sizeof candidate && exists(candidate) && !is_directory(candidate))
+    if (n >= 0 && (size_t)n < sizeof candidate && is_regular_file(candidate))
         return copy_value(resolved, resolved_cap, candidate, "resolved import");
     for (i = 0; i < repository_count; i++) {
         char root[PATH_CAP];

@@ -98,9 +98,10 @@ must resolve to regular files before compilation. The compiler first resolves
 imports relative to the importing file, then searches each configured local
 repository. VBuild adds repository paths to `VNT_MODULE_PATH` for the compiler
 process. Source files and dependencies that resolve to directories, FIFOs,
-device nodes, or other non-regular filesystem objects are rejected. Repository
-and dependency paths must be relative and cannot contain lexical `.` or `..`
-path components.
+device nodes, or other non-regular filesystem objects are rejected. VBuild also
+rejects input paths that traverse symbolic links (or Windows reparse points),
+including symlinked repository directories. Repository and dependency paths
+must be relative and cannot contain lexical `.` or `..` path components.
 
 Only `local("directory")` repositories and `implementation("relative-file.vnt")`
 dependencies are currently supported. Dependency coordinates, versions,

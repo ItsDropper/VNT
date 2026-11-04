@@ -207,32 +207,32 @@ static void emit_user_call(HirGen *g,const VntIrNode*n,size_t i) {
     (void)i;
 }
 static void emit_ffi_call_area(HirGen *g, int count, int area) {
-    fprintf(g->out, "    subq $%d,%%rsp\\n", area);
-    fprintf(g->out, "    movq %d(%%rsp),%%rcx\\n", area + count * 8);
-    fprintf(g->out, "    movq %d(%%rsp),%%rdx\\n", area + (count - 1) * 8);
+    fprintf(g->out, "    subq $%d,%%rsp\n", area);
+    fprintf(g->out, "    movq %d(%%rsp),%%rcx\n", area + count * 8);
+    fprintf(g->out, "    movq %d(%%rsp),%%rdx\n", area + (count - 1) * 8);
     for (int reg = 2; reg < 4; ++reg) {
         int arg_index = reg;
         const char *target = reg == 2 ? "%r8" : "%r9";
         if (arg_index >= count)
-            fprintf(g->out, "    xorq %s,%s\\n", target, target);
+            fprintf(g->out, "    xorq %s,%s\n", target, target);
         else
-            fprintf(g->out, "    movq %d(%%rsp),%s\\n",
+            fprintf(g->out, "    movq %d(%%rsp),%s\n",
                     area + 8 + (count - 1 - arg_index) * 8, target);
     }
     for (int arg = 4; arg < 8; ++arg) {
         int destination = 32 + (arg - 4) * 8;
         if (arg >= count)
-            fprintf(g->out, "    movq $0,%d(%%rsp)\\n", destination);
+            fprintf(g->out, "    movq $0,%d(%%rsp)\n", destination);
         else
             fprintf(g->out,
-                    "    movq %d(%%rsp),%%r10\\n    movq %%r10,%d(%%rsp)\\n",
+                    "    movq %d(%%rsp),%%r10\n    movq %%r10,%d(%%rsp)\n",
                     area + 8 + (count - 1 - arg) * 8, destination);
     }
     fprintf(g->out,
-            "    movq %d(%%rsp),%%r10\\n    movq %%r10,64(%%rsp)\\n",
+            "    movq %d(%%rsp),%%r10\n    movq %%r10,64(%%rsp)\n",
             area);
-    fputs("    call vnt_ffi_int\\n", g->out);
-    fprintf(g->out, "    addq $%d,%%rsp\\n", area);
+    fputs("    call vnt_ffi_int\n", g->out);
+    fprintf(g->out, "    addq $%d,%%rsp\n", area);
 }
 
 static const char *builtin(const char *s,int *arity) {
@@ -270,20 +270,20 @@ static void emit_call(HirGen *g,size_t i,const VntIrNode*n) {
     for(size_t c=n->first_child;c!=VNT_IR_NO_NODE;c=g->ir->nodes[c].next_sibling){if(count==32){fail(g,"too many call arguments.");return;}args[count++]=c;}
     if(!strcmp(name,"ffi_int")) {
         if(count<2||count>8){fail(g,"ffi_int() expects a library, symbol, and 0-6 integer arguments.");return;}
-        for(int a=0;a<count;a++){emit_expr(g,args[a]);fputs("    pushq %rax\\n",g->out);}
-        fprintf(g->out,"    pushq $%d\\n",count-2);
+        for(int a=0;a<count;a++){emit_expr(g,args[a]);fputs("    pushq %rax\n",g->out);}
+        fprintf(g->out,"    pushq $%d\n",count-2);
 
         /* A nested FFI call can run while an earlier expression operand is
            spilled. Choose the ABI home-space size from the live RSP alignment. */
         int padded=label_new(g),done=label_new(g);
-        fputs("    testq $8,%rsp\\n",g->out);
-        fprintf(g->out,"    jz .L%d\\n",padded);
+        fputs("    testq $8,%rsp\n",g->out);
+        fprintf(g->out,"    jz .L%d\n",padded);
         emit_ffi_call_area(g,count,72);
-        fprintf(g->out,"    jmp .L%d\\n",done);
+        fprintf(g->out,"    jmp .L%d\n",done);
         label_emit(g,padded);
         emit_ffi_call_area(g,count,80);
         label_emit(g,done);
-        fprintf(g->out,"    addq $%d,%%rsp\\n",(count+1)*8);
+        fprintf(g->out,"    addq $%d,%%rsp\n",(count+1)*8);
         return;
     }
     int arity=-1;const char *target=builtin(name,&arity);

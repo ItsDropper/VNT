@@ -279,10 +279,21 @@ static int load_properties(Config *cfg) {
     return 1;
 }
 
+static int path_is_drive_relative(const char *path) {
+#ifdef _WIN32
+    return isalpha((unsigned char)path[0]) && path[1] == ':' &&
+           path[2] != '/' && path[2] != '\\';
+#else
+    (void)path;
+    return 0;
+#endif
+}
+
 static int path_is_absolute(const char *path) {
 #ifdef _WIN32
     return path[0] == '/' || path[0] == '\\' ||
-           (isalpha((unsigned char)path[0]) && path[1] == ':');
+           (isalpha((unsigned char)path[0]) && path[1] == ':' &&
+            (path[2] == '/' || path[2] == '\\'));
 #else
     return path[0] == '/';
 #endif
@@ -290,6 +301,12 @@ static int path_is_absolute(const char *path) {
 
 static int absolute_path(const char *path, char *out, size_t cap) {
     int n;
+    if (path_is_drive_relative(path)) {
+        fprintf(stderr,
+                "vbuild: drive-relative paths are ambiguous; use a fully qualified drive path: %s\\n",
+                path);
+        return 0;
+    }
     if (path_is_absolute(path)) n = snprintf(out, cap, "%s", path);
     else n = snprintf(out, cap, "%s/%s", project_root, path);
     if (n < 0 || (size_t)n >= cap) {

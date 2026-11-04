@@ -705,6 +705,16 @@ static void hir_substitute_expression(VntIrProgram *ir, size_t index,
             hir_replace_variable_with_constant(node, env->items[known].constant, changed);
         return;
     }
+    /* Calls execute before later operands in the emitted expression order.
+       They may mutate globals or values reachable through references, so
+       discard facts before visiting subsequent sibling expressions. */
+    if (node->opcode == VNT_IR_CALL) {
+        for (size_t child = node->first_child; child != VNT_IR_NO_NODE;
+             child = ir->nodes[child].next_sibling)
+            hir_substitute_expression(ir, child, env, changed);
+        hir_constants_clear(env);
+        return;
+    }
     /* Assignment expressions have ordering and aliasing effects; leave their
        complete subtree untouched rather than substituting across a write. */
     if (node->opcode == VNT_IR_ASSIGN) {

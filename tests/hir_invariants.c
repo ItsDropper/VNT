@@ -522,6 +522,65 @@ static void check_cfg_uninitialized_declaration(void) {
 }
 
 
+static void check_call_invalidates_constants_before_later_operands(void) {
+    AstNode *statements = NULL;
+    AstNode *function_body = NULL;
+    ast_append(&statements, ast_create_variable_declaration("call_order_value",
+                                                            ast_create_integer(1)));
+
+    AstNode *mutation =
+        ast_create_variable_declaration("call_order_value", ast_create_integer(2));
+    CHECK(mutation != NULL, "call-order mutation AST allocated");
+    if (!mutation) return;
+    mutation->variable_declaration.is_reassignment = 1;
+    ast_append(&function_body, mutation);
+    ast_append(&function_body, ast_create_return(ast_create_integer(0)));
+    AstNode *function =
+        ast_create_function_declaration("mutate_call_order_value", NULL, 0,
+                                        function_body);
+    CHECK(function != NULL, "call-order mutation function allocated");
+    if (!function) {
+        ast_free(function_body);
+        ast_free(statements);
+        return;
+    }
+    ast_append(&statements, function);
+
+    AstNode *call = ast_create_function_call("mutate_call_order_value", NULL, 0);
+    AstNode *expression = ast_create_binary(call,
+        ast_create_variable("call_order_value"), BINARY_ADD);
+    ast_append(&statements, ast_create_print(expression));
+    AstNode *program = ast_create_program(statements);
+    VntIrProgram ir = {0};
+    CHECK(program != NULL, "call-order optimizer AST allocated");
+    if (!program) return;
+    CHECK(vnt_ir_lower(&ir, program), "call-order optimizer HIR lowering succeeds");
+    if (ir.nodes) {
+        CHECK(vnt_ir_optimize(&ir), "call-order optimizer pass succeeds");
+        size_t global_decl = find_role(&ir, ir.root, VNT_IR_EDGE_STATEMENT);
+        size_t function_node = global_decl == VNT_IR_NO_NODE
+            ? VNT_IR_NO_NODE : ir.nodes[global_decl].next_sibling;
+        size_t print = function_node == VNT_IR_NO_NODE
+            ? VNT_IR_NO_NODE : ir.nodes[function_node].next_sibling;
+        size_t value = print == VNT_IR_NO_NODE
+            ? VNT_IR_NO_NODE : find_role(&ir, print, VNT_IR_EDGE_VALUE);
+        size_t left = value == VNT_IR_NO_NODE
+            ? VNT_IR_NO_NODE : find_role(&ir, value, VNT_IR_EDGE_LEFT);
+        size_t right = value == VNT_IR_NO_NODE
+            ? VNT_IR_NO_NODE : find_role(&ir, value, VNT_IR_EDGE_RIGHT);
+        CHECK(value != VNT_IR_NO_NODE && ir.nodes[value].opcode == VNT_IR_BINARY,
+              "call-order expression remains a binary operation");
+        CHECK(left != VNT_IR_NO_NODE && ir.nodes[left].opcode == VNT_IR_CALL,
+              "side-effecting function call remains the first operand");
+        CHECK(right != VNT_IR_NO_NODE && ir.nodes[right].opcode == VNT_IR_VARIABLE,
+              "variable read after a call is not replaced with a stale constant");
+        CHECK(vnt_ir_validate(&ir), "call-order optimized HIR validates");
+    }
+    vnt_ir_free(&ir);
+    ast_free(program);
+}
+
+
 int main(void) {
     check_fold_case(binary(2, 3, BINARY_ADD), VNT_IR_INTEGER, 5,
                     "safe integer addition folds");
@@ -545,6 +604,7 @@ int main(void) {
                     VNT_IR_BINARY, 0, "non-finite floating result is not folded");
     check_rejects_missing_text_payload();
     check_constant_propagation();
+    check_call_invalidates_constants_before_later_operands();
     check_rejects_disconnected_cycle();
     check_cfg_control_flow();
     check_cfg_constant_branch_pruning();

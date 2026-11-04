@@ -192,7 +192,7 @@ print(math.square(6))
 print(math.clamp(42, 0, 10))
 ```
 
-Import paths are resolved relative to the importing source file. The loader rejects malformed and circular imports. Active import chains are limited to 128 source files; deeper chains fail with a diagnostic instead of exhausting the compiler stack. This is an early source-expansion module system, not yet isolated per-module compilation: private symbol isolation and incremental module compilation are not implemented.
+Import paths are resolved relative to the importing source file. The loader rejects malformed and circular imports. Active import chains are limited to 64 source files; deeper chains fail with a diagnostic instead of exhausting the compiler stack. This is an early source-expansion module system, not yet isolated per-module compilation: private symbol isolation and incremental module compilation are not implemented.
 
 The source-level standard library lives in `lib/std/`. Available modules include:
 

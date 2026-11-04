@@ -20,7 +20,7 @@ typedef struct {
     int active_capacity;
 } Loader;
 
-#define VNT_MODULE_MAX_IMPORT_DEPTH 128
+#define VNT_MODULE_MAX_IMPORT_DEPTH 64
 
 static char *normalize_path(const char *path) {
 #ifdef _WIN32

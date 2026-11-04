@@ -125,7 +125,7 @@ jobs:
           set -eu
           project="$(mktemp -d)"
           trap 'rm -rf "$project"' EXIT
-          depth=140
+          depth=80
           for ((index=0; index<depth; index++)); do
             name="$(printf 'module-%03d.vnt' "$index")"
             file="$project/$name"
@@ -141,10 +141,10 @@ jobs:
           output="$project/output.exe"
           log="$project/import.log"
           if ./vnt --compile "$project/main.vnt" -o "$output" >"$log" 2>&1; then
-            echo "Compiler accepted a module chain deeper than 128 files"
+            echo "Compiler accepted a module chain deeper than 64 files"
             exit 1
           fi
-          if ! grep -Fq "import nesting exceeds 128 files" "$log"; then
+          if ! grep -Fq "import nesting exceeds 64 files" "$log"; then
             echo "Missing expected module-depth diagnostic"
             cat "$log"
             exit 1

@@ -8,7 +8,7 @@ int parser_enter_nesting(Parser *parser, const char *context) {
     if (!parser || parser->nesting_depth >= VNT_PARSER_MAX_NESTING) {
         if (parser) {
             fprintf(stderr,
-                    "Parser error at %d:%d: %s nesting exceeds %u levels.\\n",
+                    "Parser error at %d:%d: %s nesting exceeds %u levels.\n",
                     parser->current.line, parser->current.column,
                     context ? context : "syntax",
                     VNT_PARSER_MAX_NESTING);

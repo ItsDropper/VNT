@@ -131,14 +131,14 @@ try {
     }
 
     $ParserNestingCases = @(
-        @{ Path = "tests\\parser_deep_parentheses.vnt"; Diagnostic = "expression nesting exceeds 256 levels" },
-        @{ Path = "tests\\parser_deep_unary.vnt"; Diagnostic = "unary operator nesting exceeds 256 levels" },
-        @{ Path = "tests\\parser_deep_statements.vnt"; Diagnostic = "statement nesting exceeds 256 levels" }
+        @{ Path = "tests/parser_deep_parentheses.vnt"; Diagnostic = "expression nesting exceeds 256 levels" },
+        @{ Path = "tests/parser_deep_unary.vnt"; Diagnostic = "unary operator nesting exceeds 256 levels" },
+        @{ Path = "tests/parser_deep_statements.vnt"; Diagnostic = "statement nesting exceeds 256 levels" }
     )
     foreach ($case in $ParserNestingCases) {
         $invalidOutput = Join-Path $OutDir ("invalid-" + [System.IO.Path]::GetFileNameWithoutExtension($case.Path) + ".exe")
         if (Test-Path $invalidOutput) { Remove-Item -Force $invalidOutput }
-        $parserOutput = & .\\vnt.exe --compile $case.Path -o $invalidOutput 2>&1
+        $parserOutput = & .\vnt.exe --compile $case.Path -o $invalidOutput 2>&1
         $parserExitCode = $LASTEXITCODE
         $parserDiagnostic = $parserOutput | Out-String
         if ($parserExitCode -eq 0) {

@@ -287,7 +287,7 @@ static int load_recursive(Loader *loader, const char *path, const char *namespac
 
     if (loader->active_count >= VNT_MODULE_MAX_IMPORT_DEPTH) {
         fprintf(stderr,
-                "Module error: import nesting exceeds %d files at '%s'.\\n",
+                "Module error: import nesting exceeds %d files at '%s'.\n",
                 VNT_MODULE_MAX_IMPORT_DEPTH, path);
         return 0;
     }

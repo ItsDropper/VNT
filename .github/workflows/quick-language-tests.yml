@@ -132,12 +132,12 @@ jobs:
             next=$((index + 1))
             if [ "$next" -lt "$depth" ]; then
               next_name="$(printf 'module-%03d.vnt' "$next")"
-              printf 'import "%s" as nested\\n' "$next_name" > "$file"
+              printf 'import "%s" as nested\n' "$next_name" > "$file"
             else
-              printf 'print("MODULE_DEPTH_OK")\\n' > "$file"
+              printf 'print("MODULE_DEPTH_OK")\n' > "$file"
             fi
           done
-          printf 'import "module-000.vnt" as deep\\n' > "$project/main.vnt"
+          printf 'import "module-000.vnt" as deep\n' > "$project/main.vnt"
           output="$project/output.exe"
           log="$project/import.log"
           if ./vnt --compile "$project/main.vnt" -o "$output" >"$log" 2>&1; then

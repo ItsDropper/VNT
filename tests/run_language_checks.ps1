@@ -130,6 +130,29 @@ try {
         if (Test-Path $invalidOutput) { throw "Failed compilation left an output artifact for $case." }
     }
 
+    $ParserNestingCases = @(
+        @{ Path = "tests\\parser_deep_parentheses.vnt"; Diagnostic = "expression nesting exceeds 256 levels" },
+        @{ Path = "tests\\parser_deep_unary.vnt"; Diagnostic = "unary operator nesting exceeds 256 levels" },
+        @{ Path = "tests\\parser_deep_statements.vnt"; Diagnostic = "statement nesting exceeds 256 levels" }
+    )
+    foreach ($case in $ParserNestingCases) {
+        $invalidOutput = Join-Path $OutDir ("invalid-" + [System.IO.Path]::GetFileNameWithoutExtension($case.Path) + ".exe")
+        if (Test-Path $invalidOutput) { Remove-Item -Force $invalidOutput }
+        $parserOutput = & .\\vnt.exe --compile $case.Path -o $invalidOutput 2>&1
+        $parserExitCode = $LASTEXITCODE
+        $parserDiagnostic = $parserOutput | Out-String
+        if ($parserExitCode -eq 0) {
+            throw "Parser accepted excessive nesting in $($case.Path)."
+        }
+        if ($parserDiagnostic -notmatch [regex]::Escape($case.Diagnostic)) {
+            throw "Parser did not report the expected nesting limit for $($case.Path): $parserDiagnostic"
+        }
+        if (Test-Path $invalidOutput) {
+            throw "Parser nesting rejection left an output artifact for $($case.Path)."
+        }
+    }
+    Write-Host "Parser nesting limits and deterministic diagnostics: PASS"
+
     $ModuleExe = Join-Path $OutDir "modules.exe"
     & .\vnt.exe --compile tests\modules\main.vnt -o $ModuleExe
     if ($LASTEXITCODE -ne 0) { throw "Existing multi-file module project did not compile." }

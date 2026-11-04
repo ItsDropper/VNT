@@ -138,22 +138,29 @@ static AstNode *parse_unsafe_block(Parser *parser) {
 }
 
 AstNode *parse_statement(Parser *parser) {
-    if (parser_is_token(parser->current, "unsafe")) return parse_unsafe_block(parser);
-    if (parser_is_token(parser->current, "asm")) return parse_asm_statement(parser);
-    if (parser_is_token(parser->current, "let")) return parse_let_declaration(parser);
-    if (parser_is_token(parser->current, "print")) return parse_print(parser);
-    if (parser_is_token(parser->current, "return")) return parse_return(parser);
-    if (parser_is_token(parser->current, "break")) return parse_break(parser);
-    if (parser_is_token(parser->current, "continue")) return parse_continue(parser);
-    if (parser_is_token(parser->current, "if")) return parse_if(parser);
-    if (parser_is_token(parser->current, "while")) return parse_while(parser);
-    if (parser_is_token(parser->current, "for")) return parse_for(parser);
-    if (parser_is_token(parser->current, "fun")) return parse_function(parser);
-    if (parser_is_token(parser->current, "struct")) return parse_struct(parser);
-    if (parser_check(parser, TOKEN_STAR)) return parse_dereference_statement(parser);
-    if (parser_check(parser, TOKEN_IDENTIFIER)) return parse_identifier_statement(parser);
+    if (!parser_enter_nesting(parser, "statement"))
+        return NULL;
 
-    fprintf(stderr, "Parser error at %d:%d: expected a statement.\n",
-            parser->current.line, parser->current.column);
-    return NULL;
+    AstNode *statement = NULL;
+    if (parser_is_token(parser->current, "unsafe")) statement = parse_unsafe_block(parser);
+    else if (parser_is_token(parser->current, "asm")) statement = parse_asm_statement(parser);
+    else if (parser_is_token(parser->current, "let")) statement = parse_let_declaration(parser);
+    else if (parser_is_token(parser->current, "print")) statement = parse_print(parser);
+    else if (parser_is_token(parser->current, "return")) statement = parse_return(parser);
+    else if (parser_is_token(parser->current, "break")) statement = parse_break(parser);
+    else if (parser_is_token(parser->current, "continue")) statement = parse_continue(parser);
+    else if (parser_is_token(parser->current, "if")) statement = parse_if(parser);
+    else if (parser_is_token(parser->current, "while")) statement = parse_while(parser);
+    else if (parser_is_token(parser->current, "for")) statement = parse_for(parser);
+    else if (parser_is_token(parser->current, "fun")) statement = parse_function(parser);
+    else if (parser_is_token(parser->current, "struct")) statement = parse_struct(parser);
+    else if (parser_check(parser, TOKEN_STAR)) statement = parse_dereference_statement(parser);
+    else if (parser_check(parser, TOKEN_IDENTIFIER)) statement = parse_identifier_statement(parser);
+    else {
+        fprintf(stderr, "Parser error at %d:%d: expected a statement.\\n",
+                parser->current.line, parser->current.column);
+    }
+
+    parser_leave_nesting(parser);
+    return statement;
 }

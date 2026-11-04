@@ -4,14 +4,20 @@
 #include <vnt/lexer.h>
 #include <vnt/ast.h>
 
+#define VNT_PARSER_MAX_NESTING 256u
+
 typedef struct {
     Lexer *lexer;
     Token current;
     Token previous;
+    unsigned int nesting_depth;
 } Parser;
 
 void parser_init(Parser *parser, Lexer *lexer);
 AstNode *parser_parse(Parser *parser);
+
+int parser_enter_nesting(Parser *parser, const char *context);
+void parser_leave_nesting(Parser *parser);
 
 void parser_advance(Parser *parser);
 int parser_check(Parser *parser, TokenType type);

@@ -47,7 +47,7 @@ AstNode *parse_if(Parser *parser) {
                 "if"
             )) {
             else_branch =
-                parse_if(parser);
+                parse_statement(parser);
 
             if (else_branch == NULL) {
                 ast_free(condition);

@@ -354,5 +354,10 @@ static AstNode *parse_or(
 AstNode *parse_expression(
     Parser *parser
 ) {
-    return parse_or(parser);
+    if (!parser_enter_nesting(parser, "expression"))
+        return NULL;
+
+    AstNode *expression = parse_or(parser);
+    parser_leave_nesting(parser);
+    return expression;
 }

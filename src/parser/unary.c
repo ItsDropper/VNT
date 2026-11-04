@@ -15,6 +15,9 @@ AstNode *parse_unary(Parser *parser) {
         token_is(parser, TOKEN_AMPERSAND) ||
         token_is(parser, TOKEN_STAR)
     ) {
+        if (!parser_enter_nesting(parser, "unary operator"))
+            return NULL;
+
         TokenType operator = parser->current.type;
 
         parser_advance(parser);
@@ -38,6 +41,7 @@ AstNode *parse_unary(Parser *parser) {
                 if (errno == 0 && end != buffer && *end == '\0' &&
                     magnitude == (unsigned long long)INT64_MAX + 1ULL) {
                     parser_advance(parser);
+                    parser_leave_nesting(parser);
                     return ast_create_integer(INT64_MIN);
                 }
             }
@@ -45,6 +49,7 @@ AstNode *parse_unary(Parser *parser) {
 
         AstNode *operand =
             parse_unary(parser);
+        parser_leave_nesting(parser);
 
         if (operand == NULL) {
             return NULL;

@@ -64,7 +64,16 @@ jobs:
             }
             $validProperties = Get-Content -Raw vbuild.properties
             if ($IsWindows) {
-              $driveRelativeProperties = $validProperties -replace '(?m)^toolchain = .+            Add-Content vbuild.properties 'source = src/duplicate.vnt'
+              $driveRelativeProperties = $validProperties -replace '(?m)^toolchain = .+$','toolchain = C:relative-toolchain'
+              Set-Content -NoNewline -Path vbuild.properties -Value $driveRelativeProperties
+              $driveRelativeOutput = & $binary check 2>&1
+              $driveRelativeExitCode = $LASTEXITCODE
+              if ($driveRelativeExitCode -eq 0 -or ($driveRelativeOutput -join "`n") -notmatch 'drive-relative paths are ambiguous') {
+                throw "ambiguous Windows drive-relative toolchain paths were not rejected: $($driveRelativeOutput -join ' | ')"
+              }
+              Set-Content -NoNewline -Path vbuild.properties -Value $validProperties
+            }
+                        Add-Content vbuild.properties 'source = src/duplicate.vnt'
             $duplicatePropertyOutput = & $binary build 2>&1
             $duplicatePropertyExitCode = $LASTEXITCODE
             if ($duplicatePropertyExitCode -eq 0 -or ($duplicatePropertyOutput -join "`n") -notmatch "duplicate property 'source'") {

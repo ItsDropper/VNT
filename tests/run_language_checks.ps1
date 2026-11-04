@@ -20,7 +20,7 @@ try {
         throw "Unexpected typed-function output: $($output -join ' | ')"
     }
     $CallOrderExe = Join-Path $OutDir "optimizer_call_order.exe"
-    & .\\vnt.exe --compile tests\\optimizer_call_order.vnt -o $CallOrderExe
+    & .\vnt.exe --compile tests\optimizer_call_order.vnt -o $CallOrderExe
     if ($LASTEXITCODE -ne 0) { throw "Call-order optimizer regression did not compile." }
     $callOrderOutput = & $CallOrderExe
     if ($LASTEXITCODE -ne 0 -or ($callOrderOutput -join "|") -ne "2|CALL_ORDER_OPTIMIZER_OK") {

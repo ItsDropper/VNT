@@ -321,7 +321,7 @@ The checks build VNT and exercise language features, module loading, and runtime
 ## Current limitations
 
 - VNT is experimental; syntax and semantics can change.
-- Recursive parser nesting and left-associative expression chains are limited to 256 levels/operators. More deeply nested expressions or statements are rejected with a diagnostic rather than allowed to exhaust the compiler stack.
+- Recursive parser nesting is limited to 256 active constructs, and each top-level expression is limited to 256 binary operators (including operators in nested subexpressions). Over-limit expressions and statements are rejected with a diagnostic rather than allowed to exhaust the compiler stack.
 - The hosted native backend targets x86-64 and depends on GCC for assembly/linking. An experimental ELF-oriented freestanding backend exists for a restricted `kernel_main` subset; hosted features are rejected when unsupported. A separate bootable x86-64 learning kernel is maintained under `os/`.
 - Frontend parsing and type checking still use the AST before lowering; the HIR optimizer and native backend are designed to work without it.
 - Imports expand source before parsing and do not provide private symbol isolation or incremental compilation.

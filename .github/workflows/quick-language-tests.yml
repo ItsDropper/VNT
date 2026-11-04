@@ -155,6 +155,29 @@ jobs:
           fi
           echo "Module import depth limit: PASS"
 
+      - name: Verify nested FFI call stack alignment
+        shell: bash
+        run: |
+          set -eu
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            source=tests/ffi_nested_call_windows.vnt
+          else
+            source=tests/ffi_nested_call_linux.vnt
+          fi
+          ./vnt --compile "$source" -o ffi-nested-call.exe
+          output="$(./ffi-nested-call.exe)"
+          case "$output" in
+            ''|*[!0-9]*)
+              echo "Nested FFI call returned a non-integer result: $output"
+              exit 1
+              ;;
+          esac
+          if [ "$output" -le 1 ]; then
+            echo "Nested FFI call returned an invalid process identifier: $output"
+            exit 1
+          fi
+          echo "Nested FFI call stack alignment: PASS"
+
       - name: Build and run HIR/CFG invariant tests
         shell: bash
         run: |

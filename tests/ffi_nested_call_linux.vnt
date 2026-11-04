@@ -1,0 +1,1 @@
+print(1 + ffi_int("libc.so.6", "getpid"))

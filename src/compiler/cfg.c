@@ -466,7 +466,8 @@ int vnt_cfg_check_definite_assignment(const VntIrProgram *ir, const VntCfg *cfg,
              c = ir->nodes[c].next_sibling) {
             const VntIrNode *n = &ir->nodes[c];
             if (n->role == VNT_IR_EDGE_STATEMENT &&
-                n->opcode == VNT_IR_VARIABLE_DECL)
+                n->opcode == VNT_IR_VARIABLE_DECL &&
+                child_role(ir, c, VNT_IR_EDGE_VALUE) != VNT_IR_NO_NODE)
                 mark_variable(globals, &variables, n->value.text);
         }
     }

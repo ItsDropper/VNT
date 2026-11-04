@@ -519,6 +519,48 @@ static void check_cfg_uninitialized_declaration(void) {
     }
     vnt_ir_free(&ir);
     ast_free(program);
+
+    /* Function entry seeds may include globals only when their declarations
+       have initializers. An uninitialized global must not become initialized
+       merely because the read occurs inside a function. */
+    statements = NULL;
+    declaration = ast_create_variable_declaration("uninitialized_global", NULL);
+    AstNode *global_reader_body =
+        ast_create_print(ast_create_variable("uninitialized_global"));
+    AstNode *global_reader =
+        ast_create_function_declaration("read_uninitialized_global", NULL, 0,
+                                        global_reader_body);
+    CHECK(declaration != NULL && global_reader != NULL,
+          "uninitialized-global function AST allocated");
+    if (!declaration || !global_reader) {
+        ast_free(declaration);
+        ast_free(global_reader);
+        return;
+    }
+    ast_append(&statements, declaration);
+    ast_append(&statements, global_reader);
+    program = ast_create_program(statements);
+    memset(&ir, 0, sizeof(ir));
+    CHECK(program != NULL, "uninitialized-global program AST allocated");
+    if (!program) return;
+    CHECK(vnt_ir_lower(&ir, program),
+          "uninitialized-global HIR lowering succeeds");
+    if (ir.nodes) {
+        VntCfg cfg = {0};
+        char diagnostic[256] = {0};
+        CHECK(vnt_cfg_build(&ir, &cfg),
+              "uninitialized-global function CFG builds");
+        if (cfg.blocks) {
+            CHECK(!vnt_cfg_check_definite_assignment(&ir, &cfg, diagnostic,
+                                                     sizeof(diagnostic)),
+                  "function entry does not treat an uninitialized global as initialized");
+            CHECK(strstr(diagnostic, "uninitialized_global") != NULL,
+                  "function global-read diagnostic identifies the variable");
+            vnt_cfg_free(&cfg);
+        }
+    }
+    vnt_ir_free(&ir);
+    ast_free(program);
 }
 
 

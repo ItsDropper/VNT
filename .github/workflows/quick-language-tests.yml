@@ -88,6 +88,36 @@ jobs:
             src/compiler/x86_backend.c \
             src/compiler/freestanding_x86.c \
             -o vnt
+      - name: Verify bounded parser nesting
+        shell: bash
+        run: |
+          set -eu
+          expect_nesting_rejection() {
+            source="$1"
+            diagnostic="$2"
+            name="$(basename "$source" .vnt)"
+            output="parser-nesting-$name.exe"
+            log="parser-nesting-$name.log"
+            if ./vnt --compile "$source" -o "$output" >"$log" 2>&1; then
+              echo "Parser accepted excessive nesting in $source"
+              exit 1
+            fi
+            if ! grep -Fq "$diagnostic" "$log"; then
+              echo "Missing expected parser diagnostic for $source"
+              cat "$log"
+              exit 1
+            fi
+            if [ -e "$output" ]; then
+              echo "Rejected source left an output artifact: $output"
+              exit 1
+            fi
+          }
+
+          expect_nesting_rejection tests/parser_deep_parentheses.vnt "expression nesting exceeds 256 levels"
+          expect_nesting_rejection tests/parser_deep_unary.vnt "unary operator nesting exceeds 256 levels"
+          expect_nesting_rejection tests/parser_deep_statements.vnt "statement nesting exceeds 256 levels"
+          echo "Parser nesting limits: PASS"
+
 
       - name: Build and run HIR/CFG invariant tests
         shell: bash

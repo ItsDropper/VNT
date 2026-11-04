@@ -117,6 +117,7 @@ jobs:
           expect_nesting_rejection tests/parser_deep_unary.vnt "unary operator nesting exceeds 256 levels"
           expect_nesting_rejection tests/parser_deep_statements.vnt "statement nesting exceeds 256 levels"
           expect_nesting_rejection tests/parser_deep_binary_chain.vnt "expression exceeds 256 binary operators"
+          echo "Parser nesting limits: PASS"
 
       - name: Verify maximum supported binary expression chain
         shell: bash
@@ -129,8 +130,6 @@ jobs:
             exit 1
           fi
           echo "Maximum supported binary expression chain: PASS"
-
-          echo "Parser nesting limits: PASS"
 
 
       - name: Verify bounded module import recursion

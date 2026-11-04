@@ -303,7 +303,7 @@ static int absolute_path(const char *path, char *out, size_t cap) {
     int n;
     if (path_is_drive_relative(path)) {
         fprintf(stderr,
-                "vbuild: drive-relative paths are ambiguous; use a fully qualified drive path: %s\\n",
+                "vbuild: drive-relative paths are ambiguous; use a fully qualified drive path: %s\n",
                 path);
         return 0;
     }

@@ -155,7 +155,7 @@ try {
     Write-Host "Parser nesting limits and deterministic diagnostics: PASS"
 
     $BinaryChainExe = Join-Path $OutDir "parser_binary_chain_boundary.exe"
-    & .\\vnt.exe --compile tests/parser_binary_chain_boundary.vnt -o $BinaryChainExe
+    & .\vnt.exe --compile tests/parser_binary_chain_boundary.vnt -o $BinaryChainExe
     if ($LASTEXITCODE -ne 0) { throw "Expression chain at the 256-operator limit did not compile." }
     $binaryChainOutput = & $BinaryChainExe
     if ($LASTEXITCODE -ne 0 -or ($binaryChainOutput -join "|") -ne "257") {

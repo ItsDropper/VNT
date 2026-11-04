@@ -24,7 +24,7 @@ static AstNode *parse_multiplication(
             parser->current.type;
 
         parser_advance(parser);
-        if (!parser_note_binary_operator(parser)) {
+        if (!parser_note_expression_operator(parser)) {
             ast_free(left);
             return NULL;
         }
@@ -104,7 +104,7 @@ static AstNode *parse_addition(
             parser->current.type;
 
         parser_advance(parser);
-        if (!parser_note_binary_operator(parser)) {
+        if (!parser_note_expression_operator(parser)) {
             ast_free(left);
             return NULL;
         }
@@ -158,7 +158,7 @@ static AstNode *parse_comparison(
             parser->current.type;
 
         parser_advance(parser);
-        if (!parser_note_binary_operator(parser)) {
+        if (!parser_note_expression_operator(parser)) {
             ast_free(left);
             return NULL;
         }
@@ -243,7 +243,7 @@ static AstNode *parse_equality(
             parser->current.type;
 
         parser_advance(parser);
-        if (!parser_note_binary_operator(parser)) {
+        if (!parser_note_expression_operator(parser)) {
             ast_free(left);
             return NULL;
         }
@@ -294,7 +294,7 @@ static AstNode *parse_and(
         )
     ) {
         parser_advance(parser);
-        if (!parser_note_binary_operator(parser)) {
+        if (!parser_note_expression_operator(parser)) {
             ast_free(left);
             return NULL;
         }
@@ -343,7 +343,7 @@ static AstNode *parse_or(
         )
     ) {
         parser_advance(parser);
-        if (!parser_note_binary_operator(parser)) {
+        if (!parser_note_expression_operator(parser)) {
             ast_free(left);
             return NULL;
         }

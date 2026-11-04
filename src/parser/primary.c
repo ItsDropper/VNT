@@ -383,6 +383,10 @@ AstNode *parse_postfix(Parser *parser) {
 
     for (;;) {
         if (token_is(parser, TOKEN_LEFT_BRACKET)) {
+            if (!parser_note_expression_operator(parser)) {
+                ast_free(expression);
+                return NULL;
+            }
             parser_advance(parser);
 
             AstNode *index = parse_expression(parser);
@@ -410,6 +414,10 @@ AstNode *parse_postfix(Parser *parser) {
         }
 
         if (token_is(parser, TOKEN_DOT)) {
+            if (!parser_note_expression_operator(parser)) {
+                ast_free(expression);
+                return NULL;
+            }
             parser_advance(parser);
             if (!token_is(parser, TOKEN_IDENTIFIER)) {
                 printf("Parser error: expected member name after '.'.\n");

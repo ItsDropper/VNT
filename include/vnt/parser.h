@@ -22,7 +22,7 @@ AstNode *parser_parse(Parser *parser);
 
 int parser_enter_nesting(Parser *parser, const char *context);
 void parser_leave_nesting(Parser *parser);
-int parser_note_binary_operator(Parser *parser);
+int parser_note_expression_operator(Parser *parser);
 
 void parser_advance(Parser *parser);
 int parser_check(Parser *parser, TokenType type);

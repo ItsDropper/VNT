@@ -359,5 +359,9 @@ AstNode *parse_expression(
 
     AstNode *expression = parse_or(parser);
     parser_leave_nesting(parser);
+    if (parser->nesting_failed) {
+        ast_free(expression);
+        return NULL;
+    }
     return expression;
 }

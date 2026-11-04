@@ -161,6 +161,10 @@ AstNode *parse_statement(Parser *parser) {
                 parser->current.line, parser->current.column);
     }
 
+    if (parser->nesting_failed) {
+        ast_free(statement);
+        statement = NULL;
+    }
     parser_leave_nesting(parser);
     return statement;
 }

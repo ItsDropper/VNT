@@ -11,6 +11,7 @@ typedef struct {
     Token current;
     Token previous;
     unsigned int nesting_depth;
+    int nesting_failed;
 } Parser;
 
 void parser_init(Parser *parser, Lexer *lexer);

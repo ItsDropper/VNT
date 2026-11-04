@@ -5,14 +5,15 @@
 #include <string.h>
 
 int parser_enter_nesting(Parser *parser, const char *context) {
-    if (!parser || parser->nesting_depth >= VNT_PARSER_MAX_NESTING) {
-        if (parser) {
-            fprintf(stderr,
-                    "Parser error at %d:%d: %s nesting exceeds %u levels.\n",
-                    parser->current.line, parser->current.column,
-                    context ? context : "syntax",
-                    VNT_PARSER_MAX_NESTING);
-        }
+    if (!parser || parser->nesting_failed)
+        return 0;
+    if (parser->nesting_depth >= VNT_PARSER_MAX_NESTING) {
+        parser->nesting_failed = 1;
+        fprintf(stderr,
+                "Parser error at %d:%d: %s nesting exceeds %u levels.\n",
+                parser->current.line, parser->current.column,
+                context ? context : "syntax",
+                VNT_PARSER_MAX_NESTING);
         return 0;
     }
     ++parser->nesting_depth;
@@ -77,6 +78,7 @@ void parser_init(Parser *parser, Lexer *lexer) {
     parser->current.type = TOKEN_UNKNOWN;
     parser->previous.type = TOKEN_UNKNOWN;
     parser->nesting_depth = 0;
+    parser->nesting_failed = 0;
 
     parser_advance(parser);
 }

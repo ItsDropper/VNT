@@ -459,6 +459,69 @@ static void check_cfg_definite_assignment(void) {
 }
 
 
+static void check_cfg_uninitialized_declaration(void) {
+    AstNode *statements = NULL;
+    AstNode *declaration = ast_create_variable_declaration("uninitialized", NULL);
+    ast_append(&statements, declaration);
+    ast_append(&statements, ast_create_print(ast_create_variable("uninitialized")));
+    AstNode *program = ast_create_program(statements);
+    VntIrProgram ir = {0};
+    CHECK(program != NULL, "uninitialized-declaration AST allocated");
+    if (!program) return;
+    CHECK(vnt_ir_lower(&ir, program), "uninitialized-declaration HIR lowering succeeds");
+    if (ir.nodes) {
+        VntCfg cfg = {0};
+        char diagnostic[256] = {0};
+        CHECK(vnt_cfg_build(&ir, &cfg), "uninitialized-declaration CFG builds");
+        if (cfg.blocks) {
+            CHECK(!vnt_cfg_check_definite_assignment(&ir, &cfg, diagnostic,
+                                                     sizeof(diagnostic)),
+                  "a declaration without an initializer does not define its variable");
+            CHECK(strstr(diagnostic, "uninitialized") != NULL,
+                  "uninitialized-read diagnostic identifies the variable");
+            vnt_cfg_free(&cfg);
+        }
+    }
+    vnt_ir_free(&ir);
+    ast_free(program);
+
+    /* A later reassignment initializes the same binding and makes its read safe. */
+    statements = NULL;
+    declaration = ast_create_variable_declaration("assigned_later", NULL);
+    AstNode *assignment =
+        ast_create_variable_declaration("assigned_later", ast_create_integer(9));
+    CHECK(declaration != NULL && assignment != NULL,
+          "declaration and reassignment AST nodes allocated");
+    if (!declaration || !assignment) {
+        ast_free(declaration);
+        ast_free(assignment);
+        return;
+    }
+    assignment->variable_declaration.is_reassignment = 1;
+    ast_append(&statements, declaration);
+    ast_append(&statements, assignment);
+    ast_append(&statements, ast_create_print(ast_create_variable("assigned_later")));
+    program = ast_create_program(statements);
+    memset(&ir, 0, sizeof(ir));
+    CHECK(program != NULL, "later-assignment AST allocated");
+    if (!program) return;
+    CHECK(vnt_ir_lower(&ir, program), "later-assignment HIR lowering succeeds");
+    if (ir.nodes) {
+        VntCfg cfg = {0};
+        char diagnostic[256] = {0};
+        CHECK(vnt_cfg_build(&ir, &cfg), "later-assignment CFG builds");
+        if (cfg.blocks) {
+            CHECK(vnt_cfg_check_definite_assignment(&ir, &cfg, diagnostic,
+                                                    sizeof(diagnostic)),
+                  "a reassignment initializes a previously uninitialized binding");
+            vnt_cfg_free(&cfg);
+        }
+    }
+    vnt_ir_free(&ir);
+    ast_free(program);
+}
+
+
 int main(void) {
     check_fold_case(binary(2, 3, BINARY_ADD), VNT_IR_INTEGER, 5,
                     "safe integer addition folds");
@@ -487,6 +550,7 @@ int main(void) {
     check_cfg_constant_branch_pruning();
     check_cfg_prunes_unreachable_statements();
     check_cfg_definite_assignment();
+    check_cfg_uninitialized_declaration();
     check_cfg_liveness();
 
     if (failures) {

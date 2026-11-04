@@ -365,7 +365,14 @@ static void collect_block_effects(const VntIrProgram *ir, const VntCfgBlock *blo
 
     const VntIrNode *n = &ir->nodes[block->instruction];
     switch (n->opcode) {
-        case VNT_IR_VARIABLE_DECL:
+        case VNT_IR_VARIABLE_DECL: {
+            size_t value = child_role(ir, block->instruction, VNT_IR_EDGE_VALUE);
+            if (value != VNT_IR_NO_NODE) {
+                collect_expression_reads(ir, value, set, uses);
+                mark_variable(defs, set, n->value.text);
+            }
+            break;
+        }
         case VNT_IR_REASSIGN:
             collect_expression_reads(ir,
                 child_role(ir, block->instruction, VNT_IR_EDGE_VALUE), set, uses);

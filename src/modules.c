@@ -20,6 +20,8 @@ typedef struct {
     int active_capacity;
 } Loader;
 
+#define VNT_MODULE_MAX_IMPORT_DEPTH 128
+
 static char *normalize_path(const char *path) {
 #ifdef _WIN32
     char resolved[4096];
@@ -282,6 +284,13 @@ static int load_recursive(Loader *loader, const char *path, const char *namespac
     }
     if (seen(loader, path))
         return 1;
+
+    if (loader->active_count >= VNT_MODULE_MAX_IMPORT_DEPTH) {
+        fprintf(stderr,
+                "Module error: import nesting exceeds %d files at '%s'.\\n",
+                VNT_MODULE_MAX_IMPORT_DEPTH, path);
+        return 0;
+    }
 
     if (!remember(loader, path)) {
         fprintf(stderr, "Module error: out of memory.\n");

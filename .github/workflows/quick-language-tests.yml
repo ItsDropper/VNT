@@ -119,6 +119,42 @@ jobs:
           echo "Parser nesting limits: PASS"
 
 
+      - name: Verify bounded module import recursion
+        shell: bash
+        run: |
+          set -eu
+          project="$(mktemp -d)"
+          trap 'rm -rf "$project"' EXIT
+          depth=140
+          for ((index=0; index<depth; index++)); do
+            name="$(printf 'module-%03d.vnt' "$index")"
+            file="$project/$name"
+            next=$((index + 1))
+            if [ "$next" -lt "$depth" ]; then
+              next_name="$(printf 'module-%03d.vnt' "$next")"
+              printf 'import "%s" as nested\\n' "$next_name" > "$file"
+            else
+              printf 'print("MODULE_DEPTH_OK")\\n' > "$file"
+            fi
+          done
+          printf 'import "module-000.vnt" as deep\\n' > "$project/main.vnt"
+          output="$project/output.exe"
+          log="$project/import.log"
+          if ./vnt --compile "$project/main.vnt" -o "$output" >"$log" 2>&1; then
+            echo "Compiler accepted a module chain deeper than 128 files"
+            exit 1
+          fi
+          if ! grep -Fq "import nesting exceeds 128 files" "$log"; then
+            echo "Missing expected module-depth diagnostic"
+            cat "$log"
+            exit 1
+          fi
+          if [ -e "$output" ]; then
+            echo "Rejected module graph left an output artifact"
+            exit 1
+          fi
+          echo "Module import depth limit: PASS"
+
       - name: Build and run HIR/CFG invariant tests
         shell: bash
         run: |

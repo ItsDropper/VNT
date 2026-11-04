@@ -206,7 +206,7 @@ jobs:
           set -eu
           ./vnt --compile tests/optimizer_call_order.vnt -o optimizer-call-order.exe
           output="$(./optimizer-call-order.exe)"
-          expected="$(printf '2\\nCALL_ORDER_OPTIMIZER_OK')"
+          expected="$(printf '2\nCALL_ORDER_OPTIMIZER_OK')"
           if [ "$output" != "$expected" ]; then
             echo "Unexpected result for call-order optimizer regression: $output"
             exit 1

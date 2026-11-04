@@ -564,6 +564,43 @@ static void check_cfg_uninitialized_declaration(void) {
 }
 
 
+static void check_cfg_initialized_global_reads(void) {
+    AstNode *statements = NULL;
+    ast_append(&statements,
+        ast_create_variable_declaration("initialized_global", ast_create_integer(42)));
+    AstNode *body = ast_create_print(ast_create_variable("initialized_global"));
+    AstNode *function =
+        ast_create_function_declaration("read_initialized_global", NULL, 0, body);
+    CHECK(function != NULL, "initialized-global function AST allocated");
+    if (!function) {
+        ast_free(body);
+        ast_free(statements);
+        return;
+    }
+    ast_append(&statements, function);
+    AstNode *program = ast_create_program(statements);
+    VntIrProgram ir = {0};
+    CHECK(program != NULL, "initialized-global program AST allocated");
+    if (!program) return;
+    CHECK(vnt_ir_lower(&ir, program),
+          "initialized-global HIR lowering succeeds");
+    if (ir.nodes) {
+        VntCfg cfg = {0};
+        char diagnostic[256] = {0};
+        CHECK(vnt_cfg_build(&ir, &cfg),
+              "initialized-global function CFG builds");
+        if (cfg.blocks) {
+            CHECK(vnt_cfg_check_definite_assignment(&ir, &cfg, diagnostic,
+                                                    sizeof(diagnostic)),
+                  "initialized root globals remain initialized at function entries");
+            vnt_cfg_free(&cfg);
+        }
+    }
+    vnt_ir_free(&ir);
+    ast_free(program);
+}
+
+
 static void check_call_invalidates_constants_before_later_operands(void) {
     AstNode *statements = NULL;
     AstNode *function_body = NULL;
@@ -653,6 +690,7 @@ int main(void) {
     check_cfg_prunes_unreachable_statements();
     check_cfg_definite_assignment();
     check_cfg_uninitialized_declaration();
+    check_cfg_initialized_global_reads();
     check_cfg_liveness();
 
     if (failures) {

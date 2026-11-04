@@ -19,6 +19,15 @@ try {
     if (($output -join "|") -ne ($expected -join "|")) {
         throw "Unexpected typed-function output: $($output -join ' | ')"
     }
+    $CallOrderExe = Join-Path $OutDir "optimizer_call_order.exe"
+    & .\\vnt.exe --compile tests\\optimizer_call_order.vnt -o $CallOrderExe
+    if ($LASTEXITCODE -ne 0) { throw "Call-order optimizer regression did not compile." }
+    $callOrderOutput = & $CallOrderExe
+    if ($LASTEXITCODE -ne 0 -or ($callOrderOutput -join "|") -ne "2|CALL_ORDER_OPTIMIZER_OK") {
+        throw "Unexpected call-order optimizer output: $($callOrderOutput -join ' | ')"
+    }
+    Write-Host "Call-order optimizer regression: PASS"
+
     $LoopsExe = Join-Path $OutDir "loops.exe"
     & .\vnt.exe --compile tests\loops.vnt -o $LoopsExe
     if ($LASTEXITCODE -ne 0) { throw "Valid break/continue loop program did not compile." }

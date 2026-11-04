@@ -200,6 +200,19 @@ jobs:
             -o hir-invariants
           ./hir-invariants
 
+      - name: Verify optimizer preserves reads after side-effecting calls
+        shell: bash
+        run: |
+          set -eu
+          ./vnt --compile tests/optimizer_call_order.vnt -o optimizer-call-order.exe
+          output="$(./optimizer-call-order.exe)"
+          expected="$(printf '2\\nCALL_ORDER_OPTIMIZER_OK')"
+          if [ "$output" != "$expected" ]; then
+            echo "Unexpected result for call-order optimizer regression: $output"
+            exit 1
+          fi
+          echo "Call-order optimizer regression: PASS"
+
       - name: Run loop-control regression programs
         shell: bash
         run: |

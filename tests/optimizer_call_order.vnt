@@ -1,0 +1,9 @@
+value = 1
+
+fun mutate_global() {
+    value = 2
+    return 0
+}
+
+print(mutate_global() + value)
+print("CALL_ORDER_OPTIMIZER_OK")

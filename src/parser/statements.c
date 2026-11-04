@@ -157,7 +157,7 @@ AstNode *parse_statement(Parser *parser) {
     else if (parser_check(parser, TOKEN_STAR)) statement = parse_dereference_statement(parser);
     else if (parser_check(parser, TOKEN_IDENTIFIER)) statement = parse_identifier_statement(parser);
     else {
-        fprintf(stderr, "Parser error at %d:%d: expected a statement.\\n",
+        fprintf(stderr, "Parser error at %d:%d: expected a statement.\n",
                 parser->current.line, parser->current.column);
     }
 

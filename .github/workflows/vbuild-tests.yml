@@ -73,7 +73,7 @@ jobs:
               }
               Set-Content -NoNewline -Path vbuild.properties -Value $validProperties
             }
-                        Add-Content vbuild.properties 'source = src/duplicate.vnt'
+            Add-Content vbuild.properties 'source = src/duplicate.vnt'
             $duplicatePropertyOutput = & $binary build 2>&1
             $duplicatePropertyExitCode = $LASTEXITCODE
             if ($duplicatePropertyExitCode -eq 0 -or ($duplicatePropertyOutput -join "`n") -notmatch "duplicate property 'source'") {

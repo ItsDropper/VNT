@@ -31,7 +31,7 @@ int parser_note_binary_operator(Parser *parser) {
     if (parser->expression_operator_count >= VNT_PARSER_MAX_EXPRESSION_OPERATORS) {
         parser->nesting_failed = 1;
         fprintf(stderr,
-                "Parser error at %d:%d: expression exceeds %u binary operators.\\n",
+                "Parser error at %d:%d: expression exceeds %u binary operators.\n",
                 parser->current.line, parser->current.column,
                 VNT_PARSER_MAX_EXPRESSION_OPERATORS);
         return 0;

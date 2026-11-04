@@ -24,6 +24,10 @@ static AstNode *parse_multiplication(
             parser->current.type;
 
         parser_advance(parser);
+        if (!parser_note_binary_operator(parser)) {
+            ast_free(left);
+            return NULL;
+        }
 
         AstNode *right =
             parse_unary(parser);
@@ -100,6 +104,10 @@ static AstNode *parse_addition(
             parser->current.type;
 
         parser_advance(parser);
+        if (!parser_note_binary_operator(parser)) {
+            ast_free(left);
+            return NULL;
+        }
 
         AstNode *right =
             parse_multiplication(parser);
@@ -150,6 +158,10 @@ static AstNode *parse_comparison(
             parser->current.type;
 
         parser_advance(parser);
+        if (!parser_note_binary_operator(parser)) {
+            ast_free(left);
+            return NULL;
+        }
 
         AstNode *right =
             parse_addition(parser);
@@ -231,6 +243,10 @@ static AstNode *parse_equality(
             parser->current.type;
 
         parser_advance(parser);
+        if (!parser_note_binary_operator(parser)) {
+            ast_free(left);
+            return NULL;
+        }
 
         AstNode *right =
             parse_comparison(parser);
@@ -278,6 +294,10 @@ static AstNode *parse_and(
         )
     ) {
         parser_advance(parser);
+        if (!parser_note_binary_operator(parser)) {
+            ast_free(left);
+            return NULL;
+        }
 
         AstNode *right =
             parse_equality(parser);
@@ -323,6 +343,10 @@ static AstNode *parse_or(
         )
     ) {
         parser_advance(parser);
+        if (!parser_note_binary_operator(parser)) {
+            ast_free(left);
+            return NULL;
+        }
 
         AstNode *right =
             parse_and(parser);
@@ -354,10 +378,14 @@ static AstNode *parse_or(
 AstNode *parse_expression(
     Parser *parser
 ) {
+    if (parser->expression_depth == 0)
+        parser->expression_operator_count = 0;
     if (!parser_enter_nesting(parser, "expression"))
         return NULL;
 
+    ++parser->expression_depth;
     AstNode *expression = parse_or(parser);
+    --parser->expression_depth;
     parser_leave_nesting(parser);
     if (parser->nesting_failed) {
         ast_free(expression);

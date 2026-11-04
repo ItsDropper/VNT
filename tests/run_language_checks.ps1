@@ -134,6 +134,7 @@ try {
         @{ Path = "tests/parser_deep_parentheses.vnt"; Diagnostic = "expression nesting exceeds 256 levels" },
         @{ Path = "tests/parser_deep_unary.vnt"; Diagnostic = "unary operator nesting exceeds 256 levels" },
         @{ Path = "tests/parser_deep_statements.vnt"; Diagnostic = "statement nesting exceeds 256 levels" }
+        @{ Path = "tests/parser_deep_binary_chain.vnt"; Diagnostic = "expression exceeds 256 binary operators" }
     )
     foreach ($case in $ParserNestingCases) {
         $invalidOutput = Join-Path $OutDir ("invalid-" + [System.IO.Path]::GetFileNameWithoutExtension($case.Path) + ".exe")

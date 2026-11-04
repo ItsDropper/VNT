@@ -25,6 +25,21 @@ void parser_leave_nesting(Parser *parser) {
         --parser->nesting_depth;
 }
 
+int parser_note_binary_operator(Parser *parser) {
+    if (!parser || parser->nesting_failed)
+        return 0;
+    if (parser->expression_operator_count >= VNT_PARSER_MAX_EXPRESSION_OPERATORS) {
+        parser->nesting_failed = 1;
+        fprintf(stderr,
+                "Parser error at %d:%d: expression exceeds %u binary operators.\\n",
+                parser->current.line, parser->current.column,
+                VNT_PARSER_MAX_EXPRESSION_OPERATORS);
+        return 0;
+    }
+    ++parser->expression_operator_count;
+    return 1;
+}
+
 void parser_advance(Parser *parser) {
     parser->previous = parser->current;
     parser->current = lexer_next(parser->lexer);
@@ -79,6 +94,8 @@ void parser_init(Parser *parser, Lexer *lexer) {
     parser->previous.type = TOKEN_UNKNOWN;
     parser->nesting_depth = 0;
     parser->nesting_failed = 0;
+    parser->expression_depth = 0;
+    parser->expression_operator_count = 0;
 
     parser_advance(parser);
 }

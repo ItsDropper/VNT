@@ -719,6 +719,58 @@ static int native_scope_contains_asm(const HirGen *g,const VntIrNode *function) 
     return 0;
 }
 
+
+/* Leaf scalar functions may keep their final two locals in Windows-x64
+ * volatile registers: no call or non-scalar operation in this function can
+ * clobber them. Restricting this to the audited scalar subset avoids saving
+ * callee-saved registers in tiny arithmetic functions. */
+static int native_leaf_scalar_node(const HirGen *g, size_t index) {
+    const VntIrNode *n = node(g, index);
+    if (!n) return 0;
+    switch (n->opcode) {
+        case VNT_IR_PROGRAM:
+        case VNT_IR_FUNCTION:
+        case VNT_IR_IF:
+        case VNT_IR_WHILE:
+        case VNT_IR_RETURN:
+        case VNT_IR_BREAK:
+        case VNT_IR_CONTINUE:
+        case VNT_IR_VARIABLE_DECL:
+        case VNT_IR_REASSIGN:
+        case VNT_IR_VARIABLE:
+        case VNT_IR_INTEGER:
+        case VNT_IR_BOOLEAN:
+            break;
+        case VNT_IR_UNARY:
+            if (n->operation != UNARY_NEGATE && n->operation != UNARY_NOT)
+                return 0;
+            break;
+        case VNT_IR_BINARY:
+            if (n->operation != BINARY_ADD &&
+                n->operation != BINARY_SUBTRACT &&
+                n->operation != BINARY_MULTIPLY &&
+                n->operation != BINARY_DIVIDE &&
+                n->operation != BINARY_MODULO &&
+                n->operation != BINARY_EQUAL &&
+                n->operation != BINARY_NOT_EQUAL &&
+                n->operation != BINARY_GREATER &&
+                n->operation != BINARY_LESS &&
+                n->operation != BINARY_GREATER_EQUAL &&
+                n->operation != BINARY_LESS_EQUAL &&
+                n->operation != BINARY_AND &&
+                n->operation != BINARY_OR)
+                return 0;
+            break;
+        default:
+            return 0;
+    }
+    for (size_t child_index = n->first_child;
+         child_index != VNT_IR_NO_NODE;
+         child_index = g->ir->nodes[child_index].next_sibling)
+        if (!native_leaf_scalar_node(g, child_index)) return 0;
+    return 1;
+}
+
 static void mark_native_integer_variables(HirGen *g,const VntIrNode *function) {
     int scope_has_asm=native_scope_contains_asm(g,function);
     for(size_t v=0;v<g->var_count;v++) {
@@ -753,18 +805,30 @@ static void mark_native_integer_variables(HirGen *g,const VntIrNode *function) {
             }
         }
     } while(changed);
-    /* Use the complete set of Microsoft x64 nonvolatile GPRs other than RBP,
-       which is the frame pointer. This gives scalar locals seven registers
-       before spilling to their existing frame slots. */
+    /* Keep the last two locals in volatile R8/R9 only for functions whose
+       entire body is audited scalar code with no calls. Earlier locals use
+       Windows-x64 nonvolatile registers; any remainder stays stack-backed. */
     g->native_register_mask=0;
-    int next_register=0;
+    size_t native_total=0;
+    for(size_t v=0;v<g->var_count;v++)
+        if(g->vars[v].native_integer) ++native_total;
+    int leaf_scalar=function&&native_leaf_scalar_node(
+        g,(size_t)(function-g->ir->nodes));
+    size_t volatile_total=leaf_scalar?(native_total<2?native_total:2):0;
+    size_t volatile_start=native_total-volatile_total;
+    size_t native_ordinal=0;
+    int next_saved_register=0;
     for(size_t v=0;v<g->var_count;v++) {
         g->vars[v].native_register=-1;
-        if(g->vars[v].native_integer&&next_register<7) {
-            g->vars[v].native_register=next_register;
-            g->native_register_mask|=1u<<next_register;
-            ++next_register;
+        if(!g->vars[v].native_integer) continue;
+        if(native_ordinal>=volatile_start) {
+            g->vars[v].native_register=7+(int)(native_ordinal-volatile_start);
+        } else if(next_saved_register<7) {
+            g->vars[v].native_register=next_saved_register;
+            g->native_register_mask|=1u<<next_saved_register;
+            ++next_saved_register;
         }
+        ++native_ordinal;
     }
     /* Inline assembly may clobber any allocatable register. Preserve the
        entire Microsoft x64 nonvolatile set around scopes containing asm. */
@@ -772,8 +836,8 @@ static void mark_native_integer_variables(HirGen *g,const VntIrNode *function) {
 }
 
 static const char *native_register_name(int index) {
-    static const char *names[]={"%rbx","%rdi","%rsi","%r12","%r13","%r14","%r15"};
-    return index>=0&&index<7?names[index]:NULL;
+    static const char *names[]={"%rbx","%rdi","%rsi","%r12","%r13","%r14","%r15","%r8","%r9"};
+    return index>=0&&index<9?names[index]:NULL;
 }
 static void emit_native_register_saves(HirGen *g) {
     for(int r=0;r<7;r++)

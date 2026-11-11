@@ -1,0 +1,12 @@
+fun safe_accumulator_bounds() {
+    i = 0
+    total = 0
+    while i < 100 {
+        total = total + i
+        i = i + 1
+    }
+    print(total)
+    print("SAFE_ACCUMULATOR_OK")
+}
+
+safe_accumulator_bounds()

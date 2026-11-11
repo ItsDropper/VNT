@@ -840,6 +840,202 @@ static int hir_propagate_sequence(VntIrProgram *ir, size_t parent,
     return 1;
 }
 
+
+/*
+ * Inline tiny, pure, single-return functions before scalar analysis. This is
+ * deliberately narrower than general inlining: arguments must be literals or
+ * variable reads, and the returned expression may only use parameters and
+ * side-effect-free scalar operators. That prevents duplicated argument
+ * evaluation, changes to call ordering, and hidden memory effects.
+ */
+static int hir_is_parameter(const VntIrNode *function, const char *name) {
+    for (size_t i = 0; i < function->name_count; ++i)
+        if (!strcmp(function->names[i], name)) return 1;
+    return 0;
+}
+
+static int hir_inline_scalar_argument(const VntIrProgram *ir, size_t index) {
+    if (index >= ir->node_count) return 0;
+    const VntIrNode *n = &ir->nodes[index];
+    return n->opcode == VNT_IR_INTEGER || n->opcode == VNT_IR_BOOLEAN ||
+           n->opcode == VNT_IR_VARIABLE;
+}
+
+static int hir_inline_expression_is_pure(const VntIrProgram *ir,
+                                         size_t index,
+                                         const VntIrNode *function) {
+    if (index >= ir->node_count) return 0;
+    const VntIrNode *n = &ir->nodes[index];
+    switch (n->opcode) {
+        case VNT_IR_INTEGER:
+        case VNT_IR_BOOLEAN:
+            return 1;
+        case VNT_IR_VARIABLE:
+            return n->value.text && hir_is_parameter(function, n->value.text);
+        case VNT_IR_UNARY:
+            return (n->operation == UNARY_NEGATE || n->operation == UNARY_NOT) &&
+                   hir_inline_expression_is_pure(
+                       ir, hir_child_role(ir, index, VNT_IR_EDGE_OPERAND), function);
+        case VNT_IR_BINARY:
+            if (n->operation != BINARY_ADD &&
+                n->operation != BINARY_SUBTRACT &&
+                n->operation != BINARY_MULTIPLY &&
+                n->operation != BINARY_DIVIDE &&
+                n->operation != BINARY_MODULO &&
+                n->operation != BINARY_EQUAL &&
+                n->operation != BINARY_NOT_EQUAL &&
+                n->operation != BINARY_GREATER &&
+                n->operation != BINARY_LESS &&
+                n->operation != BINARY_GREATER_EQUAL &&
+                n->operation != BINARY_LESS_EQUAL &&
+                n->operation != BINARY_AND &&
+                n->operation != BINARY_OR)
+                return 0;
+            return hir_inline_expression_is_pure(
+                       ir, hir_child_role(ir, index, VNT_IR_EDGE_LEFT), function) &&
+                   hir_inline_expression_is_pure(
+                       ir, hir_child_role(ir, index, VNT_IR_EDGE_RIGHT), function);
+        default:
+            return 0;
+    }
+}
+
+static int hir_clone_inline_expression(const VntIrProgram *ir,
+                                       VntIrProgram *out,
+                                       size_t source,
+                                       const VntIrNode *function,
+                                       const size_t *arguments,
+                                       size_t argument_count,
+                                       size_t *result) {
+    if (source >= ir->node_count) return 0;
+    const VntIrNode *src = &ir->nodes[source];
+    if (src->opcode == VNT_IR_VARIABLE) {
+        for (size_t p = 0; p < function->name_count; ++p) {
+            if (strcmp(src->value.text, function->names[p])) continue;
+            if (p >= argument_count ||
+                !hir_copy_node(ir, out, arguments[p], result))
+                return 0;
+            out->nodes[*result].role = src->role;
+            out->nodes[*result].next_sibling = VNT_IR_NO_NODE;
+            return 1;
+        }
+    }
+
+    if (!reserve_node(out, result)) return 0;
+    VntIrNode *dst = &out->nodes[*result];
+    dst->opcode = src->opcode;
+    dst->role = src->role;
+    dst->operation = src->operation;
+    dst->value = src->value;
+    if (src->opcode == VNT_IR_STRING ||
+        src->opcode == VNT_IR_VARIABLE_DECL ||
+        src->opcode == VNT_IR_REASSIGN ||
+        src->opcode == VNT_IR_VARIABLE ||
+        src->opcode == VNT_IR_MEMBER ||
+        src->opcode == VNT_IR_CALL ||
+        src->opcode == VNT_IR_FUNCTION ||
+        src->opcode == VNT_IR_STRUCT ||
+        src->opcode == VNT_IR_ASM) {
+        dst->value.text = NULL;
+        if (!copy_text(&dst->value.text, src->value.text)) return 0;
+    }
+    if (src->type_name && !copy_text(&dst->type_name, src->type_name))
+        return 0;
+    if (src->name_count) {
+        dst->names = calloc(src->name_count, sizeof(*dst->names));
+        if (!dst->names) return 0;
+        dst->name_count = src->name_count;
+        for (size_t i = 0; i < src->name_count; ++i)
+            if (!copy_text(&dst->names[i], src->names[i])) return 0;
+    }
+    for (size_t c = src->first_child; c != VNT_IR_NO_NODE;
+         c = ir->nodes[c].next_sibling) {
+        size_t copied;
+        if (!hir_clone_inline_expression(ir, out, c, function,
+                                         arguments, argument_count, &copied) ||
+            !add_child(out, *result, copied))
+            return 0;
+    }
+    return 1;
+}
+
+static const VntIrNode *hir_find_inline_function(const VntIrProgram *ir,
+                                                  const char *name,
+                                                  size_t *return_value) {
+    const VntIrNode *root = &ir->nodes[ir->root];
+    for (size_t f = root->first_child; f != VNT_IR_NO_NODE;
+         f = ir->nodes[f].next_sibling) {
+        const VntIrNode *function = &ir->nodes[f];
+        if (function->opcode != VNT_IR_FUNCTION ||
+            strcmp(function->value.text, name))
+            continue;
+        size_t body = VNT_IR_NO_NODE;
+        for (size_t c = function->first_child; c != VNT_IR_NO_NODE;
+             c = ir->nodes[c].next_sibling) {
+            if (ir->nodes[c].role != VNT_IR_EDGE_BODY) continue;
+            if (body != VNT_IR_NO_NODE) return NULL;
+            body = c;
+        }
+        if (body == VNT_IR_NO_NODE ||
+            ir->nodes[body].opcode != VNT_IR_RETURN)
+            return NULL;
+        size_t value = hir_child_role(ir, body, VNT_IR_EDGE_VALUE);
+        if (value == VNT_IR_NO_NODE) return NULL;
+        *return_value = value;
+        return function;
+    }
+    return NULL;
+}
+
+static int hir_inline_small_calls(VntIrProgram *ir, size_t *changed) {
+    size_t original_count = ir->node_count;
+    for (size_t i = 0; i < original_count; ++i) {
+        VntIrNode *call = &ir->nodes[i];
+        if (call->opcode != VNT_IR_CALL || !call->value.text) continue;
+
+        size_t return_value = VNT_IR_NO_NODE;
+        const VntIrNode *function =
+            hir_find_inline_function(ir, call->value.text, &return_value);
+        if (!function) continue;
+
+        size_t arguments[32];
+        size_t count = 0;
+        int eligible = function->name_count <= 32;
+        for (size_t c = call->first_child; c != VNT_IR_NO_NODE;
+             c = ir->nodes[c].next_sibling) {
+            if (count == 32 || ir->nodes[c].role != VNT_IR_EDGE_ARGUMENT ||
+                !hir_inline_scalar_argument(ir, c)) {
+                eligible = 0;
+                break;
+            }
+            arguments[count++] = c;
+        }
+        if (!eligible || count != function->name_count ||
+            !hir_inline_expression_is_pure(ir, return_value, function))
+            continue;
+
+        VntIrProgram clone = {0};
+        clone.root = VNT_IR_NO_NODE;
+        size_t replacement = VNT_IR_NO_NODE;
+        if (!hir_clone_inline_expression(ir, &clone, return_value, function,
+                                         arguments, count, &replacement)) {
+            vnt_ir_free(&clone);
+            return 0;
+        }
+
+        VntIrNode *old_call = &ir->nodes[i];
+        VntIrEdgeRole old_role = old_call->role;
+        size_t old_next = old_call->next_sibling;
+        free(old_call->value.text);
+        *old_call = clone.nodes[replacement];
+        old_call->role = old_role;
+        old_call->next_sibling = old_next;
+        free(clone.nodes);
+        ++*changed;
+    }
+    return 1;
+}
+
 int vnt_ir_optimize(VntIrProgram *ir) {
     if (!ir || !ir->nodes || !ir->node_count || !vnt_ir_validate(ir)) return 0;
 
@@ -851,6 +1047,7 @@ int vnt_ir_optimize(VntIrProgram *ir) {
      */
     for (unsigned iteration = 0; iteration < 8; ++iteration) {
         size_t round_changed = 0;
+        if (!hir_inline_small_calls(ir, &round_changed)) return 0;
         if (!hir_fold_node(ir, ir->root, &round_changed)) return 0;
         HirConstantEnvironment env = {0};
         int propagated = hir_propagate_sequence(ir, ir->root,

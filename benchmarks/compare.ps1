@@ -23,7 +23,7 @@ try {
     & rustc -C opt-level=3 -C lto=thin -C codegen-units=1 "benchmarks/loop_sum.rs" -o $RustExe
     if ($LASTEXITCODE -ne 0) { throw "Rust benchmark compilation failed." }
 
-    $Expected = "799980000"
+    $Expected = "499999500000"
     $Programs = @(
         [pscustomobject]@{ Name = "VNT"; Path = $VntExe },
         [pscustomobject]@{ Name = "C"; Path = $CExe },
@@ -69,6 +69,6 @@ try {
     $csv = Join-Path $OutDir "comparison.csv"
     $Results | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $csv
     Write-Host "CSV written to: $csv"
-    Write-Host "All binaries use the same 20 x 40,000 loop workload. Timings include process startup."
+    Write-Host "All binaries use the same 20 x 1,000,000 loop workload. Timings include process startup."
 }
 finally { Pop-Location }

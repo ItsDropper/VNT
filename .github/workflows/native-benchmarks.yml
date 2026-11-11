@@ -34,6 +34,11 @@ jobs:
       - name: Verify and measure equivalent VNT, C, and Rust workloads
         shell: pwsh
         run: ./benchmarks/compare.ps1 -Runs 9 -Warmups 2
+      - name: Inspect optimized integer-loop assembly
+        shell: bash
+        run: |
+          awk '/vnt_fn_run_benchmark:/{show=1;count=0} show && count++<120 {print} show && count>=120 {exit}' benchmarks/out/loop_sum_vnt.exe.s
+
       - name: Publish benchmark CSV
         uses: actions/upload-artifact@v4
         with:

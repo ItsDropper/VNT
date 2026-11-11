@@ -26,7 +26,15 @@ try {
     if (Select-String -Path $Assembly -SimpleMatch "jo .Lvnt_int_add_overflow" -Quiet) {
         throw "A proven-safe counted-loop addition still has a checked-overflow branch."
     }
-    if (Select-String -Path $Assembly -Pattern 'pushq %(rbx|rdi|rsi|r12|r13|r14|r15)' -Quiet) {
+    $SavedRegisterPushes = @(Select-String -Path $Assembly -Pattern 'pushq %(rbx|rdi|rsi|r12|r13|r14|r15)')
+    if ($SavedRegisterPushes.Count -gt 0) {
+        $AssemblyLines = Get-Content $Assembly
+        foreach ($match in $SavedRegisterPushes) {
+            $start = [Math]::Max(0, $match.LineNumber - 5)
+            $end = [Math]::Min($AssemblyLines.Count - 1, $match.LineNumber + 3)
+            Write-Host "Unexpected callee-saved push near assembly line $($match.LineNumber):"
+            for ($line = $start; $line -le $end; $line++) { Write-Host $AssemblyLines[$line] }
+        }
         throw "A leaf scalar hot path still saves a callee-saved register."
     }
     Write-Host "VNT code generation: helper call inlined; proven-safe loop additions are unchecked."

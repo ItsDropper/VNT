@@ -805,7 +805,7 @@ static void mark_native_integer_variables(HirGen *g,const VntIrNode *function) {
             }
         }
     } while(changed);
-    /* Keep the last two locals in volatile R8/R9 only for functions whose
+    /* Keep the last four locals in volatile R8-R11 only for functions whose
        entire body is audited scalar code with no calls. Earlier locals use
        Windows-x64 nonvolatile registers; any remainder stays stack-backed. */
     g->native_register_mask=0;

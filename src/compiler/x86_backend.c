@@ -816,6 +816,7 @@ static void mark_native_integer_variables(HirGen *g,const VntIrNode *function) {
     for(size_t v=0;v<g->var_count;v++)
         if(g->vars[v].native_integer) ++native_total;
     int leaf_scalar=function&&function->name_count==0&&
+        native_total==g->var_count&&
         native_leaf_scalar_node(g,(size_t)(function-g->ir->nodes));
     size_t volatile_total=leaf_scalar?(native_total<4?native_total:4):0;
     size_t volatile_start=native_total-volatile_total;

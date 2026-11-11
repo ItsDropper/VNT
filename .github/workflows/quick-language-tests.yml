@@ -248,6 +248,21 @@ jobs:
           fi
           echo "Register-resident local frame and save elimination: PASS"
 
+      - name: Verify non-leaf scalar locals survive runtime calls
+        shell: bash
+        run: |
+          set -eu
+          ./vnt --compile tests/native_register_call_safety.vnt -o native-register-call-safety.exe
+          output="$(./native-register-call-safety.exe | tr -d '\r')"
+          expected="$(printf '40\n42\nCALL_PRESERVATION_OK')"
+          if [ "$output" != "$expected" ]; then
+            echo "Unexpected non-leaf register preservation result: $output"
+            exit 1
+          fi
+          grep -F 'pushq %rbx' native-register-call-safety.exe.s
+          grep -F 'popq %rbx' native-register-call-safety.exe.s
+          echo "Non-leaf scalar register preservation: PASS"
+
       - name: Verify proven-safe loop induction overflow elimination
         shell: bash
         run: |

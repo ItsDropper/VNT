@@ -347,6 +347,22 @@ VNT_NATIVE_ABI void vnt_int_neg_overflow(void) {
     fprintf(stderr, "Runtime error: integer overflow in unary '-'.\n");
     exit(1);
 }
+VNT_NATIVE_ABI void vnt_int_div_zero(void) {
+    fprintf(stderr, "Runtime error: division by zero.\n");
+    exit(1);
+}
+VNT_NATIVE_ABI void vnt_int_mod_zero(void) {
+    fprintf(stderr, "Runtime error: modulo by zero.\n");
+    exit(1);
+}
+VNT_NATIVE_ABI void vnt_int_div_overflow(void) {
+    fprintf(stderr, "Runtime error: integer overflow in division.\n");
+    exit(1);
+}
+VNT_NATIVE_ABI void vnt_int_mod_overflow(void) {
+    fprintf(stderr, "Runtime error: integer overflow in modulo.\n");
+    exit(1);
+}
 
 VNT_NATIVE_ABI VntValue * vnt_float(double x) {
     VntValue *v = alloc_value(VNT_FLOAT);

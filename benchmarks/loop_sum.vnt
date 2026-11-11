@@ -1,9 +1,13 @@
-# Fixed-workload benchmark: 40000 integer iterations and reassignment.
-# Keep total in the same lexical scope as its final read.
-i = 0
-total = 0
-while i < 40000 {
-    total = total + i
-    i = i + 1
+# Shared C/Rust/VNT workload: 20 rounds of 40,000 integer iterations.
+# Each round resets the accumulator; the final checksum is 799980000.
+round = 0
+while round < 20 {
+    i = 0
+    total = 0
+    while i < 40000 {
+        total = total + i
+        i = i + 1
+    }
+    round = round + 1
 }
 print(total)

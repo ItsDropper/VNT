@@ -1,0 +1,12 @@
+fun register_resident_values() {
+    first = 20
+    second = 22
+    return first + second
+}
+
+fun run_register_frame_test() {
+    print(register_resident_values())
+    print("REGISTER_FRAME_OK")
+}
+
+run_register_frame_test()

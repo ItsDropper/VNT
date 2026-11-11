@@ -26,6 +26,9 @@ try {
     if (Select-String -Path $Assembly -SimpleMatch "jo .Lvnt_int_add_overflow" -Quiet) {
         throw "A proven-safe counted-loop addition still has a checked-overflow branch."
     }
+    if (Select-String -Path $Assembly -Pattern 'pushq %(rbx|rdi|rsi|r12|r13|r14|r15)' -Quiet) {
+        throw "A leaf scalar hot path still saves a callee-saved register."
+    }
     Write-Host "VNT code generation: helper call inlined; proven-safe loop additions are unchecked."
     & gcc -O3 -flto "benchmarks/loop_sum.c" -o $CExe
     if ($LASTEXITCODE -ne 0) { throw "C benchmark compilation failed." }

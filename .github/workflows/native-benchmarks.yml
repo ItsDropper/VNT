@@ -58,6 +58,33 @@ jobs:
           printf '%s\\n' 11 21 31 41 51 61 71 > benchmarks/out/native_seven_registers.expected
           diff -u benchmarks/out/native_seven_registers.expected benchmarks/out/native_seven_registers.txt
 
+          ./vnt.exe --compile tests/native_integer_divmod.vnt -o benchmarks/out/native_integer_divmod.exe
+          ./benchmarks/out/native_integer_divmod.exe > benchmarks/out/native_integer_divmod.txt
+          printf '%s\\n' -3 -2 -3 2 25 0 > benchmarks/out/native_integer_divmod.expected
+          diff -u benchmarks/out/native_integer_divmod.expected benchmarks/out/native_integer_divmod.txt
+
+          for operation in div mod; do
+            if [ "$operation" = div ]; then
+              executable=benchmarks/out/native_integer_div_overflow.exe
+              source=tests/native_integer_div_overflow.vnt
+              diagnostic="Runtime error: integer overflow in division."
+            else
+              executable=benchmarks/out/native_integer_mod_overflow.exe
+              source=tests/native_integer_mod_overflow.vnt
+              diagnostic="Runtime error: integer overflow in modulo."
+            fi
+            ./vnt.exe --compile "$source" -o "$executable"
+            set +e
+            "$executable" > benchmarks/out/native_integer_overflow.txt 2> benchmarks/out/native_integer_overflow.stderr
+            overflow_status=$?
+            set -e
+            if [ "$overflow_status" -eq 0 ]; then
+              echo "Native integer $operation overflow incorrectly succeeded."
+              exit 1
+            fi
+            grep -F "$diagnostic" benchmarks/out/native_integer_overflow.stderr
+          done
+
       - name: Publish benchmark CSV
         uses: actions/upload-artifact@v4
         with:

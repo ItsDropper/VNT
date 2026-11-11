@@ -18,6 +18,15 @@ try {
 
     & $Vnt --compile "benchmarks/loop_sum.vnt" -o $VntExe
     if ($LASTEXITCODE -ne 0) { throw "VNT benchmark compilation failed." }
+    $Assembly = "$VntExe.s"
+    if (-not (Test-Path $Assembly)) { throw "VNT compiler did not retain generated assembly: $Assembly" }
+    if (Select-String -Path $Assembly -SimpleMatch "call vnt_fn_add_value" -Quiet) {
+        throw "The hot-loop helper call was not inlined."
+    }
+    if (Select-String -Path $Assembly -SimpleMatch "jo .Lvnt_int_add_overflow" -Quiet) {
+        throw "A proven-safe counted-loop addition still has a checked-overflow branch."
+    }
+    Write-Host "VNT code generation: helper call inlined; proven-safe loop additions are unchecked."
     & gcc -O3 -flto "benchmarks/loop_sum.c" -o $CExe
     if ($LASTEXITCODE -ne 0) { throw "C benchmark compilation failed." }
     & rustc -C opt-level=3 -C lto=thin -C codegen-units=1 "benchmarks/loop_sum.rs" -o $RustExe

@@ -725,6 +725,76 @@ static void emit_native_register_restores(HirGen *g) {
             fprintf(g->out,"    popq %s\n",native_register_name(r));
 }
 
+/* Fold the common self-update shape directly into the destination register:
+   x = x + y becomes addq y, x, avoiding temporary pushes and copies. */
+static void emit_native_integer_assignment(HirGen *g,int target,size_t value) {
+    const VntIrNode *n=node(g,value);
+    HirVar *dst=&g->vars[target];
+    if(n&&n->opcode==VNT_IR_BINARY&&
+       (n->operation==BINARY_ADD||n->operation==BINARY_SUBTRACT||n->operation==BINARY_MULTIPLY)) {
+        const VntIrNode *left=node(g,child(g,value,VNT_IR_EDGE_LEFT));
+        const VntIrNode *right=node(g,child(g,value,VNT_IR_EDGE_RIGHT));
+        int right_index=-1;
+        int immediate=right&&right->opcode==VNT_IR_INTEGER&&
+            right->value.integer>=INT32_MIN&&right->value.integer<=INT32_MAX;
+        if(left&&left->opcode==VNT_IR_VARIABLE&&left->value.text&&
+           !strcmp(left->value.text,dst->name)&&right) {
+            if(right->opcode==VNT_IR_VARIABLE) {
+                right_index=var_index(g->vars,g->var_count,right->value.text);
+                if(right_index<0||!g->vars[right_index].native_integer) right_index=-1;
+            }
+            if(immediate||right_index>=0) {
+                const char *op=n->operation==BINARY_ADD?"addq":
+                    n->operation==BINARY_SUBTRACT?"subq":"imulq";
+                if(dst->native_register>=0) {
+                    const char *target_reg=native_register_name(dst->native_register);
+                    if(immediate) {
+                        if(n->operation==BINARY_MULTIPLY)
+                            fprintf(g->out,"    imulq $%lld,%s,%s\n",(long long)right->value.integer,target_reg,target_reg);
+                        else fprintf(g->out,"    %s $%lld,%s\n",op,(long long)right->value.integer,target_reg);
+                    } else {
+                        const char *source=native_register_name(g->vars[right_index].native_register);
+                        if(!source) {
+                            fprintf(g->out,"    movq -%d(%%rbp),%%rdx\n",g->vars[right_index].offset);
+                            source="%rdx";
+                        }
+                        fprintf(g->out,"    %s %s,%s\n",op,source,target_reg);
+                    }
+                } else {
+                    fprintf(g->out,"    movq -%d(%%rbp),%%rax\n",dst->offset);
+                    if(immediate) {
+                        if(n->operation==BINARY_MULTIPLY)
+                            fprintf(g->out,"    imulq $%lld,%%rax,%%rax\n",(long long)right->value.integer);
+                        else fprintf(g->out,"    %s $%lld,%%rax\n",op,(long long)right->value.integer);
+                    } else {
+                        const char *source=native_register_name(g->vars[right_index].native_register);
+                        if(!source) {
+                            fprintf(g->out,"    movq -%d(%%rbp),%%rdx\n",g->vars[right_index].offset);
+                            source="%rdx";
+                        }
+                        fprintf(g->out,"    %s %s,%%rax\n",op,source);
+                    }
+                    fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",dst->offset);
+                }
+                int overflow=label_new(g),done=label_new(g);
+                /* The operation was emitted immediately above; branch on its
+                   still-live OF flag before any instruction can overwrite it. */
+                fprintf(g->out,"    jo .L%d\n    jmp .L%d\n",overflow,done);
+                label_emit(g,overflow);
+                call0(g,n->operation==BINARY_ADD?"vnt_int_add_overflow":
+                        n->operation==BINARY_SUBTRACT?"vnt_int_sub_overflow":"vnt_int_mul_overflow");
+                fputs("    ud2\n",g->out);
+                label_emit(g,done);
+                return;
+            }
+        }
+    }
+    emit_native_integer_expression(g,value);
+    if(dst->native_register>=0)
+        fprintf(g->out,"    movq %%rax,%s\n",native_register_name(dst->native_register));
+    else fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",dst->offset);
+}
+
 /* Reuse a local integer's existing value cell for compound arithmetic assignments.
  * This is safe only after the conservative no-alias/no-escape scan above.
  * Overflow and non-integer values retain the ordinary runtime path. */
@@ -778,10 +848,7 @@ static void emit_assignment(HirGen*g,size_t i) {
     if(tn->opcode==VNT_IR_VARIABLE){
         int vi=var_index(g->vars,g->var_count,tn->value.text),gi=var_index(g->globals,g->global_count,tn->value.text);
         if(vi>=0&&g->vars[vi].native_integer) {
-            emit_native_integer_expression(g,v);
-            if(g->vars[vi].native_register>=0)
-                fprintf(g->out,"    movq %%rax,%s\n",native_register_name(g->vars[vi].native_register));
-            else fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",g->vars[vi].offset);
+            emit_native_integer_assignment(g,vi,v);
         } else {
             if(!emit_mutating_integer_assignment(g,tn->value.text,v)) emit_expr(g,v);
             if(gi>=0&&(vi<0||g->vars[vi].global)){fputs("    movq %rax,vnt_global_",g->out);cname(g->out,"",tn->value.text);fputs("(%rip)\n",g->out);}
@@ -805,10 +872,7 @@ static void emit_stmt(HirGen*g,size_t i) {
         int vi=var_index(g->vars,g->var_count,n->value.text),gi=var_index(g->globals,g->global_count,n->value.text);
         size_t assigned_value=child(g,i,VNT_IR_EDGE_VALUE);
         if(vi>=0&&g->vars[vi].native_integer) {
-            emit_native_integer_expression(g,assigned_value);
-            if(g->vars[vi].native_register>=0)
-                fprintf(g->out,"    movq %%rax,%s\n",native_register_name(g->vars[vi].native_register));
-            else fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",g->vars[vi].offset);
+            emit_native_integer_assignment(g,vi,assigned_value);
         } else {
             if(n->opcode!=VNT_IR_VARIABLE_DECL&&
                !emit_mutating_integer_assignment(g,n->value.text,assigned_value)) emit_expr(g,assigned_value);

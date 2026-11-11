@@ -1014,23 +1014,53 @@ static int hir_inline_small_calls(VntIrProgram *ir, size_t *changed) {
             !hir_inline_expression_is_pure(ir, return_value, function))
             continue;
 
-        VntIrProgram clone = {0};
-        clone.root = VNT_IR_NO_NODE;
-        size_t replacement = VNT_IR_NO_NODE;
-        if (!hir_clone_inline_expression(ir, &clone, return_value, function,
-                                         arguments, count, &replacement)) {
-            vnt_ir_free(&clone);
-            return 0;
+        size_t expression_nodes = 0;
+        size_t pending[256];
+        size_t pending_count = 0;
+        pending[pending_count++] = return_value;
+        while (pending_count) {
+            size_t current = pending[--pending_count];
+            if (current >= ir->node_count) return 0;
+            ++expression_nodes;
+            for (size_t child = ir->nodes[current].first_child;
+                 child != VNT_IR_NO_NODE;
+                 child = ir->nodes[child].next_sibling) {
+                if (pending_count == sizeof(pending) / sizeof(pending[0]))
+                    return 0;
+                pending[pending_count++] = child;
+            }
         }
+        if (expression_nodes > (SIZE_MAX - ir->node_count) / 2)
+            return 0;
+        size_t needed = ir->node_count + expression_nodes * 2;
+        if (needed > ir->node_capacity) {
+            if (needed > SIZE_MAX / sizeof(*ir->nodes)) return 0;
+            VntIrNode *nodes = realloc(ir->nodes, needed * sizeof(*nodes));
+            if (!nodes) return 0;
+            ir->nodes = nodes;
+            ir->node_capacity = needed;
+        }
+
+        /* Reacquire the function pointer after reserving: realloc may move IR. */
+        function = hir_find_inline_function(ir, call->value.text, &return_value);
+        if (!function) continue;
+        size_t replacement = VNT_IR_NO_NODE;
+        if (!hir_clone_inline_expression(ir, ir, return_value, function,
+                                         arguments, count, &replacement))
+            return 0;
 
         VntIrNode *old_call = &ir->nodes[i];
         VntIrEdgeRole old_role = old_call->role;
         size_t old_next = old_call->next_sibling;
         free(old_call->value.text);
-        *old_call = clone.nodes[replacement];
+        *old_call = ir->nodes[replacement];
         old_call->role = old_role;
         old_call->next_sibling = old_next;
-        free(clone.nodes);
+        /* Transfer ownership of any copied root payload to the call site. */
+        ir->nodes[replacement].opcode = VNT_IR_NULL;
+        ir->nodes[replacement].first_child = VNT_IR_NO_NODE;
+        ir->nodes[replacement].last_child = VNT_IR_NO_NODE;
+        ir->nodes[replacement].child_count = 0;
         ++*changed;
     }
     return 1;

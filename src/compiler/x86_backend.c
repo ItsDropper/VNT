@@ -436,9 +436,9 @@ static void emit_condition_false_branch(HirGen *g,size_t condition,int false_lab
        native_integer_expression(g,child(g,condition,VNT_IR_EDGE_LEFT))&&
        native_integer_expression(g,child(g,condition,VNT_IR_EDGE_RIGHT))) {
         emit_native_integer_expression(g,child(g,condition,VNT_IR_EDGE_LEFT));
-        fputs("    pushq %rax\\n",g->out);
+        fputs("    pushq %rax\n",g->out);
         emit_native_integer_expression(g,child(g,condition,VNT_IR_EDGE_RIGHT));
-        fputs("    movq %rax,%rdx\\n    popq %rcx\\n    cmpq %rdx,%rcx\\n",g->out);
+        fputs("    movq %rax,%rdx\n    popq %rcx\n    cmpq %rdx,%rcx\n",g->out);
         const char *branch=NULL;
         switch(n->operation) {
             case BINARY_EQUAL: branch="jne"; break;
@@ -449,7 +449,7 @@ static void emit_condition_false_branch(HirGen *g,size_t condition,int false_lab
             case BINARY_LESS_EQUAL: branch="jg"; break;
             default: break;
         }
-        if(branch) fprintf(g->out,"    %s .L%d\\n",branch,false_label);
+        if(branch) fprintf(g->out,"    %s .L%d\n",branch,false_label);
         return;
     }
     const VntIrNode *left=n&&n->opcode==VNT_IR_BINARY?node(g,child(g,condition,VNT_IR_EDGE_LEFT)):NULL;
@@ -535,7 +535,7 @@ static void emit_native_integer_expression(HirGen *g,size_t i) {
     const VntIrNode *n=node(g,i);
     if(!n||g->error) return;
     if(n->opcode==VNT_IR_INTEGER) {
-        fprintf(g->out,"    movabsq $%lld,%%rax\\n",(long long)n->value.integer);
+        fprintf(g->out,"    movabsq $%lld,%%rax\n",(long long)n->value.integer);
         return;
     }
     if(n->opcode==VNT_IR_VARIABLE) {
@@ -544,17 +544,17 @@ static void emit_native_integer_expression(HirGen *g,size_t i) {
             fail(g,"non-native variable reached native integer expression.");
             return;
         }
-        fprintf(g->out,"    movq -%d(%%rbp),%%rax\\n",g->vars[vi].offset);
+        fprintf(g->out,"    movq -%d(%%rbp),%%rax\n",g->vars[vi].offset);
         return;
     }
     if(n->opcode==VNT_IR_UNARY&&n->operation==UNARY_NEGATE) {
         int overflow=label_new(g),done=label_new(g);
         emit_native_integer_expression(g,child(g,i,VNT_IR_EDGE_OPERAND));
-        fputs("    negq %rax\\n",g->out);
-        fprintf(g->out,"    jo .L%d\\n    jmp .L%d\\n",overflow,done);
+        fputs("    negq %rax\n",g->out);
+        fprintf(g->out,"    jo .L%d\n    jmp .L%d\n",overflow,done);
         label_emit(g,overflow);
         call0(g,"vnt_int_neg_overflow");
-        fputs("    ud2\\n",g->out);
+        fputs("    ud2\n",g->out);
         label_emit(g,done);
         return;
     }
@@ -565,22 +565,22 @@ static void emit_native_integer_expression(HirGen *g,size_t i) {
         int overflow=label_new(g),done=label_new(g);
         emit_native_integer_expression(g,left);
         if(rn&&rn->opcode==VNT_IR_INTEGER&&rn->value.integer>=INT32_MIN&&rn->value.integer<=INT32_MAX) {
-            if(n->operation==BINARY_ADD) fprintf(g->out,"    addq $%lld,%%rax\\n",(long long)rn->value.integer);
-            else if(n->operation==BINARY_SUBTRACT) fprintf(g->out,"    subq $%lld,%%rax\\n",(long long)rn->value.integer);
-            else fprintf(g->out,"    imulq $%lld,%%rax,%%rax\\n",(long long)rn->value.integer);
+            if(n->operation==BINARY_ADD) fprintf(g->out,"    addq $%lld,%%rax\n",(long long)rn->value.integer);
+            else if(n->operation==BINARY_SUBTRACT) fprintf(g->out,"    subq $%lld,%%rax\n",(long long)rn->value.integer);
+            else fprintf(g->out,"    imulq $%lld,%%rax,%%rax\n",(long long)rn->value.integer);
         } else {
-            fputs("    pushq %rax\\n",g->out);
+            fputs("    pushq %rax\n",g->out);
             emit_native_integer_expression(g,right);
-            fputs("    movq %rax,%rdx\\n    popq %rax\\n",g->out);
-            if(n->operation==BINARY_ADD) fputs("    addq %rdx,%rax\\n",g->out);
-            else if(n->operation==BINARY_SUBTRACT) fputs("    subq %rdx,%rax\\n",g->out);
-            else fputs("    imulq %rdx,%rax\\n",g->out);
+            fputs("    movq %rax,%rdx\n    popq %rax\n",g->out);
+            if(n->operation==BINARY_ADD) fputs("    addq %rdx,%rax\n",g->out);
+            else if(n->operation==BINARY_SUBTRACT) fputs("    subq %rdx,%rax\n",g->out);
+            else fputs("    imulq %rdx,%rax\n",g->out);
         }
-        fprintf(g->out,"    jo .L%d\\n    jmp .L%d\\n",overflow,done);
+        fprintf(g->out,"    jo .L%d\n    jmp .L%d\n",overflow,done);
         label_emit(g,overflow);
         call0(g,n->operation==BINARY_ADD?"vnt_int_add_overflow":
                 n->operation==BINARY_SUBTRACT?"vnt_int_sub_overflow":"vnt_int_mul_overflow");
-        fputs("    ud2\\n",g->out);
+        fputs("    ud2\n",g->out);
         label_emit(g,done);
         return;
     }

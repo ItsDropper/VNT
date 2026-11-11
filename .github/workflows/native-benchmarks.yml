@@ -39,7 +39,7 @@ jobs:
         run: |
           ./vnt --compile tests/native_integer_locals.vnt -o benchmarks/out/native_integer_locals.exe
           ./benchmarks/out/native_integer_locals.exe > benchmarks/out/native_integer_locals.txt
-          printf '%s\\n' '-90' '-150' '-10' '5' > benchmarks/out/native_integer_locals.expected
+          printf '%s\n' '-90' '-150' '-10' '5' > benchmarks/out/native_integer_locals.expected
           diff -u benchmarks/out/native_integer_locals.expected benchmarks/out/native_integer_locals.txt
 
           ./vnt --compile tests/native_integer_local_overflow.vnt -o benchmarks/out/native_integer_local_overflow.exe

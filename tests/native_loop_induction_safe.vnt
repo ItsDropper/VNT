@@ -1,0 +1,10 @@
+fun safe_induction_boundary() {
+    i = 9223372036854775806
+    while i <= 9223372036854775806 {
+        i = i + 1
+    }
+    print i
+    print "SAFE_INDUCTION_OK"
+}
+
+safe_induction_boundary()

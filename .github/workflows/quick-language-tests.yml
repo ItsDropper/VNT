@@ -1123,8 +1123,10 @@ jobs:
           grep -F 'movq $-1, %rax' freestanding-negative.s
           grep -F 'negq %rax' freestanding-negative.s
           ./vnt --emit-freestanding-asm tests/freestanding_calls.vnt -o freestanding-calls.s
-          grep -F 'subq $16, %rsp' freestanding-calls.s
-          grep -F 'call vnt_fn_add_pair' freestanding-calls.s
+          if grep -F 'call vnt_fn_add_pair' freestanding-calls.s; then
+            echo "Small pure helper calls were not inlined in freestanding code."
+            exit 1
+          fi
           readelf -h freestanding-division.elf | grep -F 'ELF64'
           ./vnt --emit-freestanding-asm tests/freestanding_division.vnt -o freestanding-division.s
           grep -F 'testq %rcx, %rcx' freestanding-division.s

@@ -333,7 +333,7 @@ static void emit_expr(HirGen *g,size_t i) {
         if(gi>=0&&(vi<0||g->vars[vi].global)){fputs("    movq vnt_global_",g->out);cname(g->out,"",n->value.text);fputs("(%rip),%rax\n",g->out);}
         else if(vi>=0&&g->vars[vi].native_integer){
             if(g->vars[vi].native_register>=0)
-                fprintf(g->out,"    movq %s,%%rcx\n",g->vars[vi].native_register==0?"%r12":g->vars[vi].native_register==1?"%r13":g->vars[vi].native_register==2?"%r14":"%r15");
+                fprintf(g->out,"    movq %s,%%rcx\n",native_register_name(g->vars[vi].native_register));
             else fprintf(g->out,"    movq -%d(%%rbp),%%rcx\n",g->vars[vi].offset);
             call0(g,"vnt_int");
         }

@@ -256,6 +256,35 @@ jobs:
           grep -F "Runtime error: integer overflow in addition." induction-overflow.err
           echo "Loop induction overflow proofs: PASS"
 
+      - name: Verify bounded loop accumulator overflow elimination
+        shell: bash
+        run: |
+          set -eu
+          ./vnt --compile tests/native_loop_accumulator_safe.vnt -o native-loop-accumulator-safe.exe
+          if grep -Fq 'jo .Lvnt_int_add_overflow' native-loop-accumulator-safe.exe.s; then
+            echo "Proven-safe accumulator still has an overflow branch."
+            exit 1
+          fi
+          output="$(./native-loop-accumulator-safe.exe | tr -d '\r')"
+          expected="$(printf '4950\nSAFE_ACCUMULATOR_OK')"
+          if [ "$output" != "$expected" ]; then
+            echo "Unexpected safe accumulator result: $output"
+            exit 1
+          fi
+
+          ./vnt --compile tests/native_loop_accumulator_overflow.vnt -o native-loop-accumulator-overflow.exe
+          grep -Fq 'jo .Lvnt_int_add_overflow' native-loop-accumulator-overflow.exe.s
+          set +e
+          ./native-loop-accumulator-overflow.exe > accumulator-overflow.out 2> accumulator-overflow.err
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "Unsafe accumulator update incorrectly succeeded."
+            exit 1
+          fi
+          grep -F "Runtime error: integer overflow in addition." accumulator-overflow.err
+          echo "Loop accumulator overflow proofs: PASS"
+
       - name: Run loop-control regression programs
         shell: bash
         run: |

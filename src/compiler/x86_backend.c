@@ -19,6 +19,8 @@ typedef struct {
     char **structs; size_t struct_count, struct_cap;
     int labels, loop_depth, loop_start[64], loop_end[64], error;
     unsigned native_register_mask;
+    size_t loop_node[64];
+    int suppress_overflow_checks;
 } HirGen;
 
 static const VntIrNode *node(const HirGen *g, size_t i) {
@@ -835,9 +837,10 @@ static void emit_native_integer_assignment(HirGen *g,int target,size_t value) {
                     fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",dst->offset);
                 }
                 /* Keep the hot path to one predicted overflow branch. */
-                fputs(n->operation==BINARY_ADD?"    jo .Lvnt_int_add_overflow\n":
-                      n->operation==BINARY_SUBTRACT?"    jo .Lvnt_int_sub_overflow\n":
-                                                     "    jo .Lvnt_int_mul_overflow\n",g->out);
+                if (!g->suppress_overflow_checks)
+                    fputs(n->operation==BINARY_ADD?"    jo .Lvnt_int_add_overflow\n":
+                          n->operation==BINARY_SUBTRACT?"    jo .Lvnt_int_sub_overflow\n":
+                                                         "    jo .Lvnt_int_mul_overflow\n",g->out);
                 return;
             }
         }
@@ -895,6 +898,99 @@ static int emit_mutating_integer_assignment(HirGen *g,const char *target,size_t 
     label_emit(g,done);
     return 1;
 }
+
+/* Count every direct write to a local throughout a loop body. The induction
+ * proof below is intentionally rejected if any second write exists, even in
+ * a conditional or nested loop. */
+static void native_count_loop_writes(const HirGen *g, size_t index,
+                                     const char *name, size_t assignment,
+                                     int *count, int *last_match) {
+    const VntIrNode *n = node(g, index);
+    if (!n) return;
+    if ((n->opcode == VNT_IR_VARIABLE_DECL ||
+         n->opcode == VNT_IR_REASSIGN) &&
+        n->value.text && !strcmp(n->value.text, name)) {
+        ++*count;
+        *last_match = index == assignment;
+    } else if (n->opcode == VNT_IR_ASSIGN) {
+        const VntIrNode *target = node(g, child(g, index, VNT_IR_EDGE_TARGET));
+        if (target && target->opcode == VNT_IR_VARIABLE &&
+            target->value.text && !strcmp(target->value.text, name)) {
+            ++*count;
+            *last_match = index == assignment;
+        }
+    }
+    for (size_t c = n->first_child; c != VNT_IR_NO_NODE;
+         c = g->ir->nodes[c].next_sibling)
+        native_count_loop_writes(g, c, name, assignment, count, last_match);
+}
+
+/*
+ * Prove a positive constant-step induction update cannot overflow:
+ *   while i < limit  { i = i + step }
+ *   while i <= limit { i = i + step }
+ * There must be exactly one write to i in the complete loop body. Since the
+ * condition is checked before each iteration and step is positive, the
+ * largest updated value is strictly below limit+step (or equal to it for <=).
+ * No assumption is made about the initial value; any signed 64-bit starting
+ * value is safe because the update moves upward and the condition bounds it.
+ */
+static int native_loop_update_is_safe(const HirGen *g, size_t assignment) {
+    if (!g->loop_depth) return 0;
+    size_t loop_index = g->loop_node[g->loop_depth - 1];
+    const VntIrNode *loop = node(g, loop_index);
+    const VntIrNode *update = node(g, assignment);
+    if (!loop || loop->opcode != VNT_IR_WHILE ||
+        !update || update->opcode != VNT_IR_REASSIGN ||
+        !update->value.text)
+        return 0;
+
+    int vi = var_index(g->vars, g->var_count, update->value.text);
+    if (vi < 0 || !g->vars[vi].native_integer) return 0;
+
+    size_t condition_index = child(g, loop_index, VNT_IR_EDGE_CONDITION);
+    const VntIrNode *condition = node(g, condition_index);
+    if (!condition || condition->opcode != VNT_IR_BINARY ||
+        (condition->operation != BINARY_LESS &&
+         condition->operation != BINARY_LESS_EQUAL))
+        return 0;
+
+    const VntIrNode *condition_left =
+        node(g, child(g, condition_index, VNT_IR_EDGE_LEFT));
+    const VntIrNode *condition_right =
+        node(g, child(g, condition_index, VNT_IR_EDGE_RIGHT));
+    if (!condition_left || condition_left->opcode != VNT_IR_VARIABLE ||
+        strcmp(condition_left->value.text, update->value.text) ||
+        !condition_right || condition_right->opcode != VNT_IR_INTEGER)
+        return 0;
+
+    size_t value_index = child(g, assignment, VNT_IR_EDGE_VALUE);
+    const VntIrNode *value = node(g, value_index);
+    if (!value || value->opcode != VNT_IR_BINARY ||
+        value->operation != BINARY_ADD)
+        return 0;
+    const VntIrNode *value_left =
+        node(g, child(g, value_index, VNT_IR_EDGE_LEFT));
+    const VntIrNode *value_right =
+        node(g, child(g, value_index, VNT_IR_EDGE_RIGHT));
+    if (!value_left || value_left->opcode != VNT_IR_VARIABLE ||
+        strcmp(value_left->value.text, update->value.text) ||
+        !value_right || value_right->opcode != VNT_IR_INTEGER ||
+        value_right->value.integer <= 0)
+        return 0;
+
+    int64_t step = value_right->value.integer;
+    int64_t limit = condition_right->value.integer;
+    if (limit > INT64_MAX - step) return 0;
+
+    int writes = 0, exact_update = 0;
+    for (size_t body = child(g, loop_index, VNT_IR_EDGE_BODY);
+         body != VNT_IR_NO_NODE; body = next_role(g, body, VNT_IR_EDGE_BODY))
+        native_count_loop_writes(g, body, update->value.text,
+                                 assignment, &writes, &exact_update);
+    return writes == 1 && exact_update;
+}
+
 static void emit_assignment(HirGen*g,size_t i) {
     size_t t=child(g,i,VNT_IR_EDGE_TARGET),v=child(g,i,VNT_IR_EDGE_VALUE);const VntIrNode*tn=node(g,t);
     if(!tn){fail(g,"missing HIR assignment target.");return;}
@@ -925,7 +1021,10 @@ static void emit_stmt(HirGen*g,size_t i) {
         int vi=var_index(g->vars,g->var_count,n->value.text),gi=var_index(g->globals,g->global_count,n->value.text);
         size_t assigned_value=child(g,i,VNT_IR_EDGE_VALUE);
         if(vi>=0&&g->vars[vi].native_integer) {
+            int previous_suppression = g->suppress_overflow_checks;
+            g->suppress_overflow_checks = native_loop_update_is_safe(g, i);
             emit_native_integer_assignment(g,vi,assigned_value);
+            g->suppress_overflow_checks = previous_suppression;
         } else {
             if(n->opcode!=VNT_IR_VARIABLE_DECL&&
                !emit_mutating_integer_assignment(g,n->value.text,assigned_value)) emit_expr(g,assigned_value);
@@ -941,7 +1040,7 @@ static void emit_stmt(HirGen*g,size_t i) {
         emit_stmt_role(g,i,VNT_IR_EDGE_THEN);fprintf(g->out,"    jmp .L%d\n",done);label_emit(g,els);emit_stmt_role(g,i,VNT_IR_EDGE_ELSE);label_emit(g,done);break;}
     case VNT_IR_WHILE:{
         int s=label_new(g),e=label_new(g);if(g->loop_depth>=64){fail(g,"loop nesting too deep.");break;}
-        g->loop_start[g->loop_depth]=s;g->loop_end[g->loop_depth]=e;g->loop_depth++;label_emit(g,s);
+        g->loop_start[g->loop_depth]=s;g->loop_end[g->loop_depth]=e;g->loop_node[g->loop_depth]=i;g->loop_depth++;label_emit(g,s);
         emit_condition_false_branch(g,child(g,i,VNT_IR_EDGE_CONDITION),e);
         emit_stmt_role(g,i,VNT_IR_EDGE_BODY);fprintf(g->out,"    jmp .L%d\n",s);label_emit(g,e);g->loop_depth--;break;}
     case VNT_IR_BREAK:if(!g->loop_depth)fail(g,"break outside loop.");else fprintf(g->out,"    jmp .L%d\n",g->loop_end[g->loop_depth-1]);break;

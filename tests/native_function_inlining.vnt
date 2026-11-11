@@ -13,9 +13,9 @@ fun run_inline_regression() {
         total += mix(i, 3, 1, 2)
         i += 1
     }
-    print total
-    print square(12)
-    print "NATIVE_FUNCTION_INLINING_OK"
+    print(total)
+    print(square(12))
+    print("NATIVE_FUNCTION_INLINING_OK")
 }
 
 run_inline_regression()

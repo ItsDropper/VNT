@@ -612,20 +612,20 @@ static void emit_native_integer_expression(HirGen *g,size_t i) {
         const VntIrNode *rn=node(g,right);
         emit_native_integer_expression(g,left);
         if(rn&&rn->opcode==VNT_IR_INTEGER&&rn->value.integer>=INT32_MIN&&rn->value.integer<=INT32_MAX) {
-            if(n->operation==BINARY_ADD) fprintf(g->out,"    addq $%lld,%%rax\\n",(long long)rn->value.integer);
-            else if(n->operation==BINARY_SUBTRACT) fprintf(g->out,"    subq $%lld,%%rax\\n",(long long)rn->value.integer);
-            else fprintf(g->out,"    imulq $%lld,%%rax,%%rax\\n",(long long)rn->value.integer);
+            if(n->operation==BINARY_ADD) fprintf(g->out,"    addq $%lld,%%rax\n",(long long)rn->value.integer);
+            else if(n->operation==BINARY_SUBTRACT) fprintf(g->out,"    subq $%lld,%%rax\n",(long long)rn->value.integer);
+            else fprintf(g->out,"    imulq $%lld,%%rax,%%rax\n",(long long)rn->value.integer);
         } else {
-            fputs("    pushq %rax\\n",g->out);
+            fputs("    pushq %rax\n",g->out);
             emit_native_integer_expression(g,right);
-            fputs("    movq %rax,%rdx\\n    popq %rax\\n",g->out);
-            if(n->operation==BINARY_ADD) fputs("    addq %rdx,%rax\\n",g->out);
-            else if(n->operation==BINARY_SUBTRACT) fputs("    subq %rdx,%rax\\n",g->out);
-            else fputs("    imulq %rdx,%rax\\n",g->out);
+            fputs("    movq %rax,%rdx\n    popq %rax\n",g->out);
+            if(n->operation==BINARY_ADD) fputs("    addq %rdx,%rax\n",g->out);
+            else if(n->operation==BINARY_SUBTRACT) fputs("    subq %rdx,%rax\n",g->out);
+            else fputs("    imulq %rdx,%rax\n",g->out);
         }
-        fputs(n->operation==BINARY_ADD?"    jo .Lvnt_int_add_overflow\\n":
-              n->operation==BINARY_SUBTRACT?"    jo .Lvnt_int_sub_overflow\\n":
-                                             "    jo .Lvnt_int_mul_overflow\\n",g->out);
+        fputs(n->operation==BINARY_ADD?"    jo .Lvnt_int_add_overflow\n":
+              n->operation==BINARY_SUBTRACT?"    jo .Lvnt_int_sub_overflow\n":
+                                             "    jo .Lvnt_int_mul_overflow\n",g->out);
         return;
     }
     if(n->opcode==VNT_IR_BINARY&&
@@ -633,17 +633,17 @@ static void emit_native_integer_expression(HirGen *g,size_t i) {
         size_t left=child(g,i,VNT_IR_EDGE_LEFT),right=child(g,i,VNT_IR_EDGE_RIGHT);
         int safe=label_new(g);
         emit_native_integer_expression(g,left);
-        fputs("    pushq %rax\\n",g->out);
+        fputs("    pushq %rax\n",g->out);
         emit_native_integer_expression(g,right);
-        fputs("    movq %rax,%rcx\\n    popq %rax\\n    testq %rcx,%rcx\\n",g->out);
-        fprintf(g->out,"    jz .Lvnt_int_%s_zero\\n",
+        fputs("    movq %rax,%rcx\n    popq %rax\n    testq %rcx,%rcx\n",g->out);
+        fprintf(g->out,"    jz .Lvnt_int_%s_zero\n",
                 n->operation==BINARY_DIVIDE?"div":"mod");
-        fprintf(g->out,"    movabsq $%lld,%%r10\\n    cmpq %%r10,%%rax\\n    jne .L%d\\n    cmpq $-1,%%rcx\\n    je .Lvnt_int_%s_overflow\\n",
+        fprintf(g->out,"    movabsq $%lld,%%r10\n    cmpq %%r10,%%rax\n    jne .L%d\n    cmpq $-1,%%rcx\n    je .Lvnt_int_%s_overflow\n",
                 (long long)INT64_MIN,safe,
                 n->operation==BINARY_DIVIDE?"div":"mod");
         label_emit(g,safe);
-        fputs("    cqto\\n    idivq %rcx\\n",g->out);
-        if(n->operation==BINARY_MODULO) fputs("    movq %rdx,%rax\\n",g->out);
+        fputs("    cqto\n    idivq %rcx\n",g->out);
+        if(n->operation==BINARY_MODULO) fputs("    movq %rdx,%rax\n",g->out);
         return;
     }
     fail(g,"unsupported expression reached native integer emitter.");
@@ -663,7 +663,8 @@ static int native_integer_read_contexts_are_safe(const HirGen *g,const char *nam
         if(parent->opcode==VNT_IR_PRINT) continue;
         if(parent->opcode==VNT_IR_BINARY&&
            (parent->operation==BINARY_ADD||parent->operation==BINARY_SUBTRACT||
-            parent->operation==BINARY_MULTIPLY||parent->operation==BINARY_EQUAL||
+            parent->operation==BINARY_MULTIPLY||parent->operation==BINARY_DIVIDE||
+            parent->operation==BINARY_MODULO||parent->operation==BINARY_EQUAL||
             parent->operation==BINARY_NOT_EQUAL||parent->operation==BINARY_GREATER||
             parent->operation==BINARY_LESS||parent->operation==BINARY_GREATER_EQUAL||
             parent->operation==BINARY_LESS_EQUAL)) continue;
@@ -978,7 +979,7 @@ static void emit_tables(HirGen*g) {
 #endif
     }
     for(size_t i=0;i<g->float_count;i++)fprintf(g->out,".Lflt%d:\n    .double %.17g\n",g->floats[i].label,g->floats[i].value);
-    for(size_t i=0;i<g->string_count;i++){fprintf(g->out,".Lstr%d:\n    .asciz \"",g->strings[i].label);for(const unsigned char*p=(const unsigned char*)g->strings[i].value;*p;p++){switch(*p){case '\\':fputs("\\\\",g->out);break;case '"':fputs("\\\"",g->out);break;case '\n':fputs("\\n",g->out);break;case '\r':fputs("\\r",g->out);break;case '\t':fputs("\\t",g->out);break;default:fputc(*p,g->out);}}fputs("\"\n",g->out);}
+    for(size_t i=0;i<g->string_count;i++){fprintf(g->out,".Lstr%d:\n    .asciz \"",g->strings[i].label);for(const unsigned char*p=(const unsigned char*)g->strings[i].value;*p;p++){switch(*p){case '\\':fputs("\\\\",g->out);break;case '"':fputs("\\\"",g->out);break;case '\n':fputs("\n",g->out);break;case '\r':fputs("\\r",g->out);break;case '\t':fputs("\\t",g->out);break;default:fputc(*p,g->out);}}fputs("\"\n",g->out);}
 }
 int vnt_emit_x86_64(const VntIrProgram *ir,const char *assembly_path) {
     if(!ir||!assembly_path||!vnt_ir_validate(ir)){fprintf(stderr,"Native compiler error: invalid HIR program.\n");return 0;}

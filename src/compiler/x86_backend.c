@@ -600,21 +600,14 @@ static void emit_native_integer_expression(HirGen *g,size_t i) {
         return;
     }
     if(n->opcode==VNT_IR_UNARY&&n->operation==UNARY_NEGATE) {
-        int overflow=label_new(g),done=label_new(g);
         emit_native_integer_expression(g,child(g,i,VNT_IR_EDGE_OPERAND));
-        fputs("    negq %rax\n",g->out);
-        fprintf(g->out,"    jo .L%d\n    jmp .L%d\n",overflow,done);
-        label_emit(g,overflow);
-        call0(g,"vnt_int_neg_overflow");
-        fputs("    ud2\n",g->out);
-        label_emit(g,done);
+        fputs("    negq %rax\n    jo .Lvnt_int_neg_overflow\n",g->out);
         return;
     }
     if(n->opcode==VNT_IR_BINARY&&
        (n->operation==BINARY_ADD||n->operation==BINARY_SUBTRACT||n->operation==BINARY_MULTIPLY)) {
         size_t left=child(g,i,VNT_IR_EDGE_LEFT),right=child(g,i,VNT_IR_EDGE_RIGHT);
         const VntIrNode *rn=node(g,right);
-        int overflow=label_new(g),done=label_new(g);
         emit_native_integer_expression(g,left);
         if(rn&&rn->opcode==VNT_IR_INTEGER&&rn->value.integer>=INT32_MIN&&rn->value.integer<=INT32_MAX) {
             if(n->operation==BINARY_ADD) fprintf(g->out,"    addq $%lld,%%rax\n",(long long)rn->value.integer);
@@ -628,12 +621,9 @@ static void emit_native_integer_expression(HirGen *g,size_t i) {
             else if(n->operation==BINARY_SUBTRACT) fputs("    subq %rdx,%rax\n",g->out);
             else fputs("    imulq %rdx,%rax\n",g->out);
         }
-        fprintf(g->out,"    jo .L%d\n    jmp .L%d\n",overflow,done);
-        label_emit(g,overflow);
-        call0(g,n->operation==BINARY_ADD?"vnt_int_add_overflow":
-                n->operation==BINARY_SUBTRACT?"vnt_int_sub_overflow":"vnt_int_mul_overflow");
-        fputs("    ud2\n",g->out);
-        label_emit(g,done);
+        fputs(n->operation==BINARY_ADD?"    jo .Lvnt_int_add_overflow\n":
+              n->operation==BINARY_SUBTRACT?"    jo .Lvnt_int_sub_overflow\n":
+                                             "    jo .Lvnt_int_mul_overflow\n",g->out);
         return;
     }
     fail(g,"unsupported expression reached native integer emitter.");
@@ -820,15 +810,10 @@ static void emit_native_integer_assignment(HirGen *g,int target,size_t value) {
                     }
                     fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",dst->offset);
                 }
-                int overflow=label_new(g),done=label_new(g);
-                /* The operation was emitted immediately above; branch on its
-                   still-live OF flag before any instruction can overwrite it. */
-                fprintf(g->out,"    jo .L%d\n    jmp .L%d\n",overflow,done);
-                label_emit(g,overflow);
-                call0(g,n->operation==BINARY_ADD?"vnt_int_add_overflow":
-                        n->operation==BINARY_SUBTRACT?"vnt_int_sub_overflow":"vnt_int_mul_overflow");
-                fputs("    ud2\n",g->out);
-                label_emit(g,done);
+                /* Keep the hot path to one predicted overflow branch. */
+                fputs(n->operation==BINARY_ADD?"    jo .Lvnt_int_add_overflow\n":
+                      n->operation==BINARY_SUBTRACT?"    jo .Lvnt_int_sub_overflow\n":
+                                                     "    jo .Lvnt_int_mul_overflow\n",g->out);
                 return;
             }
         }
@@ -993,7 +978,10 @@ int vnt_emit_x86_64(const VntIrProgram *ir,const char *assembly_path) {
         for(size_t c=root->first_child;c!=VNT_IR_NO_NODE&&!g.error;c=g.ir->nodes[c].next_sibling)if(g.ir->nodes[c].opcode!=VNT_IR_FUNCTION&&g.ir->nodes[c].opcode!=VNT_IR_STRUCT)emit_stmt(&g,c);
         if(!g.error){emit_native_register_restores(&g);fputs("    xorl %eax,%eax\n    leave\n    ret\n",g.out);}
     }
-    if(!g.error){fputs(".Lvnt_int_add_overflow:\n    subq $32,%rsp\n    call vnt_int_add_overflow\n    addq $32,%rsp\n.Lvnt_int_sub_overflow:\n    subq $32,%rsp\n    call vnt_int_sub_overflow\n    addq $32,%rsp\n.Lvnt_int_mul_overflow:\n    subq $32,%rsp\n    call vnt_int_mul_overflow\n    addq $32,%rsp\n.Lvnt_int_neg_overflow:\n    subq $32,%rsp\n    call vnt_int_neg_overflow\n    addq $32,%rsp\n.Lvnt_int_div_zero:\n    subq $32,%rsp\n    call vnt_int_div_zero\n    addq $32,%rsp\n",g.out);emit_tables(&g);}
+    if(!g.error){
+        fputs(".Lvnt_int_add_overflow:\n",g.out);call0(&g,"vnt_int_add_overflow");fputs("    ud2\n.Lvnt_int_sub_overflow:\n",g.out);call0(&g,"vnt_int_sub_overflow");fputs("    ud2\n.Lvnt_int_mul_overflow:\n",g.out);call0(&g,"vnt_int_mul_overflow");fputs("    ud2\n.Lvnt_int_neg_overflow:\n",g.out);call0(&g,"vnt_int_neg_overflow");fputs("    ud2\n.Lvnt_int_div_zero:\n",g.out);call0(&g,"vnt_int_div_zero");fputs("    ud2\n",g.out);
+        emit_tables(&g);
+    }
     fclose(g.out);
     free_vars(g.vars,g.var_count);free_vars(g.globals,g.global_count);
     for(size_t i=0;i<g.string_count;i++) {

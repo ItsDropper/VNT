@@ -979,7 +979,7 @@ static void emit_tables(HirGen*g) {
 #endif
     }
     for(size_t i=0;i<g->float_count;i++)fprintf(g->out,".Lflt%d:\n    .double %.17g\n",g->floats[i].label,g->floats[i].value);
-    for(size_t i=0;i<g->string_count;i++){fprintf(g->out,".Lstr%d:\n    .asciz \"",g->strings[i].label);for(const unsigned char*p=(const unsigned char*)g->strings[i].value;*p;p++){switch(*p){case '\\':fputs("\\\\",g->out);break;case '"':fputs("\\\"",g->out);break;case '\n':fputs("\n",g->out);break;case '\r':fputs("\\r",g->out);break;case '\t':fputs("\\t",g->out);break;default:fputc(*p,g->out);}}fputs("\"\n",g->out);}
+    for(size_t i=0;i<g->string_count;i++){fprintf(g->out,".Lstr%d:\n    .asciz \"",g->strings[i].label);for(const unsigned char*p=(const unsigned char*)g->strings[i].value;*p;p++){switch(*p){case '\\':fputs("\\\\",g->out);break;case '"':fputs("\\\"",g->out);break;case '\n':fputs("\\n",g->out);break;case '\r':fputs("\\r",g->out);break;case '\t':fputs("\\t",g->out);break;default:fputc(*p,g->out);}}fputs("\"\n",g->out);}
 }
 int vnt_emit_x86_64(const VntIrProgram *ir,const char *assembly_path) {
     if(!ir||!assembly_path||!vnt_ir_validate(ir)){fprintf(stderr,"Native compiler error: invalid HIR program.\n");return 0;}

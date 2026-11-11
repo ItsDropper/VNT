@@ -1,0 +1,26 @@
+fun native_seven_registers() {
+    alpha = 10
+    beta = 20
+    gamma = 30
+    delta = 40
+    epsilon = 50
+    zeta = 60
+    eta = 70
+
+    alpha = alpha + 1
+    beta = beta + 1
+    gamma = gamma + 1
+    delta = delta + 1
+    epsilon = epsilon + 1
+    zeta = zeta + 1
+    eta = eta + 1
+
+    print(alpha)
+    print(beta)
+    print(gamma)
+    print(delta)
+    print(epsilon)
+    print(zeta)
+    print(eta)
+}
+native_seven_registers()

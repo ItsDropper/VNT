@@ -148,6 +148,7 @@ static void call0(HirGen *g,const char *name) {
 static void emit_expr(HirGen *g,size_t i);
 static int native_integer_expression(const HirGen *g,size_t i);
 static void emit_native_integer_expression(HirGen *g,size_t i);
+static const char *native_register_name(int index);
 static void emit_stmt(HirGen *g,size_t i);
 static void emit_stmt_role(HirGen *g,size_t i,VntIrEdgeRole role) {
     for(size_t c=child(g,i,role);c!=VNT_IR_NO_NODE&&!g->error;c=next_role(g,c,role))emit_stmt(g,c);
@@ -503,8 +504,6 @@ static void emit_condition_false_branch(HirGen *g,size_t condition,int false_lab
         if(branch) fprintf(g->out,"    %s .L%d\n",branch,false_label);
         return;
     }
-    const VntIrNode *left=n&&n->opcode==VNT_IR_BINARY?node(g,child(g,condition,VNT_IR_EDGE_LEFT)):NULL;
-    const VntIrNode *right=n&&n->opcode==VNT_IR_BINARY?node(g,child(g,condition,VNT_IR_EDGE_RIGHT)):NULL;
     if(n&&n->opcode==VNT_IR_BINARY&&left&&left->opcode==VNT_IR_VARIABLE&&right&&
        right->opcode==VNT_IR_INTEGER&&right->value.integer >= INT32_MIN && right->value.integer <= INT32_MAX&&n->operation>=BINARY_EQUAL&&
        n->operation<=BINARY_LESS_EQUAL) {

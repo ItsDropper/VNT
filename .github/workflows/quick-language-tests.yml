@@ -227,6 +227,23 @@ jobs:
           fi
           echo "Conservative pure-function inlining: PASS"
 
+      - name: Verify register-resident locals need no stack slots
+        shell: bash
+        run: |
+          set -eu
+          ./vnt --compile tests/native_register_frame.vnt -o native-register-frame.exe
+          output="$(./native-register-frame.exe | tr -d '\r')"
+          expected="$(printf '42\nREGISTER_FRAME_OK')"
+          if [ "$output" != "$expected" ]; then
+            echo "Unexpected register-frame result: $output"
+            exit 1
+          fi
+          if grep -E -- '-[0-9]+\(%rbp\)' native-register-frame.exe.s; then
+            echo "Register-resident locals still have stack-slot accesses."
+            exit 1
+          fi
+          echo "Register-resident local frame elimination: PASS"
+
       - name: Verify proven-safe loop induction overflow elimination
         shell: bash
         run: |

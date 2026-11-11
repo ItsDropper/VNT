@@ -1030,6 +1030,8 @@ static int hir_inline_small_calls(VntIrProgram *ir, size_t *changed) {
                 pending[pending_count++] = child;
             }
         }
+        /* Keep code growth bounded; larger functions remain real calls. */
+        if (expression_nodes > 12) continue;
         if (expression_nodes > (SIZE_MAX - ir->node_count) / 2)
             return 0;
         size_t needed = ir->node_count + expression_nodes * 2;

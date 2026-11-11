@@ -232,6 +232,10 @@ jobs:
         run: |
           set -eu
           ./vnt --compile tests/native_loop_induction_safe.vnt -o native-loop-induction-safe.exe
+          if grep -Fq 'jo .Lvnt_int_add_overflow' native-loop-induction-safe.exe.s; then
+            echo "Proven-safe induction update still has an overflow branch."
+            exit 1
+          fi
           output="$(./native-loop-induction-safe.exe | tr -d '\r')"
           expected="$(printf '9223372036854775807\nSAFE_INDUCTION_OK')"
           if [ "$output" != "$expected" ]; then
@@ -240,6 +244,7 @@ jobs:
           fi
 
           ./vnt --compile tests/native_loop_induction_overflow.vnt -o native-loop-induction-overflow.exe
+          grep -Fq 'jo .Lvnt_int_add_overflow' native-loop-induction-overflow.exe.s
           set +e
           ./native-loop-induction-overflow.exe > induction-overflow.out 2> induction-overflow.err
           status=$?
@@ -1062,11 +1067,10 @@ jobs:
           grep -F "movzbl (%rdi,%rsi), %eax" freestanding-raw-memory.s
           grep -F "movl (%rdi,%rsi), %eax" freestanding-raw-memory.s
           grep -F "movq (%rdi,%rsi), %rax" freestanding-raw-memory.s
-          grep -F "call vnt_fn_zero" freestanding-raw-memory.s
-          grep -F "call vnt_fn_offset_four" freestanding-raw-memory.s
-          grep -F "call vnt_fn_payload_u32" freestanding-raw-memory.s
-          grep -F "call vnt_fn_offset_eight" freestanding-raw-memory.s
-          grep -F "call vnt_fn_payload_u64" freestanding-raw-memory.s
+          if grep -E "call vnt_fn_(zero|offset_four|payload_u32|offset_eight|payload_u64)" freestanding-raw-memory.s; then
+            echo "Pure constant helper calls were not inlined in freestanding code."
+            exit 1
+          fi
           ./vnt --build-freestanding tests/freestanding_string_index.vnt -o freestanding-string-index.elf
           test -z "$(nm -u freestanding-string-index.elf)"
           ./vnt --emit-freestanding-asm tests/freestanding_string_index.vnt -o freestanding-string-index.s

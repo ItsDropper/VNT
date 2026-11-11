@@ -1140,6 +1140,8 @@ jobs:
           ./vnt --compile tests/native_integer_divmod.vnt -o vnt-native-integer-divmod.exe
           ./vnt --compile tests/native_integer_div_overflow.vnt -o vnt-native-integer-div-overflow.exe
           ./vnt --compile tests/native_integer_mod_overflow.vnt -o vnt-native-integer-mod-overflow.exe
+          ./vnt --compile tests/native_integer_div_zero.vnt -o vnt-native-integer-div-zero.exe
+          ./vnt --compile tests/native_integer_mod_zero.vnt -o vnt-native-integer-mod-zero.exe
           ./vnt --compile tests/native_memory_u64.vnt -o vnt-memory-u64-smoke.exe
 
       - name: Run native networking integration tests
@@ -1196,6 +1198,25 @@ jobs:
               exit 1
             fi
             grep -F "$diagnostic" "vnt-native-integer-$operation-overflow-stderr.txt"
+          done
+
+          for operation in div mod; do
+            if [ "$operation" = div ]; then
+              executable=./vnt-native-integer-div-zero.exe
+              diagnostic="Runtime error: division by zero."
+            else
+              executable=./vnt-native-integer-mod-zero.exe
+              diagnostic="Runtime error: modulo by zero."
+            fi
+            set +e
+            "$executable" > "vnt-native-integer-$operation-zero-actual.txt" 2> "vnt-native-integer-$operation-zero-stderr.txt"
+            operation_status=$?
+            set -e
+            if [ "$operation_status" -eq 0 ]; then
+              echo "Native integer $operation by zero incorrectly succeeded."
+              exit 1
+            fi
+            grep -F "$diagnostic" "vnt-native-integer-$operation-zero-stderr.txt"
           done
 
           set +e

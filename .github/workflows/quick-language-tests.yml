@@ -214,6 +214,19 @@ jobs:
           fi
           echo "Call-order optimizer regression: PASS"
 
+      - name: Verify conservative pure-function inlining
+        shell: bash
+        run: |
+          set -eu
+          ./vnt --compile tests/native_function_inlining.vnt -o native-function-inlining.exe
+          output="$(./native-function-inlining.exe | tr -d '\r')"
+          expected="$(printf '506500\n144\nNATIVE_FUNCTION_INLINING_OK')"
+          if [ "$output" != "$expected" ]; then
+            echo "Unexpected result for function-inlining regression: $output"
+            exit 1
+          fi
+          echo "Conservative pure-function inlining: PASS"
+
       - name: Run loop-control regression programs
         shell: bash
         run: |

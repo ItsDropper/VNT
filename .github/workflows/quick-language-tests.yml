@@ -227,6 +227,30 @@ jobs:
           fi
           echo "Conservative pure-function inlining: PASS"
 
+      - name: Verify proven-safe loop induction overflow elimination
+        shell: bash
+        run: |
+          set -eu
+          ./vnt --compile tests/native_loop_induction_safe.vnt -o native-loop-induction-safe.exe
+          output="$(./native-loop-induction-safe.exe | tr -d '\r')"
+          expected="$(printf '9223372036854775807\nSAFE_INDUCTION_OK')"
+          if [ "$output" != "$expected" ]; then
+            echo "Unexpected safe induction result: $output"
+            exit 1
+          fi
+
+          ./vnt --compile tests/native_loop_induction_overflow.vnt -o native-loop-induction-overflow.exe
+          set +e
+          ./native-loop-induction-overflow.exe > induction-overflow.out 2> induction-overflow.err
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "Unsafe induction update incorrectly succeeded."
+            exit 1
+          fi
+          grep -F "Runtime error: integer overflow in addition." induction-overflow.err
+          echo "Loop induction overflow proofs: PASS"
+
       - name: Run loop-control regression programs
         shell: bash
         run: |

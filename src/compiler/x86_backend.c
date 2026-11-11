@@ -754,8 +754,6 @@ static int native_leaf_scalar_node(const HirGen *g, size_t index) {
             if (n->operation != BINARY_ADD &&
                 n->operation != BINARY_SUBTRACT &&
                 n->operation != BINARY_MULTIPLY &&
-                n->operation != BINARY_DIVIDE &&
-                n->operation != BINARY_MODULO &&
                 n->operation != BINARY_EQUAL &&
                 n->operation != BINARY_NOT_EQUAL &&
                 n->operation != BINARY_GREATER &&
@@ -819,7 +817,7 @@ static void mark_native_integer_variables(HirGen *g,const VntIrNode *function) {
         if(g->vars[v].native_integer) ++native_total;
     int leaf_scalar=function&&function->name_count==0&&
         native_leaf_scalar_node(g,(size_t)(function-g->ir->nodes));
-    size_t volatile_total=leaf_scalar?(native_total<2?native_total:2):0;
+    size_t volatile_total=leaf_scalar?(native_total<4?native_total:4):0;
     size_t volatile_start=native_total-volatile_total;
     size_t native_ordinal=0;
     int next_saved_register=0;
@@ -841,8 +839,8 @@ static void mark_native_integer_variables(HirGen *g,const VntIrNode *function) {
 }
 
 static const char *native_register_name(int index) {
-    static const char *names[]={"%rbx","%rdi","%rsi","%r12","%r13","%r14","%r15","%r8","%r9"};
-    return index>=0&&index<9?names[index]:NULL;
+    static const char *names[]={"%rbx","%rdi","%rsi","%r12","%r13","%r14","%r15","%r8","%r9","%r10","%r11"};
+    return index>=0&&index<11?names[index]:NULL;
 }
 static void emit_native_register_saves(HirGen *g) {
     for(int r=0;r<7;r++)

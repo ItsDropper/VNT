@@ -747,8 +747,7 @@ static int native_leaf_scalar_node(const HirGen *g, size_t index) {
         case VNT_IR_BOOLEAN:
             break;
         case VNT_IR_UNARY:
-            if (n->operation != UNARY_NEGATE && n->operation != UNARY_NOT)
-                return 0;
+            if (n->operation != UNARY_NEGATE) return 0;
             break;
         case VNT_IR_BINARY:
             if (n->operation != BINARY_ADD &&

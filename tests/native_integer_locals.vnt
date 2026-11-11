@@ -1,0 +1,16 @@
+# Exercises unboxed integer locals, preserved-register allocation, nested arithmetic,
+# comparison branches, and boxing only at the print boundary.
+fun native_integer_locals() {
+    a = -10
+    b = 3
+    total = 0
+    i = 0
+    while i < 5 {
+        total = total + a * b
+        i = i + 1
+    }
+    print(total)
+    print(a)
+    print(i)
+}
+native_integer_locals()

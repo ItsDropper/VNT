@@ -736,6 +736,7 @@ static int native_leaf_scalar_node(const HirGen *g, size_t index) {
         case VNT_IR_RETURN:
         case VNT_IR_BREAK:
         case VNT_IR_CONTINUE:
+            break;
         case VNT_IR_VARIABLE_DECL:
         case VNT_IR_REASSIGN:
         case VNT_IR_VARIABLE: {

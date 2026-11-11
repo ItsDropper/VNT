@@ -75,8 +75,12 @@ jobs:
         run: |
           ./build/vnt --emit-freestanding-asm tests/freestanding_atomic_exchange.vnt -o build/freestanding-atomic-exchange.s
           grep -F 'xchgq %rax, (%rdi)' build/freestanding-atomic-exchange.s
-          grep -F 'call vnt_fn_atomic_address' build/freestanding-atomic-exchange.s
-          grep -F 'call vnt_fn_atomic_value' build/freestanding-atomic-exchange.s
+          grep -F 'movq $4096, %rax' build/freestanding-atomic-exchange.s
+          grep -F 'movq $1, %rax' build/freestanding-atomic-exchange.s
+          if grep -E 'call vnt_fn_atomic_(address|value)' build/freestanding-atomic-exchange.s; then
+            echo "Pure constant atomic arguments were not inlined." >&2
+            exit 1
+          fi
           grep -F 'movq 0(%rsp), %rdi' build/freestanding-atomic-exchange.s
           grep -F 'movq 8(%rsp), %rax' build/freestanding-atomic-exchange.s
 

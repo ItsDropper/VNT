@@ -1,7 +1,8 @@
 fun register_resident_values() {
     first = 20
     second = 22
-    return first + second
+    total = first + second
+    return total
 }
 
 fun run_register_frame_test() {

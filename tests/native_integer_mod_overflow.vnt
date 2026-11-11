@@ -1,0 +1,7 @@
+# Native integer modulo must trap on the INT64_MIN / -1 hardware fault case.
+fun native_integer_mod_overflow() {
+    left = -9223372036854775807 - 1
+    right = -1
+    print(left % right)
+}
+native_integer_mod_overflow()

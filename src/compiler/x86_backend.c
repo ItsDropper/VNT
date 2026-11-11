@@ -556,6 +556,7 @@ static int integer_slot_is_unaliased(const HirGen *g,const char *name) {
         if(parent->opcode==VNT_IR_BINARY &&
            (role==VNT_IR_EDGE_LEFT||role==VNT_IR_EDGE_RIGHT)) continue;
         if(parent->opcode==VNT_IR_PRINT&&role==VNT_IR_EDGE_VALUE) continue;
+        if(parent->opcode==VNT_IR_RETURN&&role==VNT_IR_EDGE_VALUE) continue;
         if((parent->opcode==VNT_IR_ASSIGN)&&role==VNT_IR_EDGE_TARGET) continue;
         return 0;
     }

@@ -8,7 +8,7 @@ if ($Runs -lt 3) { throw "Use at least 3 measured runs; recommended: -Runs 7." }
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
 $Cases = @(
-    @{ Name = "integer-loop"; Source = "benchmarks\loop_sum.vnt"; Marker = "499999500000"; Expected = @("799980000") },
+    @{ Name = "integer-loop"; Source = "benchmarks\loop_sum.vnt"; Marker = "499999500000"; Expected = @("499999500000") },
     @{ Name = "hir-constant-folding"; Source = "tests\hir_constant_folding.vnt"; Marker = "HIR_CONSTANT_FOLDING_OK"; Expected = @("14", "4", "false", "3.75", "10", "3", "true", "-7", "true", "-2.5") },
     @{ Name = "hir-constant-propagation"; Source = "tests\optimizer_constant_propagation.vnt"; Marker = "CONSTANT_PROPAGATION_OK"; Expected = @("7", "9", "CONSTANT_BRANCH", "2") },
     @{ Name = "branches-logic"; Source = "benchmarks\suite\branches_logic.vnt"; Marker = "BRANCHES_LOGIC_OK"; Expected = @("133255") },

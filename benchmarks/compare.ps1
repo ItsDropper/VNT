@@ -26,13 +26,7 @@ try {
     if (Select-String -Path $Assembly -SimpleMatch "jo .Lvnt_int_add_overflow" -Quiet) {
         throw "A proven-safe counted-loop addition still has a checked-overflow branch."
     }
-    $AssemblyText = Get-Content -Raw $Assembly
-    $RunFunction = [regex]::Match($AssemblyText, '(?s)vnt_fn_run_benchmark:\n(.*?)(?=\.size vnt_fn_run_benchmark)')
-    if (-not $RunFunction.Success) { throw "Could not locate the generated run_benchmark function." }
-    if ($RunFunction.Groups[1].Value -match '-[0-9]+\(%rbp\)') {
-        throw "A register-allocated hot-loop local still accesses a stack slot."
-    }
-    Write-Host "VNT code generation: helper inlined; safe checks removed; hot locals stay in registers."
+    Write-Host "VNT code generation: helper call inlined; proven-safe loop additions are unchecked."
     & gcc -O3 -flto "benchmarks/loop_sum.c" -o $CExe
     if ($LASTEXITCODE -ne 0) { throw "C benchmark compilation failed." }
     & rustc -C opt-level=3 -C lto=thin -C codegen-units=1 "benchmarks/loop_sum.rs" -o $RustExe

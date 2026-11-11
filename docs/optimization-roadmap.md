@@ -11,7 +11,7 @@ This document tracks implementation work against observable compiler behavior. I
 - Constant-branch simplification and pruning after unconditional terminators.
 - Explicit CFG construction/validation and definite-assignment analysis (`include/vnt/cfg.h`, `src/compiler/cfg.c`).
 - Direct HIR traversal by the x86-64 backend.
-- Conservative unboxed signed 64-bit locals in the hosted x86-64 backend: integer-only definitions and non-escaping uses are stored as raw scalars; arithmetic and comparison branches use native instructions; values are boxed only at dynamic runtime boundaries. Checked overflow remains enabled.
+- Conservative unboxed signed 64-bit locals in the hosted x86-64 backend: integer-only definitions and non-escaping uses are stored as raw scalars; arithmetic and comparison branches use native instructions; self-updates operate directly on their destination register; values are boxed only at dynamic runtime boundaries. Checked overflow branches target shared cold stubs, preserving checked semantics without adding unconditional jumps to the hot path.
 - A simple four-register allocator assigns eligible locals to Microsoft x64 nonvolatile registers (`r12`–`r15`), saves/restores them at function boundaries, and leaves excess or ineligible values in stack slots.
 - Hosted native executables link the C runtime with GCC `-O3 -flto`, enabling whole-program optimization among runtime translation units; generated assembly remains a normal object boundary.
 - Equivalent VNT/C/Rust integer-loop comparison with output validation, warmups, repeated samples, median/min/max, CSV artifact, and a CI workflow. The three implementations execute the same 20 × 40,000 iteration workload.

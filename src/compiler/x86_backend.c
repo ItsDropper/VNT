@@ -595,7 +595,7 @@ static void emit_native_integer_expression(HirGen *g,size_t i) {
             return;
         }
         if(g->vars[vi].native_register>=0)
-            fprintf(g->out,"    movq %s,%%rax\n",g->vars[vi].native_register==0?"%r12":g->vars[vi].native_register==1?"%r13":g->vars[vi].native_register==2?"%r14":"%r15");
+            fprintf(g->out,"    movq %s,%%rax\n",native_register_name(g->vars[vi].native_register));
         else fprintf(g->out,"    movq -%d(%%rbp),%%rax\n",g->vars[vi].offset);
         return;
     }
@@ -727,34 +727,35 @@ static void mark_native_integer_variables(HirGen *g,const VntIrNode *function) {
             }
         }
     } while(changed);
-    /* Four Microsoft x64 nonvolatile registers are available for long-lived
-       scalar locals. Remaining eligible locals stay in their frame slots. */
+    /* Use the complete set of Microsoft x64 nonvolatile GPRs other than RBP,
+       which is the frame pointer. This gives scalar locals seven registers
+       before spilling to their existing frame slots. */
     g->native_register_mask=0;
     int next_register=0;
     for(size_t v=0;v<g->var_count;v++) {
         g->vars[v].native_register=-1;
-        if(g->vars[v].native_integer&&next_register<4) {
+        if(g->vars[v].native_integer&&next_register<7) {
             g->vars[v].native_register=next_register;
             g->native_register_mask|=1u<<next_register;
             ++next_register;
         }
     }
-    /* A function containing arbitrary inline assembly must still preserve
-       every nonvolatile register for its caller, even without scalar locals. */
-    if(scope_has_asm) g->native_register_mask=0x0fu;
+    /* Inline assembly may clobber any allocatable register. Preserve the
+       entire Microsoft x64 nonvolatile set around scopes containing asm. */
+    if(scope_has_asm) g->native_register_mask=0x7fu;
 }
 
 static const char *native_register_name(int index) {
-    static const char *names[]={"%r12","%r13","%r14","%r15"};
-    return index>=0&&index<4?names[index]:NULL;
+    static const char *names[]={"%rbx","%rdi","%rsi","%r12","%r13","%r14","%r15"};
+    return index>=0&&index<7?names[index]:NULL;
 }
 static void emit_native_register_saves(HirGen *g) {
-    for(int r=0;r<4;r++)
+    for(int r=0;r<7;r++)
         if(g->native_register_mask&(1u<<r))
             fprintf(g->out,"    pushq %s\n",native_register_name(r));
 }
 static void emit_native_register_restores(HirGen *g) {
-    for(int r=3;r>=0;r--)
+    for(int r=6;r>=0;r--)
         if(g->native_register_mask&(1u<<r))
             fprintf(g->out,"    popq %s\n",native_register_name(r));
 }

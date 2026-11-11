@@ -1,6 +1,10 @@
 # Shared C/Rust/VNT workload: 20 rounds of 1,000,000 integer iterations.
 # Function locals exercise the native unboxed-scalar backend.
 # Final checksum: 499999500000.
+fun add_value(accumulator, value) {
+    return accumulator + value
+}
+
 fun run_benchmark() {
     round = 0
     i = 0
@@ -9,7 +13,7 @@ fun run_benchmark() {
         i = 0
         total = 0
         while i < 1000000 {
-            total = total + i
+            total = add_value(total, i)
             i = i + 1
         }
         round = round + 1

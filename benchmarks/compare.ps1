@@ -1,6 +1,6 @@
-param([int]$Runs =  9, [int]$Warmups = 2)
+param([int]$Runs = 9, [int]$Warmups = 2)
 $ErrorActionPreference = "Stop"
-if ($Runs -lt 3) { throw "Use at least 3 measured runs; recommended: -Runs  9." }
+if ($Runs -lt 3) { throw "Use at least 3 measured runs; recommended: -Runs 9." }
 $Root = Split-Path -Parent $PSScriptRoot
 $OutDir = Join-Path $PSScriptRoot "out"
 $Vnt = Join-Path $Root "vnt.exe"

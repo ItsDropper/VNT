@@ -18,6 +18,6 @@ fun run_benchmark() {
         }
         round = round + 1
     }
-    print(total)
+    return total
 }
-run_benchmark()
+print(run_benchmark())

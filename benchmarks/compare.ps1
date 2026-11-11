@@ -16,11 +16,11 @@ try {
     $CExe = Join-Path $OutDir "loop_sum_c.exe"
     $RustExe = Join-Path $OutDir "loop_sum_rust.exe"
 
-    & $Vnt --compile "benchmarks\\loop_sum.vnt" -o $VntExe
+    & $Vnt --compile "benchmarks/loop_sum.vnt" -o $VntExe
     if ($LASTEXITCODE -ne 0) { throw "VNT benchmark compilation failed." }
-    & gcc -O3 -flto "benchmarks\\loop_sum.c" -o $CExe
+    & gcc -O3 -flto "benchmarks/loop_sum.c" -o $CExe
     if ($LASTEXITCODE -ne 0) { throw "C benchmark compilation failed." }
-    & rustc -C opt-level=3 -C lto=thin -C codegen-units=1 "benchmarks\\loop_sum.rs" -o $RustExe
+    & rustc -C opt-level=3 -C lto=thin -C codegen-units=1 "benchmarks/loop_sum.rs" -o $RustExe
     if ($LASTEXITCODE -ne 0) { throw "Rust benchmark compilation failed." }
 
     $Expected = "799980000"

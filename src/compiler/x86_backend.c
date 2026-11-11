@@ -991,6 +991,170 @@ static int native_loop_update_is_safe(const HirGen *g, size_t assignment) {
     return writes == 1 && exact_update;
 }
 
+
+/* Resolve the last simple literal assignment to a local before a loop. Any
+ * intervening conditional/indirect write makes the result unknown. */
+static int native_loop_initial_literal(const HirGen *g, size_t loop_index,
+                                       const char *name, int64_t *value) {
+    const VntIrNode *loop = node(g, loop_index);
+    if (!loop) return 0;
+    for (size_t parent = 0; parent < g->ir->node_count; ++parent) {
+        const VntIrNode *p = node(g, parent);
+        for (size_t c = p->first_child; c != VNT_IR_NO_NODE;
+             c = g->ir->nodes[c].next_sibling) {
+            if (c != loop_index || g->ir->nodes[c].role != loop->role)
+                continue;
+            int found = 0;
+            for (size_t prior = p->first_child; prior != c;
+                 prior = g->ir->nodes[prior].next_sibling) {
+                if (g->ir->nodes[prior].role != loop->role) continue;
+                int writes = 0, exact = 0;
+                native_count_loop_writes(g, prior, name, prior,
+                                         &writes, &exact);
+                if (!writes) continue;
+                if (writes != 1 || !exact ||
+                    (g->ir->nodes[prior].opcode != VNT_IR_VARIABLE_DECL &&
+                     g->ir->nodes[prior].opcode != VNT_IR_REASSIGN) ||
+                    strcmp(g->ir->nodes[prior].value.text, name))
+                    return 0;
+                const VntIrNode *assigned =
+                    node(g, child(g, prior, VNT_IR_EDGE_VALUE));
+                if (!assigned || assigned->opcode != VNT_IR_INTEGER)
+                    return 0;
+                *value = assigned->value.integer;
+                found = 1;
+            }
+            return found;
+        }
+    }
+    return 0;
+}
+
+/*
+ * A deliberately strict accumulator proof for canonical counted loops:
+ *   i = 0; total = 0
+ *   while i < limit {
+ *       total = total + i
+ *       i = i + step
+ *   }
+ * The body must contain exactly those two unconditional updates, in that
+ * order. The sum is nonnegative and bounded by iterations*limit; a 128-bit
+ * proof rejects any case whose conservative upper bound exceeds INT64_MAX.
+ */
+static int native_loop_accumulator_update_is_safe(const HirGen *g,
+                                                   size_t assignment) {
+    if (!g->loop_depth) return 0;
+    size_t loop_index = g->loop_node[g->loop_depth - 1];
+    const VntIrNode *loop = node(g, loop_index);
+    const VntIrNode *acc_update = node(g, assignment);
+    if (!loop || loop->opcode != VNT_IR_WHILE ||
+        !acc_update || acc_update->opcode != VNT_IR_REASSIGN ||
+        !acc_update->value.text)
+        return 0;
+
+    size_t first = child(g, loop_index, VNT_IR_EDGE_BODY);
+    size_t second = first == VNT_IR_NO_NODE ? VNT_IR_NO_NODE :
+                    next_role(g, first, VNT_IR_EDGE_BODY);
+    if (first == VNT_IR_NO_NODE || second == VNT_IR_NO_NODE ||
+        next_role(g, second, VNT_IR_EDGE_BODY) != VNT_IR_NO_NODE ||
+        first != assignment)
+        return 0;
+
+    const VntIrNode *acc_stmt = node(g, first);
+    const VntIrNode *induction_stmt = node(g, second);
+    if (!acc_stmt || !induction_stmt ||
+        induction_stmt->opcode != VNT_IR_REASSIGN ||
+        !induction_stmt->value.text ||
+        !strcmp(acc_stmt->value.text, induction_stmt->value.text))
+        return 0;
+
+    int accumulator_index =
+        var_index(g->vars, g->var_count, acc_stmt->value.text);
+    int induction_index =
+        var_index(g->vars, g->var_count, induction_stmt->value.text);
+    if (accumulator_index < 0 || induction_index < 0 ||
+        !g->vars[accumulator_index].native_integer ||
+        !g->vars[induction_index].native_integer)
+        return 0;
+
+    size_t condition_index = child(g, loop_index, VNT_IR_EDGE_CONDITION);
+    const VntIrNode *condition = node(g, condition_index);
+    if (!condition || condition->opcode != VNT_IR_BINARY ||
+        (condition->operation != BINARY_LESS &&
+         condition->operation != BINARY_LESS_EQUAL))
+        return 0;
+    const VntIrNode *condition_left =
+        node(g, child(g, condition_index, VNT_IR_EDGE_LEFT));
+    const VntIrNode *condition_right =
+        node(g, child(g, condition_index, VNT_IR_EDGE_RIGHT));
+    if (!condition_left || condition_left->opcode != VNT_IR_VARIABLE ||
+        strcmp(condition_left->value.text, induction_stmt->value.text) ||
+        !condition_right || condition_right->opcode != VNT_IR_INTEGER ||
+        condition_right->value.integer < 0)
+        return 0;
+
+    size_t acc_value_index = child(g, first, VNT_IR_EDGE_VALUE);
+    const VntIrNode *acc_value = node(g, acc_value_index);
+    const VntIrNode *acc_left =
+        node(g, child(g, acc_value_index, VNT_IR_EDGE_LEFT));
+    const VntIrNode *acc_right =
+        node(g, child(g, acc_value_index, VNT_IR_EDGE_RIGHT));
+    if (!acc_value || acc_value->opcode != VNT_IR_BINARY ||
+        acc_value->operation != BINARY_ADD ||
+        !acc_left || acc_left->opcode != VNT_IR_VARIABLE ||
+        strcmp(acc_left->value.text, acc_stmt->value.text) ||
+        !acc_right || acc_right->opcode != VNT_IR_VARIABLE ||
+        strcmp(acc_right->value.text, induction_stmt->value.text))
+        return 0;
+
+    size_t induction_value_index = child(g, second, VNT_IR_EDGE_VALUE);
+    const VntIrNode *induction_value = node(g, induction_value_index);
+    const VntIrNode *induction_left =
+        node(g, child(g, induction_value_index, VNT_IR_EDGE_LEFT));
+    const VntIrNode *induction_right =
+        node(g, child(g, induction_value_index, VNT_IR_EDGE_RIGHT));
+    if (!induction_value || induction_value->opcode != VNT_IR_BINARY ||
+        induction_value->operation != BINARY_ADD ||
+        !induction_left || induction_left->opcode != VNT_IR_VARIABLE ||
+        strcmp(induction_left->value.text, induction_stmt->value.text) ||
+        !induction_right || induction_right->opcode != VNT_IR_INTEGER ||
+        induction_right->value.integer <= 0)
+        return 0;
+
+    int64_t initial_accumulator = 0, initial_induction = 0;
+    if (!native_loop_initial_literal(g, loop_index, acc_stmt->value.text,
+                                     &initial_accumulator) ||
+        !native_loop_initial_literal(g, loop_index, induction_stmt->value.text,
+                                     &initial_induction) ||
+        initial_accumulator != 0 || initial_induction != 0)
+        return 0;
+
+    int acc_writes = 0, acc_exact = 0;
+    int induction_writes = 0, induction_exact = 0;
+    native_count_loop_writes(g, first, acc_stmt->value.text, first,
+                             &acc_writes, &acc_exact);
+    native_count_loop_writes(g, second, acc_stmt->value.text, first,
+                             &acc_writes, &acc_exact);
+    native_count_loop_writes(g, first, induction_stmt->value.text, second,
+                             &induction_writes, &induction_exact);
+    native_count_loop_writes(g, second, induction_stmt->value.text, second,
+                             &induction_writes, &induction_exact);
+    if (acc_writes != 1 || !acc_exact ||
+        induction_writes != 1 || !induction_exact)
+        return 0;
+
+    uint64_t limit = (uint64_t)condition_right->value.integer;
+    uint64_t step = (uint64_t)induction_right->value.integer;
+    uint64_t iterations;
+    if (condition->operation == BINARY_LESS) {
+        iterations = limit == 0 ? 0 : (limit + step - 1) / step;
+    } else {
+        iterations = limit / step + 1;
+    }
+    __uint128_t maximum_sum = (__uint128_t)iterations * limit;
+    return maximum_sum <= (uint64_t)INT64_MAX;
+}
+
 static void emit_assignment(HirGen*g,size_t i) {
     size_t t=child(g,i,VNT_IR_EDGE_TARGET),v=child(g,i,VNT_IR_EDGE_VALUE);const VntIrNode*tn=node(g,t);
     if(!tn){fail(g,"missing HIR assignment target.");return;}
@@ -1022,7 +1186,9 @@ static void emit_stmt(HirGen*g,size_t i) {
         size_t assigned_value=child(g,i,VNT_IR_EDGE_VALUE);
         if(vi>=0&&g->vars[vi].native_integer) {
             int previous_suppression = g->suppress_overflow_checks;
-            g->suppress_overflow_checks = native_loop_update_is_safe(g, i);
+            g->suppress_overflow_checks =
+                native_loop_update_is_safe(g, i) ||
+                native_loop_accumulator_update_is_safe(g, i);
             emit_native_integer_assignment(g,vi,assigned_value);
             g->suppress_overflow_checks = previous_suppression;
         } else {

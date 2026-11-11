@@ -60,7 +60,7 @@ jobs:
 
           ./vnt.exe --compile tests/native_integer_divmod.vnt -o benchmarks/out/native_integer_divmod.exe
           ./benchmarks/out/native_integer_divmod.exe > benchmarks/out/native_integer_divmod.txt
-          printf '%s\\n' -3 -2 -3 2 25 0 > benchmarks/out/native_integer_divmod.expected
+          printf '%s\n' -3 -2 -3 2 25 0 > benchmarks/out/native_integer_divmod.expected
           diff -u benchmarks/out/native_integer_divmod.expected benchmarks/out/native_integer_divmod.txt
 
           for operation in div mod; do

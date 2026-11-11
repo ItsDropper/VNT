@@ -8,6 +8,9 @@ fun native_integer_locals() {
     while i < 5 {
         total = total + a * b
         i = i + 1
+        if i == 3 {
+            print(total)
+        }
     }
     print(total)
     print(a)

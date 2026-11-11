@@ -1,15 +1,19 @@
 # Shared C/Rust/VNT workload: 20 rounds of 40,000 integer iterations.
-# Each round resets the accumulator; the final checksum is 799980000.
-round = 0
-i = 0
-total = 0
-while round < 20 {
+# Function locals exercise the native unboxed-scalar backend.
+# Final checksum: 799980000.
+fun run_benchmark() {
+    round = 0
     i = 0
     total = 0
-    while i < 40000 {
-        total = total + i
-        i = i + 1
+    while round < 20 {
+        i = 0
+        total = 0
+        while i < 40000 {
+            total = total + i
+            i = i + 1
+        }
+        round = round + 1
     }
-    round = round + 1
+    print(total)
 }
-print(total)
+run_benchmark()

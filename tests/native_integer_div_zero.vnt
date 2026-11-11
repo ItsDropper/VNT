@@ -1,0 +1,7 @@
+# Integer division by zero must use the language diagnostic instead of a CPU fault.
+fun native_integer_div_zero() {
+    numerator = 42
+    denominator = 0
+    print(numerator / denominator)
+}
+native_integer_div_zero()

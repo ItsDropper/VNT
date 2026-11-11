@@ -20,6 +20,6 @@ int main(void) {
         round = round + 1;
     }
 
-    printf("%lld\\n", (long long)total);
+    printf("%lld\n", (long long)total);
     return 0;
 }

@@ -1134,6 +1134,8 @@ jobs:
           ./vnt --compile tests/hir_constant_folding.vnt -o vnt-hir-smoke.exe
           ./vnt --compile tests/native_i64.vnt -o vnt-i64-smoke.exe
           ./vnt --compile tests/native_i64_overflow.vnt -o vnt-i64-overflow-smoke.exe
+          ./vnt --compile tests/native_integer_locals.vnt -o vnt-native-integer-locals.exe
+          ./vnt --compile tests/native_integer_local_overflow.vnt -o vnt-native-integer-overflow.exe
           ./vnt --compile tests/native_memory_u64.vnt -o vnt-memory-u64-smoke.exe
 
       - name: Run native networking integration tests
@@ -1152,6 +1154,21 @@ jobs:
           tr -d '\r' < vnt-hir-actual.txt > vnt-hir-actual-lf.txt
           printf '14\n4\nfalse\n3.75\n10\n3\ntrue\n-7\ntrue\n-2.5\nHIR_CONSTANT_FOLDING_OK\n' > vnt-hir-expected.txt
           diff -u vnt-hir-expected.txt vnt-hir-actual-lf.txt
+
+          ./vnt-native-integer-locals.exe > vnt-native-integer-actual.txt
+          tr -d '\r' < vnt-native-integer-actual.txt > vnt-native-integer-actual-lf.txt
+          printf '%s\n' '-150' '-10' '5' > vnt-native-integer-expected.txt
+          diff -u vnt-native-integer-expected.txt vnt-native-integer-actual-lf.txt
+
+          set +e
+          ./vnt-native-integer-overflow.exe > vnt-native-integer-overflow-actual.txt 2> vnt-native-integer-overflow-stderr.txt
+          native_overflow_status=$?
+          set -e
+          if [ "$native_overflow_status" -eq 0 ]; then
+            echo "Unboxed signed 64-bit overflow incorrectly succeeded."
+            exit 1
+          fi
+          grep -F "Runtime error: integer overflow in addition." vnt-native-integer-overflow-stderr.txt
 
           set +e
           ./vnt-i64-smoke.exe > vnt-i64-actual.txt 2> vnt-i64-stderr.txt

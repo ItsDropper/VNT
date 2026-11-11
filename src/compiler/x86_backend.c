@@ -435,6 +435,51 @@ static void emit_expr(HirGen *g,size_t i) {
 /* Emit a conditional branch with a guarded integer fast path. */
 static void emit_condition_false_branch(HirGen *g,size_t condition,int false_label) {
     const VntIrNode *n=node(g,condition);
+    const VntIrNode *left=n&&n->opcode==VNT_IR_BINARY?node(g,child(g,condition,VNT_IR_EDGE_LEFT)):NULL;
+    const VntIrNode *right=n&&n->opcode==VNT_IR_BINARY?node(g,child(g,condition,VNT_IR_EDGE_RIGHT)):NULL;
+    if(n&&n->opcode==VNT_IR_BINARY&&
+       (n->operation==BINARY_EQUAL||n->operation==BINARY_NOT_EQUAL||
+        n->operation==BINARY_GREATER||n->operation==BINARY_LESS||
+        n->operation==BINARY_GREATER_EQUAL||n->operation==BINARY_LESS_EQUAL)&&
+       left&&left->opcode==VNT_IR_VARIABLE&&right) {
+        int li=var_index(g->vars,g->var_count,left->value.text);
+        int ri=right->opcode==VNT_IR_VARIABLE?var_index(g->vars,g->var_count,right->value.text):-1;
+        if(li>=0&&g->vars[li].native_integer&&
+           ((right->opcode==VNT_IR_INTEGER)||
+            (ri>=0&&g->vars[ri].native_integer))) {
+            const char *dst=native_register_name(g->vars[li].native_register);
+            if(!dst) {
+                fprintf(g->out,"    movq -%d(%%rbp),%%rax\\n",g->vars[li].offset);
+                dst="%rax";
+            }
+            if(right->opcode==VNT_IR_INTEGER&&
+               right->value.integer>=INT32_MIN&&right->value.integer<=INT32_MAX) {
+                fprintf(g->out,"    cmpq $%lld,%s\\n",(long long)right->value.integer,dst);
+            } else if(right->opcode==VNT_IR_INTEGER) {
+                fprintf(g->out,"    movabsq $%lld,%%rdx\\n    cmpq %%rdx,%s\\n",
+                        (long long)right->value.integer,dst);
+            } else {
+                const char *src=native_register_name(g->vars[ri].native_register);
+                if(!src) {
+                    fprintf(g->out,"    movq -%d(%%rbp),%%rdx\\n",g->vars[ri].offset);
+                    src="%rdx";
+                }
+                fprintf(g->out,"    cmpq %s,%s\\n",src,dst);
+            }
+            const char *branch=NULL;
+            switch(n->operation) {
+                case BINARY_EQUAL: branch="jne"; break;
+                case BINARY_NOT_EQUAL: branch="je"; break;
+                case BINARY_GREATER: branch="jle"; break;
+                case BINARY_LESS: branch="jge"; break;
+                case BINARY_GREATER_EQUAL: branch="jl"; break;
+                case BINARY_LESS_EQUAL: branch="jg"; break;
+                default: break;
+            }
+            if(branch) fprintf(g->out,"    %s .L%d\\n",branch,false_label);
+            return;
+        }
+    }
     if(n&&n->opcode==VNT_IR_BINARY&&
        (n->operation==BINARY_EQUAL||n->operation==BINARY_NOT_EQUAL||
         n->operation==BINARY_GREATER||n->operation==BINARY_LESS||

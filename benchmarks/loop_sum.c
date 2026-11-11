@@ -9,7 +9,7 @@ int main(void) {
     while (round < 20) {
         i = 0;
         total = 0;
-        while (i < 40000) {
+        while (i < 1000000) {
             total = total + i;
             i = i + 1;
             /* Keep the loop observable without forcing every value to memory. */

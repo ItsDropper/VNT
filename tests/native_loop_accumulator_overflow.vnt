@@ -1,0 +1,10 @@
+fun unsafe_accumulator_bounds() {
+    i = 1
+    total = 9223372036854775807
+    while i < 2 {
+        total = total + i
+        i = i + 1
+    }
+}
+
+unsafe_accumulator_bounds()

@@ -1157,7 +1157,7 @@ jobs:
 
           ./vnt-native-integer-locals.exe > vnt-native-integer-actual.txt
           tr -d '\r' < vnt-native-integer-actual.txt > vnt-native-integer-actual-lf.txt
-          printf '%s\n' '-150' '-10' '5' > vnt-native-integer-expected.txt
+          printf '%s\n' '-90' '-150' '-10' '5' > vnt-native-integer-expected.txt
           diff -u vnt-native-integer-expected.txt vnt-native-integer-actual-lf.txt
 
           set +e

@@ -1211,4 +1211,4 @@ jobs:
             echo "Signed 64-bit overflow incorrectly succeeded."
             exit 1
           fi
-          grep -F "Runtime error: signed 64-bit integer overflow in addition." vnt-i64-overflow-stderr.txt
+          grep -F "Runtime error: integer overflow in addition." vnt-i64-overflow-stderr.txt

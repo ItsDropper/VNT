@@ -7,7 +7,7 @@ fn main() {
     while round < 20 {
         let mut i: i64 = 0;
         total = 0;
-        while i < 40_000 {
+        while i < 1_000_000 {
             total += i;
             i += 1;
             black_box((i, total));

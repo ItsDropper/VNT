@@ -1,0 +1,14 @@
+fun preserve_local_across_runtime_call() {
+    value = 40
+    print(value)
+    value = value + 2
+    return value
+}
+
+fun run_call_preservation_test() {
+    result = preserve_local_across_runtime_call()
+    print(result)
+    print("CALL_PRESERVATION_OK")
+}
+
+run_call_preservation_test()

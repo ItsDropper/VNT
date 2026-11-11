@@ -1,0 +1,22 @@
+# Exercises native signed integer division and modulo, including truncation toward zero.
+fun native_integer_divmod() {
+    left = -17
+    right = 5
+    quotient = left / right
+    remainder = left % right
+    print(quotient)
+    print(remainder)
+
+    left = 17
+    right = -5
+    quotient = left / right
+    remainder = left % right
+    print(quotient)
+    print(remainder)
+
+    left = 100
+    right = 4
+    print(left / right)
+    print(left % right)
+}
+native_integer_divmod()

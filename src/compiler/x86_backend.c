@@ -5,6 +5,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdint.h>
+#include <limits.h>
 
 typedef struct { char *name; int offset; int global; int native_integer; int native_register; } HirVar;
 typedef struct { char *value; int label; } HirString;
@@ -1224,10 +1225,26 @@ static void emit_function(HirGen*g,size_t i) {
     for(size_t p=0;p<n->name_count;p++)var_add(g,n->names[p]);
     for(size_t v=0;v<g->var_count;v++){int gi=var_index(g->globals,g->global_count,g->vars[v].name);if(gi>=0)g->vars[v].global=1;}
     for(size_t p=0;p<n->name_count;p++){int vi=var_index(g->vars,g->var_count,n->names[p]);if(vi>=0)g->vars[vi].global=0;}
-    for(size_t v=0;v<g->var_count;v++)g->vars[v].offset=(int)(8+v*8);
     mark_native_integer_variables(g,n);
+    size_t stack_slots=0;
+    for(size_t v=0;v<g->var_count;v++) {
+        if(g->vars[v].native_register>=0) {
+            g->vars[v].offset=0;
+            continue;
+        }
+        if(stack_slots>(size_t)(INT_MAX-8)/8) {
+            fail(g,"function stack frame exceeds the native backend limit.");
+            return;
+        }
+        g->vars[v].offset=(int)(8+stack_slots++*8);
+    }
+    size_t frame_bytes=stack_slots*8;
+    if(frame_bytes>(size_t)(INT_MAX-15)) {
+        fail(g,"function stack frame exceeds the native backend limit.");
+        return;
+    }
     fprintf(g->out,".globl vnt_fn_");cname(g->out,"",n->value.text);fprintf(g->out,"\nvnt_fn_");cname(g->out,"",n->value.text);fputs(":\n    pushq %rbp\n    movq %rsp,%rbp\n",g->out);
-    int frame=(int)(((g->var_count*8+15)/16)*16);if(frame)fprintf(g->out,"    subq $%d,%%rsp\n",frame);
+    int frame=(int)(((frame_bytes+15)/16)*16);if(frame)fprintf(g->out,"    subq $%d,%%rsp\n",frame);
     emit_native_register_saves(g);
     static const char*regs[]={"%rcx","%rdx","%r8","%r9"};
     for(size_t p=0;p<n->name_count&&p<4;p++){int vi=var_index(g->vars,g->var_count,n->names[p]);if(vi>=0)fprintf(g->out,"    movq %s,-%d(%%rbp)\n",regs[p],g->vars[vi].offset);}

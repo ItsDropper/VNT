@@ -1029,12 +1029,6 @@ VNT_NATIVE_ABI VntValue * vnt_ffi_int(
 }
 
 
-VNT_NATIVE_ABI void vnt_int_div_zero(void) {
-    fprintf(stderr, "Runtime error: division or modulo by zero.\n");
-    exit(1);
-}
-
-
 /* Native application API: portable file, environment, and timing calls. */
 static VNT_NATIVE_ABI const char * vnt_app_string(VntValue *v, const char *fn) {
     if (!v || v->type != VNT_STRING || !v->string) {

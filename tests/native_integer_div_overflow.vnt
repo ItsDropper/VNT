@@ -1,0 +1,7 @@
+# Native integer division must trap on signed overflow, not execute hardware IDIV.
+fun native_integer_div_overflow() {
+    left = -9223372036854775807 - 1
+    right = -1
+    print(left / right)
+}
+native_integer_div_overflow()

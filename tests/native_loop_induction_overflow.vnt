@@ -1,0 +1,9 @@
+fun unsafe_induction_boundary() {
+    i = 9223372036854775807
+    while i <= 9223372036854775807 {
+        i = i + 1
+    }
+    print i
+}
+
+unsafe_induction_boundary()

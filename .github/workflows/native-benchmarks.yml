@@ -37,12 +37,12 @@ jobs:
       - name: Verify unboxed-local correctness and overflow handling
         shell: bash
         run: |
-          ./vnt --compile tests/native_integer_locals.vnt -o benchmarks/out/native_integer_locals.exe
+          ./vnt.exe --compile tests/native_integer_locals.vnt -o benchmarks/out/native_integer_locals.exe
           ./benchmarks/out/native_integer_locals.exe > benchmarks/out/native_integer_locals.txt
           printf '%s\n' '-90' '-150' '-10' '5' > benchmarks/out/native_integer_locals.expected
           diff -u benchmarks/out/native_integer_locals.expected benchmarks/out/native_integer_locals.txt
 
-          ./vnt --compile tests/native_integer_local_overflow.vnt -o benchmarks/out/native_integer_local_overflow.exe
+          ./vnt.exe --compile tests/native_integer_local_overflow.vnt -o benchmarks/out/native_integer_local_overflow.exe
           set +e
           ./benchmarks/out/native_integer_local_overflow.exe > benchmarks/out/native_integer_local_overflow.txt 2> benchmarks/out/native_integer_local_overflow.stderr
           overflow_status=$?

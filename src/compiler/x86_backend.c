@@ -449,22 +449,22 @@ static void emit_condition_false_branch(HirGen *g,size_t condition,int false_lab
             (ri>=0&&g->vars[ri].native_integer))) {
             const char *dst=native_register_name(g->vars[li].native_register);
             if(!dst) {
-                fprintf(g->out,"    movq -%d(%%rbp),%%rax\\n",g->vars[li].offset);
+                fprintf(g->out,"    movq -%d(%%rbp),%%rax\n",g->vars[li].offset);
                 dst="%rax";
             }
             if(right->opcode==VNT_IR_INTEGER&&
                right->value.integer>=INT32_MIN&&right->value.integer<=INT32_MAX) {
-                fprintf(g->out,"    cmpq $%lld,%s\\n",(long long)right->value.integer,dst);
+                fprintf(g->out,"    cmpq $%lld,%s\n",(long long)right->value.integer,dst);
             } else if(right->opcode==VNT_IR_INTEGER) {
-                fprintf(g->out,"    movabsq $%lld,%%rdx\\n    cmpq %%rdx,%s\\n",
+                fprintf(g->out,"    movabsq $%lld,%%rdx\n    cmpq %%rdx,%s\n",
                         (long long)right->value.integer,dst);
             } else {
                 const char *src=native_register_name(g->vars[ri].native_register);
                 if(!src) {
-                    fprintf(g->out,"    movq -%d(%%rbp),%%rdx\\n",g->vars[ri].offset);
+                    fprintf(g->out,"    movq -%d(%%rbp),%%rdx\n",g->vars[ri].offset);
                     src="%rdx";
                 }
-                fprintf(g->out,"    cmpq %s,%s\\n",src,dst);
+                fprintf(g->out,"    cmpq %s,%s\n",src,dst);
             }
             const char *branch=NULL;
             switch(n->operation) {
@@ -476,7 +476,7 @@ static void emit_condition_false_branch(HirGen *g,size_t condition,int false_lab
                 case BINARY_LESS_EQUAL: branch="jg"; break;
                 default: break;
             }
-            if(branch) fprintf(g->out,"    %s .L%d\\n",branch,false_label);
+            if(branch) fprintf(g->out,"    %s .L%d\n",branch,false_label);
             return;
         }
     }

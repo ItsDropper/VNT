@@ -1134,6 +1134,7 @@ jobs:
           ./vnt --compile tests/hir_constant_folding.vnt -o vnt-hir-smoke.exe
           ./vnt --compile tests/native_i64.vnt -o vnt-i64-smoke.exe
           ./vnt --compile tests/native_i64_overflow.vnt -o vnt-i64-overflow-smoke.exe
+          # Covers unboxed locals, preserved registers across calls, and checked overflow.
           ./vnt --compile tests/native_integer_locals.vnt -o vnt-native-integer-locals.exe
           ./vnt --compile tests/native_integer_local_overflow.vnt -o vnt-native-integer-overflow.exe
           ./vnt --compile tests/native_memory_u64.vnt -o vnt-memory-u64-smoke.exe

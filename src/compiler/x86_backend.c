@@ -6,7 +6,7 @@
 #include <ctype.h>
 #include <stdint.h>
 
-typedef struct { char *name; int offset; int global; } HirVar;
+typedef struct { char *name; int offset; int global; int native_integer; } HirVar;
 typedef struct { char *value; int label; } HirString;
 typedef struct { double value; int label; } HirFloat;
 typedef struct {
@@ -51,7 +51,7 @@ static void label_emit(HirGen *g,int l) { fprintf(g->out,".L%d:\n",l); }
 static int add_name(HirVar **a,size_t *count,size_t *cap,const char *name) {
     for(size_t i=0;i<*count;i++) if(!strcmp((*a)[i].name,name)) return 1;
     if(*count==*cap) { size_t nc=*cap?*cap*2:16; HirVar *p=realloc(*a,nc*sizeof(*p)); if(!p)return 0;*a=p;*cap=nc; }
-    (*a)[*count]=(HirVar){strdup(name),0,0};
+    (*a)[*count]=(HirVar){strdup(name),0,0,0};
     if(!(*a)[*count].name)return 0;
     ++*count; return 1;
 }
@@ -145,6 +145,8 @@ static void call0(HirGen *g,const char *name) {
         aligned, name, done, aligned, name, done);
 }
 static void emit_expr(HirGen *g,size_t i);
+static int native_integer_expression(const HirGen *g,size_t i);
+static void emit_native_integer_expression(HirGen *g,size_t i);
 static void emit_stmt(HirGen *g,size_t i);
 static void emit_stmt_role(HirGen *g,size_t i,VntIrEdgeRole role) {
     for(size_t c=child(g,i,role);c!=VNT_IR_NO_NODE&&!g->error;c=next_role(g,c,role))emit_stmt(g,c);
@@ -327,6 +329,7 @@ static void emit_expr(HirGen *g,size_t i) {
     case VNT_IR_VARIABLE:{
         int vi=var_index(g->vars,g->var_count,n->value.text),gi=var_index(g->globals,g->global_count,n->value.text);
         if(gi>=0&&(vi<0||g->vars[vi].global)){fputs("    movq vnt_global_",g->out);cname(g->out,"",n->value.text);fputs("(%rip),%rax\n",g->out);}
+        else if(vi>=0&&g->vars[vi].native_integer){fprintf(g->out,"    movq -%d(%%rbp),%%rcx\n",g->vars[vi].offset);call0(g,"vnt_int");}
         else if(vi>=0)fprintf(g->out,"    movq -%d(%%rbp),%%rax\n",g->vars[vi].offset);
         else fail(g,"unknown HIR variable.");
         break;}
@@ -354,6 +357,12 @@ static void emit_expr(HirGen *g,size_t i) {
         break;}
     case VNT_IR_CALL:emit_call(g,i,n);break;
     case VNT_IR_BINARY:{
+        if(native_integer_expression(g,i)) {
+            emit_native_integer_expression(g,i);
+            fputs("    movq %rax,%rcx\n",g->out);
+            call0(g,"vnt_int");
+            break;
+        }
         size_t l=child(g,i,VNT_IR_EDGE_LEFT),r=child(g,i,VNT_IR_EDGE_RIGHT);
         if(n->operation==BINARY_AND||n->operation==BINARY_OR){
             int shortl=label_new(g),done=label_new(g);emit_expr(g,l);fputs("    movq %rax,%rcx\n",g->out);call0(g,"vnt_truth");
@@ -420,6 +429,29 @@ static void emit_expr(HirGen *g,size_t i) {
 /* Emit a conditional branch with a guarded integer fast path. */
 static void emit_condition_false_branch(HirGen *g,size_t condition,int false_label) {
     const VntIrNode *n=node(g,condition);
+    if(n&&n->opcode==VNT_IR_BINARY&&
+       (n->operation==BINARY_EQUAL||n->operation==BINARY_NOT_EQUAL||
+        n->operation==BINARY_GREATER||n->operation==BINARY_LESS||
+        n->operation==BINARY_GREATER_EQUAL||n->operation==BINARY_LESS_EQUAL)&&
+       native_integer_expression(g,child(g,condition,VNT_IR_EDGE_LEFT))&&
+       native_integer_expression(g,child(g,condition,VNT_IR_EDGE_RIGHT))) {
+        emit_native_integer_expression(g,child(g,condition,VNT_IR_EDGE_LEFT));
+        fputs("    pushq %rax\\n",g->out);
+        emit_native_integer_expression(g,child(g,condition,VNT_IR_EDGE_RIGHT));
+        fputs("    movq %rax,%rdx\\n    popq %rcx\\n    cmpq %rdx,%rcx\\n",g->out);
+        const char *branch=NULL;
+        switch(n->operation) {
+            case BINARY_EQUAL: branch="jne"; break;
+            case BINARY_NOT_EQUAL: branch="je"; break;
+            case BINARY_GREATER: branch="jle"; break;
+            case BINARY_LESS: branch="jge"; break;
+            case BINARY_GREATER_EQUAL: branch="jl"; break;
+            case BINARY_LESS_EQUAL: branch="jg"; break;
+            default: break;
+        }
+        if(branch) fprintf(g->out,"    %s .L%d\\n",branch,false_label);
+        return;
+    }
     const VntIrNode *left=n&&n->opcode==VNT_IR_BINARY?node(g,child(g,condition,VNT_IR_EDGE_LEFT)):NULL;
     const VntIrNode *right=n&&n->opcode==VNT_IR_BINARY?node(g,child(g,condition,VNT_IR_EDGE_RIGHT)):NULL;
     if(n&&n->opcode==VNT_IR_BINARY&&left&&left->opcode==VNT_IR_VARIABLE&&right&&
@@ -476,6 +508,160 @@ static int integer_slot_is_unaliased(const HirGen *g,const char *name) {
     }
     return 1;
 }
+
+/*
+ * Native scalar locals are conservative: no escape/alias, only integer
+ * arithmetic/comparison reads, and integer-only definitions. Eligible frame
+ * slots store raw signed 64-bit payloads rather than VntValue pointers.
+ */
+static int native_integer_expression(const HirGen *g,size_t i) {
+    const VntIrNode *n=node(g,i);
+    if(!n) return 0;
+    if(n->opcode==VNT_IR_INTEGER) return 1;
+    if(n->opcode==VNT_IR_VARIABLE) {
+        int vi=var_index(g->vars,g->var_count,n->value.text);
+        return vi>=0&&g->vars[vi].native_integer;
+    }
+    if(n->opcode==VNT_IR_UNARY&&n->operation==UNARY_NEGATE)
+        return native_integer_expression(g,child(g,i,VNT_IR_EDGE_OPERAND));
+    if(n->opcode==VNT_IR_BINARY&&
+       (n->operation==BINARY_ADD||n->operation==BINARY_SUBTRACT||n->operation==BINARY_MULTIPLY))
+        return native_integer_expression(g,child(g,i,VNT_IR_EDGE_LEFT))&&
+               native_integer_expression(g,child(g,i,VNT_IR_EDGE_RIGHT));
+    return 0;
+}
+
+static void emit_native_integer_expression(HirGen *g,size_t i) {
+    const VntIrNode *n=node(g,i);
+    if(!n||g->error) return;
+    if(n->opcode==VNT_IR_INTEGER) {
+        fprintf(g->out,"    movabsq $%lld,%%rax\\n",(long long)n->value.integer);
+        return;
+    }
+    if(n->opcode==VNT_IR_VARIABLE) {
+        int vi=var_index(g->vars,g->var_count,n->value.text);
+        if(vi<0||!g->vars[vi].native_integer) {
+            fail(g,"non-native variable reached native integer expression.");
+            return;
+        }
+        fprintf(g->out,"    movq -%d(%%rbp),%%rax\\n",g->vars[vi].offset);
+        return;
+    }
+    if(n->opcode==VNT_IR_UNARY&&n->operation==UNARY_NEGATE) {
+        int overflow=label_new(g),done=label_new(g);
+        emit_native_integer_expression(g,child(g,i,VNT_IR_EDGE_OPERAND));
+        fputs("    negq %rax\\n",g->out);
+        fprintf(g->out,"    jo .L%d\\n    jmp .L%d\\n",overflow,done);
+        label_emit(g,overflow);
+        call0(g,"vnt_int_neg_overflow");
+        fputs("    ud2\\n",g->out);
+        label_emit(g,done);
+        return;
+    }
+    if(n->opcode==VNT_IR_BINARY&&
+       (n->operation==BINARY_ADD||n->operation==BINARY_SUBTRACT||n->operation==BINARY_MULTIPLY)) {
+        size_t left=child(g,i,VNT_IR_EDGE_LEFT),right=child(g,i,VNT_IR_EDGE_RIGHT);
+        const VntIrNode *rn=node(g,right);
+        int overflow=label_new(g),done=label_new(g);
+        emit_native_integer_expression(g,left);
+        if(rn&&rn->opcode==VNT_IR_INTEGER&&rn->value.integer>=INT32_MIN&&rn->value.integer<=INT32_MAX) {
+            if(n->operation==BINARY_ADD) fprintf(g->out,"    addq $%lld,%%rax\\n",(long long)rn->value.integer);
+            else if(n->operation==BINARY_SUBTRACT) fprintf(g->out,"    subq $%lld,%%rax\\n",(long long)rn->value.integer);
+            else fprintf(g->out,"    imulq $%lld,%%rax,%%rax\\n",(long long)rn->value.integer);
+        } else {
+            fputs("    pushq %rax\\n",g->out);
+            emit_native_integer_expression(g,right);
+            fputs("    movq %rax,%rdx\\n    popq %rax\\n",g->out);
+            if(n->operation==BINARY_ADD) fputs("    addq %rdx,%rax\\n",g->out);
+            else if(n->operation==BINARY_SUBTRACT) fputs("    subq %rdx,%rax\\n",g->out);
+            else fputs("    imulq %rdx,%rax\\n",g->out);
+        }
+        fprintf(g->out,"    jo .L%d\\n    jmp .L%d\\n",overflow,done);
+        label_emit(g,overflow);
+        call0(g,n->operation==BINARY_ADD?"vnt_int_add_overflow":
+                n->operation==BINARY_SUBTRACT?"vnt_int_sub_overflow":"vnt_int_mul_overflow");
+        fputs("    ud2\\n",g->out);
+        label_emit(g,done);
+        return;
+    }
+    fail(g,"unsupported expression reached native integer emitter.");
+}
+
+static int native_integer_read_contexts_are_safe(const HirGen *g,const char *name) {
+    for(size_t i=0;i<g->ir->node_count;i++) {
+        const VntIrNode *use=&g->ir->nodes[i];
+        if(use->opcode!=VNT_IR_VARIABLE||!use->value.text||strcmp(use->value.text,name)) continue;
+        const VntIrNode *parent=NULL;
+        for(size_t p=0;p<g->ir->node_count&&!parent;p++) {
+            const VntIrNode *candidate=&g->ir->nodes[p];
+            for(size_t c=candidate->first_child;c!=VNT_IR_NO_NODE;c=g->ir->nodes[c].next_sibling)
+                if(c==i) { parent=candidate;break; }
+        }
+        if(!parent) return 0;
+        if(parent->opcode==VNT_IR_PRINT) continue;
+        if(parent->opcode==VNT_IR_BINARY&&
+           (parent->operation==BINARY_ADD||parent->operation==BINARY_SUBTRACT||
+            parent->operation==BINARY_MULTIPLY||parent->operation==BINARY_EQUAL||
+            parent->operation==BINARY_NOT_EQUAL||parent->operation==BINARY_GREATER||
+            parent->operation==BINARY_LESS||parent->operation==BINARY_GREATER_EQUAL||
+            parent->operation==BINARY_LESS_EQUAL)) continue;
+        return 0;
+    }
+    return 1;
+}
+
+static int native_integer_candidate_expression(const HirGen *g,size_t i) {
+    const VntIrNode *n=node(g,i);
+    if(!n) return 0;
+    if(n->opcode==VNT_IR_INTEGER) return 1;
+    if(n->opcode==VNT_IR_VARIABLE) {
+        int vi=var_index(g->vars,g->var_count,n->value.text);
+        return vi>=0&&g->vars[vi].native_integer;
+    }
+    if(n->opcode==VNT_IR_UNARY&&n->operation==UNARY_NEGATE)
+        return native_integer_candidate_expression(g,child(g,i,VNT_IR_EDGE_OPERAND));
+    if(n->opcode==VNT_IR_BINARY&&
+       (n->operation==BINARY_ADD||n->operation==BINARY_SUBTRACT||n->operation==BINARY_MULTIPLY))
+        return native_integer_candidate_expression(g,child(g,i,VNT_IR_EDGE_LEFT))&&
+               native_integer_candidate_expression(g,child(g,i,VNT_IR_EDGE_RIGHT));
+    return 0;
+}
+
+static void mark_native_integer_variables(HirGen *g,const VntIrNode *function) {
+    for(size_t v=0;v<g->var_count;v++) {
+        int is_parameter=0;
+        if(function) for(size_t p=0;p<function->name_count;p++)
+            if(!strcmp(g->vars[v].name,function->names[p])) is_parameter=1;
+        g->vars[v].native_integer=!is_parameter&&!g->vars[v].global&&
+            integer_slot_is_unaliased(g,g->vars[v].name)&&
+            native_integer_read_contexts_are_safe(g,g->vars[v].name);
+    }
+    int changed;
+    do {
+        changed=0;
+        for(size_t v=0;v<g->var_count;v++) {
+            if(!g->vars[v].native_integer) continue;
+            int has_definition=0;
+            for(size_t i=0;i<g->ir->node_count;i++) {
+                const VntIrNode *n=&g->ir->nodes[i];
+                if((n->opcode!=VNT_IR_VARIABLE_DECL&&n->opcode!=VNT_IR_REASSIGN)||
+                   !n->value.text||strcmp(n->value.text,g->vars[v].name)) continue;
+                has_definition=1;
+                size_t value=child(g,i,VNT_IR_EDGE_VALUE);
+                if(value==VNT_IR_NO_NODE||!native_integer_candidate_expression(g,value)) {
+                    g->vars[v].native_integer=0;
+                    changed=1;
+                    break;
+                }
+            }
+            if(!has_definition&&g->vars[v].native_integer) {
+                g->vars[v].native_integer=0;
+                changed=1;
+            }
+        }
+    } while(changed);
+}
+
 /* Reuse a local integer's existing value cell for compound arithmetic assignments.
  * This is safe only after the conservative no-alias/no-escape scan above.
  * Overflow and non-integer values retain the ordinary runtime path. */
@@ -528,11 +714,14 @@ static void emit_assignment(HirGen*g,size_t i) {
     if(!tn){fail(g,"missing HIR assignment target.");return;}
     if(tn->opcode==VNT_IR_VARIABLE){
         int vi=var_index(g->vars,g->var_count,tn->value.text),gi=var_index(g->globals,g->global_count,tn->value.text);
-        if(!emit_mutating_integer_assignment(g,tn->value.text,v)) emit_expr(g,v);
-        if(gi>=0&&(vi<0||g->vars[vi].global)){fputs("    movq %rax,vnt_global_",g->out);cname(g->out,"",tn->value.text);fputs("(%rip)\n",g->out);}
-        else if(vi>=0)fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",g->vars[vi].offset);
-        else {
-            fail(g,"unknown HIR assignment variable.");
+        if(vi>=0&&g->vars[vi].native_integer) {
+            emit_native_integer_expression(g,v);
+            fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",g->vars[vi].offset);
+        } else {
+            if(!emit_mutating_integer_assignment(g,tn->value.text,v)) emit_expr(g,v);
+            if(gi>=0&&(vi<0||g->vars[vi].global)){fputs("    movq %rax,vnt_global_",g->out);cname(g->out,"",tn->value.text);fputs("(%rip)\n",g->out);}
+            else if(vi>=0)fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",g->vars[vi].offset);
+            else fail(g,"unknown HIR assignment variable.");
         }
         return;
     }
@@ -550,13 +739,16 @@ static void emit_stmt(HirGen*g,size_t i) {
     case VNT_IR_VARIABLE_DECL:case VNT_IR_REASSIGN:{
         int vi=var_index(g->vars,g->var_count,n->value.text),gi=var_index(g->globals,g->global_count,n->value.text);
         size_t assigned_value=child(g,i,VNT_IR_EDGE_VALUE);
-        if(n->opcode!=VNT_IR_VARIABLE_DECL&&
-           !emit_mutating_integer_assignment(g,n->value.text,assigned_value)) emit_expr(g,assigned_value);
-        else if(n->opcode==VNT_IR_VARIABLE_DECL) emit_expr(g,assigned_value);
-        if(gi>=0&&(vi<0||g->vars[vi].global)){fputs("    movq %rax,vnt_global_",g->out);cname(g->out,"",n->value.text);fputs("(%rip)\n",g->out);}
-        else if(vi>=0)fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",g->vars[vi].offset);
-        else {
-            fail(g,"unknown HIR declaration variable.");
+        if(vi>=0&&g->vars[vi].native_integer) {
+            emit_native_integer_expression(g,assigned_value);
+            fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",g->vars[vi].offset);
+        } else {
+            if(n->opcode!=VNT_IR_VARIABLE_DECL&&
+               !emit_mutating_integer_assignment(g,n->value.text,assigned_value)) emit_expr(g,assigned_value);
+            else if(n->opcode==VNT_IR_VARIABLE_DECL) emit_expr(g,assigned_value);
+            if(gi>=0&&(vi<0||g->vars[vi].global)){fputs("    movq %rax,vnt_global_",g->out);cname(g->out,"",n->value.text);fputs("(%rip)\n",g->out);}
+            else if(vi>=0)fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",g->vars[vi].offset);
+            else fail(g,"unknown HIR declaration variable.");
         }
         break;}
     case VNT_IR_ASSIGN:emit_assignment(g,i);break;
@@ -584,6 +776,7 @@ static void emit_function(HirGen*g,size_t i) {
     for(size_t v=0;v<g->var_count;v++){int gi=var_index(g->globals,g->global_count,g->vars[v].name);if(gi>=0)g->vars[v].global=1;}
     for(size_t p=0;p<n->name_count;p++){int vi=var_index(g->vars,g->var_count,n->names[p]);if(vi>=0)g->vars[vi].global=0;}
     for(size_t v=0;v<g->var_count;v++)g->vars[v].offset=(int)(8+v*8);
+    mark_native_integer_variables(g,n);
     fprintf(g->out,".globl vnt_fn_");cname(g->out,"",n->value.text);fprintf(g->out,"\nvnt_fn_");cname(g->out,"",n->value.text);fputs(":\n    pushq %rbp\n    movq %rsp,%rbp\n",g->out);
     int frame=(int)(((g->var_count*8+15)/16)*16);if(frame)fprintf(g->out,"    subq $%d,%%rsp\n",frame);
     static const char*regs[]={"%rcx","%rdx","%r8","%r9"};
@@ -618,6 +811,7 @@ int vnt_emit_x86_64(const VntIrProgram *ir,const char *assembly_path) {
         free_vars(g.vars,g.var_count);g.vars=NULL;g.var_count=g.var_cap=0;
         for(size_t c=root->first_child;c!=VNT_IR_NO_NODE;c=g.ir->nodes[c].next_sibling)if(g.ir->nodes[c].opcode!=VNT_IR_FUNCTION&&g.ir->nodes[c].opcode!=VNT_IR_STRUCT)collect_vars(&g,c);
         for(size_t v=0;v<g.var_count;v++){int gi=var_index(g.globals,g.global_count,g.vars[v].name);if(gi>=0)g.vars[v].global=1;g.vars[v].offset=(int)(8+v*8);}
+        mark_native_integer_variables(&g,NULL);
         fputs(".globl main\nmain:\n    pushq %rbp\n    movq %rsp,%rbp\n",g.out);int frame=(int)(((g.var_count*8+15)/16)*16);if(frame)fprintf(g.out,"    subq $%d,%%rsp\n",frame);
         for(size_t c=root->first_child;c!=VNT_IR_NO_NODE&&!g.error;c=g.ir->nodes[c].next_sibling)if(g.ir->nodes[c].opcode!=VNT_IR_FUNCTION&&g.ir->nodes[c].opcode!=VNT_IR_STRUCT)emit_stmt(&g,c);
         if(!g.error)fputs("    xorl %eax,%eax\n    leave\n    ret\n",g.out);

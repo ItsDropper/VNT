@@ -55,7 +55,7 @@ jobs:
 
           ./vnt.exe --compile tests/native_seven_registers.vnt -o benchmarks/out/native_seven_registers.exe
           ./benchmarks/out/native_seven_registers.exe > benchmarks/out/native_seven_registers.txt
-          printf '%s\\n' 11 21 31 41 51 61 71 > benchmarks/out/native_seven_registers.expected
+          printf '%s\n' 11 21 31 41 51 61 71 > benchmarks/out/native_seven_registers.expected
           diff -u benchmarks/out/native_seven_registers.expected benchmarks/out/native_seven_registers.txt
 
           ./vnt.exe --compile tests/native_integer_divmod.vnt -o benchmarks/out/native_integer_divmod.exe

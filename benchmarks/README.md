@@ -1,14 +1,11 @@
 # VNT benchmarks
 
-There are two benchmark paths:
+VNT has two benchmark paths:
 
-- **Feature suite:** broad runtime coverage including integer loops, branching,
-  function calls, recursion, strings, arrays, floating-point/math operations,
-  structs/references/FFI, and a multi-file imported project.
-- **VNT vs C vs Python microbenchmark:** a focused integer-loop comparison,
-  useful for tracking that one workload over time.
+- **Feature suite:** broad runtime coverage for arithmetic, branching, calls, recursion, strings, arrays, floats, references, structs, FFI, and multi-file projects.
+- **Native comparison:** the same integer-loop workload compiled by VNT, GCC, and Rust, with correctness checks, warmups, repeated timings, medians, and CSV output.
 
-## Run the full VNT feature suite
+## Run the VNT feature suite
 
 From the repository root in PowerShell:
 
@@ -19,62 +16,29 @@ For more samples and warmups:
 
     .\benchmarks\run.ps1 -Runs 11 -Warmups 2
 
-The runner compiles every VNT workload before timing, checks its stable output
-marker, performs warmups, reports median/min/max, and writes a CSV to
-benchmarks\out\results.csv. It targets Windows because the FFI test calls
-kernel32.dll. Read benchmarks/suite/README.md for the feature matrix and caveats.
+The feature runner compiles each VNT workload before timing and checks its stable output marker. It writes benchmarks\out\results.csv. The FFI test currently targets Windows.
 
-## VNT vs C vs Python microbenchmark
+## Compare VNT, C, and Rust
 
-This benchmark repeatedly sums integers from 0 through 39,999 using nested
-while loops. All three programs should print:
-
-    799980000
-
-This is a small, single-workload microbenchmark, not a general language ranking.
-The C version uses volatile loop state to stop the optimizer from replacing
-the loop with a closed-form result. Process startup and runtime overhead are
-included in the timings. Use the same machine, close heavy background workloads,
-and compare the median of several runs.
-
-### Build
-
-Run these commands from the repository root in PowerShell:
+Build VNT first, then run:
 
     .\build.ps1
-    .\vnt.exe --compile benchmarks\loop_sum.vnt -o benchmarks\loop_sum_vnt.exe
-    gcc -O2 benchmarks\loop_sum.c -o benchmarks\loop_sum_c.exe
-    python --version
+    .\benchmarks\compare.ps1
 
-### Check correctness
+Optional:
 
-    .\benchmarks\loop_sum_vnt.exe
-    .\benchmarks\loop_sum_c.exe
-    python benchmarks\loop_sum.py
+    .\benchmarks\compare.ps1 -Runs 9 -Warmups 2
 
-All three should print 799980000.
+The comparison requires gcc and rustc on PATH. It compiles:
 
-### Measure execution time
+- VNT with the VNT native compiler and GCC -O3 -flto runtime link.
+- C with GCC -O3 -flto; a compiler barrier prevents dead-loop elimination without forcing every loop variable to memory.
+- Rust with rustc -C opt-level=3 -C lto=thin -C codegen-units=1; std::hint::black_box keeps the loop observable.
 
-Compilation is deliberately outside the timed region. Run this PowerShell block
-from the repository root; it runs each program seven times and prints the median:
+All three execute exactly 20 rounds of 40,000 integer iterations and must print 799980000. The runner refuses to report timings if any output differs. Compilation is outside the timed region; process startup is included. It performs warmups, reports every sample plus median/min/max, and writes benchmarks\out\comparison.csv.
 
-    function Measure-Program($Name, [scriptblock]$Command) {
-        $times = @()
-        for ($i = 0; $i -lt 7; $i++) {
-            $elapsed = (Measure-Command { & $Command | Out-Null }).TotalMilliseconds
-            $times += $elapsed
-        }
-        $sorted = @($times | Sort-Object)
-        $median = $sorted[[int][math]::Floor($sorted.Count / 2)]
-        "{0,-7} median {1,8:N2} ms | runs: {2}" -f $Name, $median, (($times | ForEach-Object { "{0:N2}" -f $_ }) -join ", ")
-    }
+This is one integer-heavy microbenchmark, not a language-wide ranking. It does not establish parity on allocation, strings, arrays, FFI, compile time, or code size. Run on the same machine with the same toolchain versions and a quiet system; compare multiple runs. The existing Python implementation is retained as a separate reference, not included in the native comparison.
 
-    Measure-Program "VNT" { .\benchmarks\loop_sum_vnt.exe }
-    Measure-Program "C" { .\benchmarks\loop_sum_c.exe }
-    Measure-Program "Python" { python benchmarks\loop_sum.py }
+## Benchmark suite coverage
 
-These timings include launching each process (and the Python interpreter), so
-very short runtimes can be dominated by startup cost. Treat the result as a
-repeatable first benchmark, not a definitive statement about overall language
-performance.
+See suite/README.md for the feature matrix and caveats. The full feature runner measures native executable runtime, while the comparison runner isolates one equivalent loop workload across three compilers.

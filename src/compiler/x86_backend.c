@@ -663,7 +663,7 @@ static int native_integer_read_contexts_are_safe(const HirGen *g,const char *nam
                 if(c==i) { parent=candidate;break; }
         }
         if(!parent) return 0;
-        if(parent->opcode==VNT_IR_PRINT) continue;
+        if(parent->opcode==VNT_IR_PRINT||parent->opcode==VNT_IR_RETURN) continue;
         if(parent->opcode==VNT_IR_BINARY&&
            (parent->operation==BINARY_ADD||parent->operation==BINARY_SUBTRACT||
             parent->operation==BINARY_MULTIPLY||parent->operation==BINARY_DIVIDE||

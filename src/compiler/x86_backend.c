@@ -758,9 +758,7 @@ static int native_leaf_scalar_node(const HirGen *g, size_t index) {
                 n->operation != BINARY_GREATER &&
                 n->operation != BINARY_LESS &&
                 n->operation != BINARY_GREATER_EQUAL &&
-                n->operation != BINARY_LESS_EQUAL &&
-                n->operation != BINARY_AND &&
-                n->operation != BINARY_OR)
+                n->operation != BINARY_LESS_EQUAL)
                 return 0;
             break;
         default:

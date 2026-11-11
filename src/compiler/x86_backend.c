@@ -6,7 +6,7 @@
 #include <ctype.h>
 #include <stdint.h>
 
-typedef struct { char *name; int offset; int global; int native_integer; } HirVar;
+typedef struct { char *name; int offset; int global; int native_integer; int native_register; } HirVar;
 typedef struct { char *value; int label; } HirString;
 typedef struct { double value; int label; } HirFloat;
 typedef struct {
@@ -18,6 +18,7 @@ typedef struct {
     HirFloat *floats; size_t float_count, float_cap;
     char **structs; size_t struct_count, struct_cap;
     int labels, loop_depth, loop_start[64], loop_end[64], error;
+    unsigned native_register_mask;
 } HirGen;
 
 static const VntIrNode *node(const HirGen *g, size_t i) {
@@ -51,7 +52,7 @@ static void label_emit(HirGen *g,int l) { fprintf(g->out,".L%d:\n",l); }
 static int add_name(HirVar **a,size_t *count,size_t *cap,const char *name) {
     for(size_t i=0;i<*count;i++) if(!strcmp((*a)[i].name,name)) return 1;
     if(*count==*cap) { size_t nc=*cap?*cap*2:16; HirVar *p=realloc(*a,nc*sizeof(*p)); if(!p)return 0;*a=p;*cap=nc; }
-    (*a)[*count]=(HirVar){strdup(name),0,0,0};
+    (*a)[*count]=(HirVar){strdup(name),0,0,0,-1};
     if(!(*a)[*count].name)return 0;
     ++*count; return 1;
 }
@@ -329,7 +330,12 @@ static void emit_expr(HirGen *g,size_t i) {
     case VNT_IR_VARIABLE:{
         int vi=var_index(g->vars,g->var_count,n->value.text),gi=var_index(g->globals,g->global_count,n->value.text);
         if(gi>=0&&(vi<0||g->vars[vi].global)){fputs("    movq vnt_global_",g->out);cname(g->out,"",n->value.text);fputs("(%rip),%rax\n",g->out);}
-        else if(vi>=0&&g->vars[vi].native_integer){fprintf(g->out,"    movq -%d(%%rbp),%%rcx\n",g->vars[vi].offset);call0(g,"vnt_int");}
+        else if(vi>=0&&g->vars[vi].native_integer){
+            if(g->vars[vi].native_register>=0)
+                fprintf(g->out,"    movq %s,%%rcx\n",g->vars[vi].native_register==0?"%r12":g->vars[vi].native_register==1?"%r13":g->vars[vi].native_register==2?"%r14":"%r15");
+            else fprintf(g->out,"    movq -%d(%%rbp),%%rcx\n",g->vars[vi].offset);
+            call0(g,"vnt_int");
+        }
         else if(vi>=0)fprintf(g->out,"    movq -%d(%%rbp),%%rax\n",g->vars[vi].offset);
         else fail(g,"unknown HIR variable.");
         break;}
@@ -544,7 +550,9 @@ static void emit_native_integer_expression(HirGen *g,size_t i) {
             fail(g,"non-native variable reached native integer expression.");
             return;
         }
-        fprintf(g->out,"    movq -%d(%%rbp),%%rax\n",g->vars[vi].offset);
+        if(g->vars[vi].native_register>=0)
+            fprintf(g->out,"    movq %s,%%rax\n",g->vars[vi].native_register==0?"%r12":g->vars[vi].native_register==1?"%r13":g->vars[vi].native_register==2?"%r14":"%r15");
+        else fprintf(g->out,"    movq -%d(%%rbp),%%rax\n",g->vars[vi].offset);
         return;
     }
     if(n->opcode==VNT_IR_UNARY&&n->operation==UNARY_NEGATE) {
@@ -660,6 +668,33 @@ static void mark_native_integer_variables(HirGen *g,const VntIrNode *function) {
             }
         }
     } while(changed);
+    /* Four Microsoft x64 nonvolatile registers are available for long-lived
+       scalar locals. Remaining eligible locals stay in their frame slots. */
+    g->native_register_mask=0;
+    int next_register=0;
+    for(size_t v=0;v<g->var_count;v++) {
+        g->vars[v].native_register=-1;
+        if(g->vars[v].native_integer&&next_register<4) {
+            g->vars[v].native_register=next_register;
+            g->native_register_mask|=1u<<next_register;
+            ++next_register;
+        }
+    }
+}
+
+static const char *native_register_name(int index) {
+    static const char *names[]={"%r12","%r13","%r14","%r15"};
+    return index>=0&&index<4?names[index]:NULL;
+}
+static void emit_native_register_saves(HirGen *g) {
+    for(int r=0;r<4;r++)
+        if(g->native_register_mask&(1u<<r))
+            fprintf(g->out,"    pushq %s\n",native_register_name(r));
+}
+static void emit_native_register_restores(HirGen *g) {
+    for(int r=3;r>=0;r--)
+        if(g->native_register_mask&(1u<<r))
+            fprintf(g->out,"    popq %s\n",native_register_name(r));
 }
 
 /* Reuse a local integer's existing value cell for compound arithmetic assignments.
@@ -716,7 +751,9 @@ static void emit_assignment(HirGen*g,size_t i) {
         int vi=var_index(g->vars,g->var_count,tn->value.text),gi=var_index(g->globals,g->global_count,tn->value.text);
         if(vi>=0&&g->vars[vi].native_integer) {
             emit_native_integer_expression(g,v);
-            fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",g->vars[vi].offset);
+            if(g->vars[vi].native_register>=0)
+                fprintf(g->out,"    movq %%rax,%s\n",native_register_name(g->vars[vi].native_register));
+            else fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",g->vars[vi].offset);
         } else {
             if(!emit_mutating_integer_assignment(g,tn->value.text,v)) emit_expr(g,v);
             if(gi>=0&&(vi<0||g->vars[vi].global)){fputs("    movq %rax,vnt_global_",g->out);cname(g->out,"",tn->value.text);fputs("(%rip)\n",g->out);}
@@ -741,7 +778,9 @@ static void emit_stmt(HirGen*g,size_t i) {
         size_t assigned_value=child(g,i,VNT_IR_EDGE_VALUE);
         if(vi>=0&&g->vars[vi].native_integer) {
             emit_native_integer_expression(g,assigned_value);
-            fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",g->vars[vi].offset);
+            if(g->vars[vi].native_register>=0)
+                fprintf(g->out,"    movq %%rax,%s\n",native_register_name(g->vars[vi].native_register));
+            else fprintf(g->out,"    movq %%rax,-%d(%%rbp)\n",g->vars[vi].offset);
         } else {
             if(n->opcode!=VNT_IR_VARIABLE_DECL&&
                !emit_mutating_integer_assignment(g,n->value.text,assigned_value)) emit_expr(g,assigned_value);
@@ -762,7 +801,7 @@ static void emit_stmt(HirGen*g,size_t i) {
         emit_stmt_role(g,i,VNT_IR_EDGE_BODY);fprintf(g->out,"    jmp .L%d\n",s);label_emit(g,e);g->loop_depth--;break;}
     case VNT_IR_BREAK:if(!g->loop_depth)fail(g,"break outside loop.");else fprintf(g->out,"    jmp .L%d\n",g->loop_end[g->loop_depth-1]);break;
     case VNT_IR_CONTINUE:if(!g->loop_depth)fail(g,"continue outside loop.");else fprintf(g->out,"    jmp .L%d\n",g->loop_start[g->loop_depth-1]);break;
-    case VNT_IR_RETURN:{size_t v=child(g,i,VNT_IR_EDGE_VALUE);if(v!=VNT_IR_NO_NODE)emit_expr(g,v);else fputs("    xorl %eax,%eax\n",g->out);fputs("    leave\n    ret\n",g->out);break;}
+    case VNT_IR_RETURN:{size_t v=child(g,i,VNT_IR_EDGE_VALUE);if(v!=VNT_IR_NO_NODE)emit_expr(g,v);else fputs("    xorl %eax,%eax\n",g->out);emit_native_register_restores(g);fputs("    leave\n    ret\n",g->out);break;}
     case VNT_IR_CALL:emit_expr(g,i);break;
     case VNT_IR_FUNCTION:case VNT_IR_STRUCT:break;
     default:fail(g,"unsupported HIR statement opcode.");break;
@@ -779,11 +818,12 @@ static void emit_function(HirGen*g,size_t i) {
     mark_native_integer_variables(g,n);
     fprintf(g->out,".globl vnt_fn_");cname(g->out,"",n->value.text);fprintf(g->out,"\nvnt_fn_");cname(g->out,"",n->value.text);fputs(":\n    pushq %rbp\n    movq %rsp,%rbp\n",g->out);
     int frame=(int)(((g->var_count*8+15)/16)*16);if(frame)fprintf(g->out,"    subq $%d,%%rsp\n",frame);
+    emit_native_register_saves(g);
     static const char*regs[]={"%rcx","%rdx","%r8","%r9"};
     for(size_t p=0;p<n->name_count&&p<4;p++){int vi=var_index(g->vars,g->var_count,n->names[p]);if(vi>=0)fprintf(g->out,"    movq %s,-%d(%%rbp)\n",regs[p],g->vars[vi].offset);}
     for(size_t p=4;p<n->name_count;p++){int vi=var_index(g->vars,g->var_count,n->names[p]);if(vi>=0)fprintf(g->out,"    movq %zu(%%rbp),%%r10\n    movq %%r10,-%d(%%rbp)\n",48+(p-4)*8,g->vars[vi].offset);}
     for(size_t c=child(g,i,VNT_IR_EDGE_BODY);c!=VNT_IR_NO_NODE&&!g->error;c=next_role(g,c,VNT_IR_EDGE_BODY))emit_stmt(g,c);
-    if(!g->error)fputs("    xorl %eax,%eax\n    leave\n    ret\n",g->out);
+    if(!g->error){emit_native_register_restores(g);fputs("    xorl %eax,%eax\n    leave\n    ret\n",g->out);}
 }
 static void emit_tables(HirGen*g) {
     if(g->float_count||g->string_count) {
@@ -813,8 +853,9 @@ int vnt_emit_x86_64(const VntIrProgram *ir,const char *assembly_path) {
         for(size_t v=0;v<g.var_count;v++){int gi=var_index(g.globals,g.global_count,g.vars[v].name);if(gi>=0)g.vars[v].global=1;g.vars[v].offset=(int)(8+v*8);}
         mark_native_integer_variables(&g,NULL);
         fputs(".globl main\nmain:\n    pushq %rbp\n    movq %rsp,%rbp\n",g.out);int frame=(int)(((g.var_count*8+15)/16)*16);if(frame)fprintf(g.out,"    subq $%d,%%rsp\n",frame);
+        emit_native_register_saves(&g);
         for(size_t c=root->first_child;c!=VNT_IR_NO_NODE&&!g.error;c=g.ir->nodes[c].next_sibling)if(g.ir->nodes[c].opcode!=VNT_IR_FUNCTION&&g.ir->nodes[c].opcode!=VNT_IR_STRUCT)emit_stmt(&g,c);
-        if(!g.error)fputs("    xorl %eax,%eax\n    leave\n    ret\n",g.out);
+        if(!g.error){emit_native_register_restores(&g);fputs("    xorl %eax,%eax\n    leave\n    ret\n",g.out);}
     }
     if(!g.error){fputs(".Lvnt_int_add_overflow:\n    subq $32,%rsp\n    call vnt_int_add_overflow\n    addq $32,%rsp\n.Lvnt_int_sub_overflow:\n    subq $32,%rsp\n    call vnt_int_sub_overflow\n    addq $32,%rsp\n.Lvnt_int_mul_overflow:\n    subq $32,%rsp\n    call vnt_int_mul_overflow\n    addq $32,%rsp\n.Lvnt_int_neg_overflow:\n    subq $32,%rsp\n    call vnt_int_neg_overflow\n    addq $32,%rsp\n.Lvnt_int_div_zero:\n    subq $32,%rsp\n    call vnt_int_div_zero\n    addq $32,%rsp\n",g.out);emit_tables(&g);}
     fclose(g.out);

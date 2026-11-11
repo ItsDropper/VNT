@@ -53,6 +53,11 @@ jobs:
           fi
           grep -F "Runtime error: integer overflow in addition." benchmarks/out/native_integer_local_overflow.stderr
 
+          ./vnt.exe --compile tests/native_seven_registers.vnt -o benchmarks/out/native_seven_registers.exe
+          ./benchmarks/out/native_seven_registers.exe > benchmarks/out/native_seven_registers.txt
+          printf '%s\\n' 11 21 31 41 51 61 71 > benchmarks/out/native_seven_registers.expected
+          diff -u benchmarks/out/native_seven_registers.expected benchmarks/out/native_seven_registers.txt
+
       - name: Publish benchmark CSV
         uses: actions/upload-artifact@v4
         with:

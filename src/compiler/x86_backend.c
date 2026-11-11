@@ -635,12 +635,37 @@ static int native_integer_candidate_expression(const HirGen *g,size_t i) {
     return 0;
 }
 
+static int native_subtree_contains_asm(const HirGen *g,size_t index) {
+    const VntIrNode *n=node(g,index);
+    if(!n) return 0;
+    if(n->opcode==VNT_IR_ASM) return 1;
+    for(size_t c=n->first_child;c!=VNT_IR_NO_NODE;c=g->ir->nodes[c].next_sibling)
+        if(native_subtree_contains_asm(g,c)) return 1;
+    return 0;
+}
+static int native_scope_contains_asm(const HirGen *g,const VntIrNode *function) {
+    if(function) {
+        size_t index=(size_t)(function-g->ir->nodes);
+        for(size_t c=child(g,index,VNT_IR_EDGE_BODY);c!=VNT_IR_NO_NODE;c=next_role(g,c,VNT_IR_EDGE_BODY))
+            if(native_subtree_contains_asm(g,c)) return 1;
+        return 0;
+    }
+    const VntIrNode *root=node(g,g->ir->root);
+    if(!root) return 0;
+    for(size_t c=root->first_child;c!=VNT_IR_NO_NODE;c=g->ir->nodes[c].next_sibling) {
+        if(g->ir->nodes[c].opcode==VNT_IR_FUNCTION||g->ir->nodes[c].opcode==VNT_IR_STRUCT) continue;
+        if(native_subtree_contains_asm(g,c)) return 1;
+    }
+    return 0;
+}
+
 static void mark_native_integer_variables(HirGen *g,const VntIrNode *function) {
+    int scope_has_asm=native_scope_contains_asm(g,function);
     for(size_t v=0;v<g->var_count;v++) {
         int is_parameter=0;
         if(function) for(size_t p=0;p<function->name_count;p++)
             if(!strcmp(g->vars[v].name,function->names[p])) is_parameter=1;
-        g->vars[v].native_integer=!is_parameter&&!g->vars[v].global&&
+        g->vars[v].native_integer=!scope_has_asm&&!is_parameter&&!g->vars[v].global&&
             integer_slot_is_unaliased(g,g->vars[v].name)&&
             native_integer_read_contexts_are_safe(g,g->vars[v].name);
     }
@@ -680,6 +705,9 @@ static void mark_native_integer_variables(HirGen *g,const VntIrNode *function) {
             ++next_register;
         }
     }
+    /* A function containing arbitrary inline assembly must still preserve
+       every nonvolatile register for its caller, even without scalar locals. */
+    if(scope_has_asm) g->native_register_mask=0x0fu;
 }
 
 static const char *native_register_name(int index) {

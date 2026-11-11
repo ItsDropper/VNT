@@ -1,0 +1,42 @@
+name: Native Performance Benchmarks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'benchmarks/**'
+      - 'src/main.c'
+      - 'src/compiler/**'
+      - '.github/workflows/native-benchmarks.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'benchmarks/**'
+      - 'src/main.c'
+      - 'src/compiler/**'
+      - '.github/workflows/native-benchmarks.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare-native:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build VNT compiler
+        shell: pwsh
+        run: ./build.ps1
+      - name: Verify and measure equivalent VNT, C, and Rust workloads
+        shell: pwsh
+        run: ./benchmarks/compare.ps1 -Runs 9 -Warmups 2
+      - name: Publish benchmark CSV
+        uses: actions/upload-artifact@v4
+        with:
+          name: vnt-native-benchmark-results
+          path: benchmarks/out/comparison.csv
+          if-no-files-found: error

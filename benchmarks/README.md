@@ -35,7 +35,7 @@ The comparison requires gcc and rustc on PATH. It compiles:
 - C with GCC -O3 -flto; a compiler barrier prevents dead-loop elimination without forcing every loop variable to memory.
 - Rust with rustc -C opt-level=3 -C lto=thin -C codegen-units=1; std::hint::black_box keeps the loop observable.
 
-All three execute exactly 20 rounds of 40,000 integer iterations and must print 799980000. The runner refuses to report timings if any output differs. Compilation is outside the timed region; process startup is included. It performs warmups, reports every sample plus median/min/max, and writes benchmarks\out\comparison.csv.
+All three execute exactly 20 rounds of 40,000 integer iterations and must print 799980000. The VNT workload runs inside a function so its variables are eligible for local scalar optimization rather than global storage. The hosted x86-64 backend conservatively keeps eligible non-escaping integer locals unboxed, uses direct arithmetic/comparison instructions, and allocates up to four locals to preserved registers; other values remain boxed or stack-backed. The runner refuses to report timings if any output differs. Compilation is outside the timed region; process startup is included. It performs warmups, reports every sample plus median/min/max, and writes benchmarks\out\comparison.csv.
 
 This is one integer-heavy microbenchmark, not a language-wide ranking. It does not establish parity on allocation, strings, arrays, FFI, compile time, or code size. Run on the same machine with the same toolchain versions and a quiet system; compare multiple runs. The existing Python implementation is retained as a separate reference, not included in the native comparison.
 

@@ -1042,7 +1042,7 @@ static int hir_inline_small_calls(VntIrProgram *ir, size_t *changed) {
         }
 
         /* Reacquire the function pointer after reserving: realloc may move IR. */
-        function = hir_find_inline_function(ir, call->value.text, &return_value);
+        function = hir_find_inline_function(ir, ir->nodes[i].value.text, &return_value);
         if (!function) continue;
         size_t replacement = VNT_IR_NO_NODE;
         if (!hir_clone_inline_expression(ir, ir, return_value, function,

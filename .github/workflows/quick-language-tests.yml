@@ -1137,6 +1137,9 @@ jobs:
           # Covers unboxed locals, preserved registers across calls, and checked overflow.
           ./vnt --compile tests/native_integer_locals.vnt -o vnt-native-integer-locals.exe
           ./vnt --compile tests/native_integer_local_overflow.vnt -o vnt-native-integer-overflow.exe
+          ./vnt --compile tests/native_integer_divmod.vnt -o vnt-native-integer-divmod.exe
+          ./vnt --compile tests/native_integer_div_overflow.vnt -o vnt-native-integer-div-overflow.exe
+          ./vnt --compile tests/native_integer_mod_overflow.vnt -o vnt-native-integer-mod-overflow.exe
           ./vnt --compile tests/native_memory_u64.vnt -o vnt-memory-u64-smoke.exe
 
       - name: Run native networking integration tests
@@ -1170,6 +1173,30 @@ jobs:
             exit 1
           fi
           grep -F "Runtime error: integer overflow in addition." vnt-native-integer-overflow-stderr.txt
+
+          ./vnt-native-integer-divmod.exe > vnt-native-integer-divmod-actual.txt
+          tr -d '\r' < vnt-native-integer-divmod-actual.txt > vnt-native-integer-divmod-actual-lf.txt
+          printf '%s\n' '-3' '-2' '-3' '2' '25' '0' > vnt-native-integer-divmod-expected.txt
+          diff -u vnt-native-integer-divmod-expected.txt vnt-native-integer-divmod-actual-lf.txt
+
+          for operation in div mod; do
+            if [ "$operation" = div ]; then
+              executable=./vnt-native-integer-div-overflow.exe
+              diagnostic="Runtime error: integer overflow in division."
+            else
+              executable=./vnt-native-integer-mod-overflow.exe
+              diagnostic="Runtime error: integer overflow in modulo."
+            fi
+            set +e
+            "$executable" > "vnt-native-integer-$operation-overflow-actual.txt" 2> "vnt-native-integer-$operation-overflow-stderr.txt"
+            operation_status=$?
+            set -e
+            if [ "$operation_status" -eq 0 ]; then
+              echo "Native integer $operation overflow incorrectly succeeded."
+              exit 1
+            fi
+            grep -F "$diagnostic" "vnt-native-integer-$operation-overflow-stderr.txt"
+          done
 
           set +e
           ./vnt-i64-smoke.exe > vnt-i64-actual.txt 2> vnt-i64-stderr.txt

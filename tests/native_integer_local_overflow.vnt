@@ -1,0 +1,7 @@
+# Native unboxed locals must preserve checked signed 64-bit overflow semantics.
+fun native_integer_local_overflow() {
+    value = 9223372036854775807
+    value = value + 1
+    print(value)
+}
+native_integer_local_overflow()

@@ -1,0 +1,21 @@
+fun mix(a, b, c, d) {
+    return a + b * 2 - c + d
+}
+
+fun square(value) {
+    return value * value
+}
+
+fun run_inline_regression() {
+    i = 0
+    total = 0
+    while i < 1000 {
+        total += mix(i, 3, 1, 2)
+        i += 1
+    }
+    print total
+    print square(12)
+    print "NATIVE_FUNCTION_INLINING_OK"
+}
+
+run_inline_regression()

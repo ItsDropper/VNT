@@ -1,6 +1,7 @@
-param([int]$Runs = 9, [int]$Warmups = 2)
+param([int]$Runs = 9, [int]$Warmups = 2, [int]$Rounds = 20)
 $ErrorActionPreference = "Stop"
 if ($Runs -lt 3) { throw "Use at least 3 measured runs; recommended: -Runs 9." }
+if ($Rounds -lt 1) { throw "Use at least 1 round; the default is 20. Larger values (for example -Rounds 2000) make process startup negligible." }
 $Root = Split-Path -Parent $PSScriptRoot
 $OutDir = Join-Path $PSScriptRoot "out"
 $Vnt = Join-Path $Root "vnt.exe"
@@ -16,7 +17,20 @@ try {
     $CExe = Join-Path $OutDir "loop_sum_c.exe"
     $RustExe = Join-Path $OutDir "loop_sum_rust.exe"
 
-    & $Vnt --compile "benchmarks/loop_sum.vnt" -o $VntExe
+    # Each round is 1,000,000 iterations. Build per-run copies of the three sources with the
+    # requested round count so every language executes exactly the same workload.
+    $RoundPattern = 'round < 20'
+    $RoundReplacement = "round < $Rounds"
+    $VntSrc = Join-Path $OutDir "loop_sum_rounds.vnt"
+    $CSrc = Join-Path $OutDir "loop_sum_rounds.c"
+    $RustSrc = Join-Path $OutDir "loop_sum_rounds.rs"
+    foreach ($pair in @(@("loop_sum.vnt", $VntSrc), @("loop_sum.c", $CSrc), @("loop_sum.rs", $RustSrc))) {
+        $text = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot $pair[0]))
+        if (-not $text.Contains($RoundPattern)) { throw "Expected '$RoundPattern' in $($pair[0]); cannot set the round count." }
+        [System.IO.File]::WriteAllText($pair[1], $text.Replace($RoundPattern, $RoundReplacement))
+    }
+
+    & $Vnt --compile $VntSrc -o $VntExe
     if ($LASTEXITCODE -ne 0) { throw "VNT benchmark compilation failed." }
     $Assembly = "$VntExe.s"
     if (-not (Test-Path $Assembly)) { throw "VNT compiler did not retain generated assembly: $Assembly" }
@@ -38,9 +52,9 @@ try {
         throw "A leaf scalar hot path still saves a callee-saved register."
     }
     Write-Host "VNT code generation: helper call inlined; proven-safe loop additions are unchecked."
-    & gcc -O3 -flto "benchmarks/loop_sum.c" -o $CExe
+    & gcc -O3 -flto $CSrc -o $CExe
     if ($LASTEXITCODE -ne 0) { throw "C benchmark compilation failed." }
-    & rustc -C opt-level=3 -C lto=thin -C codegen-units=1 "benchmarks/loop_sum.rs" -o $RustExe
+    & rustc -C opt-level=3 -C lto=thin -C codegen-units=1 $RustSrc -o $RustExe
     if ($LASTEXITCODE -ne 0) { throw "Rust benchmark compilation failed." }
 
     $Expected = "499999500000"
@@ -89,6 +103,6 @@ try {
     $csv = Join-Path $OutDir "comparison.csv"
     $Results | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $csv
     Write-Host "CSV written to: $csv"
-    Write-Host "All binaries use the same 20 x 1,000,000 loop workload. Timings include process startup."
+    Write-Host "All binaries use the same $Rounds x 1,000,000 loop workload. Timings include process startup."
 }
 finally { Pop-Location }

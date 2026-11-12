@@ -29,13 +29,17 @@ Optional:
 
     .\benchmarks\compare.ps1 -Runs 9 -Warmups 2
 
+To make process startup negligible, raise the round count (each round is 1,000,000 iterations; the checksum stays 499999500000):
+
+    .\benchmarks\compare.ps1 -Rounds 2000
+
 The comparison requires gcc and rustc on PATH. It compiles:
 
 - VNT with the VNT native compiler and GCC -O3 -flto runtime link.
 - C with GCC -O3 -flto; a compiler barrier prevents dead-loop elimination without forcing every loop variable to memory. That per-iteration barrier also inhibits transformations across iterations (including vectorization), so this is a scalar-codegen comparison, not a best-case optimized-C benchmark.
 - Rust with rustc -C opt-level=3 -C lto=thin -C codegen-units=1; std::hint::black_box keeps the loop observable.
 
-All three execute exactly 20 rounds of 1,000,000 integer iterations and must print 499999500000. The VNT workload runs inside a function so its variables are eligible for local scalar optimization rather than global storage. Its hot loop calls a tiny pure helper (`add_value`); HIR inlining must remove that abstraction before native code generation so the generated loop remains comparable to the direct C/Rust loops. The compiler also proves the positive-step induction variable and zero-based sum accumulator stay within signed 64-bit range, removing their overflow branches. The zero-argument leaf kernel uses volatile registers without callee-saved pushes; the comparison script checks these generated-assembly properties before timing. The hosted x86-64 backend conservatively keeps eligible non-escaping integer locals unboxed, uses direct arithmetic/comparison instructions, and allocates up to four locals to preserved registers; other values remain boxed or stack-backed. The runner refuses to report timings if any output differs. Compilation is outside the timed region; process startup is included. It performs warmups, reports every sample plus median/min/max, and writes benchmarks\out\comparison.csv.
+All three execute exactly the same number of rounds (default 20, set with -Rounds) of 1,000,000 integer iterations and must print 499999500000. The VNT workload runs inside a function so its variables are eligible for local scalar optimization rather than global storage. Its hot loop calls a tiny pure helper (`add_value`); HIR inlining must remove that abstraction before native code generation so the generated loop remains comparable to the direct C/Rust loops. The compiler also proves the positive-step induction variable and zero-based sum accumulator stay within signed 64-bit range, removing their overflow branches. The zero-argument leaf kernel uses volatile registers without callee-saved pushes; the comparison script checks these generated-assembly properties before timing. The hosted x86-64 backend conservatively keeps eligible non-escaping integer locals unboxed, uses direct arithmetic/comparison instructions, and allocates up to four locals to preserved registers; other values remain boxed or stack-backed. The runner refuses to report timings if any output differs. Compilation is outside the timed region; process startup is included. It performs warmups, reports every sample plus median/min/max, and writes benchmarks\out\comparison.csv.
 
 This is one integer-heavy microbenchmark, not a language-wide ranking. It does not establish parity on allocation, strings, arrays, FFI, compile time, or code size. Run on the same machine with the same toolchain versions and a quiet system; compare multiple runs. The existing Python implementation is retained as a separate reference, not included in the native comparison.
 

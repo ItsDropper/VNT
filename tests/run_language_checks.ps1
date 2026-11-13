@@ -33,6 +33,14 @@ try {
         throw "VNT-native statement parser regression failed: $($selfHostedStatementParserOutput -join ' | ')"
     }
     Write-Host "VNT-native statement parser: PASS"
+    $SelfHostedSemanticExe = Join-Path $Root "tests\out\self_hosted_semantic.exe"
+    & .\vnt.exe --compile tests\self_hosted_semantic.vnt -o $SelfHostedSemanticExe
+    if ($LASTEXITCODE -ne 0) { throw "VNT-native semantic analysis test did not compile." }
+    $selfHostedSemanticOutput = & $SelfHostedSemanticExe
+    if ($LASTEXITCODE -ne 0 -or ($selfHostedSemanticOutput -join "|") -ne "SELF_HOSTED_SEMANTIC_OK") {
+        throw "VNT-native semantic analysis regression failed: $($selfHostedSemanticOutput -join ' | ')"
+    }
+    Write-Host "VNT-native semantic analysis: PASS"
     & .\tests\run_hir_invariants.ps1
     if ($LASTEXITCODE -ne 0) { throw "HIR invariant suite failed." }
     & .\tests\run_hir_ast_free_native.ps1

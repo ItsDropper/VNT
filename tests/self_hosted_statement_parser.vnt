@@ -81,6 +81,9 @@ while i < 257 {
 parsed = parser.parse_program(deep_blocks)
 require(!parsed.ok, "statement nesting limit was not enforced")
 
+parsed = parser.parse_program("make() = 1")
+require(!parsed.ok, "function call was accepted as an assignment target")
+
 parsed = parser.parse_program("name")
 require(!parsed.ok, "bare variable expression was accepted as a statement")
 

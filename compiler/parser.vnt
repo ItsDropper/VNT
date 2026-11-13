@@ -59,6 +59,15 @@ fun fail(state: object, message: string) {
     }
 }
 
+fun note_operator(state: object) -> bool {
+    state.operator_count += 1
+    if state.operator_count > 256 {
+        fail(state, "expression exceeds 256 operator nodes")
+        return false
+    }
+    return true
+}
+
 fun decode_string(value: string) -> string {
     decoded = ""
     i = 0
@@ -191,6 +200,7 @@ fun parse_postfix(state: object) -> object {
     expression = parse_primary(state)
     while state.error == "" {
         if match(state, "LEFT_BRACKET") {
+            if !note_operator(state) { return make_node("ERROR") }
             index = parse_or(state)
             if !match(state, "RIGHT_BRACKET") {
                 fail(state, "expected ']' after index")
@@ -202,6 +212,7 @@ fun parse_postfix(state: object) -> object {
             expression = node
         } else {
             if match(state, "DOT") {
+                if !note_operator(state) { return make_node("ERROR") }
                 if !check(state, "IDENTIFIER") {
                     fail(state, "expected member name after '.'")
                     return make_node("ERROR")
@@ -227,6 +238,7 @@ fun parse_postfix(state: object) -> object {
 
 fun parse_unary(state: object) -> object {
     if check(state, "BANG") || check(state, "MINUS") || check(state, "AMPERSAND") || check(state, "STAR") {
+        if !note_operator(state) { return make_node("ERROR") }
         operator = advance(state)
         operand = parse_unary(state)
         node = make_node("UNARY")
@@ -240,6 +252,7 @@ fun parse_unary(state: object) -> object {
 fun parse_multiplication(state: object) -> object {
     left = parse_unary(state)
     while check(state, "STAR") || check(state, "SLASH") || check(state, "PERCENT") {
+        if !note_operator(state) { return make_node("ERROR") }
         operator = advance(state)
         right = parse_unary(state)
         node = make_node("BINARY")
@@ -254,6 +267,7 @@ fun parse_multiplication(state: object) -> object {
 fun parse_addition(state: object) -> object {
     left = parse_multiplication(state)
     while check(state, "PLUS") || check(state, "MINUS") {
+        if !note_operator(state) { return make_node("ERROR") }
         operator = advance(state)
         right = parse_multiplication(state)
         node = make_node("BINARY")
@@ -268,6 +282,7 @@ fun parse_addition(state: object) -> object {
 fun parse_comparison(state: object) -> object {
     left = parse_addition(state)
     while check(state, "GREATER") || check(state, "LESS") || check(state, "GREATER_EQUAL") || check(state, "LESS_EQUAL") {
+        if !note_operator(state) { return make_node("ERROR") }
         operator = advance(state)
         right = parse_addition(state)
         node = make_node("BINARY")
@@ -282,6 +297,7 @@ fun parse_comparison(state: object) -> object {
 fun parse_equality(state: object) -> object {
     left = parse_comparison(state)
     while check(state, "EQUAL_EQUAL") || check(state, "BANG_EQUAL") {
+        if !note_operator(state) { return make_node("ERROR") }
         operator = advance(state)
         right = parse_comparison(state)
         node = make_node("BINARY")
@@ -296,6 +312,7 @@ fun parse_equality(state: object) -> object {
 fun parse_and(state: object) -> object {
     left = parse_equality(state)
     while match(state, "AND_AND") {
+        if !note_operator(state) { return make_node("ERROR") }
         right = parse_equality(state)
         node = make_node("BINARY")
         node.operator = "&&"
@@ -307,8 +324,14 @@ fun parse_and(state: object) -> object {
 }
 
 fun parse_or(state: object) -> object {
+    if state.depth >= 256 {
+        fail(state, "expression nesting exceeds 256 levels")
+        return make_node("ERROR")
+    }
+    state.depth += 1
     left = parse_and(state)
     while match(state, "OR_OR") {
+        if !note_operator(state) { return make_node("ERROR") }
         right = parse_and(state)
         node = make_node("BINARY")
         node.operator = "||"
@@ -316,6 +339,7 @@ fun parse_or(state: object) -> object {
         node.right = right
         left = node
     }
+    state.depth -= 1
     return left
 }
 
@@ -338,6 +362,8 @@ export fun parse(source: string) -> object {
     state.tokens = scanned.tokens
     state.index = 0
     state.error = ""
+    state.operator_count = 0
+    state.depth = 0
     expression = parse_or(state)
     if state.error == "" && !check(state, "EOF") {
         fail(state, "unexpected token after expression")

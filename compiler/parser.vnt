@@ -378,3 +378,428 @@ export fun parse(source: string) -> object {
     }
     return result
 }
+
+
+fun expect(state: object, kind: string, message: string) -> bool {
+    if match(state, kind) {
+        return true
+    }
+    fail(state, message)
+    return false
+}
+
+fun parse_block(state: object) -> object {
+    statements = []
+    while !check(state, "RIGHT_BRACE") && !check(state, "EOF") && state.error == "" {
+        statement = parse_statement(state)
+        if state.error != "" {
+            return []
+        }
+        statements = append(statements, statement)
+    }
+    if !expect(state, "RIGHT_BRACE", "expected '}' to close block") {
+        return []
+    }
+    return statements
+}
+
+fun parse_let_statement(state: object) -> object {
+    advance(state)
+    if !expect(state, "IDENTIFIER", "expected variable name after 'let'") {
+        return make_node("ERROR")
+    }
+    name = state.previous.lexeme
+    if !expect(state, "COLON", "expected ':' after typed variable name") {
+        return make_node("ERROR")
+    }
+    if !expect(state, "IDENTIFIER", "expected type name after ':'") {
+        return make_node("ERROR")
+    }
+    declared_type = state.previous.lexeme
+    if !expect(state, "EQUALS", "expected '=' after variable type") {
+        return make_node("ERROR")
+    }
+    value = parse_or(state)
+    node = make_node("VARIABLE_DECLARATION")
+    node.name = name
+    node.declared_type = declared_type
+    node.value = value
+    return node
+}
+
+fun parse_print_statement(state: object) -> object {
+    advance(state)
+    if !expect(state, "LEFT_PAREN", "expected '(' after print") {
+        return make_node("ERROR")
+    }
+    expression = parse_or(state)
+    if !expect(state, "RIGHT_PAREN", "expected ')' after print expression") {
+        return make_node("ERROR")
+    }
+    node = make_node("PRINT")
+    node.expression = expression
+    return node
+}
+
+fun parse_return_statement(state: object) -> object {
+    keyword = advance(state)
+    expression = null
+    if !check(state, "RIGHT_BRACE") && !check(state, "EOF") && current(state).line == keyword.line {
+        expression = parse_or(state)
+    }
+    node = make_node("RETURN")
+    node.expression = expression
+    return node
+}
+
+fun parse_if_statement(state: object) -> object {
+    advance(state)
+    condition = parse_or(state)
+    if !expect(state, "LEFT_BRACE", "expected '{' after if condition") {
+        return make_node("ERROR")
+    }
+    then_branch = parse_block(state)
+    else_branch = []
+    if state.error == "" && check(state, "IDENTIFIER") && current(state).lexeme == "else" {
+        advance(state)
+        if check(state, "IDENTIFIER") && current(state).lexeme == "if" {
+            else_branch = [parse_statement(state)]
+        } else {
+            if !expect(state, "LEFT_BRACE", "expected '{' or 'if' after else") {
+                return make_node("ERROR")
+            }
+            else_branch = parse_block(state)
+        }
+    }
+    node = make_node("IF")
+    node.condition = condition
+    node.then_branch = then_branch
+    node.else_branch = else_branch
+    return node
+}
+
+fun parse_while_statement(state: object) -> object {
+    advance(state)
+    condition = parse_or(state)
+    if !expect(state, "LEFT_BRACE", "expected '{' after while condition") {
+        return make_node("ERROR")
+    }
+    body = parse_block(state)
+    node = make_node("WHILE")
+    node.condition = condition
+    node.body = body
+    return node
+}
+
+fun parse_for_statement(state: object) -> object {
+    advance(state)
+    if !expect(state, "IDENTIFIER", "expected loop variable after 'for'") {
+        return make_node("ERROR")
+    }
+    name = state.previous.lexeme
+    if !check(state, "IDENTIFIER") || current(state).lexeme != "in" {
+        fail(state, "expected 'in' after for variable")
+        return make_node("ERROR")
+    }
+    advance(state)
+    iterable = parse_or(state)
+    if !expect(state, "LEFT_BRACE", "expected '{' after for expression") {
+        return make_node("ERROR")
+    }
+    body = parse_block(state)
+    node = make_node("FOR")
+    node.name = name
+    node.iterable = iterable
+    node.body = body
+    return node
+}
+
+fun parse_function_statement(state: object, is_unsafe: bool) -> object {
+    advance(state)
+    if !expect(state, "IDENTIFIER", "expected function name") {
+        return make_node("ERROR")
+    }
+    name = state.previous.lexeme
+    if !expect(state, "LEFT_PAREN", "expected '(' after function name") {
+        return make_node("ERROR")
+    }
+    parameters = []
+    if !check(state, "RIGHT_PAREN") {
+        parsing = true
+        while parsing && state.error == "" {
+            if !expect(state, "IDENTIFIER", "expected parameter name") {
+                return make_node("ERROR")
+            }
+            parameter = object()
+            parameter.name = state.previous.lexeme
+            parameter.type = null
+            if match(state, "COLON") {
+                if !expect(state, "IDENTIFIER", "expected parameter type after ':'") {
+                    return make_node("ERROR")
+                }
+                parameter.type = state.previous.lexeme
+            }
+            parameters = append(parameters, parameter)
+            if match(state, "COMMA") {
+                if check(state, "RIGHT_PAREN") {
+                    fail(state, "trailing comma in parameter list")
+                    return make_node("ERROR")
+                }
+            } else {
+                parsing = false
+            }
+        }
+    }
+    if !expect(state, "RIGHT_PAREN", "expected ')' after parameters") {
+        return make_node("ERROR")
+    }
+    return_type = null
+    if match(state, "MINUS") {
+        if !expect(state, "GREATER", "expected '>' after '-' in return type") {
+            return make_node("ERROR")
+        }
+        if !expect(state, "IDENTIFIER", "expected function return type") {
+            return make_node("ERROR")
+        }
+        return_type = state.previous.lexeme
+    }
+    if !expect(state, "LEFT_BRACE", "expected '{' before function body") {
+        return make_node("ERROR")
+    }
+    body = parse_block(state)
+    node = make_node("FUNCTION")
+    node.name = name
+    node.parameters = parameters
+    node.return_type = return_type
+    node.is_unsafe = is_unsafe
+    node.body = body
+    return node
+}
+
+fun parse_struct_statement(state: object) -> object {
+    advance(state)
+    if !expect(state, "IDENTIFIER", "expected struct name") {
+        return make_node("ERROR")
+    }
+    name = state.previous.lexeme
+    if !expect(state, "LEFT_BRACE", "expected '{' after struct name") {
+        return make_node("ERROR")
+    }
+    fields = []
+    if !check(state, "RIGHT_BRACE") {
+        parsing = true
+        while parsing && state.error == "" {
+            if !expect(state, "IDENTIFIER", "expected struct field name") {
+                return make_node("ERROR")
+            }
+            fields = append(fields, state.previous.lexeme)
+            if match(state, "COMMA") {
+                if check(state, "RIGHT_BRACE") {
+                    parsing = false
+                }
+            } else {
+                parsing = false
+            }
+        }
+    }
+    if !expect(state, "RIGHT_BRACE", "expected '}' after struct fields") {
+        return make_node("ERROR")
+    }
+    node = make_node("STRUCT")
+    node.name = name
+    node.fields = fields
+    return node
+}
+
+fun parse_asm_statement(state: object) -> object {
+    advance(state)
+    is_volatile = false
+    if check(state, "IDENTIFIER") && current(state).lexeme == "volatile" {
+        advance(state)
+        is_volatile = true
+    }
+    if !expect(state, "LEFT_PAREN", "expected '(' after asm") {
+        return make_node("ERROR")
+    }
+    if !expect(state, "STRING", "expected assembly template string") {
+        return make_node("ERROR")
+    }
+    assembly = state.previous.lexeme
+    if !expect(state, "RIGHT_PAREN", "expected ')' after assembly template") {
+        return make_node("ERROR")
+    }
+    node = make_node("ASM")
+    node.assembly = assembly
+    node.is_volatile = is_volatile
+    return node
+}
+
+fun parse_assignment_or_call(state: object) -> object {
+    target = parse_or(state)
+    if state.error != "" {
+        return make_node("ERROR")
+    }
+    operator = current(state)
+    if operator.kind == "EQUALS" || operator.kind == "PLUS_EQUALS" || operator.kind == "MINUS_EQUALS" || operator.kind == "STAR_EQUALS" || operator.kind == "SLASH_EQUALS" || operator.kind == "PERCENT_EQUALS" {
+        advance(state)
+        value = parse_or(state)
+        if operator.kind != "EQUALS" {
+            binary = make_node("BINARY")
+            binary.operator = operator.lexeme
+            binary.left = target
+            binary.right = value
+            value = binary
+        }
+        if target.kind == "VARIABLE" {
+            node = make_node("VARIABLE_DECLARATION")
+            node.name = target.value
+            node.declared_type = null
+            node.value = value
+            return node
+        }
+        node = make_node("ASSIGNMENT")
+        node.target = target
+        node.value = value
+        return node
+    }
+    if target.kind == "CALL" {
+        return target
+    }
+    fail(state, "expected assignment operator or function call")
+    return make_node("ERROR")
+}
+
+fun parse_statement(state: object) -> object {
+    if state.statement_depth >= 256 {
+        fail(state, "statement nesting exceeds 256 levels")
+        return make_node("ERROR")
+    }
+    state.statement_depth += 1
+    token = current(state)
+    node = make_node("ERROR")
+    if token.kind == "EOF" || token.kind == "RIGHT_BRACE" {
+        fail(state, "expected statement")
+    } else {
+        if token.kind == "STAR" {
+            target = parse_unary(state)
+            operator = current(state)
+            if operator.kind == "EQUALS" || operator.kind == "PLUS_EQUALS" || operator.kind == "MINUS_EQUALS" || operator.kind == "STAR_EQUALS" || operator.kind == "SLASH_EQUALS" || operator.kind == "PERCENT_EQUALS" {
+                advance(state)
+                value = parse_or(state)
+                if operator.kind != "EQUALS" {
+                    binary = make_node("BINARY")
+                    binary.operator = operator.lexeme
+                    binary.left = target
+                    binary.right = value
+                    value = binary
+                }
+                node = make_node("ASSIGNMENT")
+                node.target = target
+                node.value = value
+            } else {
+                fail(state, "expected assignment operator after dereference")
+            }
+        } else {
+            if token.kind == "IDENTIFIER" && token.lexeme == "let" {
+                node = parse_let_statement(state)
+            } else {
+                if token.kind == "IDENTIFIER" && token.lexeme == "print" {
+                    node = parse_print_statement(state)
+                } else {
+                    if token.kind == "IDENTIFIER" && token.lexeme == "return" {
+                        node = parse_return_statement(state)
+                    } else {
+                        if token.kind == "IDENTIFIER" && token.lexeme == "break" {
+                            advance(state)
+                            node = make_node("BREAK")
+                        } else {
+                            if token.kind == "IDENTIFIER" && token.lexeme == "continue" {
+                                advance(state)
+                                node = make_node("CONTINUE")
+                            } else {
+                                if token.kind == "IDENTIFIER" && token.lexeme == "if" {
+                                    node = parse_if_statement(state)
+                                } else {
+                                    if token.kind == "IDENTIFIER" && token.lexeme == "while" {
+                                        node = parse_while_statement(state)
+                                    } else {
+                                        if token.kind == "IDENTIFIER" && token.lexeme == "for" {
+                                            node = parse_for_statement(state)
+                                        } else {
+                                            if token.kind == "IDENTIFIER" && token.lexeme == "fun" {
+                                                node = parse_function_statement(state, false)
+                                            } else {
+                                                if token.kind == "IDENTIFIER" && token.lexeme == "struct" {
+                                                    node = parse_struct_statement(state)
+                                                } else {
+                                                    if token.kind == "IDENTIFIER" && token.lexeme == "unsafe" {
+                                                        advance(state)
+                                                        if check(state, "IDENTIFIER") && current(state).lexeme == "fun" {
+                                                            node = parse_function_statement(state, true)
+                                                        } else {
+                                                            if !expect(state, "LEFT_BRACE", "expected '{' or 'fun' after unsafe") {
+                                                                node = make_node("ERROR")
+                                                            } else {
+                                                                body = parse_block(state)
+                                                                node = make_node("UNSAFE")
+                                                                node.body = body
+                                                            }
+                                                        }
+                                                    } else {
+                                                        if token.kind == "IDENTIFIER" && token.lexeme == "asm" {
+                                                            node = parse_asm_statement(state)
+                                                        } else {
+                                                            if token.kind == "IDENTIFIER" {
+                                                                node = parse_assignment_or_call(state)
+                                                            } else {
+                                                                fail(state, "expected a statement")
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    state.statement_depth -= 1
+    return node
+}
+
+export fun parse_program(source: string) -> object {
+    scanned = lexer.lex(source)
+    result = object()
+    result.ok = false
+    result.error = ""
+    result.statements = []
+    if !scanned.ok {
+        if len(scanned.errors) > 0 {
+            result.error = scanned.errors[0]
+        } else {
+            result.error = "lexical analysis failed"
+        }
+        return result
+    }
+    state = object()
+    state.tokens = scanned.tokens
+    state.index = 0
+    state.error = ""
+    state.operator_count = 0
+    state.depth = 0
+    state.statement_depth = 0
+    while !check(state, "EOF") && state.error == "" {
+        statement = parse_statement(state)
+        if state.error == "" {
+            result.statements = append(result.statements, statement)
+        }
+    }
+    result.error = state.error
+    result.ok = state.error == ""
+    return result
+}

@@ -7,6 +7,8 @@
 #
 # The AST and all symbol/function records are VNT-owned objects.
 
+import "./parser.vnt" as parser
+
 fun append(values, value) {
     result = range(len(values) + 1)
     i = 0
@@ -300,7 +302,7 @@ fun check_call(state: object, node: object) -> string {
         i += 1
     }
     if fn.return_type == null {
-        return "void"
+        return "unknown"
     }
     return fn.return_type
 }
@@ -653,7 +655,6 @@ export fun analyze(program: object) -> object {
 }
 
 export fun check(source: string) -> object {
-    import_parser = object()
-    parsed = import_parser.parse_program(source)
+    parsed = parser.parse_program(source)
     return analyze(parsed)
 }

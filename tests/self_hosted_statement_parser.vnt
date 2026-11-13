@@ -1,0 +1,62 @@
+import "../compiler/parser.vnt" as parser
+
+fun require(condition: bool, message: string) {
+    if !condition {
+        print("SELF-HOSTED STATEMENT PARSER TEST FAILED: " + message)
+        process_exit(1)
+    }
+}
+
+source = "let count: int = 0\ncount += 1\nprint(count)\nfun add(a: int, b: int) -> int {\nreturn a + b\n}\nstruct Point { x, y }\nif count > 0 {\nprint(add(count, 1))\n} else {\nprint(0)\n}\nwhile count < 3 {\ncount = count + 1\nif count == 2 {\ncontinue\n}\n}\nfor item in values {\nprint(item)\n}\nunsafe {\nasm volatile(\"nop\")\n}"
+parsed = parser.parse_program(source)
+require(parsed.ok, "representative program was rejected: " + parsed.error)
+require(len(parsed.statements) == 9, "top-level statement count is incorrect")
+
+declaration = parsed.statements[0]
+require(declaration.kind == "VARIABLE_DECLARATION", "typed let declaration node is incorrect")
+require(declaration.name == "count" && declaration.declared_type == "int", "typed let metadata is incorrect")
+
+compound = parsed.statements[1]
+require(compound.kind == "VARIABLE_DECLARATION", "compound assignment should lower to variable update")
+require(compound.value.kind == "BINARY" && compound.value.operator == "+=", "compound assignment operator was lost")
+
+require(parsed.statements[2].kind == "PRINT", "print statement was not parsed")
+
+function = parsed.statements[3]
+require(function.kind == "FUNCTION" && function.name == "add", "function declaration is incorrect")
+require(len(function.parameters) == 2, "function parameter count is incorrect")
+require(function.parameters[0].type == "int" && function.return_type == "int", "function type annotations are incorrect")
+require(function.body[0].kind == "RETURN", "function return statement is incorrect")
+
+structure = parsed.statements[4]
+require(structure.kind == "STRUCT" && structure.name == "Point", "struct declaration is incorrect")
+require(len(structure.fields) == 2, "struct fields are incorrect")
+
+conditional = parsed.statements[5]
+require(conditional.kind == "IF" && len(conditional.then_branch) == 1 && len(conditional.else_branch) == 1, "if/else branches are incorrect")
+
+loop = parsed.statements[6]
+require(loop.kind == "WHILE" && loop.body[1].kind == "IF", "while body or nested if is incorrect")
+require(loop.body[1].then_branch[0].kind == "CONTINUE", "continue statement is incorrect")
+
+iterator = parsed.statements[7]
+require(iterator.kind == "FOR" && iterator.name == "item", "for-in loop is incorrect")
+require(iterator.body[0].kind == "PRINT", "for-in loop body is incorrect")
+
+unsafe_block = parsed.statements[8]
+require(unsafe_block.kind == "UNSAFE", "unsafe block was not parsed")
+require(unsafe_block.body[0].kind == "ASM" && unsafe_block.body[0].is_volatile, "volatile assembly statement is incorrect")
+
+parsed = parser.parse_program("fun unsafe_entry() {\nreturn\n}\nunsafe fun raw(ptr: ptr) {\nasm(\"nop\")\n}")
+require(parsed.ok && parsed.statements[1].is_unsafe, "unsafe function declaration was rejected")
+
+parsed = parser.parse_program("let broken: int =")
+require(!parsed.ok && parsed.error != "", "malformed declaration did not produce a diagnostic")
+
+parsed = parser.parse_program("if true {\nprint(1)")
+require(!parsed.ok, "unterminated block was accepted")
+
+parsed = parser.parse_program("name")
+require(!parsed.ok, "bare variable expression was accepted as a statement")
+
+print("SELF_HOSTED_STATEMENT_PARSER_OK")

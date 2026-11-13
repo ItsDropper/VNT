@@ -638,6 +638,14 @@ fun parse_asm_statement(state: object) -> object {
     return node
 }
 
+fun compound_operator(kind: string) -> string {
+    if kind == "PLUS_EQUALS" { return "+" }
+    if kind == "MINUS_EQUALS" { return "-" }
+    if kind == "STAR_EQUALS" { return "*" }
+    if kind == "SLASH_EQUALS" { return "/" }
+    return "%"
+}
+
 fun parse_assignment_or_call(state: object) -> object {
     target = parse_or(state)
     if state.error != "" {
@@ -649,7 +657,7 @@ fun parse_assignment_or_call(state: object) -> object {
         value = parse_or(state)
         if operator.kind != "EQUALS" {
             binary = make_node("BINARY")
-            binary.operator = operator.lexeme
+            binary.operator = compound_operator(operator.kind)
             binary.left = target
             binary.right = value
             value = binary
@@ -796,6 +804,7 @@ export fun parse_program(source: string) -> object {
     state.error = ""
     state.operator_count = 0
     state.depth = 0
+    state.expression_depth = 0
     state.statement_depth = 0
     while !check(state, "EOF") && state.error == "" {
         statement = parse_statement(state)

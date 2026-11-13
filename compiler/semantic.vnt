@@ -252,6 +252,97 @@ fun builtin_type(name: string) -> string {
     return ""
 }
 
+fun builtin_arity(name: string, argc: int) -> int {
+    if name == "symbol_address" || name == "cpu_read_cr2" || name == "cwd" ||
+        name == "time_ms" || name == "object" || name == "gui_poll" ||
+        name == "gui_key" || name == "gui_close" || name == "gui_present" {
+        if name == "cpu_read_cr2" || name == "cwd" || name == "time_ms" ||
+            name == "object" || name == "gui_poll" || name == "gui_key" ||
+            name == "gui_close" || name == "gui_present" {
+            return argc == 0
+        }
+        return argc == 1
+    }
+    if name == "cpu_read_msr" || name == "cpu_invlpg" ||
+        name == "cpu_atomic_exchange_u64" || name == "mem_alloc" ||
+        name == "mem_free" || name == "mem_is_null" ||
+        name == "sqrt" || name == "sin" || name == "cos" ||
+        name == "tan" || name == "abs" || name == "floor" ||
+        name == "ceil" || name == "len" || name == "input" ||
+        name == "cwd" || name == "time_ms" || name == "fs_exists" ||
+        name == "fs_read" || name == "fs_delete" || name == "fs_is_file" ||
+        name == "fs_is_dir" || name == "fs_list" || name == "dir_create" ||
+        name == "env_get" || name == "env_has" || name == "sleep_ms" ||
+        name == "process_poll" || name == "process_pid" ||
+        name == "process_terminate" || name == "process_stdout" ||
+        name == "process_stderr" || name == "process_exit_code" ||
+        name == "process_exit" || name == "process_launch" ||
+        name == "io_write" || name == "io_write_error" ||
+        name == "net_url_encode" || name == "utf8_len" ||
+        name == "crypto_sha256" || name == "gui_css" {
+        return argc == 1
+    }
+    if name == "mem_read_u8" || name == "mem_read_u32" ||
+        name == "mem_read_u64" || name == "mem_realloc" ||
+        name == "mem_ptr_add" || name == "min" || name == "max" ||
+        name == "mod" || name == "process_wait" || name == "process_start" ||
+        name == "net_stream_read" || name == "net_stream_done" ||
+        name == "net_stream_status" || name == "net_stream_cancel" ||
+        name == "net_stream_release" || name == "net_async_poll" ||
+        name == "net_async_cancel" || name == "net_async_result" ||
+        name == "net_async_status" || name == "net_async_release" ||
+        name == "crypto_constant_time_equal" || name == "bigint_add" ||
+        name == "bigint_sub" || name == "bigint_mul" ||
+        name == "bigint_compare" || name == "fs_write_atomic" ||
+        name == "fs_write" || name == "fs_append" || name == "fs_rename" ||
+        name == "env_set" || name == "gui_size" {
+        return argc == 2
+    }
+    if name == "mem_write_u8" || name == "mem_write_u32" ||
+        name == "mem_write_u64" || name == "mem_copy" || name == "mem_set" ||
+        name == "net_status" || name == "net_download" ||
+        name == "utf8_slice" || name == "gui_button" ||
+        name == "gui_text_at" || name == "gui_title" ||
+        name == "gui_input_set" || name == "gui_textarea_set" ||
+        name == "json_value_at" || name == "gui_separator" {
+        return argc == 3
+    }
+    if name == "net_stream_start" || name == "net_async_start" ||
+        name == "net_request" || name == "net_request_bytes" {
+        return argc == 4
+    }
+    if name == "gui_panel" || name == "gui_input" ||
+        name == "gui_checkbox" || name == "gui_progress" {
+        return argc == 4
+    }
+    if name == "gui_button_sized" || name == "gui_textarea" ||
+        name == "gui_panel_color" || name == "gui_text_style" {
+        return argc == 5
+    }
+    if name == "ffi_int" {
+        return argc >= 2 && argc <= 8
+    }
+    if name == "range" {
+        return argc >= 1 && argc <= 3
+    }
+    if name == "time_local_parts" || name == "time_utc_parts" {
+        return argc == 1
+    }
+    return -1
+}
+
+fun is_raw_memory_builtin(name: string) -> bool {
+    return name == "mem_alloc" || name == "mem_free" ||
+        name == "mem_is_null" || name == "mem_realloc" ||
+        name == "mem_ptr_add" || name == "mem_read_u8" ||
+        name == "mem_read_u32" || name == "mem_read_u64" ||
+        name == "mem_write_u8" || name == "mem_write_u32" ||
+        name == "mem_write_u64" || name == "mem_copy" ||
+        name == "mem_set" || name == "cpu_read_cr2" ||
+        name == "cpu_invlpg" || name == "cpu_atomic_exchange_u64" ||
+        name == "symbol_address"
+}
+
 fun check_call(state: object, node: object) -> string {
     name = node.name
     argc = len(node.arguments)
@@ -267,9 +358,21 @@ fun check_call(state: object, node: object) -> string {
         return "unknown"
     }
 
-    builtin = builtin_type(name)
-    if builtin != "" {
-        return builtin
+    builtin_count = builtin_arity(name, argc)
+    if builtin_count != -1 {
+        if !builtin_count {
+            fail(state, "builtin '" + name + "' does not accept " + argc + " arguments.")
+            return "unknown"
+        }
+        if is_raw_memory_builtin(name) && state.unsafe_depth == 0 {
+            fail(state, "raw memory builtins may only be called inside an unsafe block.")
+            return "unknown"
+        }
+        builtin = builtin_type(name)
+        if builtin != "" {
+            return builtin
+        }
+        return "unknown"
     }
     if find_struct(state, name) {
         if argc != 0 {
@@ -281,6 +384,10 @@ fun check_call(state: object, node: object) -> string {
     fn = find_function(state, name)
     if !fn.found {
         fail(state, "call to undeclared function '" + name + "'.")
+        return "unknown"
+    }
+    if fn.is_unsafe && state.unsafe_depth == 0 {
+        fail(state, "unsafe function calls must be inside an unsafe block.")
         return "unknown"
     }
     if argc != len(fn.parameters) {

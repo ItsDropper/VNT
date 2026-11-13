@@ -4,7 +4,7 @@ The VNT-native frontend now has three independently callable stages:
 
 1. `compiler/lexer.vnt` exports `lex(source)`.
 2. `compiler/parser.vnt` exports `parse(source)` and `parse_program(source)`.
-3. `compiler/semantic.vnt` exports `analyze(program)` and `check(source)`.
+3. `compiler/semantic.vnt` exports `analyze(program)`.
 
 The semantic pass consumes the parser's VNT object AST directly. It does not construct
 or call the hosted C `AstNode`, symbol table, or type checker.

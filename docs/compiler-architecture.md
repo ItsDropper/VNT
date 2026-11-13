@@ -79,6 +79,11 @@ Do not describe the backend as rebuilding or traversing an AST: its current impl
 
 ## Self-hosting frontend
 
-The self-hosting track has started with a VNT-native lexer in `compiler/lexer.vnt`. It emits the same token-kind names as `include/vnt/lexer.h`, preserves lexemes and source locations, and reports malformed strings and unknown characters. Its regression program is `tests/self_hosted_lexer.vnt`, integrated into `tests/run_language_checks.ps1`.
+The self-hosting track currently contains two VNT-native frontend components:
 
-The C compiler remains the bootstrap compiler. The next major frontend milestone is a VNT-native parser with an owned syntax representation and the same parser depth/operator limits as the C implementation. See [VNT self-hosting](self-hosting.md) for the staged bootstrap plan and acceptance gates.
+- `compiler/lexer.vnt` emits the token-kind names used by `include/vnt/lexer.h`, preserves lexemes and source locations, and reports malformed strings and unknown characters. Its regression program is `tests/self_hosted_lexer.vnt`.
+- `compiler/parser.vnt` consumes that token stream and parses expressions into an owned VNT object graph. It covers literals, variables, calls (including module-qualified calls), arrays, indexing, member access, unary operators, and the binary precedence ladder. It enforces 256-level expression nesting and a 256-operator-node limit. Its regression program is `tests/self_hosted_parser.vnt`.
+
+Both regression programs are integrated into `tests/run_language_checks.ps1`. They are committed test coverage, not yet verified passing executions in this environment. The expression parser is not a complete replacement for `parser_parse`; statement/declaration parsing, semantic analysis, and HIR lowering remain ahead.
+
+The C compiler remains the bootstrap compiler. See [VNT self-hosting](self-hosting.md) for the staged bootstrap plan and acceptance gates.

@@ -67,6 +67,20 @@ require(!parsed.ok && parsed.error != "", "malformed declaration did not produce
 parsed = parser.parse_program("if true {\nprint(1)")
 require(!parsed.ok, "unterminated block was accepted")
 
+deep_blocks = ""
+i = 0
+while i < 257 {
+    deep_blocks = deep_blocks + "if true {"
+    i += 1
+}
+i = 0
+while i < 257 {
+    deep_blocks = deep_blocks + "}"
+    i += 1
+}
+parsed = parser.parse_program(deep_blocks)
+require(!parsed.ok, "statement nesting limit was not enforced")
+
 parsed = parser.parse_program("name")
 require(!parsed.ok, "bare variable expression was accepted as a statement")
 

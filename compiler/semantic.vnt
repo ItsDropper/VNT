@@ -325,7 +325,7 @@ fun builtin_arity(name: string, argc: int) -> int {
         return argc == 1
     }
     if name == "cpu_read_msr" || name == "cpu_invlpg" ||
-        name == "cpu_atomic_exchange_u64" || name == "mem_alloc" ||
+        name == "mem_alloc" ||
         name == "mem_free" || name == "mem_is_null" ||
         name == "sqrt" || name == "sin" || name == "cos" ||
         name == "tan" || name == "abs" || name == "floor" ||
@@ -349,14 +349,10 @@ fun builtin_arity(name: string, argc: int) -> int {
     }
     if name == "mem_read_u8" || name == "mem_read_u32" ||
         name == "mem_read_u64" || name == "mem_realloc" ||
-        name == "mem_ptr_add" || name == "min" || name == "max" ||
+        name == "mem_ptr_add" || name == "cpu_write_msr" ||
+        name == "cpu_atomic_exchange_u64" || name == "min" || name == "max" ||
         name == "mod" || name == "process_wait" || name == "process_start" ||
-        name == "net_stream_read" || name == "net_stream_done" ||
-        name == "net_stream_status" || name == "net_stream_cancel" ||
-        name == "net_stream_release" || name == "net_async_poll" ||
-        name == "net_async_cancel" || name == "net_async_result" ||
-        name == "net_async_status" || name == "net_async_release" ||
-        name == "net_async_wait" || name == "crypto_constant_time_equal" || name == "bigint_add" ||
+        name == "net_stream_read" || name == "net_async_wait" || name == "crypto_constant_time_equal" || name == "bigint_add" ||
         name == "bigint_sub" || name == "bigint_mul" ||
         name == "bigint_compare" || name == "fs_write_atomic" ||
         name == "fs_write" || name == "fs_append" || name == "fs_rename" ||

@@ -39,11 +39,19 @@ The initial regression program is [`tests/self_hosted_lexer.vnt`](../tests/self_
 
 This is an initial behavioral-compatibility slice, not yet a claim that the VNT lexer has complete parity for every locale or every possible source byte. The production lexer uses C character-classification routines; the VNT implementation currently defines ASCII identifier and numeric classes explicitly.
 
+## Milestone 2: expression parser
+
+`compiler/parser.vnt` imports the native lexer and exports `parse(source)`. It returns `ok`, `error`, and an object-graph expression tree. The initial grammar covers literals, variables, calls (including module-qualified calls lowered to the existing `module__function` naming convention), array literals, indexing, member access, unary operators, and the full current binary-operator precedence ladder. String escape decoding follows the current C parser for the supported escape set.
+
+The parser regression program is [`tests/self_hosted_parser.vnt`](../tests/self_hosted_parser.vnt). It checks precedence and associativity, nested expressions, calls, arrays, postfix expressions, escape decoding, and malformed input. It is part of `tests/run_language_checks.ps1`.
+
+This is deliberately an expression-parser milestone, not a complete statement parser or a drop-in replacement for `parser_parse`. The syntax tree is an owned VNT object graph and is not yet converted into the C `AstNode` layout or HIR.
+
 ## Next implementation order
 
-1. Expand lexer parity tests, including whitespace and malformed-input boundaries.
-2. Implement a VNT-native parser that produces an owned, index-addressed syntax representation.
-3. Add parser nesting/operator limits equivalent to `include/vnt/parser.h`.
+1. Execute and stabilize both native lexer and expression-parser suites on the supported Windows build environment.
+2. Add parser nesting/operator limits equivalent to `include/vnt/parser.h`.
+3. Extend the native parser to statements, declarations, functions, structs, control flow, and unsafe/assembly forms.
 4. Implement semantic analysis and type checking against the current language rules.
 5. Lower the VNT-native syntax representation into the existing HIR model.
 6. Validate, optimize, and emit native code using the established HIR/backend contracts.

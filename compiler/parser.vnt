@@ -59,6 +59,69 @@ fun fail(state: object, message: string) {
     }
 }
 
+fun decode_string(value: string) -> string {
+    decoded = ""
+    i = 0
+    while i < len(value) {
+        ch = value[i]
+        if ch == "\\" && i + 1 < len(value) {
+            i += 1
+            escaped = value[i]
+            if escaped == "n" {
+                decoded = decoded + "\n"
+            } else {
+                if escaped == "r" {
+                    decoded = decoded + "\r"
+                } else {
+                    if escaped == "t" {
+                        decoded = decoded + "\t"
+                    } else {
+                        if escaped == "\\" || escaped == "\"" {
+                            decoded = decoded + escaped
+                        } else {
+                            decoded = decoded + "\\" + escaped
+                        }
+                    }
+                }
+            }
+        } else {
+            decoded = decoded + ch
+        }
+        i += 1
+    }
+    return decoded
+}
+
+fun parse_call_arguments(state: object, name: string) -> object {
+    args = []
+    if !check(state, "RIGHT_PAREN") {
+        parsing = true
+        while parsing && state.error == "" {
+            argument = parse_or(state)
+            if state.error != "" {
+                return make_node("ERROR")
+            }
+            args = append(args, argument)
+            if match(state, "COMMA") {
+                if check(state, "RIGHT_PAREN") {
+                    fail(state, "trailing comma in call")
+                    return make_node("ERROR")
+                }
+            } else {
+                parsing = false
+            }
+        }
+    }
+    if !match(state, "RIGHT_PAREN") {
+        fail(state, "expected ')' after arguments")
+        return make_node("ERROR")
+    }
+    node = make_node("CALL")
+    node.name = name
+    node.arguments = args
+    return node
+}
+
 fun parse_primary(state: object) -> object {
     token = current(state)
     if match(state, "INTEGER") {
@@ -68,7 +131,7 @@ fun parse_primary(state: object) -> object {
         return make_leaf("FLOAT", token.lexeme)
     }
     if match(state, "STRING") {
-        return make_leaf("STRING", token.lexeme)
+        return make_leaf("STRING", decode_string(token.lexeme))
     }
     if match(state, "IDENTIFIER") {
         if token.lexeme == "true" {
@@ -81,33 +144,7 @@ fun parse_primary(state: object) -> object {
             return make_leaf("NULL", "null")
         }
         if match(state, "LEFT_PAREN") {
-            args = []
-            if !check(state, "RIGHT_PAREN") {
-                parsing = true
-                while parsing && state.error == "" {
-                    argument = parse_or(state)
-                    if state.error != "" {
-                        return make_node("ERROR")
-                    }
-                    args = append(args, argument)
-                    if match(state, "COMMA") {
-                        if check(state, "RIGHT_PAREN") {
-                            fail(state, "trailing comma in call")
-                            return make_node("ERROR")
-                        }
-                    } else {
-                        parsing = false
-                    }
-                }
-            }
-            if !match(state, "RIGHT_PAREN") {
-                fail(state, "expected ')' after arguments")
-                return make_node("ERROR")
-            }
-            node = make_node("CALL")
-            node.name = token.lexeme
-            node.arguments = args
-            return node
+            return parse_call_arguments(state, token.lexeme)
         }
         return make_leaf("VARIABLE", token.lexeme)
     }
@@ -175,7 +212,13 @@ fun parse_postfix(state: object) -> object {
                 node.member = member.lexeme
                 expression = node
             } else {
-                break
+                if check(state, "LEFT_PAREN") && expression.kind == "MEMBER" && expression.object.kind == "VARIABLE" {
+                    advance(state)
+                    qualified_name = expression.object.value + "__" + expression.member
+                    expression = parse_call_arguments(state, qualified_name)
+                } else {
+                    break
+                }
             }
         }
     }

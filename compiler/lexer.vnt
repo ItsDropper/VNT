@@ -1,0 +1,259 @@
+# VNT self-hosting track: source lexer.
+#
+# This is the first production compiler component implemented in VNT itself.
+# Its token kinds and scanning rules mirror include/vnt/lexer.h and src/lexer.c.
+# The lexer is deliberately independent of the hosted C runtime beyond VNT's
+# existing string, array, and object primitives.
+
+fun append(values, value) {
+    size = len(values)
+    result = range(size + 1)
+    i = 0
+    while i < size {
+        result[i] = values[i]
+        i += 1
+    }
+    result[size] = value
+    return result
+}
+
+fun contains_char(characters: string, value: string) -> bool {
+    i = 0
+    while i < len(characters) {
+        if characters[i] == value {
+            return true
+        }
+        i += 1
+    }
+    return false
+}
+
+fun is_digit(value: string) -> bool {
+    return contains_char("0123456789", value)
+}
+
+fun is_hex_digit(value: string) -> bool {
+    return contains_char("0123456789abcdefABCDEF", value)
+}
+
+fun is_alpha(value: string) -> bool {
+    return contains_char("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_", value)
+}
+
+fun is_alphanumeric(value: string) -> bool {
+    return is_alpha(value) || is_digit(value)
+}
+
+fun peek(state: object, offset: int) -> string {
+    position = state.current + offset
+    if position < 0 || position >= len(state.source) {
+        return ""
+    }
+    return state.source[position]
+}
+
+fun advance(state: object) -> string {
+    if state.current >= len(state.source) {
+        return ""
+    }
+    value = state.source[state.current]
+    state.current += 1
+    if value == "\n" {
+        state.line += 1
+        state.column = 1
+    } else {
+        state.column += 1
+    }
+    return value
+}
+
+fun make_token(kind: string, lexeme: string, line: int, column: int) -> object {
+    token = object()
+    token.kind = kind
+    token.lexeme = lexeme
+    token.line = line
+    token.column = column
+    return token
+}
+
+fun source_slice(source: string, start: int, end: int) -> string {
+    result = ""
+    i = start
+    while i < end {
+        result = result + source[i]
+        i += 1
+    }
+    return result
+}
+
+fun token_from_state(state: object, kind: string, start: int, line: int, column: int) -> object {
+    return make_token(kind, source_slice(state.source, start, state.current), line, column)
+}
+
+fun skip_ignored(state: object) {
+    scanning = true
+    while scanning {
+        value = peek(state, 0)
+        if value == " " || value == "\t" || value == "\r" || value == "\n" {
+            advance(state)
+        } else {
+            if value == "#" {
+                while peek(state, 0) != "" && peek(state, 0) != "\n" {
+                    advance(state)
+                }
+            } else {
+                scanning = false
+            }
+        }
+    }
+}
+
+fun scan_identifier(state: object, start: int, line: int, column: int) -> object {
+    while is_alphanumeric(peek(state, 0)) {
+        advance(state)
+    }
+    return token_from_state(state, "IDENTIFIER", start, line, column)
+}
+
+fun scan_number(state: object, start: int, line: int, column: int) -> object {
+    if state.source[start] == "0" && (peek(state, 0) == "x" || peek(state, 0) == "X") {
+        advance(state)
+        while is_hex_digit(peek(state, 0)) {
+            advance(state)
+        }
+        return token_from_state(state, "INTEGER", start, line, column)
+    }
+
+    while is_digit(peek(state, 0)) {
+        advance(state)
+    }
+
+    if peek(state, 0) == "." && is_digit(peek(state, 1)) {
+        advance(state)
+        while is_digit(peek(state, 0)) {
+            advance(state)
+        }
+        return token_from_state(state, "FLOAT", start, line, column)
+    }
+
+    return token_from_state(state, "INTEGER", start, line, column)
+}
+
+fun scan_string(state: object, start: int, line: int, column: int) -> object {
+    closed = false
+    while peek(state, 0) != "" {
+        value = peek(state, 0)
+        if value == "\"" {
+            closed = true
+            advance(state)
+            break
+        }
+        if value == "\\" {
+            advance(state)
+            if peek(state, 0) == "" {
+                break
+            }
+            advance(state)
+        } else {
+            advance(state)
+        }
+    }
+
+    if !closed {
+        token = token_from_state(state, "UNKNOWN", start, line, column)
+        state.errors = append(state.errors, "Unterminated string at " + line + ":" + column)
+        return token
+    }
+
+    return make_token("STRING", source_slice(state.source, start + 1, state.current - 1), line, column)
+}
+
+fun scan_operator(state: object, start: int, line: int, column: int, first: string) -> object {
+    second = peek(state, 0)
+    kind = "UNKNOWN"
+
+    if first == "(" { kind = "LEFT_PAREN" }
+    if first == ")" { kind = "RIGHT_PAREN" }
+    if first == "{" { kind = "LEFT_BRACE" }
+    if first == "}" { kind = "RIGHT_BRACE" }
+    if first == "[" { kind = "LEFT_BRACKET" }
+    if first == "]" { kind = "RIGHT_BRACKET" }
+    if first == "," { kind = "COMMA" }
+    if first == ":" { kind = "COLON" }
+    if first == "." { kind = "DOT" }
+    if first == "&" { kind = "AMPERSAND" }
+    if first == "=" { kind = "EQUALS" }
+    if first == "!" { kind = "BANG" }
+    if first == ">" { kind = "GREATER" }
+    if first == "<" { kind = "LESS" }
+    if first == "+" { kind = "PLUS" }
+    if first == "-" { kind = "MINUS" }
+    if first == "*" { kind = "STAR" }
+    if first == "/" { kind = "SLASH" }
+    if first == "%" { kind = "PERCENT" }
+
+    if first == "=" && second == "=" { kind = "EQUAL_EQUAL" }
+    if first == "!" && second == "=" { kind = "BANG_EQUAL" }
+    if first == ">" && second == "=" { kind = "GREATER_EQUAL" }
+    if first == "<" && second == "=" { kind = "LESS_EQUAL" }
+    if first == "+" && second == "=" { kind = "PLUS_EQUALS" }
+    if first == "-" && second == "=" { kind = "MINUS_EQUALS" }
+    if first == "*" && second == "=" { kind = "STAR_EQUALS" }
+    if first == "/" && second == "=" { kind = "SLASH_EQUALS" }
+    if first == "%" && second == "=" { kind = "PERCENT_EQUALS" }
+    if first == "&" && second == "&" { kind = "AND_AND" }
+    if first == "|" && second == "|" { kind = "OR_OR" }
+
+    if kind == "EQUAL_EQUAL" || kind == "BANG_EQUAL" || kind == "GREATER_EQUAL" || kind == "LESS_EQUAL" || kind == "PLUS_EQUALS" || kind == "MINUS_EQUALS" || kind == "STAR_EQUALS" || kind == "SLASH_EQUALS" || kind == "PERCENT_EQUALS" || kind == "AND_AND" || kind == "OR_OR" {
+        advance(state)
+    }
+
+    token = token_from_state(state, kind, start, line, column)
+    if kind == "UNKNOWN" {
+        state.errors = append(state.errors, "Unexpected character '" + first + "' at " + line + ":" + column)
+    }
+    return token
+}
+
+export fun lex(source: string) -> object {
+    state = object()
+    state.source = source
+    state.current = 0
+    state.line = 1
+    state.column = 1
+    state.errors = []
+
+    tokens = []
+    while state.current < len(state.source) {
+        skip_ignored(state)
+        if state.current < len(state.source) {
+            start = state.current
+            line = state.line
+            column = state.column
+            first = advance(state)
+            token = object()
+
+            if is_alpha(first) {
+                token = scan_identifier(state, start, line, column)
+            } else {
+                if is_digit(first) {
+                    token = scan_number(state, start, line, column)
+                } else {
+                    if first == "\"" {
+                        token = scan_string(state, start, line, column)
+                    } else {
+                        token = scan_operator(state, start, line, column, first)
+                    }
+                }
+            }
+            tokens = append(tokens, token)
+        }
+    }
+
+    tokens = append(tokens, make_token("EOF", "", state.line, state.column))
+    result = object()
+    result.tokens = tokens
+    result.errors = state.errors
+    result.ok = len(state.errors) == 0
+    return result
+}

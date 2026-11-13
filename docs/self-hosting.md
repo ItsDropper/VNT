@@ -47,14 +47,31 @@ The parser regression program is [`tests/self_hosted_parser.vnt`](../tests/self_
 
 This is deliberately an expression-parser milestone, not a complete statement parser or a drop-in replacement for `parser_parse`. The syntax tree is an owned VNT object graph and is not yet converted into the C `AstNode` layout or HIR.
 
+## Milestone 3: statements and declarations
+
+`compiler/parser.vnt` now exports `parse_program(source)`, returning `ok`, `error`, and an ordered `statements` array. The statement grammar includes:
+
+- Typed `let` declarations and inferred assignment/update statements
+- Variable, member, index, and dereference assignments, including compound assignment
+- Function-call statements and `print(...)`
+- Value and bare `return`, `break`, and `continue`
+- `if` / `else if` / `else`, `while`, and `for name in expression`
+- Typed function parameters, optional return types, and unsafe function declarations
+- Struct field lists, unsafe blocks, and `asm` / `asm volatile` statements
+
+Blocks contain ordered statement arrays. The native tree is intentionally a VNT-owned syntax model, not a C `AstNode` clone; notably, `for` is represented as a `FOR` node rather than being desugared to the C parser's generated while-loop AST.
+
+The regression program is [`tests/self_hosted_statement_parser.vnt`](../tests/self_hosted_statement_parser.vnt), integrated into `tests/run_language_checks.ps1`. It covers a representative mixed program, nested control flow, typed declarations, function/struct metadata, unsafe/assembly forms, and malformed blocks/declarations.
+
+This is a grammar milestone, not yet semantic parity. Name resolution, loop-context validation, type checking, precise diagnostics, and HIR lowering remain separate compiler phases.
+
 ## Next implementation order
 
-1. Execute and stabilize both native lexer and expression-parser suites on the supported Windows build environment.
-2. Add parser nesting/operator limits equivalent to `include/vnt/parser.h`.
-3. Extend the native parser to statements, declarations, functions, structs, control flow, and unsafe/assembly forms.
-4. Implement semantic analysis and type checking against the current language rules.
-5. Lower the VNT-native syntax representation into the existing HIR model.
-6. Validate, optimize, and emit native code using the established HIR/backend contracts.
+1. Execute and stabilize the lexer, expression-parser, and statement-parser suites on the supported Windows build environment.
+2. Compare the native parser against the C parser on a shared valid/invalid source corpus, including numeric literal boundaries and assignment edge cases.
+3. Implement native semantic analysis and type checking using the current language rules.
+4. Lower the VNT-native syntax representation into the existing HIR model.
+5. Validate, optimize, and emit native code using the established HIR/backend contracts.
 
 The existing HIR and x86-64 backend are important assets: the first self-hosted compiler does not need to redesign the backend. It needs to reproduce the frontend and lowering contracts accurately, then reuse or progressively port the backend.
 

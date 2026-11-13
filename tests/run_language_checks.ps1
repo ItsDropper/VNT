@@ -4,6 +4,17 @@ Push-Location $Root
 try {
     & .\build.ps1
     if ($LASTEXITCODE -ne 0) { throw "VNT build failed." }
+
+    # The self-hosting track starts with a VNT implementation of the production lexer.
+    $SelfHostedLexerExe = Join-Path $Root "tests\out\self_hosted_lexer.exe"
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $SelfHostedLexerExe) | Out-Null
+    & .\vnt.exe --compile tests\self_hosted_lexer.vnt -o $SelfHostedLexerExe
+    if ($LASTEXITCODE -ne 0) { throw "VNT-native lexer test did not compile." }
+    $selfHostedLexerOutput = & $SelfHostedLexerExe
+    if ($LASTEXITCODE -ne 0 -or ($selfHostedLexerOutput -join "|") -ne "SELF_HOSTED_LEXER_OK") {
+        throw "VNT-native lexer regression failed: $($selfHostedLexerOutput -join ' | ')"
+    }
+    Write-Host "VNT-native self-hosted lexer: PASS"
     & .\tests\run_hir_invariants.ps1
     if ($LASTEXITCODE -ne 0) { throw "HIR invariant suite failed." }
     & .\tests\run_hir_ast_free_native.ps1

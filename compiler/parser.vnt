@@ -175,7 +175,6 @@ fun parse_postfix(state: object) -> object {
                 node.member = member.lexeme
                 expression = node
             } else {
-                state.postfix_done = true
                 break
             }
         }
@@ -193,28 +192,6 @@ fun parse_unary(state: object) -> object {
         return node
     }
     return parse_postfix(state)
-}
-
-fun parse_binary_level(state: object, lower: object, operators: string, kind: string) -> object {
-    left = lower(state)
-    while state.error == "" {
-        operator = current(state)
-        if !contains(operators, operator.kind) {
-            break
-        }
-        advance(state)
-        right = lower(state)
-        node = make_node(kind)
-        node.operator = operator.lexeme
-        node.left = left
-        node.right = right
-        left = node
-    }
-    return left
-}
-
-fun contains(values: string, value: string) -> bool {
-    return values == value
 }
 
 fun parse_multiplication(state: object) -> object {

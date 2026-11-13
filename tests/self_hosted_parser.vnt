@@ -56,6 +56,24 @@ require(parsed.error != "", "syntax error did not include a diagnostic")
 parsed = parser.parse("1 2")
 require(!parsed.ok, "trailing token was accepted")
 
+long_expression = "value"
+i = 0
+while i < 257 {
+    long_expression = long_expression + " + value"
+    i += 1
+}
+parsed = parser.parse(long_expression)
+require(!parsed.ok, "expression operator limit was not enforced")
+
+deep_expression = "value"
+i = 0
+while i < 257 {
+    deep_expression = "(" + deep_expression + ")"
+    i += 1
+}
+parsed = parser.parse(deep_expression)
+require(!parsed.ok, "expression nesting limit was not enforced")
+
 parsed = parser.parse("@")
 require(!parsed.ok, "lexically invalid expression was accepted")
 

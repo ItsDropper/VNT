@@ -700,7 +700,7 @@ fun parse_statement(state: object) -> object {
                 value = parse_or(state)
                 if operator.kind != "EQUALS" {
                     binary = make_node("BINARY")
-                    binary.operator = operator.lexeme
+                    binary.operator = compound_operator(operator.kind)
                     binary.left = target
                     binary.right = value
                     value = binary

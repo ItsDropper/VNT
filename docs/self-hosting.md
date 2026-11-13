@@ -63,13 +63,40 @@ Blocks contain ordered statement arrays. The native tree is intentionally a VNT-
 
 The regression program is [`tests/self_hosted_statement_parser.vnt`](../tests/self_hosted_statement_parser.vnt), integrated into `tests/run_language_checks.ps1` and the Linux/Windows quick-language CI workflow. It covers a representative mixed program, nested control flow, typed declarations, function/struct metadata, assignment targets, loop control, unsafe/assembly forms, and malformed input.
 
-This is a grammar milestone, not yet semantic parity. Name resolution, loop-context validation, type checking, precise diagnostics, and HIR lowering remain separate compiler phases.
+This is a grammar milestone. Semantic analysis is now implemented as a separate VNT-native pass; HIR lowering remains the next major compiler phase.
+
+## Milestone 4: semantic analysis
+
+`compiler/semantic.vnt` exports `analyze(program)` and consumes the native parser's
+VNT-owned object AST directly. It maintains VNT-owned scope, symbol, function, and
+struct records; it does not call the C type checker or allocate C AST nodes.
+
+The first semantic parity slice covers:
+
+- Whole-program function and struct declaration collection for forward references
+- Duplicate declarations and duplicate struct fields
+- Lexical scopes, global lookup from function bodies, and explicit/inferred bindings
+- Type compatibility, numeric promotion, operator rules, indexing, and member access
+- Function arity, parameter types, return types, and typed return-path checks
+- Loop-only break/continue, for-in iterable checks, unsafe function calls, raw-memory
+  builtin restrictions, and unsafe-only inline assembly
+- Builtin arity validation for the hosted runtime API
+
+The executable regression suite is `tests/self_hosted_semantic.vnt`; it runs in the
+PowerShell language suite and Linux/Windows quick-language CI.
+
+This is not yet full equivalence with `src/compiler/typecheck.c`. In particular,
+branch type-state merging, exact module-namespace resolution for unqualified sibling
+exports, complete per-builtin result typing, and exact return-path analysis still need
+parity work. Struct fields have names but no declared types in the current parser AST,
+so member access remains dynamically typed. These limitations are explicit rather
+than silently treated as completed parity.
 
 ## Next implementation order
 
 1. Execute and stabilize the lexer, expression-parser, and statement-parser suites on the supported Windows build environment.
 2. Compare the native parser against the C parser on a shared valid/invalid source corpus, including numeric literal boundaries and assignment edge cases.
-3. Implement native semantic analysis and type checking using the current language rules.
+3. Close semantic parity gaps against the C checker, using shared positive/negative test cases.
 4. Lower the VNT-native syntax representation into the existing HIR model.
 5. Validate, optimize, and emit native code using the established HIR/backend contracts.
 

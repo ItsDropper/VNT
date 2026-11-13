@@ -93,11 +93,11 @@ jobs:
       - name: Build and run VNT-native self-hosting frontend tests
         shell: bash
         run: |
-          set -eu
+          set -euo pipefail
           run_self_hosted_test() {
             source="$1"
             expected="$2"
-            executable="self-hosted-$(basename "$source" .vnt)"
+            executable="self-hosted-$(basename "$source" .vnt).exe"
             ./vnt --compile "$source" -o "$executable"
             output="$(./"$executable" | tr -d '\\r')"
             if [ "$output" != "$expected" ]; then

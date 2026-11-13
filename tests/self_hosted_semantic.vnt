@@ -68,4 +68,25 @@ require(!result.ok, "non-boolean if condition was accepted")
 result = checked("let value: int = 1\nvalue = \"bad\"")
 require(!result.ok, "incompatible reassignment was accepted")
 
+result = checked("global_value = 41\nfun read_global() -> int {\nreturn global_value\n}\nprint(read_global())")
+require(result.ok, "function could not resolve a global binding: " + result.error)
+
+result = checked("unsafe fun raw() {\nreturn\n}\nraw()")
+require(!result.ok, "unsafe function call outside unsafe block was accepted")
+
+result = checked("unsafe fun raw() {\nreturn\n}\nunsafe {\nraw()\n}")
+require(result.ok, "unsafe function call inside unsafe block was rejected: " + result.error)
+
+result = checked("value = 1\nif true {\nvalue = \"text\"\n} else {\nif value > 0 {\nprint(value)\n}\n}")
+require(result.ok, "else branch did not start from the pre-branch symbol state: " + result.error)
+
+result = checked("fun inferred() {\nreturn\n}\nresult_value = inferred()")
+require(result.ok, "unannotated function return was incorrectly treated as void: " + result.error)
+
+result = checked("print(len())")
+require(!result.ok, "invalid builtin arity was accepted")
+
+result = checked("print(mem_alloc(8))")
+require(!result.ok, "raw memory builtin outside unsafe was accepted")
+
 print("SELF_HOSTED_SEMANTIC_OK")

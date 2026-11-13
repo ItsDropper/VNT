@@ -74,6 +74,24 @@ while i < 257 {
 parsed = parser.parse(deep_expression)
 require(!parsed.ok, "expression nesting limit was not enforced")
 
+long_postfix = "value"
+i = 0
+while i < 257 {
+    long_postfix = long_postfix + ".field"
+    i += 1
+}
+parsed = parser.parse(long_postfix)
+require(!parsed.ok, "postfix operator limit was not enforced")
+
+long_unary = "value"
+i = 0
+while i < 257 {
+    long_unary = "!" + long_unary
+    i += 1
+}
+parsed = parser.parse(long_unary)
+require(!parsed.ok, "unary nesting limit was not enforced")
+
 parsed = parser.parse("@")
 require(!parsed.ok, "lexically invalid expression was accepted")
 

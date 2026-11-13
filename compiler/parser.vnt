@@ -311,7 +311,7 @@ fun parse_equality(state: object) -> object {
 
 fun parse_and(state: object) -> object {
     left = parse_equality(state)
-    while match(state, "AND_AND") {
+    while state.error == "" && match(state, "AND_AND") {
         if !note_operator(state) { return make_node("ERROR") }
         right = parse_equality(state)
         node = make_node("BINARY")
@@ -330,7 +330,7 @@ fun parse_or(state: object) -> object {
     }
     state.depth += 1
     left = parse_and(state)
-    while match(state, "OR_OR") {
+    while state.error == "" && match(state, "OR_OR") {
         if !note_operator(state) {
             state.depth -= 1
             return make_node("ERROR")

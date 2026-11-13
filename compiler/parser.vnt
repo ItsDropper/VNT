@@ -200,6 +200,7 @@ fun parse_postfix(state: object) -> object {
     expression = parse_primary(state)
     while state.error == "" {
         if match(state, "LEFT_BRACKET") {
+            if !note_operator(state) { return make_node("ERROR") }
             index = parse_or(state)
             if !match(state, "RIGHT_BRACKET") {
                 fail(state, "expected ']' after index")
@@ -211,6 +212,7 @@ fun parse_postfix(state: object) -> object {
             expression = node
         } else {
             if match(state, "DOT") {
+                if !note_operator(state) { return make_node("ERROR") }
                 if !check(state, "IDENTIFIER") {
                     fail(state, "expected member name after '.'")
                     return make_node("ERROR")
@@ -236,8 +238,14 @@ fun parse_postfix(state: object) -> object {
 
 fun parse_unary(state: object) -> object {
     if check(state, "BANG") || check(state, "MINUS") || check(state, "AMPERSAND") || check(state, "STAR") {
+        if state.depth >= 256 {
+            fail(state, "expression nesting exceeds 256 levels")
+            return make_node("ERROR")
+        }
+        state.depth += 1
         operator = advance(state)
         operand = parse_unary(state)
+        state.depth -= 1
         node = make_node("UNARY")
         node.operator = operator.lexeme
         node.operand = operand

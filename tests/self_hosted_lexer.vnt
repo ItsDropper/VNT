@@ -10,6 +10,7 @@ fun require(condition: bool, message: string) {
 source = "let _item2: int = 0x2A + 12.5 * (value - 1) && ready || !done != false >= 3 <= 4 > 0 < 9 == 9\n"
 source = source + "\"hello\\nworld\" & ptr, next # trailing comment\n"
 source = source + "x += 1 -= 2 *= 3 /= 4 %= 5\n"
+source = source + "(){}[] .\n"
 
 result = lexer.lex(source)
 expected = [
@@ -21,7 +22,9 @@ expected = [
     "INTEGER", "LESS", "INTEGER", "EQUAL_EQUAL", "INTEGER", "STRING",
     "AMPERSAND", "IDENTIFIER", "COMMA", "IDENTIFIER",
     "IDENTIFIER", "PLUS_EQUALS", "INTEGER", "MINUS_EQUALS", "INTEGER",
-    "STAR_EQUALS", "INTEGER", "SLASH_EQUALS", "INTEGER", "PERCENT_EQUALS", "INTEGER", "EOF"
+    "STAR_EQUALS", "INTEGER", "SLASH_EQUALS", "INTEGER", "PERCENT_EQUALS", "INTEGER",
+    "LEFT_PAREN", "RIGHT_PAREN", "LEFT_BRACE", "RIGHT_BRACE",
+    "LEFT_BRACKET", "RIGHT_BRACKET", "DOT", "EOF"
 ]
 
 require(result.ok, "valid source produced lexer diagnostics")

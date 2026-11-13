@@ -7,7 +7,7 @@ fun require(condition: bool, message: string) {
     }
 }
 
-source = "let count: int = 0\ncount += 1\nprint(count)\nfun add(a: int, b: int) -> int {\nreturn a + b\n}\nstruct Point { x, y }\nif count > 0 {\nprint(add(count, 1))\n} else {\nprint(0)\n}\nwhile count < 3 {\ncount = count + 1\nif count == 2 {\ncontinue\n}\n}\nfor item in values {\nprint(item)\n}\nunsafe {\nasm volatile(\"nop\")\n}"
+source = "let count: int = 0\ncount += 1\nprint(count)\nfun add(a: int, b: int) -> int {\nreturn a + b\n}\nstruct Point { x, y }\nif count > 0 {\nprint(add(count, 1))\n} else {\nprint(0)\n}\nwhile count < 3 {\ncount = count + 1\nif count == 2 {\ncontinue\n} else {\nbreak\n}\n}\nfor item in values {\nprint(item)\n}\nunsafe {\nasm volatile(\"nop\")\n}"
 parsed = parser.parse_program(source)
 require(parsed.ok, "representative program was rejected: " + parsed.error)
 require(len(parsed.statements) == 9, "top-level statement count is incorrect")
@@ -38,6 +38,7 @@ require(conditional.kind == "IF" && len(conditional.then_branch) == 1 && len(con
 loop = parsed.statements[6]
 require(loop.kind == "WHILE" && loop.body[1].kind == "IF", "while body or nested if is incorrect")
 require(loop.body[1].then_branch[0].kind == "CONTINUE", "continue statement is incorrect")
+require(loop.body[1].else_branch[0].kind == "BREAK", "break statement is incorrect")
 
 iterator = parsed.statements[7]
 require(iterator.kind == "FOR" && iterator.name == "item", "for-in loop is incorrect")

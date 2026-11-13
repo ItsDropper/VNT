@@ -24,6 +24,15 @@ try {
         throw "VNT-native expression parser regression failed: $($selfHostedParserOutput -join ' | ')"
     }
     Write-Host "VNT-native expression parser: PASS"
+
+    $SelfHostedStatementParserExe = Join-Path $Root "tests\out\self_hosted_statement_parser.exe"
+    & .\vnt.exe --compile tests\self_hosted_statement_parser.vnt -o $SelfHostedStatementParserExe
+    if ($LASTEXITCODE -ne 0) { throw "VNT-native statement parser test did not compile." }
+    $selfHostedStatementParserOutput = & $SelfHostedStatementParserExe
+    if ($LASTEXITCODE -ne 0 -or ($selfHostedStatementParserOutput -join "|") -ne "SELF_HOSTED_STATEMENT_PARSER_OK") {
+        throw "VNT-native statement parser regression failed: $($selfHostedStatementParserOutput -join ' | ')"
+    }
+    Write-Host "VNT-native statement parser: PASS"
     & .\tests\run_hir_invariants.ps1
     if ($LASTEXITCODE -ne 0) { throw "HIR invariant suite failed." }
     & .\tests\run_hir_ast_free_native.ps1

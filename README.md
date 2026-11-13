@@ -20,6 +20,7 @@ The project focuses on a small, understandable language, native execution, and a
 - [Modules and standard library](#modules-and-standard-library)
 - [Native runtime APIs](#native-runtime-apis)
 - [API reference](docs/api-reference.md)
+- [VNT self-hosting roadmap and bootstrap](docs/self-hosting.md)
 - [Raw pointers and memory](docs/raw-memory.md)
 - [VNT programming courses and tutorials](docs/tutorials/README.md)
 - [Complete beginner VNTOS operating-system course (19 lessons)](docs/tutorials/courses/os/README.md)

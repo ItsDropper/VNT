@@ -654,6 +654,10 @@ fun compound_operator(kind: string) -> string {
     return "%"
 }
 
+fun is_assignment_target(node: object) -> bool {
+    return node.kind == "VARIABLE" || node.kind == "INDEX" || node.kind == "MEMBER"
+}
+
 fun parse_assignment_or_call(state: object) -> object {
     target = parse_or(state)
     if state.error != "" {
@@ -661,6 +665,10 @@ fun parse_assignment_or_call(state: object) -> object {
     }
     operator = current(state)
     if operator.kind == "EQUALS" || operator.kind == "PLUS_EQUALS" || operator.kind == "MINUS_EQUALS" || operator.kind == "STAR_EQUALS" || operator.kind == "SLASH_EQUALS" || operator.kind == "PERCENT_EQUALS" {
+        if !is_assignment_target(target) {
+            fail(state, "invalid assignment target")
+            return make_node("ERROR")
+        }
         advance(state)
         value = parse_or(state)
         if operator.kind != "EQUALS" {

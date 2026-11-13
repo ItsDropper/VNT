@@ -703,7 +703,8 @@ fun check_statements(state: object, statements: array) {
             old_loop_depth = state.loop_depth
             old_in_function = state.in_function
             old_expected_return = state.expected_return
-            state.scopes = [make_scope()]
+            state.scopes = old_scopes
+            state.scopes = append(state.scopes, make_scope())
             state.loop_depth = 0
             state.in_function = true
             if node.return_type == null {

@@ -18,7 +18,7 @@ require(declaration.name == "count" && declaration.declared_type == "int", "type
 
 compound = parsed.statements[1]
 require(compound.kind == "VARIABLE_DECLARATION", "compound assignment should lower to variable update")
-require(compound.value.kind == "BINARY" && compound.value.operator == "+=", "compound assignment operator was lost")
+require(compound.value.kind == "BINARY" && compound.value.operator == "+", "compound assignment operator was lost")
 
 require(parsed.statements[2].kind == "PRINT", "print statement was not parsed")
 

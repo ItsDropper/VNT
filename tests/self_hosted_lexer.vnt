@@ -1,0 +1,51 @@
+import "../compiler/lexer.vnt" as lexer
+
+fun require(condition: bool, message: string) {
+    if !condition {
+        print("SELF-HOSTED LEXER TEST FAILED: " + message)
+        process_exit(1)
+    }
+}
+
+source = "let _item2: int = 0x2A + 12.5 * (value - 1) && ready || !done != false >= 3 <= 4 > 0 < 9 == 9\n"
+source = source + "\"hello\\nworld\" & ptr, next # trailing comment\n"
+
+result = lexer.lex(source)
+expected = [
+    "IDENTIFIER", "IDENTIFIER", "COLON", "IDENTIFIER", "EQUALS",
+    "INTEGER", "PLUS", "FLOAT", "STAR", "LEFT_PAREN", "IDENTIFIER",
+    "MINUS", "INTEGER", "RIGHT_PAREN", "AND_AND", "IDENTIFIER",
+    "OR_OR", "BANG", "IDENTIFIER", "BANG_EQUAL", "IDENTIFIER",
+    "GREATER_EQUAL", "INTEGER", "LESS_EQUAL", "INTEGER", "GREATER",
+    "INTEGER", "LESS", "INTEGER", "EQUAL_EQUAL", "INTEGER", "STRING",
+    "AMPERSAND", "IDENTIFIER", "COMMA", "IDENTIFIER", "EOF"
+]
+
+require(result.ok, "valid source produced lexer diagnostics")
+require(len(result.tokens) == len(expected), "unexpected token count")
+require(len(result.errors) == 0, "valid source should have no errors")
+
+i = 0
+while i < len(expected) {
+    require(result.tokens[i].kind == expected[i], "token kind mismatch at index " + i)
+    i += 1
+}
+
+require(result.tokens[1].lexeme == "_item2", "identifier lexeme was not preserved")
+require(result.tokens[5].lexeme == "0x2A", "hexadecimal integer lexeme was not preserved")
+require(result.tokens[7].lexeme == "12.5", "floating-point lexeme was not preserved")
+require(result.tokens[31].lexeme == "hello\\nworld", "string escape spelling was not preserved")
+require(result.tokens[0].line == 1 && result.tokens[0].column == 1, "first token location is incorrect")
+require(result.tokens[31].line == 2 && result.tokens[31].column == 1, "second-line token location is incorrect")
+
+invalid = lexer.lex("@")
+require(!invalid.ok, "unknown character was accepted")
+require(len(invalid.errors) == 1, "unknown character should produce one diagnostic")
+require(invalid.tokens[0].kind == "UNKNOWN", "unknown character did not produce UNKNOWN")
+
+unterminated = lexer.lex("\"open")
+require(!unterminated.ok, "unterminated string was accepted")
+require(len(unterminated.errors) == 1, "unterminated string should produce one diagnostic")
+require(unterminated.tokens[0].kind == "UNKNOWN", "unterminated string did not produce UNKNOWN")
+
+print("SELF_HOSTED_LEXER_OK")

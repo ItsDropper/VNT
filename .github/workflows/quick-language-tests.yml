@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'src/**'
+      - 'compiler/**'
       - 'freestanding/**'
       - 'os/**'
       - 'include/**'
@@ -88,6 +89,26 @@ jobs:
             src/compiler/x86_backend.c \
             src/compiler/freestanding_x86.c \
             -o vnt
+      - name: Build and run VNT-native self-hosting frontend tests
+        shell: bash
+        run: |
+          set -eu
+          run_self_hosted_test() {
+            source="$1"
+            expected="$2"
+            executable="self-hosted-$(basename "$source" .vnt)"
+            ./vnt --compile "$source" -o "$executable"
+            output="$(./"$executable" | tr -d '\\r')"
+            if [ "$output" != "$expected" ]; then
+              echo "Unexpected output from $source: $output"
+              exit 1
+            fi
+            echo "$source: PASS"
+          }
+          run_self_hosted_test tests/self_hosted_lexer.vnt SELF_HOSTED_LEXER_OK
+          run_self_hosted_test tests/self_hosted_parser.vnt SELF_HOSTED_PARSER_OK
+          run_self_hosted_test tests/self_hosted_statement_parser.vnt SELF_HOSTED_STATEMENT_PARSER_OK
+
       - name: Verify bounded parser nesting
         shell: bash
         run: |

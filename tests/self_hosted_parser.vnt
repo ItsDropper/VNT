@@ -1,0 +1,55 @@
+import "../compiler/parser.vnt" as parser
+
+fun require(condition: bool, message: string) {
+    if !condition {
+        print("SELF-HOSTED PARSER TEST FAILED: " + message)
+        process_exit(1)
+    }
+}
+
+parsed = parser.parse("1 + 2 * 3 - 4 / 2")
+require(parsed.ok, "valid arithmetic expression was rejected")
+root = parsed.expression
+require(root.kind == "BINARY" && root.operator == "-", "addition/subtraction precedence or root is wrong")
+require(root.left.kind == "BINARY" && root.left.operator == "+", "addition should bind less tightly than multiplication")
+require(root.left.right.kind == "BINARY" && root.left.right.operator == "*", "multiplication precedence is wrong")
+require(root.right.kind == "BINARY" && root.right.operator == "/", "division precedence is wrong")
+
+parsed = parser.parse("a - b - c")
+require(parsed.ok, "left-associative expression was rejected")
+require(parsed.expression.left.kind == "BINARY" && parsed.expression.left.operator == "-", "subtraction is not left associative")
+
+parsed = parser.parse("!ready || count >= 3 && ptr != null")
+require(parsed.ok, "logical expression was rejected")
+require(parsed.expression.operator == "||", "logical OR should have the lowest precedence")
+require(parsed.expression.left.kind == "UNARY", "unary negation was not parsed")
+require(parsed.expression.right.operator == "&&", "logical AND should bind more tightly than OR")
+require(parsed.expression.right.left.operator == ">=", "comparison precedence is wrong")
+
+parsed = parser.parse("sum(values[1], item.field, -offset)")
+require(parsed.ok, "function call with postfix and unary expressions was rejected")
+require(parsed.expression.kind == "CALL" && parsed.expression.name == "sum", "call node is incorrect")
+require(len(parsed.expression.arguments) == 3, "call argument count is incorrect")
+require(parsed.expression.arguments[0].kind == "INDEX", "array indexing was not parsed")
+require(parsed.expression.arguments[1].kind == "MEMBER", "member access was not parsed")
+require(parsed.expression.arguments[2].kind == "UNARY", "unary argument was not parsed")
+
+parsed = parser.parse("[1, 2 + 3, value,]")
+require(parsed.ok, "array literal with trailing comma was rejected")
+require(parsed.expression.kind == "ARRAY" && len(parsed.expression.elements) == 3, "array literal structure is incorrect")
+
+parsed = parser.parse("(left + right) * 2")
+require(parsed.ok, "parenthesized expression was rejected")
+require(parsed.expression.operator == "*", "parentheses did not override precedence")
+
+parsed = parser.parse("1 +")
+require(!parsed.ok, "incomplete expression was accepted")
+require(parsed.error != "", "syntax error did not include a diagnostic")
+
+parsed = parser.parse("1 2")
+require(!parsed.ok, "trailing token was accepted")
+
+parsed = parser.parse("@")
+require(!parsed.ok, "lexically invalid expression was accepted")
+
+print("SELF_HOSTED_PARSER_OK")

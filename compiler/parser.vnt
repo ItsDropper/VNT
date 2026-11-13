@@ -813,7 +813,6 @@ export fun parse_program(source: string) -> object {
     state.operator_count = 0
     state.nesting_depth = 0
     state.expression_depth = 0
-    state.nesting_depth = 0
     while !check(state, "EOF") && state.error == "" {
         statement = parse_statement(state)
         if state.error == "" {

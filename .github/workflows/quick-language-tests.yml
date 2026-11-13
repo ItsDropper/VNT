@@ -19,6 +19,7 @@ on:
     branches: [main]
     paths:
       - 'src/**'
+      - 'compiler/**'
       - 'freestanding/**'
       - 'include/**'
       - 'tests/*.vnt'

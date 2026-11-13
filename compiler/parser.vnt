@@ -1,4 +1,4 @@
-# VNT-native recursive-descent expression parser.
+# VNT-native recursive-descent expression and program parser.
 # The returned tree is an owned VNT object graph; it deliberately does not
 # depend on the C AST allocator or compiler internals.
 

@@ -1,0 +1,331 @@
+# VNT-native recursive-descent expression parser.
+# The returned tree is an owned VNT object graph; it deliberately does not
+# depend on the C AST allocator or compiler internals.
+
+import "./lexer.vnt" as lexer
+
+fun append(values, value) {
+    size = len(values)
+    result = range(size + 1)
+    i = 0
+    while i < size {
+        result[i] = values[i]
+        i += 1
+    }
+    result[size] = value
+    return result
+}
+
+fun make_node(kind: string) -> object {
+    node = object()
+    node.kind = kind
+    return node
+}
+
+fun make_leaf(kind: string, value: string) -> object {
+    node = make_node(kind)
+    node.value = value
+    return node
+}
+
+fun current(state: object) -> object {
+    return state.tokens[state.index]
+}
+
+fun check(state: object, kind: string) -> bool {
+    return current(state).kind == kind
+}
+
+fun advance(state: object) -> object {
+    token = current(state)
+    if token.kind != "EOF" {
+        state.index += 1
+    }
+    return token
+}
+
+fun match(state: object, kind: string) -> bool {
+    if check(state, kind) {
+        advance(state)
+        return true
+    }
+    return false
+}
+
+fun fail(state: object, message: string) {
+    if state.error == "" {
+        token = current(state)
+        state.error = message + " at " + token.line + ":" + token.column
+    }
+}
+
+fun parse_primary(state: object) -> object {
+    token = current(state)
+    if match(state, "INTEGER") {
+        return make_leaf("INTEGER", token.lexeme)
+    }
+    if match(state, "FLOAT") {
+        return make_leaf("FLOAT", token.lexeme)
+    }
+    if match(state, "STRING") {
+        return make_leaf("STRING", token.lexeme)
+    }
+    if match(state, "IDENTIFIER") {
+        if token.lexeme == "true" {
+            return make_leaf("BOOLEAN", "true")
+        }
+        if token.lexeme == "false" {
+            return make_leaf("BOOLEAN", "false")
+        }
+        if token.lexeme == "null" {
+            return make_leaf("NULL", "null")
+        }
+        if match(state, "LEFT_PAREN") {
+            args = []
+            if !check(state, "RIGHT_PAREN") {
+                parsing = true
+                while parsing && state.error == "" {
+                    argument = parse_or(state)
+                    if state.error != "" {
+                        return make_node("ERROR")
+                    }
+                    args = append(args, argument)
+                    if match(state, "COMMA") {
+                        if check(state, "RIGHT_PAREN") {
+                            fail(state, "trailing comma in call")
+                            return make_node("ERROR")
+                        }
+                    } else {
+                        parsing = false
+                    }
+                }
+            }
+            if !match(state, "RIGHT_PAREN") {
+                fail(state, "expected ')' after arguments")
+                return make_node("ERROR")
+            }
+            node = make_node("CALL")
+            node.name = token.lexeme
+            node.arguments = args
+            return node
+        }
+        return make_leaf("VARIABLE", token.lexeme)
+    }
+    if match(state, "LEFT_PAREN") {
+        expression = parse_or(state)
+        if !match(state, "RIGHT_PAREN") {
+            fail(state, "expected ')'")
+            return make_node("ERROR")
+        }
+        return expression
+    }
+    if match(state, "LEFT_BRACKET") {
+        elements = []
+        if !check(state, "RIGHT_BRACKET") {
+            parsing = true
+            while parsing && state.error == "" {
+                element = parse_or(state)
+                if state.error != "" {
+                    return make_node("ERROR")
+                }
+                elements = append(elements, element)
+                if match(state, "COMMA") {
+                    if check(state, "RIGHT_BRACKET") {
+                        parsing = false
+                    }
+                } else {
+                    parsing = false
+                }
+            }
+        }
+        if !match(state, "RIGHT_BRACKET") {
+            fail(state, "expected ']' after array elements")
+            return make_node("ERROR")
+        }
+        node = make_node("ARRAY")
+        node.elements = elements
+        return node
+    }
+    fail(state, "expected expression")
+    return make_node("ERROR")
+}
+
+fun parse_postfix(state: object) -> object {
+    expression = parse_primary(state)
+    while state.error == "" {
+        if match(state, "LEFT_BRACKET") {
+            index = parse_or(state)
+            if !match(state, "RIGHT_BRACKET") {
+                fail(state, "expected ']' after index")
+                return make_node("ERROR")
+            }
+            node = make_node("INDEX")
+            node.object = expression
+            node.index = index
+            expression = node
+        } else {
+            if match(state, "DOT") {
+                if !check(state, "IDENTIFIER") {
+                    fail(state, "expected member name after '.'")
+                    return make_node("ERROR")
+                }
+                member = advance(state)
+                node = make_node("MEMBER")
+                node.object = expression
+                node.member = member.lexeme
+                expression = node
+            } else {
+                state.postfix_done = true
+                break
+            }
+        }
+    }
+    return expression
+}
+
+fun parse_unary(state: object) -> object {
+    if check(state, "BANG") || check(state, "MINUS") || check(state, "AMPERSAND") || check(state, "STAR") {
+        operator = advance(state)
+        operand = parse_unary(state)
+        node = make_node("UNARY")
+        node.operator = operator.lexeme
+        node.operand = operand
+        return node
+    }
+    return parse_postfix(state)
+}
+
+fun parse_binary_level(state: object, lower: object, operators: string, kind: string) -> object {
+    left = lower(state)
+    while state.error == "" {
+        operator = current(state)
+        if !contains(operators, operator.kind) {
+            break
+        }
+        advance(state)
+        right = lower(state)
+        node = make_node(kind)
+        node.operator = operator.lexeme
+        node.left = left
+        node.right = right
+        left = node
+    }
+    return left
+}
+
+fun contains(values: string, value: string) -> bool {
+    return values == value
+}
+
+fun parse_multiplication(state: object) -> object {
+    left = parse_unary(state)
+    while check(state, "STAR") || check(state, "SLASH") || check(state, "PERCENT") {
+        operator = advance(state)
+        right = parse_unary(state)
+        node = make_node("BINARY")
+        node.operator = operator.lexeme
+        node.left = left
+        node.right = right
+        left = node
+    }
+    return left
+}
+
+fun parse_addition(state: object) -> object {
+    left = parse_multiplication(state)
+    while check(state, "PLUS") || check(state, "MINUS") {
+        operator = advance(state)
+        right = parse_multiplication(state)
+        node = make_node("BINARY")
+        node.operator = operator.lexeme
+        node.left = left
+        node.right = right
+        left = node
+    }
+    return left
+}
+
+fun parse_comparison(state: object) -> object {
+    left = parse_addition(state)
+    while check(state, "GREATER") || check(state, "LESS") || check(state, "GREATER_EQUAL") || check(state, "LESS_EQUAL") {
+        operator = advance(state)
+        right = parse_addition(state)
+        node = make_node("BINARY")
+        node.operator = operator.lexeme
+        node.left = left
+        node.right = right
+        left = node
+    }
+    return left
+}
+
+fun parse_equality(state: object) -> object {
+    left = parse_comparison(state)
+    while check(state, "EQUAL_EQUAL") || check(state, "BANG_EQUAL") {
+        operator = advance(state)
+        right = parse_comparison(state)
+        node = make_node("BINARY")
+        node.operator = operator.lexeme
+        node.left = left
+        node.right = right
+        left = node
+    }
+    return left
+}
+
+fun parse_and(state: object) -> object {
+    left = parse_equality(state)
+    while match(state, "AND_AND") {
+        right = parse_equality(state)
+        node = make_node("BINARY")
+        node.operator = "&&"
+        node.left = left
+        node.right = right
+        left = node
+    }
+    return left
+}
+
+fun parse_or(state: object) -> object {
+    left = parse_and(state)
+    while match(state, "OR_OR") {
+        right = parse_and(state)
+        node = make_node("BINARY")
+        node.operator = "||"
+        node.left = left
+        node.right = right
+        left = node
+    }
+    return left
+}
+
+export fun parse(source: string) -> object {
+    scanned = lexer.lex(source)
+    result = object()
+    result.ok = false
+    result.error = ""
+    result.expression = make_node("ERROR")
+    if !scanned.ok {
+        if len(scanned.errors) > 0 {
+            result.error = scanned.errors[0]
+        } else {
+            result.error = "lexical analysis failed"
+        }
+        return result
+    }
+
+    state = object()
+    state.tokens = scanned.tokens
+    state.index = 0
+    state.error = ""
+    expression = parse_or(state)
+    if state.error == "" && !check(state, "EOF") {
+        fail(state, "unexpected token after expression")
+    }
+    result.error = state.error
+    result.ok = state.error == ""
+    if result.ok {
+        result.expression = expression
+    }
+    return result
+}

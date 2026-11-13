@@ -92,6 +92,7 @@ fun declare_symbol(state: object, name: string, type_name: string, explicit: boo
     symbol.name = name
     symbol.type = type_name
     symbol.explicit = explicit
+    symbol.dynamic = false
     scope.symbols = append(scope.symbols, symbol)
 }
 
@@ -107,6 +108,9 @@ fun assign_symbol(state: object, name: string, actual: string) {
         }
         return
     }
+    if symbol.dynamic {
+        return
+    }
     if symbol.type != actual && symbol.type != "unknown" && actual != "unknown" {
         if numeric(symbol.type) && numeric(actual) {
             if symbol.type == "float" || actual == "float" {
@@ -116,9 +120,67 @@ fun assign_symbol(state: object, name: string, actual: string) {
             }
         } else {
             symbol.type = "unknown"
+            symbol.dynamic = true
         }
     } else if symbol.type == "unknown" {
         symbol.type = actual
+    }
+}
+
+fun clone_scopes(scopes: array) -> array {
+    copied = []
+    i = 0
+    while i < len(scopes) {
+        source_scope = scopes[i]
+        target_scope = make_scope()
+        j = 0
+        while j < len(source_scope.symbols) {
+            source_symbol = source_scope.symbols[j]
+            symbol = object()
+            symbol.found = source_symbol.found
+            symbol.name = source_symbol.name
+            symbol.type = source_symbol.type
+            symbol.explicit = source_symbol.explicit
+            symbol.dynamic = source_symbol.dynamic
+            target_scope.symbols = append(target_scope.symbols, symbol)
+            j += 1
+        }
+        copied = append(copied, target_scope)
+        i += 1
+    }
+    return copied
+}
+
+fun merge_branch_scopes(before: array, then_state: array, else_state: array) {
+    i = 0
+    while i < len(before) {
+        j = 0
+        while j < len(before[i].symbols) {
+            base = before[i].symbols[j]
+            then_symbol = then_state[i].symbols[j]
+            else_symbol = else_state[i].symbols[j]
+            if base.explicit {
+                # Explicit bindings were validated independently in both branches.
+            } else if then_symbol.dynamic || else_symbol.dynamic {
+                base.type = "unknown"
+                base.dynamic = true
+            } else if then_symbol.type == else_symbol.type {
+                base.type = then_symbol.type
+            } else if numeric(then_symbol.type) && numeric(else_symbol.type) {
+                if then_symbol.type == "float" || else_symbol.type == "float" {
+                    base.type = "float"
+                } else if then_symbol.type == "i64" || else_symbol.type == "i64" {
+                    base.type = "i64"
+                } else {
+                    base.type = "int"
+                }
+            } else {
+                base.type = "unknown"
+                base.dynamic = true
+            }
+            j += 1
+        }
+        i += 1
     }
 }
 
@@ -625,13 +687,21 @@ fun check_statements(state: object, statements: array) {
             } else if condition_type != "bool" && condition_type != "unknown" {
                 fail(state, "if condition must be boolean.")
             } else {
+                before = clone_scopes(state.scopes)
+                state.scopes = clone_scopes(before)
                 state.scopes = append(state.scopes, make_scope())
                 check_statements(state, node.then_branch)
-                state.scopes = range(len(state.scopes) - 1)
-                if state.error == "" {
+                then_state = clone_scopes(state.scopes)
+
+                state.scopes = clone_scopes(before)
+                if len(node.else_branch) > 0 {
                     state.scopes = append(state.scopes, make_scope())
                     check_statements(state, node.else_branch)
-                    state.scopes = range(len(state.scopes) - 1)
+                }
+                else_state = clone_scopes(state.scopes)
+                state.scopes = clone_scopes(before)
+                if state.error == "" {
+                    merge_branch_scopes(state.scopes, then_state, else_state)
                 }
             }
         } else if node.kind == "WHILE" {

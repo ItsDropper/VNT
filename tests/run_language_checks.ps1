@@ -15,6 +15,15 @@ try {
         throw "VNT-native lexer regression failed: $($selfHostedLexerOutput -join ' | ')"
     }
     Write-Host "VNT-native self-hosted lexer: PASS"
+
+    $SelfHostedParserExe = Join-Path $OutDir "self_hosted_parser.exe"
+    & .\vnt.exe --compile tests\self_hosted_parser.vnt -o $SelfHostedParserExe
+    if ($LASTEXITCODE -ne 0) { throw "VNT-native expression parser test did not compile." }
+    $selfHostedParserOutput = & $SelfHostedParserExe
+    if ($LASTEXITCODE -ne 0 -or ($selfHostedParserOutput -join "|") -ne "SELF_HOSTED_PARSER_OK") {
+        throw "VNT-native expression parser regression failed: $($selfHostedParserOutput -join ' | ')"
+    }
+    Write-Host "VNT-native expression parser: PASS"
     & .\tests\run_hir_invariants.ps1
     if ($LASTEXITCODE -ne 0) { throw "HIR invariant suite failed." }
     & .\tests\run_hir_ast_free_native.ps1

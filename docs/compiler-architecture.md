@@ -76,3 +76,9 @@ The existence of an AST-free HIR backend does not mean the compiler is finished.
 - Keeping the control-flow graph and definite-assignment analysis consistent with language semantics.
 
 Do not describe the backend as rebuilding or traversing an AST: its current implementation consumes HIR directly. Distinguish this from the frontend, which still uses an AST for parsing and type checking.
+
+## Self-hosting frontend
+
+The self-hosting track has started with a VNT-native lexer in `compiler/lexer.vnt`. It emits the same token-kind names as `include/vnt/lexer.h`, preserves lexemes and source locations, and reports malformed strings and unknown characters. Its regression program is `tests/self_hosted_lexer.vnt`, integrated into `tests/run_language_checks.ps1`.
+
+The C compiler remains the bootstrap compiler. The next major frontend milestone is a VNT-native parser with an owned syntax representation and the same parser depth/operator limits as the C implementation. See [VNT self-hosting](self-hosting.md) for the staged bootstrap plan and acceptance gates.

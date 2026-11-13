@@ -89,4 +89,10 @@ require(!result.ok, "invalid builtin arity was accepted")
 result = checked("print(mem_alloc(8))")
 require(!result.ok, "raw memory builtin outside unsafe was accepted")
 
+result = checked("unsafe {\ncpu_atomic_exchange_u64(0, 1)\ncpu_write_msr(1, 2)\n}")
+require(result.ok, "valid CPU builtin arities were rejected: " + result.error)
+
+result = checked("unsafe {\ncpu_atomic_exchange_u64(0)\n}")
+require(!result.ok, "invalid atomic exchange arity was accepted")
+
 print("SELF_HOSTED_SEMANTIC_OK")

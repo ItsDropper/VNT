@@ -42,6 +42,13 @@ parsed = parser.parse("(left + right) * 2")
 require(parsed.ok, "parenthesized expression was rejected")
 require(parsed.expression.operator == "*", "parentheses did not override precedence")
 
+parsed = parser.parse("math.max(1, 2)")
+require(parsed.ok, "qualified module call was rejected")
+require(parsed.expression.kind == "CALL" && parsed.expression.name == "math__max", "qualified call lowering is incorrect")
+
+parsed = parser.parse("\"line\\nnext\"")
+require(parsed.ok && parsed.expression.value == "line\nnext", "string escapes were not decoded")
+
 parsed = parser.parse("1 +")
 require(!parsed.ok, "incomplete expression was accepted")
 require(parsed.error != "", "syntax error did not include a diagnostic")

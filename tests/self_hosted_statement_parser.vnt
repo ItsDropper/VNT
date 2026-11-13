@@ -50,6 +50,17 @@ require(unsafe_block.body[0].kind == "ASM" && unsafe_block.body[0].is_volatile, 
 parsed = parser.parse_program("fun unsafe_entry() {\nreturn\n}\nunsafe fun raw(ptr: ptr) {\nasm(\"nop\")\n}")
 require(parsed.ok && parsed.statements[1].is_unsafe, "unsafe function declaration was rejected")
 
+parsed = parser.parse_program("point.x = 1\nitems[0] += 2\n*ptr = 3\nmodule.call()")
+require(parsed.ok && len(parsed.statements) == 4, "member/index/dereference assignments or call statement were rejected")
+require(parsed.statements[0].kind == "ASSIGNMENT" && parsed.statements[0].target.kind == "MEMBER", "member assignment target is incorrect")
+require(parsed.statements[1].kind == "ASSIGNMENT" && parsed.statements[1].target.kind == "INDEX", "indexed compound assignment target is incorrect")
+require(parsed.statements[1].value.kind == "BINARY" && parsed.statements[1].value.operator == "+", "indexed compound assignment operator is incorrect")
+require(parsed.statements[2].kind == "ASSIGNMENT" && parsed.statements[2].target.kind == "UNARY", "dereference assignment target is incorrect")
+require(parsed.statements[3].kind == "CALL" && parsed.statements[3].name == "module__call", "module-qualified call statement is incorrect")
+
+parsed = parser.parse_program("if true {\nprint(1)\n} else if false {\nprint(2)\n} else {\nprint(3)\n}")
+require(parsed.ok && parsed.statements[0].else_branch[0].kind == "IF", "else-if chain was not represented correctly")
+
 parsed = parser.parse_program("let broken: int =")
 require(!parsed.ok && parsed.error != "", "malformed declaration did not produce a diagnostic")
 

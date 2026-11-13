@@ -61,7 +61,7 @@ This is deliberately an expression-parser milestone, not a complete statement pa
 
 Blocks contain ordered statement arrays. The native tree is intentionally a VNT-owned syntax model, not a C `AstNode` clone; notably, `for` is represented as a `FOR` node rather than being desugared to the C parser's generated while-loop AST.
 
-The regression program is [`tests/self_hosted_statement_parser.vnt`](../tests/self_hosted_statement_parser.vnt), integrated into `tests/run_language_checks.ps1`. It covers a representative mixed program, nested control flow, typed declarations, function/struct metadata, unsafe/assembly forms, and malformed blocks/declarations.
+The regression program is [`tests/self_hosted_statement_parser.vnt`](../tests/self_hosted_statement_parser.vnt), integrated into `tests/run_language_checks.ps1` and the Linux/Windows quick-language CI workflow. It covers a representative mixed program, nested control flow, typed declarations, function/struct metadata, assignment targets, loop control, unsafe/assembly forms, and malformed input.
 
 This is a grammar milestone, not yet semantic parity. Name resolution, loop-context validation, type checking, precise diagnostics, and HIR lowering remain separate compiler phases.
 

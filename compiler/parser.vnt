@@ -238,14 +238,14 @@ fun parse_postfix(state: object) -> object {
 
 fun parse_unary(state: object) -> object {
     if check(state, "BANG") || check(state, "MINUS") || check(state, "AMPERSAND") || check(state, "STAR") {
-        if state.depth >= 256 {
+        if state.nesting_depth >= 256 {
             fail(state, "expression nesting exceeds 256 levels")
             return make_node("ERROR")
         }
-        state.depth += 1
+        state.nesting_depth += 1
         operator = advance(state)
         operand = parse_unary(state)
-        state.depth -= 1
+        state.nesting_depth -= 1
         node = make_node("UNARY")
         node.operator = operator.lexeme
         node.operand = operand
@@ -332,16 +332,16 @@ fun parse_or(state: object) -> object {
     if state.expression_depth == 0 {
         state.operator_count = 0
     }
-    if state.depth >= 256 {
+    if state.nesting_depth >= 256 {
         fail(state, "expression nesting exceeds 256 levels")
         return make_node("ERROR")
     }
     state.expression_depth += 1
-    state.depth += 1
+    state.nesting_depth += 1
     left = parse_and(state)
     while state.error == "" && match(state, "OR_OR") {
         if !note_operator(state) {
-            state.depth -= 1
+            state.nesting_depth -= 1
             state.expression_depth -= 1
             return make_node("ERROR")
         }
@@ -352,7 +352,7 @@ fun parse_or(state: object) -> object {
         node.right = right
         left = node
     }
-    state.depth -= 1
+    state.nesting_depth -= 1
     state.expression_depth -= 1
     return left
 }
@@ -377,7 +377,7 @@ export fun parse(source: string) -> object {
     state.index = 0
     state.error = ""
     state.operator_count = 0
-    state.depth = 0
+    state.nesting_depth = 0
     state.expression_depth = 0
     expression = parse_or(state)
     if state.error == "" && !check(state, "EOF") {
@@ -690,11 +690,11 @@ fun parse_assignment_or_call(state: object) -> object {
 }
 
 fun parse_statement(state: object) -> object {
-    if state.statement_depth >= 256 {
+    if state.nesting_depth >= 256 {
         fail(state, "statement nesting exceeds 256 levels")
         return make_node("ERROR")
     }
-    state.statement_depth += 1
+    state.nesting_depth += 1
     token = current(state)
     node = make_node("ERROR")
     if token.kind == "EOF" || token.kind == "RIGHT_BRACE" {
@@ -788,7 +788,7 @@ fun parse_statement(state: object) -> object {
             }
         }
     }
-    state.statement_depth -= 1
+    state.nesting_depth -= 1
     return node
 }
 
@@ -811,9 +811,9 @@ export fun parse_program(source: string) -> object {
     state.index = 0
     state.error = ""
     state.operator_count = 0
-    state.depth = 0
+    state.nesting_depth = 0
     state.expression_depth = 0
-    state.statement_depth = 0
+    state.nesting_depth = 0
     while !check(state, "EOF") && state.error == "" {
         statement = parse_statement(state)
         if state.error == "" {

@@ -239,7 +239,7 @@ fun parse_postfix(state: object) -> object {
 fun parse_unary(state: object) -> object {
     if check(state, "BANG") || check(state, "MINUS") || check(state, "AMPERSAND") || check(state, "STAR") {
         if state.nesting_depth >= 256 {
-            fail(state, "expression nesting exceeds 256 levels")
+            fail(state, "unary operator nesting exceeds 256 levels")
             return make_node("ERROR")
         }
         state.nesting_depth += 1

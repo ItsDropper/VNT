@@ -200,7 +200,6 @@ fun parse_postfix(state: object) -> object {
     expression = parse_primary(state)
     while state.error == "" {
         if match(state, "LEFT_BRACKET") {
-            if !note_operator(state) { return make_node("ERROR") }
             index = parse_or(state)
             if !match(state, "RIGHT_BRACKET") {
                 fail(state, "expected ']' after index")
@@ -212,7 +211,6 @@ fun parse_postfix(state: object) -> object {
             expression = node
         } else {
             if match(state, "DOT") {
-                if !note_operator(state) { return make_node("ERROR") }
                 if !check(state, "IDENTIFIER") {
                     fail(state, "expected member name after '.'")
                     return make_node("ERROR")
@@ -238,7 +236,6 @@ fun parse_postfix(state: object) -> object {
 
 fun parse_unary(state: object) -> object {
     if check(state, "BANG") || check(state, "MINUS") || check(state, "AMPERSAND") || check(state, "STAR") {
-        if !note_operator(state) { return make_node("ERROR") }
         operator = advance(state)
         operand = parse_unary(state)
         node = make_node("UNARY")
@@ -324,15 +321,20 @@ fun parse_and(state: object) -> object {
 }
 
 fun parse_or(state: object) -> object {
+    if state.expression_depth == 0 {
+        state.operator_count = 0
+    }
     if state.depth >= 256 {
         fail(state, "expression nesting exceeds 256 levels")
         return make_node("ERROR")
     }
+    state.expression_depth += 1
     state.depth += 1
     left = parse_and(state)
     while state.error == "" && match(state, "OR_OR") {
         if !note_operator(state) {
             state.depth -= 1
+            state.expression_depth -= 1
             return make_node("ERROR")
         }
         right = parse_and(state)
@@ -343,6 +345,7 @@ fun parse_or(state: object) -> object {
         left = node
     }
     state.depth -= 1
+    state.expression_depth -= 1
     return left
 }
 
@@ -367,6 +370,7 @@ export fun parse(source: string) -> object {
     state.error = ""
     state.operator_count = 0
     state.depth = 0
+    state.expression_depth = 0
     expression = parse_or(state)
     if state.error == "" && !check(state, "EOF") {
         fail(state, "unexpected token after expression")

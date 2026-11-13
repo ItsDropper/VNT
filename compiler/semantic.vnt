@@ -241,7 +241,7 @@ fun builtin_type(name: string) -> string {
         name == "gui_rect" || name == "gui_close" {
         return "bool"
     }
-    if name == "fs_list" || name == "time_local_parts" ||
+    if name == "fs_list" || name == "range" || name == "time_local_parts" ||
         name == "time_utc_parts" {
         return "array"
     }

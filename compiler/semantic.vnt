@@ -276,7 +276,11 @@ fun builtin_arity(name: string, argc: int) -> int {
         name == "process_terminate" || name == "process_stdout" ||
         name == "process_stderr" || name == "process_exit_code" ||
         name == "process_exit" || name == "process_launch" ||
-        name == "io_write" || name == "io_write_error" ||
+        name == "net_stream_done" || name == "net_stream_status" ||
+        name == "net_stream_cancel" || name == "net_stream_release" ||
+        name == "net_async_poll" || name == "net_async_cancel" ||
+        name == "net_async_result" || name == "net_async_status" ||
+        name == "net_async_release" || name == "io_write" || name == "io_write_error" ||
         name == "net_url_encode" || name == "utf8_len" ||
         name == "crypto_sha256" || name == "gui_css" {
         return argc == 1
@@ -290,7 +294,7 @@ fun builtin_arity(name: string, argc: int) -> int {
         name == "net_stream_release" || name == "net_async_poll" ||
         name == "net_async_cancel" || name == "net_async_result" ||
         name == "net_async_status" || name == "net_async_release" ||
-        name == "crypto_constant_time_equal" || name == "bigint_add" ||
+        name == "net_async_wait" || name == "crypto_constant_time_equal" || name == "bigint_add" ||
         name == "bigint_sub" || name == "bigint_mul" ||
         name == "bigint_compare" || name == "fs_write_atomic" ||
         name == "fs_write" || name == "fs_append" || name == "fs_rename" ||

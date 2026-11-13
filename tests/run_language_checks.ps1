@@ -16,7 +16,7 @@ try {
     }
     Write-Host "VNT-native self-hosted lexer: PASS"
 
-    $SelfHostedParserExe = Join-Path $Root "tests\\out\\self_hosted_parser.exe"
+    $SelfHostedParserExe = Join-Path $Root "tests\out\self_hosted_parser.exe"
     & .\vnt.exe --compile tests\self_hosted_parser.vnt -o $SelfHostedParserExe
     if ($LASTEXITCODE -ne 0) { throw "VNT-native expression parser test did not compile." }
     $selfHostedParserOutput = & $SelfHostedParserExe

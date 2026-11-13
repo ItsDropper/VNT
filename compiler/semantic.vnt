@@ -1,0 +1,659 @@
+# VNT-native semantic analysis.
+#
+# This pass consumes the object AST returned by compiler/parser.vnt. It mirrors
+# the hosted C checker's core contracts: declaration collection, lexical scopes,
+# typed/inferred bindings, expression compatibility, function signatures,
+# control-flow context, unsafe operations, and first-error diagnostics.
+#
+# The AST and all symbol/function records are VNT-owned objects.
+
+fun append(values, value) {
+    result = range(len(values) + 1)
+    i = 0
+    while i < len(values) {
+        result[i] = values[i]
+        i += 1
+    }
+    result[len(values)] = value
+    return result
+}
+
+fun result_object(ok: bool, error: string) -> object {
+    result = object()
+    result.ok = ok
+    result.error = error
+    return result
+}
+
+fun fail(state: object, message: string) {
+    if state.error == "" {
+        state.error = message
+    }
+}
+
+fun numeric(type_name: string) -> bool {
+    return type_name == "int" || type_name == "i64" || type_name == "float"
+}
+
+fun known_type(type_name: string) -> bool {
+    return type_name == "int" || type_name == "i64" ||
+        type_name == "float" || type_name == "bool" ||
+        type_name == "string" || type_name == "array" ||
+        type_name == "object" || type_name == "reference" ||
+        type_name == "ptr" || type_name == "void"
+}
+
+fun compatible(expected: string, actual: string) -> bool {
+    return expected == "unknown" || actual == "unknown" ||
+        expected == actual || (numeric(expected) && numeric(actual))
+}
+
+fun make_scope() -> object {
+    scope = object()
+    scope.symbols = []
+    return scope
+}
+
+fun find_symbol(state: object, name: string) -> object {
+    i = len(state.scopes) - 1
+    while i >= 0 {
+        scope = state.scopes[i]
+        j = len(scope.symbols) - 1
+        while j >= 0 {
+            symbol = scope.symbols[j]
+            if symbol.name == name {
+                return symbol
+            }
+            j -= 1
+        }
+        i -= 1
+    }
+    missing = object()
+    missing.found = false
+    missing.name = name
+    missing.type = "undeclared"
+    missing.explicit = false
+    return missing
+}
+
+fun declare_symbol(state: object, name: string, type_name: string, explicit: bool) {
+    scope = state.scopes[len(state.scopes) - 1]
+    i = 0
+    while i < len(scope.symbols) {
+        if scope.symbols[i].name == name {
+            fail(state, "duplicate declaration of '" + name + "' in the same scope.")
+            return
+        }
+        i += 1
+    }
+    symbol = object()
+    symbol.found = true
+    symbol.name = name
+    symbol.type = type_name
+    symbol.explicit = explicit
+    scope.symbols = append(scope.symbols, symbol)
+}
+
+fun assign_symbol(state: object, name: string, actual: string) {
+    symbol = find_symbol(state, name)
+    if !symbol.found {
+        declare_symbol(state, name, actual, false)
+        return
+    }
+    if symbol.explicit {
+        if !compatible(symbol.type, actual) {
+            fail(state, "assignment to '" + name + "' expects " + symbol.type + " but received " + actual + ".")
+        }
+        return
+    }
+    if symbol.type != actual && symbol.type != "unknown" && actual != "unknown" {
+        if numeric(symbol.type) && numeric(actual) {
+            if symbol.type == "float" || actual == "float" {
+                symbol.type = "float"
+            } else if symbol.type == "i64" || actual == "i64" {
+                symbol.type = "i64"
+            }
+        } else {
+            symbol.type = "unknown"
+        }
+    } else if symbol.type == "unknown" {
+        symbol.type = actual
+    }
+}
+
+fun find_function(state: object, name: string) -> object {
+    i = 0
+    while i < len(state.functions) {
+        if state.functions[i].name == name {
+            return state.functions[i]
+        }
+        i += 1
+    }
+    missing = object()
+    missing.found = false
+    missing.name = name
+    return missing
+}
+
+fun find_struct(state: object, name: string) -> bool {
+    i = 0
+    while i < len(state.structs) {
+        if state.structs[i].name == name {
+            return true
+        }
+        i += 1
+    }
+    return false
+}
+
+fun collect_declarations(state: object, statements: array) {
+    i = 0
+    while i < len(statements) && state.error == "" {
+        node = statements[i]
+        if node.kind == "FUNCTION" {
+            if find_function(state, node.name).found {
+                fail(state, "duplicate function definition '" + node.name + "'.")
+            } else {
+                fn = object()
+                fn.found = true
+                fn.name = node.name
+                fn.parameters = node.parameters
+                fn.return_type = node.return_type
+                fn.is_unsafe = node.is_unsafe
+                fn.node = node
+                state.functions = append(state.functions, fn)
+            }
+        } else if node.kind == "STRUCT" {
+            if find_struct(state, node.name) {
+                fail(state, "duplicate struct definition '" + node.name + "'.")
+            } else {
+                j = 0
+                while j < len(node.fields) {
+                    k = 0
+                    while k < j {
+                        if node.fields[j] == node.fields[k] {
+                            fail(state, "duplicate struct field '" + node.fields[j] + "'.")
+                        }
+                        k += 1
+                    }
+                    j += 1
+                }
+                if state.error == "" {
+                    structure = object()
+                    structure.name = node.name
+                    structure.fields = node.fields
+                    state.structs = append(state.structs, structure)
+                }
+            }
+        }
+        i += 1
+    }
+}
+
+fun builtin_type(name: string) -> string {
+    if name == "len" || name == "utf8_len" || name == "mod" ||
+        name == "ffi_int" || name == "bigint_compare" ||
+        name == "process_pid" || name == "process_exit_code" ||
+        name == "gui_key" {
+        return "int"
+    }
+    if name == "sqrt" || name == "sin" || name == "cos" ||
+        name == "tan" || name == "abs" || name == "floor" ||
+        name == "ceil" || name == "time_ms" {
+        return "float"
+    }
+    if name == "mem_alloc" || name == "mem_realloc" || name == "mem_ptr_add" {
+        return "ptr"
+    }
+    if name == "mem_read_u8" || name == "mem_read_u32" || name == "cpu_write_msr" {
+        return "int"
+    }
+    if name == "mem_read_u64" || name == "cpu_read_cr2" || name == "symbol_address" ||
+        name == "cpu_atomic_exchange_u64" {
+        return "i64"
+    }
+    if name == "crypto_sha256" || name == "bigint_add" || name == "bigint_sub" ||
+        name == "bigint_mul" || name == "utf8_slice" || name == "input" ||
+        name == "fs_read" || name == "cwd" || name == "process_stdout" ||
+        name == "process_stderr" || name == "gui_input" || name == "gui_textarea" ||
+        name == "json_value_at" {
+        return "string"
+    }
+    if name == "crypto_constant_time_equal" || name == "mem_free" ||
+        name == "mem_is_null" || name == "mem_write_u8" ||
+        name == "mem_write_u32" || name == "mem_write_u64" ||
+        name == "mem_copy" || name == "mem_set" || name == "cpu_invlpg" ||
+        name == "fs_exists" || name == "fs_write" || name == "fs_append" ||
+        name == "fs_delete" || name == "fs_rename" || name == "fs_is_file" ||
+        name == "fs_is_dir" || name == "dir_create" || name == "env_has" ||
+        name == "env_set" || name == "io_write" || name == "io_write_error" ||
+        name == "process_poll" || name == "process_wait" ||
+        name == "process_terminate" || name == "process_launch" ||
+        name == "fs_write_atomic" || name == "gui_open" || name == "gui_poll" ||
+        name == "gui_css" || name == "gui_button" || name == "gui_button_sized" ||
+        name == "gui_text_at" || name == "gui_title" || name == "gui_panel" ||
+        name == "gui_panel_color" || name == "gui_text_style" ||
+        name == "gui_input_set" || name == "gui_checkbox" ||
+        name == "gui_progress" || name == "gui_separator" ||
+        name == "gui_present" || name == "gui_textarea_set" ||
+        name == "gui_size" || name == "gui_text" || name == "gui_fill" ||
+        name == "gui_rect" || name == "gui_close" {
+        return "bool"
+    }
+    if name == "fs_list" || name == "time_local_parts" ||
+        name == "time_utc_parts" {
+        return "array"
+    }
+    if name == "process_start" || name == "object" {
+        return "object"
+    }
+    return ""
+}
+
+fun check_call(state: object, node: object) -> string {
+    name = node.name
+    argc = len(node.arguments)
+    i = 0
+    while i < argc && state.error == "" {
+        argument_type = expression_type(state, node.arguments[i])
+        if argument_type == "void" {
+            fail(state, "void function call cannot be used as an argument.")
+        }
+        i += 1
+    }
+    if state.error != "" {
+        return "unknown"
+    }
+
+    builtin = builtin_type(name)
+    if builtin != "" {
+        return builtin
+    }
+    if find_struct(state, name) {
+        if argc != 0 {
+            fail(state, "struct constructor '" + name + "' currently takes no arguments.")
+        }
+        return "object"
+    }
+
+    fn = find_function(state, name)
+    if !fn.found {
+        fail(state, "call to undeclared function '" + name + "'.")
+        return "unknown"
+    }
+    if argc != len(fn.parameters) {
+        fail(state, "function '" + name + "' expects " + len(fn.parameters) + " arguments but received " + argc + ".")
+        return "unknown"
+    }
+    i = 0
+    while i < argc && state.error == "" {
+        parameter = fn.parameters[i]
+        if parameter.type != null {
+            expected = parameter.type
+            actual = expression_type(state, node.arguments[i])
+            if !known_type(expected) || expected == "void" {
+                fail(state, "function parameter uses an invalid type.")
+            } else if !compatible(expected, actual) {
+                fail(state, "argument " + (i + 1) + " ('" + parameter.name + "') to '" + name + "' expects " + expected + " but received " + actual + ".")
+            }
+        }
+        i += 1
+    }
+    if fn.return_type == null {
+        return "void"
+    }
+    return fn.return_type
+}
+
+fun expression_type(state: object, node: object) -> string {
+    if node == null {
+        return "unknown"
+    }
+    if node.kind == "INTEGER" {
+        return "int"
+    }
+    if node.kind == "FLOAT" {
+        return "float"
+    }
+    if node.kind == "BOOLEAN" {
+        return "bool"
+    }
+    if node.kind == "STRING" {
+        return "string"
+    }
+    if node.kind == "NULL" {
+        return "ptr"
+    }
+    if node.kind == "ARRAY" {
+        i = 0
+        while i < len(node.elements) && state.error == "" {
+            if expression_type(state, node.elements[i]) == "void" {
+                fail(state, "void function call cannot be stored in an array.")
+            }
+            i += 1
+        }
+        return "array"
+    }
+    if node.kind == "VARIABLE" {
+        symbol = find_symbol(state, node.value)
+        if !symbol.found {
+            fail(state, "use of undeclared variable '" + node.value + "'.")
+            return "unknown"
+        }
+        return symbol.type
+    }
+    if node.kind == "CALL" {
+        return check_call(state, node)
+    }
+    if node.kind == "INDEX" {
+        container_type = expression_type(state, node.object)
+        index_type = expression_type(state, node.index)
+        if index_type != "int" && index_type != "unknown" {
+            fail(state, "array/string index must be an integer.")
+        }
+        if container_type != "array" && container_type != "string" &&
+            container_type != "object" && container_type != "unknown" {
+            fail(state, "indexing requires an array, string, or object.")
+        }
+        if container_type == "string" {
+            return "string"
+        }
+        return "unknown"
+    }
+    if node.kind == "MEMBER" {
+        if expression_type(state, node.object) == "void" {
+            fail(state, "void function call cannot be used for member access.")
+        }
+        return "unknown"
+    }
+    if node.kind == "UNARY" {
+        operand_type = expression_type(state, node.operand)
+        if operand_type == "void" {
+            fail(state, "void function call cannot be used in a unary expression.")
+            return "unknown"
+        }
+        if node.operator == "!" {
+            if operand_type != "bool" && operand_type != "unknown" {
+                fail(state, "'!' requires a boolean.")
+            }
+            return "bool"
+        }
+        if node.operator == "-" {
+            if !numeric(operand_type) && operand_type != "unknown" {
+                fail(state, "unary '-' requires a number.")
+            }
+            return operand_type
+        }
+        if node.operator == "&" {
+            return "reference"
+        }
+        if node.operator == "*" {
+            if operand_type != "reference" && operand_type != "ptr" && operand_type != "unknown" {
+                fail(state, "dereference requires a reference or pointer.")
+            }
+            return "unknown"
+        }
+        return "unknown"
+    }
+    if node.kind == "BINARY" {
+        left = expression_type(state, node.left)
+        right = expression_type(state, node.right)
+        if left == "void" || right == "void" {
+            fail(state, "void function call cannot be used in a binary expression.")
+            return "unknown"
+        }
+        if node.operator == "&&" || node.operator == "||" {
+            if (left != "bool" && left != "unknown") ||
+                (right != "bool" && right != "unknown") {
+                fail(state, "logical operators require booleans.")
+            }
+            return "bool"
+        }
+        if node.operator == "==" || node.operator == "!=" {
+            if left != "unknown" && right != "unknown" &&
+                left != right && !(numeric(left) && numeric(right)) {
+                fail(state, "equality operands must have compatible types.")
+            }
+            return "bool"
+        }
+        if node.operator == ">" || node.operator == "<" ||
+            node.operator == ">=" || node.operator == "<=" {
+            if (!numeric(left) && left != "unknown") ||
+                (!numeric(right) && right != "unknown") {
+                fail(state, "ordered comparisons require numeric operands.")
+            }
+            return "bool"
+        }
+        if node.operator == "+" && (left == "string" || right == "string") {
+            if left == "string" || right == "string" ||
+                numeric(left) || numeric(right) || left == "bool" ||
+                right == "bool" || left == "unknown" || right == "unknown" {
+                return "string"
+            }
+            fail(state, "string concatenation requires string, number, or boolean values.")
+            return "unknown"
+        }
+        if (!numeric(left) || !numeric(right)) &&
+            left != "unknown" && right != "unknown" {
+            fail(state, "arithmetic requires compatible numeric values.")
+            return "unknown"
+        }
+        if left == "float" || right == "float" {
+            return "float"
+        }
+        if left == "i64" || right == "i64" {
+            return "i64"
+        }
+        if left == "unknown" || right == "unknown" {
+            return "unknown"
+        }
+        return "int"
+    }
+    return "unknown"
+}
+
+fun statement_returns(statements: array) -> bool {
+    i = 0
+    while i < len(statements) {
+        node = statements[i]
+        if node.kind == "RETURN" {
+            return true
+        }
+        if node.kind == "UNSAFE" && statement_returns(node.body) {
+            return true
+        }
+        if node.kind == "IF" && len(node.else_branch) > 0 &&
+            statement_returns(node.then_branch) && statement_returns(node.else_branch) {
+            return true
+        }
+        i += 1
+    }
+    return false
+}
+
+fun check_statements(state: object, statements: array) {
+    i = 0
+    while i < len(statements) && state.error == "" {
+        node = statements[i]
+        if node.kind == "VARIABLE_DECLARATION" {
+            actual = expression_type(state, node.value)
+            if actual == "void" {
+                fail(state, "void function call cannot initialize a variable.")
+            } else if node.declared_type != null {
+                expected = node.declared_type
+                if !known_type(expected) || expected == "void" {
+                    fail(state, "unknown or invalid type '" + expected + "'.")
+                } else if !compatible(expected, actual) {
+                    fail(state, "initializer for '" + node.name + "' expects " + expected + " but received " + actual + ".")
+                } else {
+                    declare_symbol(state, node.name, expected, true)
+                }
+            } else {
+                assign_symbol(state, node.name, actual)
+            }
+        } else if node.kind == "ASSIGNMENT" {
+            target_type = expression_type(state, node.target)
+            value_type = expression_type(state, node.value)
+            if value_type == "void" {
+                fail(state, "void function call cannot be assigned as a value.")
+            } else if !compatible(target_type, value_type) &&
+                !(node.target.kind == "INDEX" && target_type == "string" && value_type == "int") {
+                fail(state, "assignment target has type " + target_type + " but assigned value has type " + value_type + ".")
+            }
+        } else if node.kind == "PRINT" {
+            if expression_type(state, node.expression) == "void" {
+                fail(state, "void function call cannot be printed as a value.")
+            }
+        } else if node.kind == "CALL" {
+            expression_type(state, node)
+        } else if node.kind == "IF" {
+            condition_type = expression_type(state, node.condition)
+            if condition_type == "void" {
+                fail(state, "void function call cannot be used as a control-flow condition.")
+            } else if condition_type != "bool" && condition_type != "unknown" {
+                fail(state, "if condition must be boolean.")
+            } else {
+                state.scopes = append(state.scopes, make_scope())
+                check_statements(state, node.then_branch)
+                state.scopes = range(len(state.scopes) - 1)
+                if state.error == "" {
+                    state.scopes = append(state.scopes, make_scope())
+                    check_statements(state, node.else_branch)
+                    state.scopes = range(len(state.scopes) - 1)
+                }
+            }
+        } else if node.kind == "WHILE" {
+            condition_type = expression_type(state, node.condition)
+            if condition_type == "void" {
+                fail(state, "void function call cannot be used as a control-flow condition.")
+            } else if condition_type != "bool" && condition_type != "unknown" {
+                fail(state, "while condition must be boolean.")
+            } else {
+                state.loop_depth += 1
+                state.scopes = append(state.scopes, make_scope())
+                check_statements(state, node.body)
+                state.scopes = range(len(state.scopes) - 1)
+                state.loop_depth -= 1
+            }
+        } else if node.kind == "FOR" {
+            iterable_type = expression_type(state, node.iterable)
+            if iterable_type != "array" && iterable_type != "string" &&
+                iterable_type != "object" && iterable_type != "unknown" {
+                fail(state, "for-in requires an array, string, object, or unknown iterable.")
+            } else {
+                state.loop_depth += 1
+                state.scopes = append(state.scopes, make_scope())
+                declare_symbol(state, node.name, "unknown", false)
+                check_statements(state, node.body)
+                state.scopes = range(len(state.scopes) - 1)
+                state.loop_depth -= 1
+            }
+        } else if node.kind == "RETURN" {
+            if !state.in_function {
+                fail(state, "return used outside a function.")
+            } else if state.expected_return == "void" {
+                if node.expression != null {
+                    fail(state, "void function cannot return a value.")
+                }
+            } else if node.expression == null {
+                if state.expected_return != "unknown" {
+                    fail(state, "non-void function must return a value.")
+                }
+            } else {
+                actual = expression_type(state, node.expression)
+                if actual == "void" {
+                    fail(state, "void function call cannot be returned as a value.")
+                } else if state.expected_return != "unknown" &&
+                    !compatible(state.expected_return, actual) {
+                    fail(state, "function return type mismatch: expected " + state.expected_return + " but returned " + actual + ".")
+                }
+            }
+        } else if node.kind == "BREAK" {
+            if state.loop_depth == 0 {
+                fail(state, "break used outside a loop.")
+            }
+        } else if node.kind == "CONTINUE" {
+            if state.loop_depth == 0 {
+                fail(state, "continue used outside a loop.")
+            }
+        } else if node.kind == "UNSAFE" {
+            state.unsafe_depth += 1
+            state.scopes = append(state.scopes, make_scope())
+            check_statements(state, node.body)
+            state.scopes = range(len(state.scopes) - 1)
+            state.unsafe_depth -= 1
+        } else if node.kind == "ASM" {
+            if state.unsafe_depth == 0 {
+                fail(state, "inline assembly may only be used inside an unsafe block.")
+            }
+        } else if node.kind == "FUNCTION" {
+            old_scopes = state.scopes
+            old_loop_depth = state.loop_depth
+            old_in_function = state.in_function
+            old_expected_return = state.expected_return
+            state.scopes = [make_scope()]
+            state.loop_depth = 0
+            state.in_function = true
+            if node.return_type == null {
+                state.expected_return = "unknown"
+            } else {
+                state.expected_return = node.return_type
+                if !known_type(node.return_type) {
+                    fail(state, "function declares an unknown return type.")
+                }
+            }
+            j = 0
+            while j < len(node.parameters) && state.error == "" {
+                parameter = node.parameters[j]
+                parameter_type = "unknown"
+                if parameter.type != null {
+                    parameter_type = parameter.type
+                    if !known_type(parameter_type) || parameter_type == "void" {
+                        fail(state, "function declares an invalid parameter type.")
+                    }
+                }
+                declare_symbol(state, parameter.name, parameter_type, parameter.type != null)
+                j += 1
+            }
+            check_statements(state, node.body)
+            if state.expected_return != "unknown" && state.expected_return != "void" &&
+                !statement_returns(node.body) {
+                fail(state, "typed function '" + node.name + "' may not return on every path.")
+            }
+            state.scopes = old_scopes
+            state.loop_depth = old_loop_depth
+            state.in_function = old_in_function
+            state.expected_return = old_expected_return
+        }
+        i += 1
+    }
+}
+
+export fun analyze(program: object) -> object {
+    if program == null || !program.ok {
+        if program == null {
+            return result_object(false, "semantic analysis requires a successfully parsed program.")
+        }
+        return result_object(false, "semantic analysis cannot run on a failed parse: " + program.error)
+    }
+    state = object()
+    state.error = ""
+    state.functions = []
+    state.structs = []
+    state.scopes = [make_scope()]
+    state.loop_depth = 0
+    state.in_function = false
+    state.expected_return = "unknown"
+    state.unsafe_depth = 0
+    collect_declarations(state, program.statements)
+    if state.error == "" {
+        check_statements(state, program.statements)
+    }
+    return result_object(state.error == "", state.error)
+}
+
+export fun check(source: string) -> object {
+    import_parser = object()
+    parsed = import_parser.parse_program(source)
+    return analyze(parsed)
+}

@@ -99,10 +99,21 @@ jobs:
             expected="$2"
             executable="self-hosted-$(basename "$source" .vnt).exe"
             compile_log="$executable.compile.log"
-            if ! ./vnt --compile "$source" -o "$executable" >"$compile_log" 2>&1; then
-              echo "Compilation failed for $source:"
+            set +e
+            stdbuf -o0 -e0 ./vnt --compile "$source" -o "$executable" >"$compile_log" 2>&1
+            compile_status=$?
+            set -e
+            if [ "$compile_status" -ne 0 ]; then
+              echo "Compilation failed for $source (exit $compile_status):"
               cat "$compile_log"
-              exit 1
+              echo "Compiler crash diagnostics:"
+              for diagnostic in vnt_crash.log core core.*; do
+                if [ -f "$diagnostic" ]; then
+                  echo "--- $diagnostic ---"
+                  cat "$diagnostic"
+                fi
+              done
+              exit "$compile_status"
             fi
             set +e
             raw_output="$(./"$executable" 2>&1 | tr -d '\r')"

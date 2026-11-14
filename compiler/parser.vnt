@@ -315,11 +315,13 @@ fun parse_expression_precedence(state: object, minimum: int) -> object {
     print("PARSER_TRACE: precedence unary returned")
     parsing = true
     while parsing && state.error == "" {
-        token = current(state)
+        token = state.tokens[state.index]
+        print("PARSER_TRACE: precedence token fetched")
         line_matches = true
         if state.statement_mode && state.previous != null && token.kind != "EOF" {
             line_matches = token.line == state.previous.line
         }
+        print("PARSER_TRACE: precedence line checked")
         if !line_matches {
             parsing = false
         } else {

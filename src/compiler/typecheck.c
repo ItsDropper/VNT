@@ -901,7 +901,8 @@ static void check_statements(TypeChecker *tc, AstNode *n) {
                     if (n->return_statement.expression)
                         error(tc, "void function cannot return a value.");
                 } else if (!n->return_statement.expression) {
-                    error(tc, "non-void function must return a value.");
+                    if (tc->expected_return != TY_UNKNOWN)
+                        error(tc, "non-void function must return a value.");
                 } else if (actual == TY_VOID) {
                     error(tc, "void function call cannot be returned as a value.");
                 } else if (tc->expected_return != TY_UNKNOWN &&

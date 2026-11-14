@@ -499,6 +499,14 @@ jobs:
           printf '101\n5\n9\n12\nnull\nOBJECT_GROWTH_OK\n' > vnt-object-growth-expected.txt
           diff -u vnt-object-growth-expected.txt vnt-object-growth-actual-lf.txt
 
+      - name: Accept null comparisons with nullable reference values
+        shell: bash
+        run: |
+          ./vnt --compile tests/typecheck_null_comparison.vnt -o null-comparison.exe
+          ./null-comparison.exe > null-comparison-actual.txt
+          printf 'false\\ntrue\\nNULL_COMPARISON_OK\\n' > null-comparison-expected.txt
+          diff -u null-comparison-expected.txt null-comparison-actual.txt
+
       - name: Accept bare returns in functions with inferred return types
         shell: bash
         run: |

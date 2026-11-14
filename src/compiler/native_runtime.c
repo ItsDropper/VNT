@@ -652,6 +652,9 @@ VNT_NATIVE_ABI VntValue * vnt_neg(VntValue *a) {
 }
 
 static int equal_value(VntValue *a, VntValue *b) {
+    /* Raw null pointers are represented by a C NULL value, while boxed
+       language values (including VNT_NULL) are tagged VntValue instances. */
+    if (!a || !b) return a == b;
     if (a->type != b->type) {
         if ((a->type == VNT_INT || a->type == VNT_FLOAT) &&
             (b->type == VNT_INT || b->type == VNT_FLOAT))

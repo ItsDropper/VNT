@@ -125,11 +125,11 @@ jobs:
                   for pos in range(begin, len(source)):
                       ch = source[pos]
                       if comment:
-                          if ch == "\\n": comment = False
+                          if ch == "\n": comment = False
                           continue
                       if quoted:
                           if escaped: escaped = False
-                          elif ch == "\\\\": escaped = True
+                          elif ch == "\\": escaped = True
                           elif ch == '"': quoted = False
                           continue
                       if ch == '"': quoted = True
@@ -143,7 +143,7 @@ jobs:
                   if end is None: raise SystemExit(f"unterminated {header.strip()}")
                   name = header.split("(")[0].replace("export ", "").replace("fun ", "").strip()
                   Path(f"semantic-function-{index}.vnt").write_text(source[begin:end].replace("export fun ", "fun ", 1))
-              PY
+          PY
               for function_file in semantic-function-*.vnt; do
                 if ! stdbuf -o0 -e0 ./vnt --dump-ir "$function_file" >"$function_file.log" 2>&1; then
                   echo "Parser rejected $function_file:"

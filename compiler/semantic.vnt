@@ -159,24 +159,24 @@ fun merge_branch_scopes(before: array, then_state: array, else_state: array) {
             base = before[i].symbols[j]
             then_symbol = then_state[i].symbols[j]
             else_symbol = else_state[i].symbols[j]
-            if base.explicit {
-                # Explicit bindings were validated independently in both branches.
-            } else if then_symbol.dynamic || else_symbol.dynamic {
-                base.type = "unknown"
-                base.dynamic = true
-            } else if then_symbol.type == else_symbol.type {
-                base.type = then_symbol.type
-            } else if numeric(then_symbol.type) && numeric(else_symbol.type) {
-                if then_symbol.type == "float" || else_symbol.type == "float" {
-                    base.type = "float"
-                } else if then_symbol.type == "i64" || else_symbol.type == "i64" {
-                    base.type = "i64"
+            if !base.explicit {
+                if then_symbol.dynamic || else_symbol.dynamic {
+                    base.type = "unknown"
+                    base.dynamic = true
+                } else if then_symbol.type == else_symbol.type {
+                    base.type = then_symbol.type
+                } else if numeric(then_symbol.type) && numeric(else_symbol.type) {
+                    if then_symbol.type == "float" || else_symbol.type == "float" {
+                        base.type = "float"
+                    } else if then_symbol.type == "i64" || else_symbol.type == "i64" {
+                        base.type = "i64"
+                    } else {
+                        base.type = "int"
+                    }
                 } else {
-                    base.type = "int"
+                    base.type = "unknown"
+                    base.dynamic = true
                 }
-            } else {
-                base.type = "unknown"
-                base.dynamic = true
             }
             j += 1
         }

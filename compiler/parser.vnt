@@ -23,8 +23,11 @@ fun make_node(kind: string) -> object {
 }
 
 fun make_leaf(kind: string, value: string) -> object {
+    print("PARSER_TRACE: make_leaf enter")
     node = make_node(kind)
+    print("PARSER_TRACE: make_leaf node")
     node.value = value
+    print("PARSER_TRACE: make_leaf assigned")
     return node
 }
 

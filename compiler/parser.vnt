@@ -432,11 +432,14 @@ fun parse_block(state: object) -> array {
 }
 
 fun parse_let_statement(state: object) -> object {
+    print("PARSER_TRACE: let enter")
     parser_advance(state)
+    print("PARSER_TRACE: let keyword advanced")
     if !expect(state, "IDENTIFIER", "expected variable name after 'let'") {
         return make_node("ERROR")
     }
     name = state.previous.lexeme
+    print("PARSER_TRACE: let name")
     if !expect(state, "COLON", "expected ':' after typed variable name") {
         return make_node("ERROR")
     }
@@ -444,10 +447,13 @@ fun parse_let_statement(state: object) -> object {
         return make_node("ERROR")
     }
     declared_type = state.previous.lexeme
+    print("PARSER_TRACE: let type")
     if !expect(state, "EQUALS", "expected '=' after variable type") {
         return make_node("ERROR")
     }
+    print("PARSER_TRACE: let before expression")
     value = parse_or(state)
+    print("PARSER_TRACE: let after expression")
     node = make_node("VARIABLE_DECLARATION")
     node.name = name
     node.declared_type = declared_type
@@ -817,7 +823,9 @@ fun parse_statement(state: object) -> object {
 }
 
 export fun parse_program(source: string) -> object {
+    print("PARSER_TRACE: program enter")
     scanned = lexer.lex(source)
+    print("PARSER_TRACE: lexer returned")
     result = object()
     result.ok = false
     result.error = ""
@@ -838,8 +846,11 @@ export fun parse_program(source: string) -> object {
     state.nesting_depth = 0
     state.expression_depth = 0
     state.statement_mode = true
+    print("PARSER_TRACE: before statement loop")
     while !check(state, "EOF") && state.error == "" {
+        print("PARSER_TRACE: before statement")
         statement = parse_statement(state)
+        print("PARSER_TRACE: after statement")
         if state.error == "" {
             result.statements = parser_append(result.statements, statement)
         }

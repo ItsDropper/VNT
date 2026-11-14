@@ -106,6 +106,13 @@ jobs:
             if [ "$compile_status" -ne 0 ]; then
               echo "Compilation failed for $source (exit $compile_status):"
               cat "$compile_log"
+              echo "Parser/IR isolation (same imported project, no native backend):"
+              set +e
+              stdbuf -o0 -e0 ./vnt --dump-ir "$source" >"$executable.ir-diagnostic.log" 2>&1
+              ir_status=$?
+              set -e
+              echo "IR diagnostic exit: $ir_status"
+              tail -n 120 "$executable.ir-diagnostic.log" || true
               echo "Compiler crash diagnostics:"
               for diagnostic in vnt_crash.log core core.*; do
                 if [ -f "$diagnostic" ]; then

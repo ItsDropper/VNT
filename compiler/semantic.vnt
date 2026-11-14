@@ -78,7 +78,6 @@ fun find_symbol(state: object, name: string) -> object {
 }
 
 fun declare_symbol(state: object, name: string, type_name: string, explicit: bool) {
-    print("TRACE: declare enter")
     scope = state.scopes[len(state.scopes) - 1]
     i = 0
     while i < len(scope.symbols) {
@@ -94,9 +93,7 @@ fun declare_symbol(state: object, name: string, type_name: string, explicit: boo
     symbol.type = type_name
     symbol.explicit = explicit
     symbol.dynamic = false
-    print("TRACE: declare before append")
     scope.symbols = semantic_append(scope.symbols, symbol)
-    print("TRACE: declare after append")
 }
 
 fun assign_symbol(state: object, name: string, actual: string) {
@@ -533,7 +530,6 @@ fun check_call(state: object, node: object) -> string {
 }
 
 fun expression_type(state: object, node: object) -> string {
-    print("TRACE: expression enter")
     if node == null {
         return "unknown"
     }
@@ -707,11 +703,8 @@ fun check_statements(state: object, statements: array) {
     i = 0
     while i < len(statements) && state.error == "" {
         node = statements[i]
-        print("TRACE: check statement " + node.kind)
         if node.kind == "VARIABLE_DECLARATION" {
-            print("TRACE: check let before expression")
             actual = expression_type(state, node.value)
-            print("TRACE: check let after expression")
             if actual == "void" {
                 semantic_fail(state, "void function call cannot initialize a variable.")
             } else if node.declared_type != null {
@@ -721,9 +714,7 @@ fun check_statements(state: object, statements: array) {
                 } else if !compatible(expected, actual) {
                     semantic_fail(state, "initializer for '" + node.name + "' expects " + expected + " but received " + actual + ".")
                 } else {
-                    print("TRACE: check let before declare")
                     declare_symbol(state, node.name, expected, true)
-                    print("TRACE: check let after declare")
                 }
             } else {
                 assign_symbol(state, node.name, actual)
@@ -882,12 +873,9 @@ fun check_statements(state: object, statements: array) {
 }
 
 export fun analyze(program: object) -> object {
-    print("TRACE: analyze enter")
     if !program.ok {
-        print("TRACE: analyze failed parse")
         return result_object(false, "semantic analysis cannot run on a failed parse: " + program.error)
     }
-    print("TRACE: analyze after ok check")
     state = object()
     state.error = ""
     state.functions = []
@@ -898,13 +886,9 @@ export fun analyze(program: object) -> object {
     state.expected_return = "unknown"
     state.unsafe_depth = 0
     state.function_namespace = ""
-    print("TRACE: analyze before collect")
     collect_declarations(state, program.statements)
-    print("TRACE: analyze after collect")
     if state.error == "" {
-        print("TRACE: analyze before statements")
         check_statements(state, program.statements)
-        print("TRACE: analyze after statements")
     }
     return result_object(state.error == "", state.error)
 }

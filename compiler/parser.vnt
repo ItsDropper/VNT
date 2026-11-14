@@ -243,7 +243,9 @@ fun parse_postfix(state: object) -> object {
     print("PARSER_TRACE: postfix before loop")
     while state.error == "" {
         print("PARSER_TRACE: postfix loop entered")
-        if same_line(state) && match(state, "LEFT_BRACKET") {
+        line_matches = same_line(state)
+        print("PARSER_TRACE: postfix same_line returned")
+        if line_matches && match(state, "LEFT_BRACKET") {
             if !note_operator(state) { return make_node("ERROR") }
             index = parse_or(state)
             if !match(state, "RIGHT_BRACKET") {

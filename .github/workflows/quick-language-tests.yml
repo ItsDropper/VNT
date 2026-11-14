@@ -110,8 +110,9 @@ jobs:
                 echo "Generated assembly around self-hosted parser functions:"
                 echo "Program parser entry points:"
                 grep -n -A90 -B2 -E 'parse_program|parse_statement|parse_let_statement' "$executable.s" | head -n 500 || true
-                echo "Calls into program parser:"
-                grep -n -B24 -A24 -E 'call vnt_fn_.*parse_program' "$executable.s" || true
+                echo "parse_program symbol and call sites:"
+                grep -n -A90 -B3 -F 'parse_program' "$executable.s" || true
+                grep -n -B24 -A24 -E 'call .*parse_program' "$executable.s" || true
               fi
               exit "$status"
             fi

@@ -1,0 +1,7 @@
+fun is_missing(value: object) -> bool {
+    return value == null
+}
+
+print(is_missing(object()))
+print(is_missing(null))
+print("NULL_COMPARISON_OK")

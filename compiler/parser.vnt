@@ -147,7 +147,9 @@ fun parse_call_arguments(state: object, name: string) -> object {
 }
 
 fun parse_primary(state: object) -> object {
+    io_write_error("EXPR: primary start")
     token = current(state)
+    io_write_error("EXPR: primary token " + token.kind)
     if match(state, "INTEGER") {
         return make_leaf("INTEGER", token.lexeme)
     }
@@ -212,7 +214,9 @@ fun parse_primary(state: object) -> object {
 }
 
 fun parse_postfix(state: object) -> object {
+    io_write_error("EXPR: postfix start")
     expression = parse_primary(state)
+    io_write_error("EXPR: postfix primary done")
     while state.error == "" {
         if same_line(state) && match(state, "LEFT_BRACKET") {
             if !note_operator(state) { return make_node("ERROR") }
@@ -252,6 +256,7 @@ fun parse_postfix(state: object) -> object {
 }
 
 fun parse_unary(state: object) -> object {
+    io_write_error("EXPR: unary start")
     if check(state, "BANG") || check(state, "MINUS") || check(state, "AMPERSAND") || check(state, "STAR") {
         if state.nesting_depth >= 256 {
             fail(state, "unary operator nesting exceeds 256 levels")
@@ -270,7 +275,9 @@ fun parse_unary(state: object) -> object {
 }
 
 fun parse_multiplication(state: object) -> object {
+    io_write_error("EXPR: multiply start")
     left = parse_unary(state)
+    io_write_error("EXPR: multiply unary done")
     while same_line(state) && (check(state, "STAR") || check(state, "SLASH") || check(state, "PERCENT")) {
         if !note_operator(state) { return make_node("ERROR") }
         operator = parser_advance(state)
@@ -285,7 +292,9 @@ fun parse_multiplication(state: object) -> object {
 }
 
 fun parse_addition(state: object) -> object {
+    io_write_error("EXPR: addition start")
     left = parse_multiplication(state)
+    io_write_error("EXPR: addition multiply done")
     while same_line(state) && (check(state, "PLUS") || check(state, "MINUS")) {
         if !note_operator(state) { return make_node("ERROR") }
         operator = parser_advance(state)
@@ -300,7 +309,9 @@ fun parse_addition(state: object) -> object {
 }
 
 fun parse_comparison(state: object) -> object {
+    io_write_error("EXPR: comparison start")
     left = parse_addition(state)
+    io_write_error("EXPR: comparison addition done")
     while same_line(state) && (check(state, "GREATER") || check(state, "LESS") || check(state, "GREATER_EQUAL") || check(state, "LESS_EQUAL")) {
         if !note_operator(state) { return make_node("ERROR") }
         operator = parser_advance(state)
@@ -315,7 +326,9 @@ fun parse_comparison(state: object) -> object {
 }
 
 fun parse_equality(state: object) -> object {
+    io_write_error("EXPR: equality start")
     left = parse_comparison(state)
+    io_write_error("EXPR: equality comparison done")
     while same_line(state) && (check(state, "EQUAL_EQUAL") || check(state, "BANG_EQUAL")) {
         if !note_operator(state) { return make_node("ERROR") }
         operator = parser_advance(state)
@@ -330,7 +343,9 @@ fun parse_equality(state: object) -> object {
 }
 
 fun parse_and(state: object) -> object {
+    io_write_error("EXPR: and start")
     left = parse_equality(state)
+    io_write_error("EXPR: and equality done")
     while state.error == "" && same_line(state) && match(state, "AND_AND") {
         if !note_operator(state) { return make_node("ERROR") }
         right = parse_equality(state)
@@ -344,6 +359,7 @@ fun parse_and(state: object) -> object {
 }
 
 fun parse_or(state: object) -> object {
+    io_write_error("EXPR: or start")
     if state.expression_depth == 0 {
         state.operator_count = 0
     }
@@ -354,6 +370,7 @@ fun parse_or(state: object) -> object {
     state.expression_depth += 1
     state.nesting_depth += 1
     left = parse_and(state)
+    io_write_error("EXPR: or and done")
     while state.error == "" && same_line(state) && match(state, "OR_OR") {
         if !note_operator(state) {
             state.nesting_depth -= 1

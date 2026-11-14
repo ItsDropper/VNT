@@ -89,6 +89,18 @@ require(result.ok, "module sibling export resolution failed: " + result.error)
 result = checked("print(len())")
 require(!result.ok, "invalid builtin arity was accepted")
 
+result = checked("text = \"A\"\nif text[0] == 65 {\nprint(text)\n}")
+require(result.ok, "string index integer comparison was rejected: " + result.error)
+
+result = checked("fun take_code(value: int) -> int {\nreturn value\n}\nprint(take_code(\"A\"[0]))")
+require(result.ok, "string index integer argument compatibility was rejected: " + result.error)
+
+result = checked("value = 1\nreference = &value\nprint(*reference)")
+require(result.ok, "reference dereference was rejected: " + result.error)
+
+result = checked("pointer = null\nprint(*pointer)")
+require(!result.ok, "raw pointer was accepted by reference dereference")
+
 result = checked("print(mem_alloc(8))")
 require(!result.ok, "raw memory builtin outside unsafe was accepted")
 

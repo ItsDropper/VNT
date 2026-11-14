@@ -147,11 +147,15 @@ fun parse_call_arguments(state: object, name: string) -> object {
 }
 
 fun parse_primary(state: object) -> object {
+    print("PARSER_TRACE: primary enter")
     token = current(state)
+    print("PARSER_TRACE: primary current")
     if match(state, "INTEGER") {
+        print("PARSER_TRACE: primary integer")
         node = object()
         node.kind = "INTEGER"
         node.value = token.lexeme
+        print("PARSER_TRACE: primary integer return")
         return node
     }
     if match(state, "FLOAT") {
@@ -233,7 +237,9 @@ fun parse_primary(state: object) -> object {
 }
 
 fun parse_postfix(state: object) -> object {
+    print("PARSER_TRACE: postfix enter")
     expression = parse_primary(state)
+    print("PARSER_TRACE: postfix primary returned")
     while state.error == "" {
         if same_line(state) && match(state, "LEFT_BRACKET") {
             if !note_operator(state) { return make_node("ERROR") }
@@ -273,6 +279,7 @@ fun parse_postfix(state: object) -> object {
 }
 
 fun parse_unary(state: object) -> object {
+    print("PARSER_TRACE: unary enter")
     if check(state, "BANG") || check(state, "MINUS") || check(state, "AMPERSAND") || check(state, "STAR") {
         if state.nesting_depth >= 256 {
             fail(state, "unary operator nesting exceeds 256 levels")
@@ -287,7 +294,10 @@ fun parse_unary(state: object) -> object {
         node.operand = operand
         return node
     }
-    return parse_postfix(state)
+    print("PARSER_TRACE: unary postfix")
+    expression = parse_postfix(state)
+    print("PARSER_TRACE: unary postfix returned")
+    return expression
 }
 
 fun binary_precedence(kind: string) -> int {
@@ -301,7 +311,9 @@ fun binary_precedence(kind: string) -> int {
 }
 
 fun parse_expression_precedence(state: object, minimum: int) -> object {
+    print("PARSER_TRACE: precedence enter")
     left = parse_unary(state)
+    print("PARSER_TRACE: precedence unary returned")
     while state.error == "" && same_line(state) {
         token = current(state)
         precedence = binary_precedence(token.kind)
@@ -329,6 +341,7 @@ fun parse_expression_precedence(state: object, minimum: int) -> object {
 }
 
 fun parse_or(state: object) -> object {
+    print("PARSER_TRACE: or enter")
     if state.expression_depth == 0 {
         state.operator_count = 0
     }
@@ -338,7 +351,9 @@ fun parse_or(state: object) -> object {
     }
     state.expression_depth += 1
     state.nesting_depth += 1
+    print("PARSER_TRACE: or before precedence")
     expression = parse_expression_precedence(state, 1)
+    print("PARSER_TRACE: or after precedence")
     state.nesting_depth -= 1
     state.expression_depth -= 1
     return expression
@@ -404,6 +419,7 @@ fun parse_block(state: object) -> array {
 }
 
 fun parse_let_statement(state: object) -> object {
+    print("PARSER_TRACE: let enter")
     parser_advance(state)
     if !expect(state, "IDENTIFIER", "expected variable name after 'let'") {
         return make_node("ERROR")
@@ -416,10 +432,13 @@ fun parse_let_statement(state: object) -> object {
         return make_node("ERROR")
     }
     declared_type = state.previous.lexeme
+    print("PARSER_TRACE: let type")
     if !expect(state, "EQUALS", "expected '=' after variable type") {
         return make_node("ERROR")
     }
+    print("PARSER_TRACE: let before expression")
     value = parse_or(state)
+    print("PARSER_TRACE: let after expression")
     node = make_node("VARIABLE_DECLARATION")
     node.name = name
     node.declared_type = declared_type
@@ -789,7 +808,9 @@ fun parse_statement(state: object) -> object {
 }
 
 export fun parse_program(source: string) -> object {
+    print("PARSER_TRACE: program enter")
     scanned = lexer.lex(source)
+    print("PARSER_TRACE: lexer returned")
     result = object()
     result.ok = false
     result.error = ""
@@ -810,8 +831,11 @@ export fun parse_program(source: string) -> object {
     state.nesting_depth = 0
     state.expression_depth = 0
     state.statement_mode = true
+    print("PARSER_TRACE: before statement loop")
     while !check(state, "EOF") && state.error == "" {
+        print("PARSER_TRACE: before statement")
         statement = parse_statement(state)
+        print("PARSER_TRACE: after statement")
         if state.error == "" {
             result.statements = parser_append(result.statements, statement)
         }

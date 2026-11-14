@@ -150,32 +150,51 @@ fun parse_call_arguments(state: object, name: string) -> object {
 }
 
 fun parse_primary(state: object) -> object {
-    print("PARSER_TRACE: primary enter")
     token = current(state)
     if match(state, "INTEGER") {
-        print("PARSER_TRACE: primary integer matched")
-        return make_leaf("INTEGER", token.lexeme)
+        node = object()
+        node.kind = "INTEGER"
+        node.value = token.lexeme
+        return node
     }
     if match(state, "FLOAT") {
-        return make_leaf("FLOAT", token.lexeme)
+        node = object()
+        node.kind = "FLOAT"
+        node.value = token.lexeme
+        return node
     }
     if match(state, "STRING") {
-        return make_leaf("STRING", decode_string(token.lexeme))
+        node = object()
+        node.kind = "STRING"
+        node.value = decode_string(token.lexeme)
+        return node
     }
     if match(state, "IDENTIFIER") {
         if token.lexeme == "true" {
-            return make_leaf("BOOLEAN", "true")
+            node = object()
+            node.kind = "BOOLEAN"
+            node.value = "true"
+            return node
         }
         if token.lexeme == "false" {
-            return make_leaf("BOOLEAN", "false")
+            node = object()
+            node.kind = "BOOLEAN"
+            node.value = "false"
+            return node
         }
         if token.lexeme == "null" {
-            return make_leaf("NULL", "null")
+            node = object()
+            node.kind = "NULL"
+            node.value = "null"
+            return node
         }
         if match(state, "LEFT_PAREN") {
             return parse_call_arguments(state, token.lexeme)
         }
-        return make_leaf("VARIABLE", token.lexeme)
+        node = object()
+        node.kind = "VARIABLE"
+        node.value = token.lexeme
+        return node
     }
     if match(state, "LEFT_PAREN") {
         expression = parse_or(state)

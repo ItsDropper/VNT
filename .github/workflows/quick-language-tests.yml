@@ -108,7 +108,9 @@ jobs:
               echo "$raw_output"
               if [ -f "$executable.s" ]; then
                 echo "Generated assembly around self-hosted parser functions:"
-                grep -n -A55 -B2 -E 'vnt_fn_.*(parse_program|parse_statement|parse_let_statement|parse_or|parse_expression_precedence|parse_unary|parse_postfix|parse_primary)' "$executable.s" | head -n 700 || true
+                grep -n -A70 -B2 -E '^vnt_fn_.*(parse_program|parse_statement|parse_let_statement|parse_or|parse_expression_precedence|parse_unary|parse_postfix|parse_primary):' "$executable.s" | head -n 1000 || true
+                echo "Calls into program parser:"
+                grep -n -B18 -A18 -E 'call vnt_fn_.*parse_program' "$executable.s" || true
               fi
               exit "$status"
             fi

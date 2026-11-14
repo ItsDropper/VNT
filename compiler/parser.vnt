@@ -365,6 +365,7 @@ fun parse_expression_precedence(state: object, minimum: int) -> object {
                 node.left = left
                 node.right = right
                 node.end_line = right.end_line
+                node.line_limited = left.line_limited
                 left = node
             }
         }

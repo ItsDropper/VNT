@@ -9,7 +9,9 @@ fun require(condition: bool, message: string) {
 }
 
 source = "let count: int = 0\ncount += 1\nprint(count)\nfun add(a: int, b: int) -> int {\nreturn a + b\n}\nstruct Point { x, y }\nif count > 0 {\nprint(add(count, 1))\n} else {\nprint(0)\n}\nwhile count < 3 {\ncount = count + 1\nif count == 2 {\ncontinue\n} else {\nbreak\n}\n}\nfor item in values {\nprint(item)\n}\nunsafe {\nasm volatile(\"nop\")\n}"
+print("TRACE: before representative parse")
 parsed = parser.parse_program(source)
+print("TRACE: after representative parse ok=" + parsed.ok + " error=" + parsed.error)
 require(parsed.ok, "representative program was rejected: " + parsed.error)
 require(len(parsed.statements) == 9, "top-level statement count is incorrect")
 

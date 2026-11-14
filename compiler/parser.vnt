@@ -237,21 +237,10 @@ fun parse_primary(state: object) -> object {
 }
 
 fun parse_postfix(state: object) -> object {
-    print("PARSER_TRACE: postfix enter")
     expression = parse_primary(state)
-    print("PARSER_TRACE: postfix primary returned")
-    print("PARSER_TRACE: postfix before loop")
-    while state.error == "" {
-        print("PARSER_TRACE: postfix loop entered")
-        line_matches = true
-        if state.statement_mode && state.previous != null {
-            token_at_cursor = current(state)
-            if token_at_cursor.kind != "EOF" {
-                line_matches = token_at_cursor.line == state.previous.line
-            }
-        }
-        print("PARSER_TRACE: postfix same_line inline")
-        if line_matches && match(state, "LEFT_BRACKET") {
+    parsing = true
+    while parsing && state.error == "" {
+        if match(state, "LEFT_BRACKET") {
             if !note_operator(state) { return make_node("ERROR") }
             index = parse_or(state)
             if !match(state, "RIGHT_BRACKET") {
@@ -263,7 +252,7 @@ fun parse_postfix(state: object) -> object {
             node.index = index
             expression = node
         } else {
-            if same_line(state) && match(state, "DOT") {
+            if match(state, "DOT") {
                 if !note_operator(state) { return make_node("ERROR") }
                 if !check(state, "IDENTIFIER") {
                     fail(state, "expected member name after '.'")
@@ -275,19 +264,16 @@ fun parse_postfix(state: object) -> object {
                 node.member = member.lexeme
                 expression = node
             } else {
-                if same_line(state) && check(state, "LEFT_PAREN") && expression.kind == "MEMBER" && expression.object.kind == "VARIABLE" {
+                if check(state, "LEFT_PAREN") && expression.kind == "MEMBER" && expression.object.kind == "VARIABLE" {
                     parser_advance(state)
                     qualified_name = expression.object.value + "__" + expression.member
                     expression = parse_call_arguments(state, qualified_name)
                 } else {
-                    print("PARSER_TRACE: postfix break")
-                    break
+                    parsing = false
                 }
             }
         }
     }
-    print("PARSER_TRACE: postfix loop exited")
-    print("PARSER_TRACE: postfix before return")
     return expression
 }
 

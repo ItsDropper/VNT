@@ -43,7 +43,11 @@ fun same_line(state: object) -> bool {
     if state.previous == null {
         return true
     }
-    return current(state).line == state.previous.line
+    token = current(state)
+    if token.kind == "EOF" {
+        return true
+    }
+    return token.line == state.previous.line
 }
 
 fun parser_advance(state: object) -> object {

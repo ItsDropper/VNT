@@ -99,7 +99,11 @@ jobs:
             expected="$2"
             executable="self-hosted-$(basename "$source" .vnt).exe"
             ./vnt --compile "$source" -o "$executable"
-            output="$(./"$executable" | tr -d '\r')"
+            if ! output="$(./"$executable" 2>&1 | tr -d '\r')"; then
+              echo "Execution failed for $source:"
+              echo "$output"
+              exit 1
+            fi
             if [ "$output" != "$expected" ]; then
               echo "Unexpected output from $source: $output"
               exit 1

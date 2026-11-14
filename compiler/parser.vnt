@@ -243,10 +243,12 @@ fun parse_postfix(state: object) -> object {
     print("PARSER_TRACE: postfix before loop")
     while state.error == "" {
         print("PARSER_TRACE: postfix loop entered")
-        token_at_cursor = state.tokens[state.index]
         line_matches = true
-        if state.previous != null && token_at_cursor.kind != "EOF" {
-            line_matches = token_at_cursor.line == state.previous.line
+        if state.statement_mode && state.previous != null {
+            token_at_cursor = current(state)
+            if token_at_cursor.kind != "EOF" {
+                line_matches = token_at_cursor.line == state.previous.line
+            }
         }
         print("PARSER_TRACE: postfix same_line inline")
         if line_matches && match(state, "LEFT_BRACKET") {

@@ -106,13 +106,21 @@ jobs:
             if [ "$compile_status" -ne 0 ]; then
               echo "Compilation failed for $source (exit $compile_status):"
               cat "$compile_log"
-              echo "Parser/IR isolation (same imported project, no native backend):"
+              echo "Parser isolation for semantic module:"
               set +e
+              stdbuf -o0 -e0 ./vnt --dump-ir compiler/semantic.vnt >semantic-module.ir.log 2>&1
+              semantic_ir_status=$?
+              stdbuf -o0 -e0 ./vnt --dump-ir compiler/parser.vnt >parser-module.ir.log 2>&1
+              parser_ir_status=$?
               stdbuf -o0 -e0 ./vnt --dump-ir "$source" >"$executable.ir-diagnostic.log" 2>&1
-              ir_status=$?
+              project_ir_status=$?
               set -e
-              echo "IR diagnostic exit: $ir_status"
-              tail -n 120 "$executable.ir-diagnostic.log" || true
+              echo "semantic module IR exit: $semantic_ir_status"
+              tail -n 30 semantic-module.ir.log || true
+              echo "parser module IR exit: $parser_ir_status"
+              tail -n 30 parser-module.ir.log || true
+              echo "combined project IR exit: $project_ir_status"
+              tail -n 30 "$executable.ir-diagnostic.log" || true
               echo "Compiler crash diagnostics:"
               for diagnostic in vnt_crash.log core core.*; do
                 if [ -f "$diagnostic" ]; then

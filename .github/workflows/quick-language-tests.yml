@@ -98,7 +98,12 @@ jobs:
             source="$1"
             expected="$2"
             executable="self-hosted-$(basename "$source" .vnt).exe"
-            ./vnt --compile "$source" -o "$executable"
+            compile_log="$executable.compile.log"
+            if ! ./vnt --compile "$source" -o "$executable" >"$compile_log" 2>&1; then
+              echo "Compilation failed for $source:"
+              cat "$compile_log"
+              exit 1
+            fi
             set +e
             raw_output="$(./"$executable" 2>&1 | tr -d '\r')"
             status=$?

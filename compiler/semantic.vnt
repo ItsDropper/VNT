@@ -442,6 +442,13 @@ fun is_raw_memory_builtin(name: string) -> bool {
         name == "symbol_address"
 }
 
+fun is_string_index_expr(state: object, node: object) -> bool {
+    if node == null || node.kind != "INDEX" {
+        return false
+    }
+    return expression_type(state, node.object) == "string"
+}
+
 fun check_call(state: object, node: object) -> string {
     name = node.name
     argc = len(node.arguments)
@@ -509,7 +516,8 @@ fun check_call(state: object, node: object) -> string {
             actual = expression_type(state, node.arguments[i])
             if !known_type(expected) || expected == "void" {
                 semantic_fail(state, "function parameter uses an invalid type.")
-            } else if !compatible(expected, actual) {
+            } else if !compatible(expected, actual) &&
+                !(expected == "int" && actual == "string" && is_string_index_expr(state, node.arguments[i])) {
                 semantic_fail(state, "argument " + (i + 1) + " ('" + parameter.name + "') to '" + name + "' expects " + expected + " but received " + actual + ".")
             }
         }
@@ -604,7 +612,7 @@ fun expression_type(state: object, node: object) -> string {
             return "reference"
         }
         if node.operator == "*" {
-            if operand_type != "reference" && operand_type != "ptr" && operand_type != "unknown" {
+            if operand_type != "reference" && operand_type != "unknown" {
                 semantic_fail(state, "dereference requires a reference or pointer.")
             }
             return "unknown"
@@ -626,8 +634,12 @@ fun expression_type(state: object, node: object) -> string {
             return "bool"
         }
         if node.operator == "==" || node.operator == "!=" {
+            string_byte_comparison =
+                (left == "string" && right == "int" && is_string_index_expr(state, node.left)) ||
+                (left == "int" && right == "string" && is_string_index_expr(state, node.right))
             if left != "unknown" && right != "unknown" &&
-                left != right && !(numeric(left) && numeric(right)) {
+                left != right && !(numeric(left) && numeric(right)) &&
+                !string_byte_comparison {
                 semantic_fail(state, "equality operands must have compatible types.")
             }
             return "bool"

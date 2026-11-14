@@ -182,6 +182,7 @@ fun parse_primary(state: object) -> object {
             node.kind = "BOOLEAN"
             node.value = "true"
             node.end_line = token.line
+            node.line_limited = line_limited
             return node
         }
         if token.lexeme == "false" {
@@ -189,6 +190,7 @@ fun parse_primary(state: object) -> object {
             node.kind = "BOOLEAN"
             node.value = "false"
             node.end_line = token.line
+            node.line_limited = line_limited
             return node
         }
         if token.lexeme == "null" {
@@ -196,6 +198,7 @@ fun parse_primary(state: object) -> object {
             node.kind = "NULL"
             node.value = "null"
             node.end_line = token.line
+            node.line_limited = line_limited
             return node
         }
         if match(state, "LEFT_PAREN") {

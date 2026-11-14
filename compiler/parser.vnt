@@ -292,7 +292,43 @@ fun parse_unary(state: object) -> object {
         return node
     }
     print("PARSER_TRACE: unary postfix")
-    return parse_postfix(state)
+    expression = parse_primary(state)
+    while state.error == "" {
+        if same_line(state) && match(state, "LEFT_BRACKET") {
+            if !note_operator(state) { return make_node("ERROR") }
+            index = parse_or(state)
+            if !match(state, "RIGHT_BRACKET") {
+                fail(state, "expected ']' after index")
+                return make_node("ERROR")
+            }
+            node = make_node("INDEX")
+            node.object = expression
+            node.index = index
+            expression = node
+        } else {
+            if same_line(state) && match(state, "DOT") {
+                if !note_operator(state) { return make_node("ERROR") }
+                if !check(state, "IDENTIFIER") {
+                    fail(state, "expected member name after '.'")
+                    return make_node("ERROR")
+                }
+                member = parser_advance(state)
+                node = make_node("MEMBER")
+                node.object = expression
+                node.member = member.lexeme
+                expression = node
+            } else {
+                if same_line(state) && check(state, "LEFT_PAREN") && expression.kind == "MEMBER" && expression.object.kind == "VARIABLE" {
+                    parser_advance(state)
+                    qualified_name = expression.object.value + "__" + expression.member
+                    expression = parse_call_arguments(state, qualified_name)
+                } else {
+                    break
+                }
+            }
+        }
+    }
+    return expression
 }
 
 fun parse_multiplication(state: object) -> object {

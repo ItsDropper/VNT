@@ -29,7 +29,6 @@ The current parser represents struct field names but not field types, so member 
 can only reject void receivers and otherwise remains dynamically typed. The current
 for-in AST has no element-type metadata, so its binding is unknown. The VNT pass reports
 the first semantic diagnostic, matching the hosted checker's current fail-fast behavior.
-Imported-module namespace resolution, the complete builtin arity/signature matrix,
-branch-state dataflow merging, and precise all-path return analysis remain follow-up work.
+Unqualified sibling-export resolution and branch-state merging are implemented. The complete per-builtin result-type table and richer struct-field typing remain follow-up work.
 
 Run `tests/self_hosted_semantic.vnt` through the self-hosted frontend test workflow.

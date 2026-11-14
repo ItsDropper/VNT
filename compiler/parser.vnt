@@ -276,7 +276,6 @@ fun parse_postfix(state: object) -> object {
 }
 
 fun parse_unary(state: object) -> object {
-    print("PARSER_TRACE: unary enter")
     if check(state, "BANG") || check(state, "MINUS") || check(state, "AMPERSAND") || check(state, "STAR") {
         if state.nesting_depth >= 256 {
             fail(state, "unary operator nesting exceeds 256 levels")
@@ -291,203 +290,40 @@ fun parse_unary(state: object) -> object {
         node.operand = operand
         return node
     }
-    print("PARSER_TRACE: unary postfix")
-    token = current(state)
-    expression = make_node("ERROR")
-    if match(state, "INTEGER") {
-        expression = object()
-        expression.kind = "INTEGER"
-        expression.value = token.lexeme
-    } else {
-        if match(state, "FLOAT") {
-            expression = object()
-            expression.kind = "FLOAT"
-            expression.value = token.lexeme
-        } else {
-            if match(state, "STRING") {
-                expression = object()
-                expression.kind = "STRING"
-                expression.value = decode_string(token.lexeme)
-            } else {
-                if match(state, "IDENTIFIER") {
-                    if token.lexeme == "true" {
-                        expression = object()
-                        expression.kind = "BOOLEAN"
-                        expression.value = "true"
-                    } else {
-                        if token.lexeme == "false" {
-                            expression = object()
-                            expression.kind = "BOOLEAN"
-                            expression.value = "false"
-                        } else {
-                            if token.lexeme == "null" {
-                                expression = object()
-                                expression.kind = "NULL"
-                                expression.value = "null"
-                            } else {
-                                if match(state, "LEFT_PAREN") {
-                                    expression = parse_call_arguments(state, token.lexeme)
-                                } else {
-                                    expression = object()
-                                    expression.kind = "VARIABLE"
-                                    expression.value = token.lexeme
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    if match(state, "LEFT_PAREN") {
-                        expression = parse_or(state)
-                        if !match(state, "RIGHT_PAREN") {
-                            fail(state, "expected ')'")
-                            return make_node("ERROR")
-                        }
-                    } else {
-                        if match(state, "LEFT_BRACKET") {
-                            elements = []
-                            if !check(state, "RIGHT_BRACKET") {
-                                parsing = true
-                                while parsing && state.error == "" {
-                                    element = parse_or(state)
-                                    if state.error != "" {
-                                        return make_node("ERROR")
-                                    }
-                                    elements = parser_append(elements, element)
-                                    if match(state, "COMMA") {
-                                        if check(state, "RIGHT_BRACKET") {
-                                            parsing = false
-                                        }
-                                    } else {
-                                        parsing = false
-                                    }
-                                }
-                            }
-                            if !match(state, "RIGHT_BRACKET") {
-                                fail(state, "expected ']' after array elements")
-                                return make_node("ERROR")
-                            }
-                            expression = make_node("ARRAY")
-                            expression.elements = elements
-                        } else {
-                            fail(state, "expected expression")
-                            return make_node("ERROR")
-                        }
-                    }
-                }
-            }
-        }
-    }
-    while state.error == "" {
-        if same_line(state) && match(state, "LEFT_BRACKET") {
-            if !note_operator(state) { return make_node("ERROR") }
-            index = parse_or(state)
-            if !match(state, "RIGHT_BRACKET") {
-                fail(state, "expected ']' after index")
-                return make_node("ERROR")
-            }
-            node = make_node("INDEX")
-            node.object = expression
-            node.index = index
-            expression = node
-        } else {
-            if same_line(state) && match(state, "DOT") {
-                if !note_operator(state) { return make_node("ERROR") }
-                if !check(state, "IDENTIFIER") {
-                    fail(state, "expected member name after '.'")
-                    return make_node("ERROR")
-                }
-                member = parser_advance(state)
-                node = make_node("MEMBER")
-                node.object = expression
-                node.member = member.lexeme
-                expression = node
-            } else {
-                if same_line(state) && check(state, "LEFT_PAREN") && expression.kind == "MEMBER" && expression.object.kind == "VARIABLE" {
-                    parser_advance(state)
-                    qualified_name = expression.object.value + "__" + expression.member
-                    expression = parse_call_arguments(state, qualified_name)
-                } else {
-                    break
-                }
-            }
-        }
-    }
-    return expression
+    return parse_postfix(state)
 }
 
-fun parse_multiplication(state: object) -> object {
-    print("PARSER_TRACE: multiplication enter")
+fun binary_precedence(kind: string) -> int {
+    if kind == "OR_OR" { return 1 }
+    if kind == "AND_AND" { return 2 }
+    if kind == "EQUAL_EQUAL" || kind == "BANG_EQUAL" { return 3 }
+    if kind == "GREATER" || kind == "LESS" || kind == "GREATER_EQUAL" || kind == "LESS_EQUAL" { return 4 }
+    if kind == "PLUS" || kind == "MINUS" { return 5 }
+    if kind == "STAR" || kind == "SLASH" || kind == "PERCENT" { return 6 }
+    return 0
+}
+
+fun parse_expression_precedence(state: object, minimum: int) -> object {
     left = parse_unary(state)
-    print("PARSER_TRACE: multiplication unary returned")
-    while same_line(state) && (check(state, "STAR") || check(state, "SLASH") || check(state, "PERCENT")) {
-        if !note_operator(state) { return make_node("ERROR") }
-        operator = parser_advance(state)
-        right = parse_unary(state)
+    while state.error == "" && same_line(state) {
+        token = current(state)
+        precedence = binary_precedence(token.kind)
+        if precedence < minimum || precedence == 0 {
+            break
+        }
+        parser_advance(state)
+        if !note_operator(state) {
+            return make_node("ERROR")
+        }
+        if state.nesting_depth >= 256 {
+            fail(state, "expression nesting exceeds 256 levels")
+            return make_node("ERROR")
+        }
+        state.nesting_depth += 1
+        right = parse_expression_precedence(state, precedence + 1)
+        state.nesting_depth -= 1
         node = make_node("BINARY")
-        node.operator = operator.lexeme
-        node.left = left
-        node.right = right
-        left = node
-    }
-    return left
-}
-
-fun parse_addition(state: object) -> object {
-    print("PARSER_TRACE: addition enter")
-    left = parse_multiplication(state)
-    print("PARSER_TRACE: addition multiplication returned")
-    while same_line(state) && (check(state, "PLUS") || check(state, "MINUS")) {
-        if !note_operator(state) { return make_node("ERROR") }
-        operator = parser_advance(state)
-        right = parse_multiplication(state)
-        node = make_node("BINARY")
-        node.operator = operator.lexeme
-        node.left = left
-        node.right = right
-        left = node
-    }
-    return left
-}
-
-fun parse_comparison(state: object) -> object {
-    left = parse_addition(state)
-    while same_line(state) && (check(state, "GREATER") || check(state, "LESS") || check(state, "GREATER_EQUAL") || check(state, "LESS_EQUAL")) {
-        if !note_operator(state) { return make_node("ERROR") }
-        operator = parser_advance(state)
-        right = parse_addition(state)
-        node = make_node("BINARY")
-        node.operator = operator.lexeme
-        node.left = left
-        node.right = right
-        left = node
-    }
-    return left
-}
-
-fun parse_equality(state: object) -> object {
-    left = parse_comparison(state)
-    while same_line(state) && (check(state, "EQUAL_EQUAL") || check(state, "BANG_EQUAL")) {
-        if !note_operator(state) { return make_node("ERROR") }
-        operator = parser_advance(state)
-        right = parse_comparison(state)
-        node = make_node("BINARY")
-        node.operator = operator.lexeme
-        node.left = left
-        node.right = right
-        left = node
-    }
-    return left
-}
-
-fun parse_and(state: object) -> object {
-    print("PARSER_TRACE: and enter")
-    left = parse_equality(state)
-    print("PARSER_TRACE: and equality returned")
-    while state.error == "" && same_line(state) && match(state, "AND_AND") {
-        if !note_operator(state) { return make_node("ERROR") }
-        right = parse_equality(state)
-        node = make_node("BINARY")
-        node.operator = "&&"
+        node.operator = token.lexeme
         node.left = left
         node.right = right
         left = node
@@ -496,7 +332,6 @@ fun parse_and(state: object) -> object {
 }
 
 fun parse_or(state: object) -> object {
-    print("PARSER_TRACE: or enter")
     if state.expression_depth == 0 {
         state.operator_count = 0
     }
@@ -506,25 +341,10 @@ fun parse_or(state: object) -> object {
     }
     state.expression_depth += 1
     state.nesting_depth += 1
-    print("PARSER_TRACE: or before and")
-    left = parse_and(state)
-    print("PARSER_TRACE: or after and")
-    while state.error == "" && same_line(state) && match(state, "OR_OR") {
-        if !note_operator(state) {
-            state.nesting_depth -= 1
-            state.expression_depth -= 1
-            return make_node("ERROR")
-        }
-        right = parse_and(state)
-        node = make_node("BINARY")
-        node.operator = "||"
-        node.left = left
-        node.right = right
-        left = node
-    }
+    expression = parse_expression_precedence(state, 1)
     state.nesting_depth -= 1
     state.expression_depth -= 1
-    return left
+    return expression
 }
 
 export fun parse(source: string) -> object {

@@ -813,7 +813,9 @@ fun parse_statement(state: object) -> object {
 }
 
 export fun parse_program(source: string) -> object {
+    io_write_error("PP: start")
     scanned = lexer.lex(source)
+    io_write_error("PP: lexed")
     result = object()
     result.ok = false
     result.error = ""
@@ -834,10 +836,15 @@ export fun parse_program(source: string) -> object {
     state.nesting_depth = 0
     state.expression_depth = 0
     state.statement_mode = true
+    io_write_error("PP: state ready")
     while !check(state, "EOF") && state.error == "" {
+        io_write_error("PP: before statement")
         statement = parse_statement(state)
+        io_write_error("PP: after statement")
         if state.error == "" {
+            io_write_error("PP: before append")
             result.statements = parser_append(result.statements, statement)
+            io_write_error("PP: after append")
         }
     }
     result.error = state.error

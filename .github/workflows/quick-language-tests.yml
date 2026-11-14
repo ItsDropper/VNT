@@ -106,6 +106,10 @@ jobs:
             if [ "$status" -ne 0 ]; then
               echo "Execution failed for $source:"
               echo "$raw_output"
+              if [ -f "$executable.s" ]; then
+                echo "Generated assembly around self-hosted parser functions:"
+                grep -n -A55 -B2 -E 'vnt_fn_.*(parse_program|parse_statement|parse_let_statement|parse_or|parse_expression_precedence|parse_unary|parse_postfix|parse_primary)' "$executable.s" | head -n 700 || true
+              fi
               exit "$status"
             fi
             output="$(printf '%s\n' "$raw_output" | grep -v -E '^(PARSER_TRACE|TRACE):' || true)"

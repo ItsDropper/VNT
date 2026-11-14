@@ -147,8 +147,10 @@ fun parse_call_arguments(state: object, name: string) -> object {
 }
 
 fun parse_primary(state: object) -> object {
+    print("PARSER_TRACE: primary enter")
     token = current(state)
     if match(state, "INTEGER") {
+        print("PARSER_TRACE: primary integer matched")
         return make_leaf("INTEGER", token.lexeme)
     }
     if match(state, "FLOAT") {
@@ -252,6 +254,7 @@ fun parse_postfix(state: object) -> object {
 }
 
 fun parse_unary(state: object) -> object {
+    print("PARSER_TRACE: unary enter")
     if check(state, "BANG") || check(state, "MINUS") || check(state, "AMPERSAND") || check(state, "STAR") {
         if state.nesting_depth >= 256 {
             fail(state, "unary operator nesting exceeds 256 levels")
@@ -266,11 +269,14 @@ fun parse_unary(state: object) -> object {
         node.operand = operand
         return node
     }
+    print("PARSER_TRACE: unary postfix")
     return parse_postfix(state)
 }
 
 fun parse_multiplication(state: object) -> object {
+    print("PARSER_TRACE: multiplication enter")
     left = parse_unary(state)
+    print("PARSER_TRACE: multiplication unary returned")
     while same_line(state) && (check(state, "STAR") || check(state, "SLASH") || check(state, "PERCENT")) {
         if !note_operator(state) { return make_node("ERROR") }
         operator = parser_advance(state)
@@ -285,7 +291,9 @@ fun parse_multiplication(state: object) -> object {
 }
 
 fun parse_addition(state: object) -> object {
+    print("PARSER_TRACE: addition enter")
     left = parse_multiplication(state)
+    print("PARSER_TRACE: addition multiplication returned")
     while same_line(state) && (check(state, "PLUS") || check(state, "MINUS")) {
         if !note_operator(state) { return make_node("ERROR") }
         operator = parser_advance(state)
@@ -330,7 +338,9 @@ fun parse_equality(state: object) -> object {
 }
 
 fun parse_and(state: object) -> object {
+    print("PARSER_TRACE: and enter")
     left = parse_equality(state)
+    print("PARSER_TRACE: and equality returned")
     while state.error == "" && same_line(state) && match(state, "AND_AND") {
         if !note_operator(state) { return make_node("ERROR") }
         right = parse_equality(state)
@@ -344,6 +354,7 @@ fun parse_and(state: object) -> object {
 }
 
 fun parse_or(state: object) -> object {
+    print("PARSER_TRACE: or enter")
     if state.expression_depth == 0 {
         state.operator_count = 0
     }
@@ -353,7 +364,9 @@ fun parse_or(state: object) -> object {
     }
     state.expression_depth += 1
     state.nesting_depth += 1
+    print("PARSER_TRACE: or before and")
     left = parse_and(state)
+    print("PARSER_TRACE: or after and")
     while state.error == "" && same_line(state) && match(state, "OR_OR") {
         if !note_operator(state) {
             state.nesting_depth -= 1

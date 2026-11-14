@@ -292,7 +292,91 @@ fun parse_unary(state: object) -> object {
         return node
     }
     print("PARSER_TRACE: unary postfix")
-    expression = parse_primary(state)
+    token = current(state)
+    expression = make_node("ERROR")
+    if match(state, "INTEGER") {
+        expression = object()
+        expression.kind = "INTEGER"
+        expression.value = token.lexeme
+    } else {
+        if match(state, "FLOAT") {
+            expression = object()
+            expression.kind = "FLOAT"
+            expression.value = token.lexeme
+        } else {
+            if match(state, "STRING") {
+                expression = object()
+                expression.kind = "STRING"
+                expression.value = decode_string(token.lexeme)
+            } else {
+                if match(state, "IDENTIFIER") {
+                    if token.lexeme == "true" {
+                        expression = object()
+                        expression.kind = "BOOLEAN"
+                        expression.value = "true"
+                    } else {
+                        if token.lexeme == "false" {
+                            expression = object()
+                            expression.kind = "BOOLEAN"
+                            expression.value = "false"
+                        } else {
+                            if token.lexeme == "null" {
+                                expression = object()
+                                expression.kind = "NULL"
+                                expression.value = "null"
+                            } else {
+                                if match(state, "LEFT_PAREN") {
+                                    expression = parse_call_arguments(state, token.lexeme)
+                                } else {
+                                    expression = object()
+                                    expression.kind = "VARIABLE"
+                                    expression.value = token.lexeme
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if match(state, "LEFT_PAREN") {
+                        expression = parse_or(state)
+                        if !match(state, "RIGHT_PAREN") {
+                            fail(state, "expected ')'")
+                            return make_node("ERROR")
+                        }
+                    } else {
+                        if match(state, "LEFT_BRACKET") {
+                            elements = []
+                            if !check(state, "RIGHT_BRACKET") {
+                                parsing = true
+                                while parsing && state.error == "" {
+                                    element = parse_or(state)
+                                    if state.error != "" {
+                                        return make_node("ERROR")
+                                    }
+                                    elements = parser_append(elements, element)
+                                    if match(state, "COMMA") {
+                                        if check(state, "RIGHT_BRACKET") {
+                                            parsing = false
+                                        }
+                                    } else {
+                                        parsing = false
+                                    }
+                                }
+                            }
+                            if !match(state, "RIGHT_BRACKET") {
+                                fail(state, "expected ']' after array elements")
+                                return make_node("ERROR")
+                            }
+                            expression = make_node("ARRAY")
+                            expression.elements = elements
+                        } else {
+                            fail(state, "expected expression")
+                            return make_node("ERROR")
+                        }
+                    }
+                }
+            }
+        }
+    }
     while state.error == "" {
         if same_line(state) && match(state, "LEFT_BRACKET") {
             if !note_operator(state) { return make_node("ERROR") }

@@ -4,7 +4,7 @@
 
 import "./lexer.vnt" as lexer
 
-fun append(values, value) {
+fun parser_append(values, value) {
     size = len(values)
     result = range(size + 1)
     i = 0
@@ -36,7 +36,7 @@ fun check(state: object, kind: string) -> bool {
     return current(state).kind == kind
 }
 
-fun advance(state: object) -> object {
+fun parser_advance(state: object) -> object {
     token = current(state)
     if token.kind != "EOF" {
         state.index += 1
@@ -46,7 +46,7 @@ fun advance(state: object) -> object {
 
 fun match(state: object, kind: string) -> bool {
     if check(state, kind) {
-        advance(state)
+        parser_advance(state)
         return true
     }
     return false
@@ -110,7 +110,7 @@ fun parse_call_arguments(state: object, name: string) -> object {
             if state.error != "" {
                 return make_node("ERROR")
             }
-            args = append(args, argument)
+            args = parser_append(args, argument)
             if match(state, "COMMA") {
                 if check(state, "RIGHT_PAREN") {
                     fail(state, "trailing comma in call")
@@ -174,7 +174,7 @@ fun parse_primary(state: object) -> object {
                 if state.error != "" {
                     return make_node("ERROR")
                 }
-                elements = append(elements, element)
+                elements = parser_append(elements, element)
                 if match(state, "COMMA") {
                     if check(state, "RIGHT_BRACKET") {
                         parsing = false
@@ -217,14 +217,14 @@ fun parse_postfix(state: object) -> object {
                     fail(state, "expected member name after '.'")
                     return make_node("ERROR")
                 }
-                member = advance(state)
+                member = parser_advance(state)
                 node = make_node("MEMBER")
                 node.object = expression
                 node.member = member.lexeme
                 expression = node
             } else {
                 if check(state, "LEFT_PAREN") && expression.kind == "MEMBER" && expression.object.kind == "VARIABLE" {
-                    advance(state)
+                    parser_advance(state)
                     qualified_name = expression.object.value + "__" + expression.member
                     expression = parse_call_arguments(state, qualified_name)
                 } else {
@@ -243,7 +243,7 @@ fun parse_unary(state: object) -> object {
             return make_node("ERROR")
         }
         state.nesting_depth += 1
-        operator = advance(state)
+        operator = parser_advance(state)
         operand = parse_unary(state)
         state.nesting_depth -= 1
         node = make_node("UNARY")
@@ -258,7 +258,7 @@ fun parse_multiplication(state: object) -> object {
     left = parse_unary(state)
     while check(state, "STAR") || check(state, "SLASH") || check(state, "PERCENT") {
         if !note_operator(state) { return make_node("ERROR") }
-        operator = advance(state)
+        operator = parser_advance(state)
         right = parse_unary(state)
         node = make_node("BINARY")
         node.operator = operator.lexeme
@@ -273,7 +273,7 @@ fun parse_addition(state: object) -> object {
     left = parse_multiplication(state)
     while check(state, "PLUS") || check(state, "MINUS") {
         if !note_operator(state) { return make_node("ERROR") }
-        operator = advance(state)
+        operator = parser_advance(state)
         right = parse_multiplication(state)
         node = make_node("BINARY")
         node.operator = operator.lexeme
@@ -288,7 +288,7 @@ fun parse_comparison(state: object) -> object {
     left = parse_addition(state)
     while check(state, "GREATER") || check(state, "LESS") || check(state, "GREATER_EQUAL") || check(state, "LESS_EQUAL") {
         if !note_operator(state) { return make_node("ERROR") }
-        operator = advance(state)
+        operator = parser_advance(state)
         right = parse_addition(state)
         node = make_node("BINARY")
         node.operator = operator.lexeme
@@ -303,7 +303,7 @@ fun parse_equality(state: object) -> object {
     left = parse_comparison(state)
     while check(state, "EQUAL_EQUAL") || check(state, "BANG_EQUAL") {
         if !note_operator(state) { return make_node("ERROR") }
-        operator = advance(state)
+        operator = parser_advance(state)
         right = parse_comparison(state)
         node = make_node("BINARY")
         node.operator = operator.lexeme
@@ -407,7 +407,7 @@ fun parse_block(state: object) -> object {
         if state.error != "" {
             return []
         }
-        statements = append(statements, statement)
+        statements = parser_append(statements, statement)
     }
     if !expect(state, "RIGHT_BRACE", "expected '}' to close block") {
         return []
@@ -416,7 +416,7 @@ fun parse_block(state: object) -> object {
 }
 
 fun parse_let_statement(state: object) -> object {
-    advance(state)
+    parser_advance(state)
     if !expect(state, "IDENTIFIER", "expected variable name after 'let'") {
         return make_node("ERROR")
     }
@@ -440,7 +440,7 @@ fun parse_let_statement(state: object) -> object {
 }
 
 fun parse_print_statement(state: object) -> object {
-    advance(state)
+    parser_advance(state)
     if !expect(state, "LEFT_PAREN", "expected '(' after print") {
         return make_node("ERROR")
     }
@@ -454,7 +454,7 @@ fun parse_print_statement(state: object) -> object {
 }
 
 fun parse_return_statement(state: object) -> object {
-    keyword = advance(state)
+    keyword = parser_advance(state)
     expression = null
     if !check(state, "RIGHT_BRACE") && !check(state, "EOF") && current(state).line == keyword.line {
         expression = parse_or(state)
@@ -465,7 +465,7 @@ fun parse_return_statement(state: object) -> object {
 }
 
 fun parse_if_statement(state: object) -> object {
-    advance(state)
+    parser_advance(state)
     condition = parse_or(state)
     if !expect(state, "LEFT_BRACE", "expected '{' after if condition") {
         return make_node("ERROR")
@@ -473,7 +473,7 @@ fun parse_if_statement(state: object) -> object {
     then_branch = parse_block(state)
     else_branch = []
     if state.error == "" && check(state, "IDENTIFIER") && current(state).lexeme == "else" {
-        advance(state)
+        parser_advance(state)
         if check(state, "IDENTIFIER") && current(state).lexeme == "if" {
             else_branch = [parse_statement(state)]
         } else {
@@ -491,7 +491,7 @@ fun parse_if_statement(state: object) -> object {
 }
 
 fun parse_while_statement(state: object) -> object {
-    advance(state)
+    parser_advance(state)
     condition = parse_or(state)
     if !expect(state, "LEFT_BRACE", "expected '{' after while condition") {
         return make_node("ERROR")
@@ -504,7 +504,7 @@ fun parse_while_statement(state: object) -> object {
 }
 
 fun parse_for_statement(state: object) -> object {
-    advance(state)
+    parser_advance(state)
     if !expect(state, "IDENTIFIER", "expected loop variable after 'for'") {
         return make_node("ERROR")
     }
@@ -513,7 +513,7 @@ fun parse_for_statement(state: object) -> object {
         fail(state, "expected 'in' after for variable")
         return make_node("ERROR")
     }
-    advance(state)
+    parser_advance(state)
     iterable = parse_or(state)
     if !expect(state, "LEFT_BRACE", "expected '{' after for expression") {
         return make_node("ERROR")
@@ -527,7 +527,7 @@ fun parse_for_statement(state: object) -> object {
 }
 
 fun parse_function_statement(state: object, is_unsafe: bool) -> object {
-    advance(state)
+    parser_advance(state)
     if !expect(state, "IDENTIFIER", "expected function name") {
         return make_node("ERROR")
     }
@@ -551,7 +551,7 @@ fun parse_function_statement(state: object, is_unsafe: bool) -> object {
                 }
                 parameter.type = state.previous.lexeme
             }
-            parameters = append(parameters, parameter)
+            parameters = parser_append(parameters, parameter)
             if match(state, "COMMA") {
                 if check(state, "RIGHT_PAREN") {
                     fail(state, "trailing comma in parameter list")
@@ -589,7 +589,7 @@ fun parse_function_statement(state: object, is_unsafe: bool) -> object {
 }
 
 fun parse_struct_statement(state: object) -> object {
-    advance(state)
+    parser_advance(state)
     if !expect(state, "IDENTIFIER", "expected struct name") {
         return make_node("ERROR")
     }
@@ -604,7 +604,7 @@ fun parse_struct_statement(state: object) -> object {
             if !expect(state, "IDENTIFIER", "expected struct field name") {
                 return make_node("ERROR")
             }
-            fields = append(fields, state.previous.lexeme)
+            fields = parser_append(fields, state.previous.lexeme)
             if match(state, "COMMA") {
                 if check(state, "RIGHT_BRACE") {
                     parsing = false
@@ -624,10 +624,10 @@ fun parse_struct_statement(state: object) -> object {
 }
 
 fun parse_asm_statement(state: object) -> object {
-    advance(state)
+    parser_advance(state)
     is_volatile = false
     if check(state, "IDENTIFIER") && current(state).lexeme == "volatile" {
-        advance(state)
+        parser_advance(state)
         is_volatile = true
     }
     if !expect(state, "LEFT_PAREN", "expected '(' after asm") {
@@ -669,7 +669,7 @@ fun parse_assignment_or_call(state: object) -> object {
             fail(state, "invalid assignment target")
             return make_node("ERROR")
         }
-        advance(state)
+        parser_advance(state)
         value = parse_or(state)
         if operator.kind != "EQUALS" {
             binary = make_node("BINARY")
@@ -712,7 +712,7 @@ fun parse_statement(state: object) -> object {
             target = parse_unary(state)
             operator = current(state)
             if operator.kind == "EQUALS" || operator.kind == "PLUS_EQUALS" || operator.kind == "MINUS_EQUALS" || operator.kind == "STAR_EQUALS" || operator.kind == "SLASH_EQUALS" || operator.kind == "PERCENT_EQUALS" {
-                advance(state)
+                parser_advance(state)
                 value = parse_or(state)
                 if operator.kind != "EQUALS" {
                     binary = make_node("BINARY")
@@ -738,11 +738,11 @@ fun parse_statement(state: object) -> object {
                         node = parse_return_statement(state)
                     } else {
                         if token.kind == "IDENTIFIER" && token.lexeme == "break" {
-                            advance(state)
+                            parser_advance(state)
                             node = make_node("BREAK")
                         } else {
                             if token.kind == "IDENTIFIER" && token.lexeme == "continue" {
-                                advance(state)
+                                parser_advance(state)
                                 node = make_node("CONTINUE")
                             } else {
                                 if token.kind == "IDENTIFIER" && token.lexeme == "if" {
@@ -761,7 +761,7 @@ fun parse_statement(state: object) -> object {
                                                     node = parse_struct_statement(state)
                                                 } else {
                                                     if token.kind == "IDENTIFIER" && token.lexeme == "unsafe" {
-                                                        advance(state)
+                                                        parser_advance(state)
                                                         if check(state, "IDENTIFIER") && current(state).lexeme == "fun" {
                                                             node = parse_function_statement(state, true)
                                                         } else {
@@ -824,7 +824,7 @@ export fun parse_program(source: string) -> object {
     while !check(state, "EOF") && state.error == "" {
         statement = parse_statement(state)
         if state.error == "" {
-            result.statements = append(result.statements, statement)
+            result.statements = parser_append(result.statements, statement)
         }
     }
     result.error = state.error

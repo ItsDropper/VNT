@@ -1,6 +1,7 @@
 import "../compiler/parser.vnt" as parser
 
 fun require(condition: bool, message: string) {
+    io_write_error("STATEMENT_PARSER_CHECK: " + message)
     if !condition {
         print("SELF-HOSTED STATEMENT PARSER TEST FAILED: " + message)
         process_exit(1)

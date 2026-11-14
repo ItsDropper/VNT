@@ -41,6 +41,7 @@ fun parser_advance(state: object) -> object {
     if token.kind != "EOF" {
         state.index += 1
     }
+    state.previous = token
     return token
 }
 

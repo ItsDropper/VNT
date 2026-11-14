@@ -466,7 +466,7 @@ fun check_call(state: object, node: object) -> string {
 
     builtin_count = builtin_arity(name, argc)
     if builtin_count != -1 {
-        if !builtin_count {
+        if builtin_count == 0 {
             semantic_fail(state, "builtin '" + name + "' does not accept " + argc + " arguments.")
             return "unknown"
         }

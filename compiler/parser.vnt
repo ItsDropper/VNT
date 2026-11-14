@@ -400,7 +400,7 @@ fun expect(state: object, kind: string, message: string) -> bool {
     return false
 }
 
-fun parse_block(state: object) -> object {
+fun parse_block(state: object) -> array {
     statements = []
     while !check(state, "RIGHT_BRACE") && !check(state, "EOF") && state.error == "" {
         statement = parse_statement(state)

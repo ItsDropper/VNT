@@ -633,9 +633,16 @@ static TypeKind expr_type(TypeChecker *tc, AstNode *n) {
                      is_string_index_expr(tc, n->binary_expression.left)) ||
                     (left == TY_INT && right == TY_STRING &&
                      is_string_index_expr(tc, n->binary_expression.right));
+                int null_pointer_comparison =
+                    (left == TY_POINTER &&
+                     (right == TY_OBJECT || right == TY_ARRAY ||
+                      right == TY_STRING || right == TY_REFERENCE)) ||
+                    (right == TY_POINTER &&
+                     (left == TY_OBJECT || left == TY_ARRAY ||
+                      left == TY_STRING || left == TY_REFERENCE));
                 if (left != TY_UNKNOWN && right != TY_UNKNOWN &&
                     left != right && !(numeric(left) && numeric(right)) &&
-                    !string_byte_comparison) {
+                    !string_byte_comparison && !null_pointer_comparison) {
                     error(tc, "equality operands must have compatible types.");
                 }
                 return TY_BOOL;

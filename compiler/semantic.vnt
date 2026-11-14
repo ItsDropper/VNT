@@ -184,6 +184,30 @@ fun merge_branch_scopes(before: array, then_state: array, else_state: array) {
     }
 }
 
+fun has_namespace(name: string) -> bool {
+    i = 0
+    while i + 1 < len(name) {
+        if name[i] == "_" && name[i + 1] == "_" {
+            return true
+        }
+        i += 1
+    }
+    return false
+}
+
+fun namespace_prefix(name: string) -> string {
+    prefix = ""
+    i = 0
+    while i + 1 < len(name) {
+        if name[i] == "_" && name[i + 1] == "_" {
+            return prefix
+        }
+        prefix = prefix + name[i]
+        i += 1
+    }
+    return ""
+}
+
 fun find_function(state: object, name: string) -> object {
     i = 0
     while i < len(state.functions) {
@@ -443,6 +467,14 @@ fun check_call(state: object, node: object) -> string {
     }
 
     fn = find_function(state, name)
+    if !fn.found && state.function_namespace != "" && !has_namespace(name) {
+        qualified_name = state.function_namespace + "__" + name
+        fn = find_function(state, qualified_name)
+        if fn.found {
+            node.name = qualified_name
+            name = qualified_name
+        }
+    }
     if !fn.found {
         semantic_fail(state, "call to undeclared function '" + name + "'.")
         return "unknown"
@@ -769,6 +801,11 @@ fun check_statements(state: object, statements: array) {
             old_loop_depth = state.loop_depth
             old_in_function = state.in_function
             old_expected_return = state.expected_return
+            old_function_namespace = state.function_namespace
+            state.function_namespace = ""
+            if has_namespace(node.name) {
+                state.function_namespace = namespace_prefix(node.name)
+            }
             state.scopes = old_scopes
             state.scopes = semantic_append(state.scopes, make_scope())
             state.loop_depth = 0
@@ -803,6 +840,7 @@ fun check_statements(state: object, statements: array) {
             state.loop_depth = old_loop_depth
             state.in_function = old_in_function
             state.expected_return = old_expected_return
+            state.function_namespace = old_function_namespace
         }
         i += 1
     }
@@ -824,6 +862,7 @@ export fun analyze(program: object) -> object {
     state.in_function = false
     state.expected_return = "unknown"
     state.unsafe_depth = 0
+    state.function_namespace = ""
     collect_declarations(state, program.statements)
     if state.error == "" {
         check_statements(state, program.statements)

@@ -145,16 +145,19 @@ fun parse_call_arguments(state: object, name: string) -> object {
     node.name = name
     node.arguments = args
     node.end_line = closing_token.line
+    node.line_limited = state.statement_mode
     return node
 }
 
 fun parse_primary(state: object) -> object {
     token = current(state)
+    line_limited = state.statement_mode
     if match(state, "INTEGER") {
         node = object()
         node.kind = "INTEGER"
         node.value = token.lexeme
         node.end_line = token.line
+        node.line_limited = line_limited
         return node
     }
     if match(state, "FLOAT") {
@@ -162,6 +165,7 @@ fun parse_primary(state: object) -> object {
         node.kind = "FLOAT"
         node.value = token.lexeme
         node.end_line = token.line
+        node.line_limited = line_limited
         return node
     }
     if match(state, "STRING") {
@@ -169,6 +173,7 @@ fun parse_primary(state: object) -> object {
         node.kind = "STRING"
         node.value = decode_string(token.lexeme)
         node.end_line = token.line
+        node.line_limited = line_limited
         return node
     }
     if match(state, "IDENTIFIER") {
@@ -200,6 +205,7 @@ fun parse_primary(state: object) -> object {
         node.kind = "VARIABLE"
         node.value = token.lexeme
         node.end_line = token.line
+        node.line_limited = line_limited
         return node
     }
     if match(state, "LEFT_PAREN") {
@@ -210,6 +216,7 @@ fun parse_primary(state: object) -> object {
             return make_node("ERROR")
         }
         expression.end_line = closing_token.line
+        expression.line_limited = line_limited
         return expression
     }
     if match(state, "LEFT_BRACKET") {
@@ -239,6 +246,7 @@ fun parse_primary(state: object) -> object {
         node = make_node("ARRAY")
         node.elements = elements
         node.end_line = closing_token.line
+        node.line_limited = line_limited
         return node
     }
     fail(state, "expected expression")
@@ -249,7 +257,11 @@ fun parse_postfix(state: object) -> object {
     expression = parse_primary(state)
     parsing = true
     while parsing && state.error == "" {
-        if match(state, "LEFT_BRACKET") {
+        cursor = state.tokens[state.index]
+        line_matches = !expression.line_limited || cursor.line == expression.end_line
+        if !line_matches {
+            parsing = false
+        } else if match(state, "LEFT_BRACKET") {
             if !note_operator(state) { return make_node("ERROR") }
             index = parse_or(state)
             if !match(state, "RIGHT_BRACKET") {
@@ -260,6 +272,7 @@ fun parse_postfix(state: object) -> object {
             node.object = expression
             node.index = index
             node.end_line = state.tokens[state.index - 1].line
+            node.line_limited = expression.line_limited
             expression = node
         } else {
             if match(state, "DOT") {
@@ -273,6 +286,7 @@ fun parse_postfix(state: object) -> object {
                 node.object = expression
                 node.member = member.lexeme
                 node.end_line = member.line
+                node.line_limited = expression.line_limited
                 expression = node
             } else {
                 if check(state, "LEFT_PAREN") && expression.kind == "MEMBER" && expression.object.kind == "VARIABLE" {
@@ -302,6 +316,7 @@ fun parse_unary(state: object) -> object {
         node.operator = operator.lexeme
         node.operand = operand
         node.end_line = operand.end_line
+        node.line_limited = operand.line_limited
         return node
     }
     expression = parse_postfix(state)
@@ -323,7 +338,7 @@ fun parse_expression_precedence(state: object, minimum: int) -> object {
     parsing = true
     while parsing && state.error == "" {
         token = state.tokens[state.index]
-        line_matches = token.line == left.end_line
+        line_matches = !left.line_limited || token.line == left.end_line
         if !line_matches {
             parsing = false
         } else {

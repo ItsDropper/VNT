@@ -37,6 +37,9 @@ fun check(state: object, kind: string) -> bool {
 }
 
 fun same_line(state: object) -> bool {
+    if !state.statement_mode {
+        return true
+    }
     if state.previous == null {
         return true
     }
@@ -387,6 +390,7 @@ export fun parse(source: string) -> object {
     state.operator_count = 0
     state.nesting_depth = 0
     state.expression_depth = 0
+    state.statement_mode = false
     expression = parse_or(state)
     if state.error == "" && !check(state, "EOF") {
         fail(state, "unexpected token after expression")
@@ -829,6 +833,7 @@ export fun parse_program(source: string) -> object {
     state.operator_count = 0
     state.nesting_depth = 0
     state.expression_depth = 0
+    state.statement_mode = true
     while !check(state, "EOF") && state.error == "" {
         statement = parse_statement(state)
         if state.error == "" {

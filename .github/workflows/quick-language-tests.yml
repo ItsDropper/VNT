@@ -99,11 +99,16 @@ jobs:
             expected="$2"
             executable="self-hosted-$(basename "$source" .vnt).exe"
             ./vnt --compile "$source" -o "$executable"
-            if ! output="$(./"$executable" 2>&1 | tr -d '\r')"; then
+            set +e
+            raw_output="$(./"$executable" 2>&1 | tr -d '\r')"
+            status=$?
+            set -e
+            if [ "$status" -ne 0 ]; then
               echo "Execution failed for $source:"
-              echo "$output"
-              exit 1
+              echo "$raw_output"
+              exit "$status"
             fi
+            output="$(printf '%s\n' "$raw_output" | grep -v -E '^(PARSER_TRACE|TRACE):' || true)"
             if [ "$output" != "$expected" ]; then
               echo "Unexpected output from $source: $output"
               exit 1

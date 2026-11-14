@@ -107,7 +107,10 @@ jobs:
               echo "Compilation failed for $source (exit $compile_status):"
               cat "$compile_log"
               echo "Parser isolation for semantic module:"
+              sed 's/^export fun /fun /' compiler/semantic.vnt > semantic-module-noexport.vnt
               set +e
+              stdbuf -o0 -e0 ./vnt --dump-ir semantic-module-noexport.vnt >semantic-noexport.ir.log 2>&1
+              semantic_noexport_status=$?
               stdbuf -o0 -e0 ./vnt --dump-ir compiler/semantic.vnt >semantic-module.ir.log 2>&1
               semantic_ir_status=$?
               stdbuf -o0 -e0 ./vnt --dump-ir compiler/parser.vnt >parser-module.ir.log 2>&1
@@ -115,6 +118,8 @@ jobs:
               stdbuf -o0 -e0 ./vnt --dump-ir "$source" >"$executable.ir-diagnostic.log" 2>&1
               project_ir_status=$?
               set -e
+              echo "semantic no-export IR exit: $semantic_noexport_status"
+              tail -n 30 semantic-noexport.ir.log || true
               echo "semantic module IR exit: $semantic_ir_status"
               tail -n 30 semantic-module.ir.log || true
               echo "parser module IR exit: $parser_ir_status"

@@ -108,41 +108,41 @@ jobs:
               cat "$compile_log"
               echo "Parser isolation for individual semantic functions:"
               python3 - <<'PY'
-              from pathlib import Path
-              source = Path("compiler/semantic.vnt").read_text()
-              starts = []
-              for line_no, line in enumerate(source.splitlines(keepends=True)):
-                  if line.startswith("fun ") or line.startswith("export fun "):
-                      starts.append((line_no, line))
-              lines = source.splitlines(keepends=True)
-              for index, (start, header) in enumerate(starts):
-                  begin = sum(len(line) for line in lines[:start])
-                  depth = 0
-                  quoted = False
-                  escaped = False
-                  comment = False
-                  end = None
-                  for pos in range(begin, len(source)):
-                      ch = source[pos]
-                      if comment:
-                          if ch == "\n": comment = False
-                          continue
-                      if quoted:
-                          if escaped: escaped = False
-                          elif ch == "\\": escaped = True
-                          elif ch == '"': quoted = False
-                          continue
-                      if ch == '"': quoted = True
-                      elif ch == '#': comment = True
-                      elif ch == '{': depth += 1
-                      elif ch == '}':
-                          depth -= 1
-                          if depth == 0:
-                              end = pos + 1
-                              break
-                  if end is None: raise SystemExit(f"unterminated {header.strip()}")
-                  name = header.split("(")[0].replace("export ", "").replace("fun ", "").strip()
-                  Path(f"semantic-function-{index}.vnt").write_text(source[begin:end].replace("export fun ", "fun ", 1))
+          from pathlib import Path
+          source = Path("compiler/semantic.vnt").read_text()
+          starts = []
+          for line_no, line in enumerate(source.splitlines(keepends=True)):
+              if line.startswith("fun ") or line.startswith("export fun "):
+                  starts.append((line_no, line))
+          lines = source.splitlines(keepends=True)
+          for index, (start, header) in enumerate(starts):
+              begin = sum(len(line) for line in lines[:start])
+              depth = 0
+              quoted = False
+              escaped = False
+              comment = False
+              end = None
+              for pos in range(begin, len(source)):
+                  ch = source[pos]
+                  if comment:
+                      if ch == "\n": comment = False
+                      continue
+                  if quoted:
+                      if escaped: escaped = False
+                      elif ch == "\\": escaped = True
+                      elif ch == '"': quoted = False
+                      continue
+                  if ch == '"': quoted = True
+                  elif ch == '#': comment = True
+                  elif ch == '{': depth += 1
+                  elif ch == '}':
+                      depth -= 1
+                      if depth == 0:
+                          end = pos + 1
+                          break
+              if end is None: raise SystemExit(f"unterminated {header.strip()}")
+              name = header.split("(")[0].replace("export ", "").replace("fun ", "").strip()
+              Path(f"semantic-function-{index}.vnt").write_text(source[begin:end].replace("export fun ", "fun ", 1))
           PY
               for function_file in semantic-function-*.vnt; do
                 if ! stdbuf -o0 -e0 ./vnt --dump-ir "$function_file" >"$function_file.log" 2>&1; then

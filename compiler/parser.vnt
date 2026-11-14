@@ -428,11 +428,14 @@ fun parse_block(state: object) -> array {
 }
 
 fun parse_let_statement(state: object) -> object {
+    io_write_error("LET: start")
     parser_advance(state)
+    io_write_error("LET: consumed keyword")
     if !expect(state, "IDENTIFIER", "expected variable name after 'let'") {
         return make_node("ERROR")
     }
     name = state.previous.lexeme
+    io_write_error("LET: name")
     if !expect(state, "COLON", "expected ':' after typed variable name") {
         return make_node("ERROR")
     }
@@ -440,10 +443,13 @@ fun parse_let_statement(state: object) -> object {
         return make_node("ERROR")
     }
     declared_type = state.previous.lexeme
+    io_write_error("LET: type")
     if !expect(state, "EQUALS", "expected '=' after variable type") {
         return make_node("ERROR")
     }
+    io_write_error("LET: before expression")
     value = parse_or(state)
+    io_write_error("LET: after expression")
     node = make_node("VARIABLE_DECLARATION")
     node.name = name
     node.declared_type = declared_type
@@ -715,7 +721,9 @@ fun parse_statement(state: object) -> object {
         return make_node("ERROR")
     }
     state.nesting_depth += 1
+    io_write_error("ST: before current")
     token = current(state)
+    io_write_error("ST: current " + token.kind)
     node = make_node("ERROR")
     if token.kind == "EOF" || token.kind == "RIGHT_BRACE" {
         fail(state, "expected statement")
@@ -809,6 +817,7 @@ fun parse_statement(state: object) -> object {
         }
     }
     state.nesting_depth -= 1
+    io_write_error("ST: done")
     return node
 }
 

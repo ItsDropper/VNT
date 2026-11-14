@@ -313,28 +313,38 @@ fun parse_expression_precedence(state: object, minimum: int) -> object {
     print("PARSER_TRACE: precedence enter")
     left = parse_unary(state)
     print("PARSER_TRACE: precedence unary returned")
-    while state.error == "" && same_line(state) {
+    parsing = true
+    while parsing && state.error == "" {
         token = current(state)
-        precedence = binary_precedence(token.kind)
-        if precedence < minimum || precedence == 0 {
-            break
+        line_matches = true
+        if state.statement_mode && state.previous != null && token.kind != "EOF" {
+            line_matches = token.line == state.previous.line
         }
-        parser_advance(state)
-        if !note_operator(state) {
-            return make_node("ERROR")
+        if !line_matches {
+            parsing = false
+        } else {
+            precedence = binary_precedence(token.kind)
+            if precedence < minimum || precedence == 0 {
+                parsing = false
+            } else {
+                parser_advance(state)
+                if !note_operator(state) {
+                    return make_node("ERROR")
+                }
+                if state.nesting_depth >= 256 {
+                    fail(state, "expression nesting exceeds 256 levels")
+                    return make_node("ERROR")
+                }
+                state.nesting_depth += 1
+                right = parse_expression_precedence(state, precedence + 1)
+                state.nesting_depth -= 1
+                node = make_node("BINARY")
+                node.operator = token.lexeme
+                node.left = left
+                node.right = right
+                left = node
+            }
         }
-        if state.nesting_depth >= 256 {
-            fail(state, "expression nesting exceeds 256 levels")
-            return make_node("ERROR")
-        }
-        state.nesting_depth += 1
-        right = parse_expression_precedence(state, precedence + 1)
-        state.nesting_depth -= 1
-        node = make_node("BINARY")
-        node.operator = token.lexeme
-        node.left = left
-        node.right = right
-        left = node
     }
     return left
 }
@@ -670,7 +680,11 @@ fun parse_assignment_or_call(state: object) -> object {
         return make_node("ERROR")
     }
     operator = current(state)
-    if same_line(state) && (operator.kind == "EQUALS" || operator.kind == "PLUS_EQUALS" || operator.kind == "MINUS_EQUALS" || operator.kind == "STAR_EQUALS" || operator.kind == "SLASH_EQUALS" || operator.kind == "PERCENT_EQUALS") {
+    line_matches = true
+    if state.statement_mode && state.previous != null && operator.kind != "EOF" {
+        line_matches = operator.line == state.previous.line
+    }
+    if line_matches && (operator.kind == "EQUALS" || operator.kind == "PLUS_EQUALS" || operator.kind == "MINUS_EQUALS" || operator.kind == "STAR_EQUALS" || operator.kind == "SLASH_EQUALS" || operator.kind == "PERCENT_EQUALS") {
         if !is_assignment_target(target) {
             fail(state, "invalid assignment target")
             return make_node("ERROR")

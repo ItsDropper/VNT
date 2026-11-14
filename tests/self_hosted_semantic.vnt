@@ -83,6 +83,9 @@ require(result.ok, "else branch did not start from the pre-branch symbol state: 
 result = checked("fun inferred() {\nreturn\n}\nresult_value = inferred()")
 require(result.ok, "unannotated function return was incorrectly treated as void: " + result.error)
 
+result = checked("fun core__helper(value: int) -> int {\nreturn value + 1\n}\nfun core__caller(value: int) -> int {\nreturn helper(value)\n}\nprint(core__caller(41))")
+require(result.ok, "module sibling export resolution failed: " + result.error)
+
 result = checked("print(len())")
 require(!result.ok, "invalid builtin arity was accepted")
 

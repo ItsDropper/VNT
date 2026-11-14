@@ -1,0 +1,9 @@
+fun inferred_return_with_bare_path(flag: bool) {
+    if flag {
+        return
+    }
+    return
+}
+
+inferred_return_with_bare_path(true)
+print("INFERRED_BARE_RETURN_OK")

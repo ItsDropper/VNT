@@ -883,11 +883,6 @@ fun check_statements(state: object, statements: array) {
 
 export fun analyze(program: object) -> object {
     print("TRACE: analyze enter")
-    if program == null {
-        print("TRACE: analyze null program")
-        return result_object(false, "semantic analysis requires a successfully parsed program.")
-    }
-    print("TRACE: analyze after null check")
     if !program.ok {
         print("TRACE: analyze failed parse")
         return result_object(false, "semantic analysis cannot run on a failed parse: " + program.error)

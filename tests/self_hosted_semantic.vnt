@@ -9,104 +9,141 @@ fun require(condition: bool, message: string) {
 }
 
 fun checked(source: string) -> object {
+    print("TRACE: semantic checked before parse")
     parsed = parser.parse_program(source)
+    print("TRACE: semantic checked after parse")
     require(parsed.ok, "parser rejected semantic fixture: " + parsed.error)
-    return semantic.analyze(parsed)
+    print("TRACE: semantic checked before analyze")
+    analyzed = semantic.analyze(parsed)
+    print("TRACE: semantic checked after analyze")
+    return analyzed
 }
 
+print("TRACE: semantic case 1 before")
 result = checked("let count: int = 1\ncount = count + 2\nprint(count)")
 require(result.ok, "valid typed declaration and assignment rejected: " + result.error)
 
+print("TRACE: semantic case 2 before")
 result = checked("let count: int = \"wrong\"")
 require(!result.ok && result.error != "", "incompatible initializer was accepted")
 
+print("TRACE: semantic case 3 before")
 result = checked("print(missing)")
 require(!result.ok && result.error != "", "undeclared variable was accepted")
 
+print("TRACE: semantic case 4 before")
 result = checked("fun add(a: int, b: int) -> int {\nreturn a + b\n}\nprint(add(1, 2))")
 require(result.ok, "valid function signature/call rejected: " + result.error)
 
+print("TRACE: semantic case 5 before")
 result = checked("fun add(a: int, b: int) -> int {\nreturn a + b\n}\nprint(add(1))")
 require(!result.ok, "incorrect function arity was accepted")
 
+print("TRACE: semantic case 6 before")
 result = checked("fun get() -> int {\nreturn \"no\"\n}")
 require(!result.ok, "incorrect function return type was accepted")
 
+print("TRACE: semantic case 7 before")
 result = checked("fun get() -> int {\nreturn 1\n}")
 require(result.ok, "valid typed function rejected: " + result.error)
 
+print("TRACE: semantic case 8 before")
 result = checked("break")
 require(!result.ok, "break outside a loop was accepted")
 
+print("TRACE: semantic case 9 before")
 result = checked("while true {\nbreak\n}")
 require(result.ok, "break inside a loop was rejected: " + result.error)
 
+print("TRACE: semantic case 10 before")
 result = checked("asm(\"nop\")")
 require(!result.ok, "assembly outside unsafe block was accepted")
 
+print("TRACE: semantic case 11 before")
 result = checked("unsafe {\nasm(\"nop\")\n}")
 require(result.ok, "assembly inside unsafe block was rejected: " + result.error)
 
+print("TRACE: semantic case 12 before")
 result = checked("struct Point { x, y }\npoint = Point()\nprint(point.x)")
 require(result.ok, "struct constructor/member access rejected: " + result.error)
 
+print("TRACE: semantic case 13 before")
 result = checked("fun duplicate(a: int, a: int) {\nreturn\n}")
 require(!result.ok, "duplicate parameter was accepted")
 
+print("TRACE: semantic case 14 before")
 result = checked("fun duplicate() {}\nfun duplicate() {}")
 require(!result.ok, "duplicate function was accepted")
 
+print("TRACE: semantic case 15 before")
 result = checked("for item in [1, 2, 3] {\nprint(item)\n}")
 require(result.ok, "valid for-in loop rejected: " + result.error)
 
+print("TRACE: semantic case 16 before")
 result = checked("for item in 7 {\nprint(item)\n}")
 require(!result.ok, "non-iterable for-in source was accepted")
 
+print("TRACE: semantic case 17 before")
 result = checked("if 1 {\nprint(1)\n}")
 require(!result.ok, "non-boolean if condition was accepted")
 
+print("TRACE: semantic case 18 before")
 result = checked("let value: int = 1\nvalue = \"bad\"")
 require(!result.ok, "incompatible reassignment was accepted")
 
+print("TRACE: semantic case 19 before")
 result = checked("global_value = 41\nfun read_global() -> int {\nreturn global_value\n}\nprint(read_global())")
 require(result.ok, "function could not resolve a global binding: " + result.error)
 
+print("TRACE: semantic case 20 before")
 result = checked("unsafe fun raw() {\nreturn\n}\nraw()")
 require(!result.ok, "unsafe function call outside unsafe block was accepted")
 
+print("TRACE: semantic case 21 before")
 result = checked("unsafe fun raw() {\nreturn\n}\nunsafe {\nraw()\n}")
 require(result.ok, "unsafe function call inside unsafe block was rejected: " + result.error)
 
+print("TRACE: semantic case 22 before")
 result = checked("value = 1\nif true {\nvalue = \"text\"\n} else {\nif value > 0 {\nprint(value)\n}\n}")
 require(result.ok, "else branch did not start from the pre-branch symbol state: " + result.error)
 
+print("TRACE: semantic case 23 before")
 result = checked("fun inferred() {\nreturn\n}\nresult_value = inferred()")
 require(result.ok, "unannotated function return was incorrectly treated as void: " + result.error)
 
+print("TRACE: semantic case 24 before")
 result = checked("fun core__helper(value: int) -> int {\nreturn value + 1\n}\nfun core__caller(value: int) -> int {\nreturn helper(value)\n}\nprint(core__caller(41))")
 require(result.ok, "module sibling export resolution failed: " + result.error)
 
+print("TRACE: semantic case 25 before")
 result = checked("print(len())")
 require(!result.ok, "invalid builtin arity was accepted")
 
+print("TRACE: semantic case 26 before")
 result = checked("text = \"A\"\nif text[0] == 65 {\nprint(text)\n}")
 require(result.ok, "string index integer comparison was rejected: " + result.error)
 
+print("TRACE: semantic case 27 before")
 result = checked("fun take_code(value: int) -> int {\nreturn value\n}\nprint(take_code(\"A\"[0]))")
 require(result.ok, "string index integer argument compatibility was rejected: " + result.error)
 
+print("TRACE: semantic case 28 before")
 result = checked("value = 1\nreference = &value\nprint(*reference)")
 require(result.ok, "reference dereference was rejected: " + result.error)
 
+print("TRACE: semantic case 29 before")
 result = checked("pointer = null\nprint(*pointer)")
 require(!result.ok, "raw pointer was accepted by reference dereference")
 
+print("TRACE: semantic case 30 before")
 result = checked("print(mem_alloc(8))")
 require(!result.ok, "raw memory builtin outside unsafe was accepted")
 
+print("TRACE: semantic case 31 before")
 result = checked("unsafe {\ncpu_atomic_exchange_u64(0, 1)\ncpu_write_msr(1, 2)\n}")
 require(result.ok, "valid CPU builtin arities were rejected: " + result.error)
 
+print("TRACE: semantic case 32 before")
 result = checked("unsafe {\ncpu_atomic_exchange_u64(0)\n}")
 require(!result.ok, "invalid atomic exchange arity was accepted")
 
